@@ -1,0 +1,662 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Quick Start &mdash; Benji Backup 0.1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Configuration" href="configuration.html" />
+    <link rel="prev" title="Benji Backup Documentation" href="index.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Benji Backup
+          
+
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#some-vocabulary">Some Vocabulary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#centos-7">CentOS 7</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#common-to-all-distributions">Common to all distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#customise-your-configuration">Customise your configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#backup">backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deep-scrub-and-scrub">deep-scrub and scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restore">restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#version-rm-and-cleanup">version rm and cleanup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#benji-yaml">benji.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#custom-configuration-file">Custom Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#multiple-instance-installations">Multiple Instance Installations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scrub.html">Scrub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#reasons-for-scrubbing">Reasons for Scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-methods">Scrubbing Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-and-checksum">Consistency and Checksum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#using-the-backup-source">Using the Backup Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Benji Backup</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Quick Start</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/quickstart.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="quick-start">
+<span id="quickstart"></span><h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<p>This guide will show you how to do a <em>backup</em> - <em>scrub</em> - <em>restore</em> - <em>cleanup</em>
+cycle with <strong>sqlite</strong> as metadata backend and a <strong>file storage</strong> backup target
+(e.g. NFS).</p>
+<div class="section" id="some-vocabulary">
+<h2>Some Vocabulary<a class="headerlink" href="#some-vocabulary" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>Backup source</dt>
+<dd>A block device or image file to be backed up. Benji can’t backup folders
+or multiple files. The source must not be modified during backup, so either
+stop all writes or create a snapshot.</dd>
+<dt>Backup target</dt>
+<dd>A data storage (currently supported: filesystem, S3 and B2) to which the
+backed up data will be saved. Also referred to as the <em>data backend</em>.</dd>
+<dt>Backup Metadata</dt>
+<dd>A SQL database containing information on how to reassemble the stored blocks
+to get the original data back. Also referred to as the <em>meta backend</em>.</dd>
+<dt>Version</dt>
+<dd>A version is a backup of a specific backup source at a specific point in time.
+A version is identified by a unique id.</dd>
+</dl>
+</div>
+<div class="section" id="installation">
+<span id="id1"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Currently there are no pre-built packages but you can easily install Benji
+via <code class="docutils literal notranslate"><span class="pre">pip</span></code>.</p>
+<div class="section" id="ubuntu-16-04">
+<h3>Ubuntu 16.04<a class="headerlink" href="#ubuntu-16-04" title="Permalink to this headline">¶</a></h3>
+<p>This version of Ubuntu doesn’t have a current Python installation. But Python 3
+via private repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>apt-get update
+apt-get install --no-install-recommends software-properties-common python-software-properties
+add-apt-repository ppa:deadsnakes/ppa
+apt-get update
+apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
+</pre></div>
+</div>
+</div>
+<div class="section" id="centos-7">
+<h3>CentOS 7<a class="headerlink" href="#centos-7" title="Permalink to this headline">¶</a></h3>
+<p>As with Ubuntu you need to install a recent Python version from a third-party repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y https://centos7.iuscommunity.org/ius-release.rpm
+yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
+</pre></div>
+</div>
+</div>
+<div class="section" id="common-to-all-distributions">
+<h3>Common to all distributions<a class="headerlink" href="#common-to-all-distributions" title="Permalink to this headline">¶</a></h3>
+<p>After installing a recent Python version above, it is now time to install
+Benji and its dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create new virtual environment</span>
+python3.6 -m venv /usr/local/beni
+<span class="c1"># Activate it (your shell prompt will change)</span>
+. /usr/local/benji/bin/activate
+<span class="c1"># Let&#39;s upgrade pip first</span>
+pip install --upgrade pip
+<span class="c1"># And now install Benji and its dependencies</span>
+pip install git+https://github.com/elemental-lf/benji
+pip install git+https://github.com/kurtbrose/aes_keywrap
+</pre></div>
+</div>
+<p>If you want to use certain features of Benji in the future you might
+want to install additional dependencies:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">boto3</span></code>: AWS S3 backup storage target support</li>
+<li><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud storage support</li>
+<li><code class="docutils literal notranslate"><span class="pre">pycryptodome</span></code>: Encryption support</li>
+<li><code class="docutils literal notranslate"><span class="pre">discache</span></code>: Disk caching support</li>
+<li><code class="docutils literal notranslate"><span class="pre">zstandard</span></code>: Compression support</li>
+<li><code class="docutils literal notranslate"><span class="pre">psycopg2-binary</span></code> or <code class="docutils literal notranslate"><span class="pre">psycopg2</span></code>: PostgreSQL support</li>
+</ul>
+</div>
+<div class="section" id="customise-your-configuration">
+<h3>Customise your configuration<a class="headerlink" href="#customise-your-configuration" title="Permalink to this headline">¶</a></h3>
+<p>This represents a minimal configuration mit SQLite3 backend and file-based block storage:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1.0.0&#39;</span>
+processName: benji
+logFile: /var/log/benji.log
+hashFunction: blake2b,digest_size<span class="o">=</span><span class="m">32</span>
+blockSize: <span class="m">4194304</span>
+io:
+  file:
+    simultaneousReads: <span class="m">2</span>
+dataBackend:
+  type: file
+  file:
+    path: /var/lib/benji
+metaBackend:
+  engine: sqlite:///var/lib/benji/benji.sqlite
+</pre></div>
+</div>
+<p>You might need to change the above paths. Benji will run as a normal user, but it
+might need root privileges to access some backup sources.</p>
+<p>Please see <code class="docutils literal notranslate"><span class="pre">etc/benji.yaml</span></code> which is included in the distribution for a full list
+of possible configuration options.</p>
+</div>
+</div>
+<div class="section" id="backup">
+<span id="id2"></span><h2>backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Initialize the database:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji initdb
+    INFO: $ benji initdb
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Initializing a database multiple times does <strong>not</strong> destroy any
+data, instead it will fail because it finds already existing tables.</p>
+</div>
+</li>
+<li><p class="first">Create demo data:</p>
+<p>For demonstration purpose, create a 40MB test file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ dd <span class="k">if</span><span class="o">=</span>/dev/urandom <span class="nv">of</span><span class="o">=</span>TESTFILE <span class="nv">bs</span><span class="o">=</span>1M <span class="nv">count</span><span class="o">=</span><span class="m">40</span>
+<span class="m">40</span>+0 records in
+<span class="m">40</span>+0 records out
+<span class="m">41943040</span> bytes <span class="o">(</span><span class="m">42</span> MB, <span class="m">40</span> MiB<span class="o">)</span> copied, <span class="m">0</span>.231886 s, <span class="m">181</span> MB/s
+</pre></div>
+</div>
+</li>
+<li><p class="first">Backup the image (works similar with a device):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup file://TESTFILE myfirsttestbackup
+    INFO: $ benji backup file://TESTFILE myfirsttestbackup
+    INFO: Backed up <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">2</span>/10 blocks <span class="o">(</span><span class="m">20</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">3</span>/10 blocks <span class="o">(</span><span class="m">30</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">7</span>/10 blocks <span class="o">(</span><span class="m">70</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">9</span>/10 blocks <span class="o">(</span><span class="m">90</span>.0%<span class="o">)</span>
+    INFO: Backed up <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
+    INFO: Exported version V0000000001 metadata to backend storage.
+    INFO: New version: V0000000001 <span class="o">(</span>Tags: <span class="o">[])</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">List backups:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
+    INFO: $ benji ls
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name              <span class="p">|</span> snapshot_name <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-06T21:41:41 <span class="p">|</span> V0000000001 <span class="p">|</span> myfirsttestbackup <span class="p">|</span>               <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Some commands (like <code class="docutils literal notranslate"><span class="pre">ls</span></code>, <code class="docutils literal notranslate"><span class="pre">stats</span></code>, <code class="docutils literal notranslate"><span class="pre">backup</span></code> and <code class="docutils literal notranslate"><span class="pre">enforce</span></code>) can also produce
+machine readable JSON output for usage in scripts:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m ls
+<span class="o">{</span>
+  <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
+  <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">&quot;uid&quot;</span>: <span class="m">1</span>,
+      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-06T21:41:41&quot;</span>,
+      <span class="s2">&quot;name&quot;</span>: <span class="s2">&quot;myfirsttestbackup&quot;</span>,
+      <span class="s2">&quot;snapshot_name&quot;</span>: <span class="s2">&quot;&quot;</span>,
+      <span class="s2">&quot;size&quot;</span>: <span class="m">41943040</span>,
+      <span class="s2">&quot;block_size&quot;</span>: <span class="m">4194304</span>,
+      <span class="s2">&quot;valid&quot;</span>: true,
+      <span class="s2">&quot;protected&quot;</span>: false,
+      <span class="s2">&quot;tags&quot;</span>: <span class="o">[]</span>
+    <span class="o">}</span>
+  <span class="o">]</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p>Specifying <code class="docutils literal notranslate"><span class="pre">-m</span></code> automatically turns down the verbosity level to only output
+errors.</p>
+</div>
+<div class="section" id="deep-scrub-and-scrub">
+<h2>deep-scrub and scrub<a class="headerlink" href="#deep-scrub-and-scrub" title="Permalink to this headline">¶</a></h2>
+<p>Deep scrubbing reads all the blocks from the backup target (or some of them if you
+use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option) and compares them with the metadata or, if you pass a
+source option (<code class="docutils literal notranslate"><span class="pre">-s</span></code>), also with the original data.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub v1
+    INFO: $ benji deep-scrub v1
+    INFO: Deep scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">2</span>/10 blocks <span class="o">(</span><span class="m">20</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">3</span>/10 blocks <span class="o">(</span><span class="m">30</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">7</span>/10 blocks <span class="o">(</span><span class="m">70</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">9</span>/10 blocks <span class="o">(</span><span class="m">90</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
+</pre></div>
+</div>
+<p>If an error occurs (for example, if backup target blocks couldn’t be read or data
+has changed), the output from <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> looks like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub v1
+    INFO: $ benji deep-scrub v1
+    INFO: Deep scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">2</span>/10 blocks <span class="o">(</span><span class="m">20</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">3</span>/10 blocks <span class="o">(</span><span class="m">30</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
+   ERROR: Checksum mismatch during deep scrub <span class="k">for</span> block <span class="m">6</span> <span class="o">(</span>UID <span class="m">1</span>-7<span class="o">)</span> <span class="o">(</span>is: 729a77dc964e5f543e6f10697386429d5978a1681a86fce1101aa2abcb41c5cc should-be: b70aeb070b95df31f68fd19c99e33f2826bd2c50049ca48c27b58743ab8a8d64<span class="o">)</span>.
+    INFO: Marked block invalid <span class="o">(</span>UID <span class="m">1</span>-7, Checksum b70aeb070b95df31. Affected versions: V0000000001
+    INFO: Marked version invalid <span class="o">(</span>UID V0000000001<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">9</span>/10 blocks <span class="o">(</span><span class="m">90</span>.0%<span class="o">)</span>
+    INFO: Deep scrubbed <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
+   ERROR: Marked version V0000000001 invalid because it has errors.
+   ERROR: Deep scrub of version V0000000001 failed.
+</pre></div>
+</div>
+<p>In case of a scrubbing error the exit code is non-zero. A failed scrub is
+signaled by EX_IOERR which is 74 on Linux.</p>
+<p>Also, the version is marked invalid as you can see here:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
+    INFO: $ benji ls
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name              <span class="p">|</span> snapshot_name <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-06T21:41:41 <span class="p">|</span> V0000000001 <span class="p">|</span> myfirsttestbackup <span class="p">|</span>               <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span> False <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
++---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+</pre></div>
+</div>
+<p>Just in case you are able to fix the error, just scrub again and Benji will mark the version valid again.</p>
+<p>There is also a little brother to <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> which only check for metadata consistency and block existence:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji scrub v1
+    INFO: $ benji scrub v1
+    INFO: Scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">2</span>/10 blocks <span class="o">(</span><span class="m">20</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">3</span>/10 blocks <span class="o">(</span><span class="m">30</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">7</span>/10 blocks <span class="o">(</span><span class="m">70</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">9</span>/10 blocks <span class="o">(</span><span class="m">90</span>.0%<span class="o">)</span>
+    INFO: Scrubbed <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">scrub</span></code> will only mark versions as invalid never as valid. This is because there
+isn’t enough information to determine if the version is really okay when only
+checking metadata consistency and block existence. A <code class="docutils literal notranslate"><span class="pre">scrub</span></code> of an invalid version
+will fail immediately.</p>
+</div>
+<div class="section" id="restore">
+<h2>restore<a class="headerlink" href="#restore" title="Permalink to this headline">¶</a></h2>
+<p>Restore into a file or device:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore v1 file://RESTOREFILE
+    INFO: $ benji restore v1 file://RESTOREFILE
+    INFO: Restored <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">2</span>/10 blocks <span class="o">(</span><span class="m">20</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">3</span>/10 blocks <span class="o">(</span><span class="m">30</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">7</span>/10 blocks <span class="o">(</span><span class="m">70</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">9</span>/10 blocks <span class="o">(</span><span class="m">90</span>.0%<span class="o">)</span>
+    INFO: Restored <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
+</pre></div>
+</div>
+<p>Benji prevents you from restoring into an existing file (or device). So if you
+try again, it will fail:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore v1 file://RESTOREFILE
+    INFO: $ benji restore v1 file://RESTOREFILE
+   ERROR: Restore target RESTOREFILE already exists. Force the restore <span class="k">if</span> you want to overwrite it.
+</pre></div>
+</div>
+<p>If you want to overwrite data, you must <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For more (and possibly faster) restore methods, please refer to the
+section <a class="reference internal" href="restore.html#restore"><span class="std std-ref">Restore</span></a>.</p>
+</div>
+</div>
+<div class="section" id="version-rm-and-cleanup">
+<h2>version rm and cleanup<a class="headerlink" href="#version-rm-and-cleanup" title="Permalink to this headline">¶</a></h2>
+<p>You can remove any given backup version by:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm 8fd42f1a-2364-11e7-8594-00163e8c0370
+    INFO: $ /usr/bin/benji rm 8fd42f1a-2364-11e7-8594-00163e8c0370
+   ERROR: Unexpected exception
+   ERROR: <span class="s1">&#39;Version 8fd42f1a-2364-11e7-8594-00163e8c0370 is too young. Will not delete.&#39;</span>
+   <span class="o">[</span>…<span class="o">]</span>
+    INFO: Benji failed.
+</pre></div>
+</div>
+<p>What prevents this version from being deleted is the <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code> option:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>disallowRemoveWhenYounger: <span class="m">6</span>
+</pre></div>
+</div>
+<p>However, instead of changing this option, you can simply use <code class="docutils literal notranslate"><span class="pre">--force</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm -f v1
+    INFO: $ benji rm -f v1
+    INFO: Removed version V0000000001 metadata from backend storage.
+    INFO: Removed backup version V0000000001 with <span class="m">10</span> blocks.
+</pre></div>
+</div>
+<p>Benji stores each block in the backup target (i.e. filesystem, S3, etc.) once.
+If it encounters another block on the backup source with the same checksum <a class="footnote-reference" href="#id4" id="id3">[1]</a>,
+it will only write metadata which refers to the same backup target block. So if
+a version is deleted, Benji needs to check if there aren’t any other references
+to any of the blocks referenced by this version. This may be resource intensive
+but may also introduce race conditions due to other backup sessions running
+in parallel. This is why there is a separate command to cleanup unreferenced
+blocks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji cleanup
+    INFO: $ benji cleanup
+    INFO: Cleanup-fast: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">0</span> data deletions.
+</pre></div>
+</div>
+<p>As you can see, nothing has been deleted. The reason for this is that only
+blocks  which have been on the candidate list for a certain time (1h) are considered
+for deletion to prevent race conditions. If we would have waited on hour after
+removing the version, we’d get a slightly different output which indicated that
+ten blocks have been permanently deleted:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji cleanup
+    INFO: $ benji cleanup
+    INFO: Cleanup-fast: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">10</span> data deletions.
+</pre></div>
+</div>
+<p>There is also the option (<code class="docutils literal notranslate"><span class="pre">-f</span></code> or <code class="docutils literal notranslate"><span class="pre">--full</span></code>) to do a full cleanup which iterates
+through all the blocks in the backend storage. This should only be used when an
+inconsistency is suspected as it can take a very long time to complete.</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A full cleanup must not be run parallel to ANY other Benji jobs.
+Benji will prevent you from doing this by creating a global lock.</p>
+</div>
+</div></blockquote>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p class="last">Parallelism has been tested successfully with PostgreSQL. It might
+not work reliably with other DBMS.</p>
+</div>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[1]</a></td><td>Benji uses blake2b with a 32 byte digest size but this can be configured
+in <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code>. blake2b is the recommended hash function as it is very
+fast on modern computers. However it’s possible to use any other algorithm
+from Python’s hashlib (i.e. <code class="docutils literal notranslate"><span class="pre">md5</span></code>, <code class="docutils literal notranslate"><span class="pre">sha1</span></code>, <code class="docutils literal notranslate"><span class="pre">sha224</span></code>, <code class="docutils literal notranslate"><span class="pre">sha256</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sha384</span></code> or <code class="docutils literal notranslate"><span class="pre">sha512</span></code>). The maximum supported digest length is 64.
+Smaller digest lengths have a higher chance of hash collisions which must
+be avoided. Digest lengths below 32 bytes are not recommened.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="configuration.html" class="btn btn-neutral float-right" title="Configuration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Benji Backup Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ 
+
+
+</body>
+</html>

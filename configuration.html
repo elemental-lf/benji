@@ -1,0 +1,501 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Configuration &mdash; Benji Backup 0.1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Backup" href="backup.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Benji Backup
+          
+
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#ubuntu-16-04">Ubuntu 16.04</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#common-to-all-distributions">Common to all distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#customise-your-configuration">Customise your configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">deep-scrub and scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-rm-and-cleanup">version rm and cleanup</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#benji-yaml">benji.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-configuration-file">Custom Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiple-instance-installations">Multiple Instance Installations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scrub.html">Scrub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#reasons-for-scrubbing">Reasons for Scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-methods">Scrubbing Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-and-checksum">Consistency and Checksum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#using-the-backup-source">Using the Backup Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Benji Backup</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Configuration</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/configuration.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h1>
+<p>Benji only needs to be configured once.</p>
+<div class="section" id="benji-yaml">
+<span id="config-file"></span><h2>benji.yaml<a class="headerlink" href="#benji-yaml" title="Permalink to this headline">¶</a></h2>
+<p>There is an example configuration which lists all possible configuration
+options:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1.0.0&#39;</span>
+
+<span class="c1"># Where should the logfile be placed?</span>
+<span class="c1"># Benji will by default log INFO, WARNING and ERROR to this log.</span>
+<span class="c1"># If you also need DEBUG information, please start Benji with &#39;-v&#39;.</span>
+logFile: /var/log/benji.log
+
+<span class="c1"># Default block size. 4MB are recommended for backup of Ceph RBD images.</span>
+<span class="c1"># The block size can be changed on the command line on a version by version basis, but be aware that this will affect</span>
+<span class="c1"># deduplication and increase the space usage. One possible use case for different block sizes would be backing up LVM</span>
+<span class="c1"># volumes and Ceph images with the same Benji installation. While for Ceph 4MB is usually the best size, LVM volume</span>
+<span class="c1"># might profit from a smaller block size.</span>
+blockSize: <span class="m">4194304</span>
+
+<span class="c1"># Hash function to use. Use a large one to avoid collisions.</span>
+<span class="c1"># DO NOT CHANGE WHEN BACKUPS EXIST</span>
+hashFunction: blake2b,digest_size<span class="o">=</span><span class="m">32</span>
+
+<span class="c1"># This name will be used to identify a specific configuration in the</span>
+<span class="c1"># process list and could be used to distinguish several parallel installations.</span>
+processName: benji
+
+<span class="c1"># Allow removal of backup versions after n days (set to 0 to disable, i.e. to be</span>
+<span class="c1"># able to delete any version)</span>
+disallowRemoveWhenYounger: <span class="m">6</span>
+
+metaBackend:
+  <span class="c1"># Which SQL Server?</span>
+  <span class="c1"># Available servers:</span>
+  <span class="c1">#   sqlite:////path/to/sqlitefile</span>
+  <span class="c1">#   postgresql:///database</span>
+  <span class="c1">#   postgresql://user:password@host:port/database</span>
+  engine: sqlite:////var/lib/benji/benji.sqlite
+
+dataBackend:
+  <span class="c1"># Which data backend to use?</span>
+  <span class="c1"># Available types:</span>
+  <span class="c1">#   file, s3, b2</span>
+  type: file
+
+  file:
+    <span class="c1"># Store data to this path. A structure of 2 folders depth will be created</span>
+    <span class="c1"># in this path (e.g. &#39;0a/33&#39;). Blocks of DEFAULTS.block_size will be stored</span>
+    <span class="c1"># there. This is your backup storage!</span>
+    path: /var/lib/benji/data
+
+  <span class="c1">#s3:</span>
+  <span class="c1">#  awsAccessKeyId: ********</span>
+  <span class="c1">#  awsSecretAccessKey: ********</span>
+  <span class="c1">#  regionName: (optional)</span>
+  <span class="c1">#  endpointUrl: (optional)</span>
+  <span class="c1">#  signatureVersion: (optional)</span>
+  <span class="c1">#  useSsl: true or false (default is true, ignored when endpointUrl is set)</span>
+  <span class="c1">#  bucketName: benji</span>
+  <span class="c1">#  multiDelete: true or false (default is true)</span>
+  <span class="c1">#  addressingStyle: path, virtual or auto (default is path)</span>
+  <span class="c1">#  disableEncodingType: true or false (default is false)</span>
+  <span class="c1">#  activeEncryption: k1</span>
+  <span class="c1">#  activeCompression: zstd</span>
+
+  <span class="c1">#b2:</span>
+  <span class="c1">#   accountId: ***********</span>
+  <span class="c1">#   applicationKey: *************</span>
+  <span class="c1">#   bucketName: benji</span>
+  <span class="c1">#   accountInfoFile: .... (optional)</span>
+  <span class="c1">#   writeObjectAttempts: 1</span>
+  <span class="c1">#   uploadAttempts: 5</span>
+
+  <span class="c1"># Encryption support</span>
+  <span class="c1">#</span>
+  <span class="c1"># The identifier is saved together with the object and the corresponding materials</span>
+  <span class="c1"># are then looked up during decryption. This means that you mustn&#39;t change the</span>
+  <span class="c1"># materials identified by a specific identifier after objects have been encrypted</span>
+  <span class="c1"># with it. If you want to change the encryption configurarion you must define</span>
+  <span class="c1"># a new encryption method with a new identifier. If you mark this encryption method</span>
+  <span class="c1"># as active it will be used to encrypt new objects. Reencrypting old objects is</span>
+  <span class="c1"># currently not implemented but it wouldn&#39;t be a problem to implement proper key</span>
+  <span class="c1"># rotation.</span>
+  <span class="c1">#</span>
+  <span class="c1"># Regarding kdfSalt and kdfIterations:</span>
+  <span class="c1"># It is highly recommended to generate your own random salt for example with:</span>
+  <span class="c1">#   dd if=/dev/urandom bs=16 count=1 status=none | base64</span>
+  <span class="c1"># Don&#39;t change the salt and iteration count after writing encrypted objects</span>
+  <span class="c1"># to the data backend, they cannot be decrypted anymore.</span>
+  <span class="c1">#</span>
+  <span class="c1"># Specify either a password, kdfSalt and kdfIteraions or use your</span>
+  <span class="c1"># own high-entropy-key directly with masterKey in which case the other options</span>
+  <span class="c1"># are ignored.</span>
+  <span class="c1">#</span>
+  <span class="c1">#</span>
+  <span class="c1"># encryption:</span>
+  <span class="c1">#   - identifier: k1</span>
+  <span class="c1">#     type: aes_256_gcm</span>
+  <span class="c1">#     materials:</span>
+  <span class="c1">#       masterKey: !!binary |</span>
+  <span class="c1">#         e/i1X4NsuT9k+FIVe2kd3vtHVkzZsbeYv35XQJeV8nA=</span>
+  <span class="c1">#       OR</span>
+  <span class="c1">#       password: &quot;your secret password&quot;</span>
+  <span class="c1">#       kdfSalt: !!binary /YkKwy9InZVqC4p+eAdhlA==</span>
+  <span class="c1">#       kdfIterations: 16384</span>
+
+  <span class="c1"># Currently only zstd compression is supported. You can specify the compression level:</span>
+  <span class="c1"># Higher values mean better compression ratios but increased CPU use. For details please</span>
+  <span class="c1"># see the zstd documentation.</span>
+  <span class="c1">#</span>
+  <span class="c1"># compression:</span>
+  <span class="c1">#   - type: zstd</span>
+  <span class="c1">#     materials:</span>
+  <span class="c1">#       level: 3</span>
+
+  <span class="c1"># How many writes to perform in parallel. This is useful if your data backend</span>
+  <span class="c1"># can perform parallel writes faster than serial ones.</span>
+  simultaneousWrites: <span class="m">5</span>
+
+  <span class="c1"># How many reads to perform in parallel. This is useful if your data backend</span>
+  <span class="c1"># can perform parallel reads faster than serial ones.</span>
+  simultaneousReads: <span class="m">5</span>
+
+  <span class="c1"># Bandwidth throttling (set to 0 to disable, i.e. use full bandwidth)</span>
+  <span class="c1"># bytes per second</span>
+  <span class="c1">#bandwidthRead: 78643200</span>
+  <span class="c1">#bandwidthWrite: 78643200</span>
+
+  <span class="c1">#readCache:</span>
+  <span class="c1">#  directory: /var/lib/benji/read-cache</span>
+  <span class="c1">#  maximumSize: (in bytes)</span>
+
+nbd:
+  cacheDirectory: /tmp
+
+io:
+  file:
+    <span class="c1"># Configure the file IO (file://&lt;path&gt;)</span>
+    <span class="c1"># This is for a file or a blockdevice (e.g. /dev/sda)</span>
+
+    <span class="c1"># How many parallel reads are permitted? (also affects the queue length)</span>
+    simultaneousReads: <span class="m">5</span>
+
+  rbd:
+    <span class="c1"># Configure the rbd IO (rbd://&lt;pool&gt;/&lt;imagename&gt;[@&lt;snapshotname&gt;])</span>
+    <span class="c1"># This accepts rbd images in the form rbd://pool/image@snapshot or rbd://pool/image</span>
+    cephConfigFile: /etc/ceph/ceph.conf
+
+    <span class="c1"># How many parallel reads are permitted? (also affects the queue length)</span>
+    simultaneousReads: <span class="m">10</span>
+
+    <span class="c1"># When restoring images, new images are created (if you don&#39;t --force). For these</span>
+    <span class="c1"># newly created images, use these features:</span>
+    newImageFeatures:
+      - RBD_FEATURE_LAYERING
+      - RBD_FEATURE_EXCLUSIVE_LOCK
+      <span class="c1">#- RBD_FEATURE_STRIPINGV2</span>
+      <span class="c1">#-RBD_FEATURE_OBJECT_MAP</span>
+      <span class="c1">#-RBD_FEATURE_FAST_DIFF</span>
+      <span class="c1">#-RBD_FEATURE_DEEP_FLATTEN</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="custom-configuration-file">
+<h2>Custom Configuration File<a class="headerlink" href="#custom-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>Benji will by default search the following locations for configuration files:</p>
+<ul class="simple">
+<li>/etc/benji.yaml</li>
+<li>/etc/benji/benji.yaml</li>
+<li>~/.benji.yaml</li>
+<li>~/benji.yaml</li>
+</ul>
+<p>If multiple of these files exist, only the first file found is read.</p>
+<p>In order to explicitly pass a configuration file, use the <code class="docutils literal notranslate"><span class="pre">-c</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">--configfile</span></code>) parameter.</p>
+</div>
+<div class="section" id="multiple-instance-installations">
+<h2>Multiple Instance Installations<a class="headerlink" href="#multiple-instance-installations" title="Permalink to this headline">¶</a></h2>
+<p>You can run Benji multiple times on different machines or in different
+containers simultaneously. The configurations will have to match!
+this is the responsibility of the user and isn’t checked by Benji.  Be
+careful to shutdown all instances before making configuration changes that
+could affect other instances (like adding an encryption key).</p>
+<p>Multiple instances open up the possibility to scale-out Benji for
+performance reasons, to put instances where the backup source data is or to
+have a dedicated instance for restores for example.</p>
+<p>Locking between different instances is done via the central database.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="backup.html" class="btn btn-neutral float-right" title="Backup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quickstart.html" class="btn btn-neutral" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ 
+
+
+</body>
+</html>

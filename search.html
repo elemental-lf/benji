@@ -1,0 +1,317 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Search &mdash; Benji Backup 0.1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="#" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Benji Backup
+          
+
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#ubuntu-16-04">Ubuntu 16.04</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#common-to-all-distributions">Common to all distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#customise-your-configuration">Customise your configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">deep-scrub and scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-rm-and-cleanup">version rm and cleanup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#benji-yaml">benji.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#custom-configuration-file">Custom Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#multiple-instance-installations">Multiple Instance Installations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scrub.html">Scrub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#reasons-for-scrubbing">Reasons for Scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-methods">Scrubbing Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-and-checksum">Consistency and Checksum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#using-the-backup-source">Using the Backup Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Benji Backup</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Search</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <noscript>
+  <div id="fallback" class="admonition warning">
+    <p class="last">
+      Please activate JavaScript to enable the search
+      functionality.
+    </p>
+  </div>
+  </noscript>
+
+  
+  <div id="search-results">
+  
+  </div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="_static/searchtools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+  <script type="text/javascript">
+    jQuery(function() { Search.loadIndex("searchindex.js"); });
+  </script>
+  
+  <script type="text/javascript" id="searchindexloader"></script>
+  
+ 
+
+
+
+</body>
+</html>

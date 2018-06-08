@@ -1,0 +1,680 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Backup &mdash; Benji Backup 0.1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Scrub" href="scrub.html" />
+    <link rel="prev" title="Configuration" href="configuration.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Benji Backup
+          
+
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#ubuntu-16-04">Ubuntu 16.04</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#common-to-all-distributions">Common to all distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#customise-your-configuration">Customise your configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">deep-scrub and scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-rm-and-cleanup">version rm and cleanup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#benji-yaml">benji.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#custom-configuration-file">Custom Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#multiple-instance-installations">Multiple Instance Installations</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Backup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#versions">Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differential-backup">Differential backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#examples-of-differential-backups">Examples of differential backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-a-block-size">Specifying a Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tag-backups">Tag Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-hints-file">The Hints File</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scrub.html">Scrub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#reasons-for-scrubbing">Reasons for Scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-methods">Scrubbing Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-and-checksum">Consistency and Checksum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#using-the-backup-source">Using the Backup Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Benji Backup</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Backup</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/backup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="backup">
+<h1>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h1>
+<p>In this chapter you will learn all possibilities and options for backup.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
+usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD] [-f FROM_VERSION_UID]
+                    [-t [tag [tag ...]]] [-b BLOCK_SIZE]
+                    source name
+
+positional arguments:
+  source                Source (url-like, e.g. file:///dev/sda or
+                        rbd://pool/imagename@snapshot)
+  name                  Backup name (e.g. the hostname)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
+                        Snapshot name (e.g. the name of the RBD snapshot)
+  -r RBD, --rbd RBD     Hints as RBD JSON format
+  -f FROM_VERSION_UID, --from-version FROM_VERSION_UID
+                        Use this version as base
+  -t [tag [tag ...]], --tag [tag [tag ...]]
+                        Tag this verion with the specified tag(s)
+  -b BLOCK_SIZE, --block-size BLOCK_SIZE
+                        Block size to use for this backup in bytes
+</pre></div>
+</div>
+<div class="section" id="simple-backup">
+<h2>Simple backup<a class="headerlink" href="#simple-backup" title="Permalink to this headline">¶</a></h2>
+<p>This is how you can create a normal backup:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup <span class="nb">source</span> name
+</pre></div>
+</div>
+<p>where source is a URI and name is the name for the backup, which may contain any
+quotable character.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The name and all other identifiers are stored in SQL VARCHAR
+columns which are created by SQLAlchemy’s String type. Please refer to
+<a class="reference external" href="http://docs.sqlalchemy.org/en/latest/core/type_basics.html#sqlalchemy.types.String">http://docs.sqlalchemy.org/en/latest/core/type_basics.html#sqlalchemy.types.String</a>
+for reference.</p>
+</div>
+<p>The supported schemes for source are <strong>file</strong> and <strong>rbd</strong>. So these are
+realistic examples:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup file:///var/lib/vms/database.img database
+$ benji backup rbd://poolname/database@snapshot1 database
+</pre></div>
+</div>
+</div>
+<div class="section" id="versions">
+<h2>Versions<a class="headerlink" href="#versions" title="Permalink to this headline">¶</a></h2>
+<p>An instance of a backup is called a <em>version</em>. A version contains these metadata
+fields:</p>
+<ul class="simple">
+<li><strong>date</strong>: date and time of the backup, this is created by Benji.</li>
+<li><strong>uid</strong>: unique identifier for this version, this is created by Benji</li>
+<li><strong>name</strong>: name from the command line</li>
+<li><strong>snapshot_name</strong>: snapshot name (option <code class="docutils literal notranslate"><span class="pre">-s</span></code>) from the command line</li>
+<li><strong>size</strong>: size of the backuped image in bytes</li>
+<li><strong>block_size</strong>: block size in bytes</li>
+<li><strong>valid</strong>: validity of this version (True or False)
+This is False while the backup for this version is running and will be set to True
+as soon as the backup has finished and all writers have flushed their data.
+Scrubbing may set this to False if the backup is found invalid for any reason.</li>
+<li><strong>protected</strong>: indication if the version may be deleted (True or False)</li>
+<li><strong>tags</strong>: list of (string) tags for this version</li>
+</ul>
+<p>You can output this data with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
+    INFO: $ benji ls
++---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name <span class="p">|</span> snapshot_name <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-07T12:51:19 <span class="p">|</span> V0000000001 <span class="p">|</span> <span class="nb">test</span> <span class="p">|</span>               <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
++---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
+</pre></div>
+</div>
+<div class="admonition hint">
+<p class="first admonition-title">Hint</p>
+<p>You can filter the output with various parameters:</p>
+<div class="last highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji ls --help
+usage: benji ls [-h] [-s SNAPSHOT_NAME] [-t TAG] [--include-blocks] [name]
+
+positional arguments:
+  name                  Show versions for this name only
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
+                        Limit output to this snapshot name
+  -t TAG, --tag TAG     Limit output to this tag
+  --include-blocks      Include blocks in output
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="differential-backup">
+<span id="id1"></span><h2>Differential backup<a class="headerlink" href="#differential-backup" title="Permalink to this headline">¶</a></h2>
+<p>Benji only backups changed blocks. It can do this in two different ways:</p>
+<ol class="arabic simple">
+<li><strong>It can read the whole image</strong>: Checksum each block and look the checksum up
+in the metadata backend. If it is found, only a reference to the existing
+block will be stored, thus there’s no write action on the data backend.</li>
+<li><strong>It can receive a hints file</strong>: The hints file is a JSON formatted list of
+(offset, size) tuples (see <a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a> for an example) which indicate
+the status (used or changed) of each region of the image.
+Fortunately the format matches exactly the output of
+<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>.  In this case it will only read blocks hinted
+at by the <em>hints file</em>, checksum each block and look the checksum up in the
+metadata backend. If it is found (which may rarely happen for file copies
+or when blocks are all zeros), only a reference to the existing block will
+be stored. Otherwise the block is written to the data backend.
+The hints file is passed via the  <code class="docutils literal notranslate"><span class="pre">-r</span></code> or <code class="docutils literal notranslate"><span class="pre">--rbd</span></code> option to
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>.</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Benji does <strong>forward-incremental backups</strong>. So in contrast to
+backward-incremental backups, there will never be any need to create another
+full backup after the first full backup.
+If you don’t trust Benji, you are encouraged to use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code>,
+possibly with the <code class="docutils literal notranslate"><span class="pre">[-s]</span></code> parameter to see if the backup matches the source.</p>
+</div>
+<p>In any case, if the backup source changes size, Benji will assume that
+the size change has happened at the end of the volume, which is the case if you
+resize partitions, logical volumes or Ceph RBD images.</p>
+<div class="section" id="examples-of-differential-backups">
+<h3>Examples of differential backups<a class="headerlink" href="#examples-of-differential-backups" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="lvm-or-any-other-diff-unaware-storage">
+<h4>LVM (or any other diff unaware storage)<a class="headerlink" href="#lvm-or-any-other-diff-unaware-storage" title="Permalink to this headline">¶</a></h4>
+<p>Day 1 (initial backup):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ lvcreate --size 1G --snapshot --name snap /dev/vg00/lvol1
+$ benji backup file:///dev/vg00/snap lvol1
+$ lvremove -y /dev/vg00/snap
+</pre></div>
+</div>
+<p>Day 2..n (differential backups):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ lvcreate --size 1G --snapshot --name snap /dev/vg00/lvol1
+$ benji backup file:///dev/vg00/snap lvol1
+$ lvremove -y /dev/vg00/snap
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p>With LVM snapshots, the snapshot increases in size as the origin
+volume changes. If the snapshot is 100% full, it is lost and invalid.
+It is important to monitor the snapshot usage with the <code class="docutils literal notranslate"><span class="pre">lvs</span></code> command
+to make sure the snapshot doesn’t fill up completely.
+The <code class="docutils literal notranslate"><span class="pre">--size</span></code> parameter defines the space reserved for changes during the
+snapshot’s existence.</p>
+<p class="last">Also note that LVM does read-write-write for any overwritten block while a
+snapshot exists. This may hurt your performance.</p>
+</div>
+</div>
+<div class="section" id="ceph-rbd">
+<h4>Ceph RBD<a class="headerlink" href="#ceph-rbd" title="Permalink to this headline">¶</a></h4>
+<p>With Ceph RBD it’s possible to let Ceph calculate the changes between two snapshots.
+Since the <em>jewel</em> version of Ceph this is a very fast process if the <em>fast-diff</em>
+feature is enabled. In this case only metadata has to be compared.</p>
+<div class="section" id="manually">
+<h5>Manually<a class="headerlink" href="#manually" title="Permalink to this headline">¶</a></h5>
+<p>In this example, we will backup an RBD image called <code class="docutils literal notranslate"><span class="pre">vm1</span></code> which is in the
+pool <code class="docutils literal notranslate"><span class="pre">pool</span></code>.</p>
+<ol class="arabic">
+<li><p class="first">Create an initial backup:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup1
+$ rbd diff --whole-object pool/vm1@backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
+$ benji backup -s backup1 -r /tmp/vm1.diff rbd://pool/vm1@backup1 vm1
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create a differential backup:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup2
+$ rbd diff --whole-object pool/vm1@backup2 --from-snap backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
+
+<span class="c1"># delete old snapshot</span>
+$ rbd snap rm pool/vm1@backup1
+
+<span class="c1"># get the uid of the version corrosponding to the old rbd snapshot. This</span>
+<span class="c1"># looks like &quot;V001234567&quot;. Copy it.</span>
+$ benji ls vm1 -s backup1
+
+<span class="c1"># and backup</span>
+$ benji backup -s backup2 -r /tmp/vm1.diff -f V001234567 rbd://pool/vm1@backup2 vm1
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="automation">
+<h5>Automation<a class="headerlink" href="#automation" title="Permalink to this headline">¶</a></h5>
+<p>This is how you can automate forward differential backups including automatic
+initial backups where necessary:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>.. literalinclude:: ../../scripts/ceph.sh
+</pre></div>
+</div>
+<p>This is what it does:</p>
+<ul class="simple">
+<li>When the backup::ceph is called, it searches for the latest RBD
+snapshot. As RBD snapshots have no date assigned, it’s the last one from
+a sorted output of <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">snap</span> <span class="pre">ls</span></code>.</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Only RBD snapshots that begin the prefix <em>b-</em> are considered. All
+other snapshots are left alone. This makes it possible to have manual
+snapshots that aren’t touched by Benji.</p>
+</div>
+<ul class="simple">
+<li>If no RBD snapshot is found, an initial backup is performed.</li>
+<li>If there is an RBD snapshot, Benji is asked if it has a <em>version</em> of this
+snapshot. If not, an initial_backup is performed.</li>
+<li>If Benji has a <em>version</em> of this snapshot, a <em>hints file</em> is created via
+<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">--whole-object</span> <span class="pre">&lt;new</span> <span class="pre">snapshot&gt;</span> <span class="pre">--from-snap</span> <span class="pre">&lt;old</span> <span class="pre">snapshot&gt;</span> <span class="pre">--format=json</span></code>.</li>
+<li>Benji then only backups changes as listed in the <em>hints file</em>.</li>
+</ul>
+<p>These functions could be called each day by a small script (or even multiple times
+a day) and will automatically keep only one snapshot and create forward-differential
+backups.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This alone won’t be enough to be safe. You will have to perform
+additional scrubs. Please refer to section <a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="specifying-a-block-size">
+<h2>Specifying a Block Size<a class="headerlink" href="#specifying-a-block-size" title="Permalink to this headline">¶</a></h2>
+<p>To perform a backup Benji splits up the image into equal sized blocks.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Except the last block which may vary in length.</p>
+</div>
+<p>By default the block size specified in the configuration file is used.
+But the block size can be changed on the command line on a version by version
+basis, but be aware that this will affect deduplication and increase the space
+usage.</p>
+<p>One possible use case for different block sizes would be backing up LVM
+volumes and Ceph images with the same Benji installation. While for Ceph 4MB
+is usually the best size, LVM volumes might profit from a smaller block size.</p>
+<p>If you want to base a new version on an old version (as it can be the case when
+doing a differential backup) the block sizes of the old and new version
+have to match. Benji will terminate with an error if that is not the case.</p>
+</div>
+<div class="section" id="tag-backups">
+<h2>Tag Backups<a class="headerlink" href="#tag-backups" title="Permalink to this headline">¶</a></h2>
+<p>A <em>version</em> can have multiple tags. They are just for use by the administrator
+and have no function in Benji. To specify a tag the <code class="docutils literal notranslate"><span class="pre">backup</span></code> command provides
+the command line switch <code class="docutils literal notranslate"><span class="pre">-t</span></code> or <code class="docutils literal notranslate"><span class="pre">--tag</span></code>:</p>
+<blockquote>
+<div>$ benji backup -t mytag rbd://cephstorage/test_vm test_vm</div></blockquote>
+<p>You can also use multiple tags for one revision:</p>
+<blockquote>
+<div>$ benji backup -t mytag -t anothertag rbd://cephstorage/test_vm test_vm</div></blockquote>
+<p>Later on you can modify tags with the commands ‘add-tag’ and ‘remove-tag’:</p>
+<blockquote>
+<div>$ benji add-tag V0000000001 mytag
+$ benji rm-tag V0000000001 anothertag</div></blockquote>
+</div>
+<div class="section" id="export-metadata">
+<h2>Export Metadata<a class="headerlink" href="#export-metadata" title="Permalink to this headline">¶</a></h2>
+<p>Benji has now backed up all image data to a (hopefully) safe place. However,
+the blocks are of no use without the corresponding metadata. Benji
+will need this information to get the blocks back in the correct order and
+restore your image.</p>
+<p>This information is stored in the <em>meta backend</em>. Additionally Benji will
+save the metadata on the <em>data backend</em> automatically. Should you lose your
+<em>meta backend</em>, you can restore these metadata backups by using
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import-from-backend --help
+usage: benji import-from-backend [-h] version_uid [version_uid ...]
+
+positional arguments:
+  version_uid  Version UID
+
+optional arguments:
+  -h, --help   show this help message and exit
+</pre></div>
+</div>
+<p>There is currently no mechanism to import the backup of all version’s
+metadata from the <em>data backend</em>, but you could get a list of all versions
+manually from the <em>data backend</em>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This metadata backup is compressed and encrypted like the blocks
+if you have these features enabled.</p>
+</div>
+<p>If you want to make your own copies of your metadata you can do so by using
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji export --help
+usage: benji export [-h] [-f] [-o OUTPUT_FILE] version_uid [version_uid ...]
+
+positional arguments:
+  version_uid           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f, --force           Force overwrite of existing output file
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Write export into this file (stdout is used if this
+                        option isn&#39;t specified)
+</pre></div>
+</div>
+<p>If you’re doing this programmatically and are exporting to STDOUT you should
+probably add <code class="docutils literal notranslate"><span class="pre">-m</span></code> to your export command to reduce the logging level of Benji.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m <span class="nb">export</span> V1
+<span class="o">{</span>
+  <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
+  <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">&quot;uid&quot;</span>: <span class="m">1</span>,
+      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T12:51:19&quot;</span>,
+      <span class="s2">&quot;name&quot;</span>: <span class="s2">&quot;test&quot;</span>,
+      <span class="s2">&quot;snapshot_name&quot;</span>: <span class="s2">&quot;&quot;</span>,
+      <span class="s2">&quot;size&quot;</span>: <span class="m">41943040</span>,
+      <span class="s2">&quot;block_size&quot;</span>: <span class="m">4194304</span>,
+      <span class="s2">&quot;valid&quot;</span>: true,
+      <span class="s2">&quot;protected&quot;</span>: false,
+      <span class="s2">&quot;tags&quot;</span>: <span class="o">[]</span>,
+      <span class="s2">&quot;blocks&quot;</span>: <span class="o">[</span>
+        <span class="o">{</span>
+          <span class="s2">&quot;uid&quot;</span>: <span class="o">{</span>
+            <span class="s2">&quot;left&quot;</span>: <span class="m">1</span>,
+            <span class="s2">&quot;right&quot;</span>: <span class="m">1</span>
+          <span class="o">}</span>,
+          <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T14:51:20&quot;</span>,
+          <span class="s2">&quot;id&quot;</span>: <span class="m">0</span>,
+          <span class="s2">&quot;size&quot;</span>: <span class="m">4194304</span>,
+          <span class="s2">&quot;valid&quot;</span>: true,
+          <span class="s2">&quot;checksum&quot;</span>: <span class="s2">&quot;aed3116b4e7fad9a3188f5ba7c8e73bf158dabec387ef1a7bca84c58fe72f319&quot;</span>
+        <span class="o">}</span>,
+<span class="o">[</span>...<span class="o">]</span>
+</pre></div>
+</div>
+<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import --help
+usage: benji import [-h] [-i INPUT_FILE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Read from this file (stdin is used if this option
+                        isn&#39;t specified)
+</pre></div>
+</div>
+<p>You can’t import versions that already exist in the <em>meta backend</em>.</p>
+</div>
+<div class="section" id="the-hints-file">
+<span id="hints-file"></span><h2>The Hints File<a class="headerlink" href="#the-hints-file" title="Permalink to this headline">¶</a></h2>
+<p>Example of a hints-file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[{</span><span class="s2">&quot;offset&quot;</span>:0,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:4194304,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:8388608,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:12582912,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:16777216,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:20971520,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:25165824,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
+<span class="o">{</span><span class="s2">&quot;offset&quot;</span>:952107008,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The length may vary, however it’s nicely aligned to 4MB when using
+<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">--whole-object</span></code>. As Benji by default also uses 4MB blocks,
+it will not have to recalculate which 4MB blocks are affected by more
+and smaller offset+length tuples (not that that’d take very long).</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="scrub.html" class="btn btn-neutral float-right" title="Scrub" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="configuration.html" class="btn btn-neutral" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ 
+
+
+</body>
+</html>

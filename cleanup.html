@@ -1,0 +1,394 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Cleanup &mdash; Benji Backup 0.1.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Administration" href="administration.html" />
+    <link rel="prev" title="Restore" href="restore.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Benji Backup
+          
+
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#ubuntu-16-04">Ubuntu 16.04</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#common-to-all-distributions">Common to all distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#customise-your-configuration">Customise your configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">deep-scrub and scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-rm-and-cleanup">version rm and cleanup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#benji-yaml">benji.yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#custom-configuration-file">Custom Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#multiple-instance-installations">Multiple Instance Installations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scrub.html">Scrub</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#reasons-for-scrubbing">Reasons for Scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-methods">Scrubbing Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-and-checksum">Consistency and Checksum</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#using-the-backup-source">Using the Backup Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Cleanup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#removing-old-versions">Removing old versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#benji-cleanup">benji cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fast-cleanup">fast-cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#full-cleanup">full-cleanup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Benji Backup</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Cleanup</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/cleanup.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="cleanup">
+<h1>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this headline">¶</a></h1>
+<p>In order to remove of old backup versions, Benji uses a two step garbage
+collection algorithm.</p>
+<div class="section" id="removing-old-versions">
+<h2>Removing old versions<a class="headerlink" href="#removing-old-versions" title="Permalink to this headline">¶</a></h2>
+<p>In order to remove an old version, use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji rm --help
+usage: benji rm [-h] [-f] [-K] version_uid [version_uid ...]
+
+positional arguments:
+  version_uid
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f, --force           Force removal of version, even if it&#39;s younger than
+                        the configured disallow_rm_when_younger_than_days.
+  -K, --keep-backend-metadata
+                        Don&#39;t delete version&#39;s metadata in data backend.
+</pre></div>
+</div>
+<p>Example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm -f V1
+    INFO: $ benji rm -f V1
+    INFO: Removed version V0000000001 metadata from backend storage.
+    INFO: Removed backup version V0000000001 with <span class="m">10</span> blocks.
+</pre></div>
+</div>
+<p>There is a config option called <code class="docutils literal notranslate"><span class="pre">disallowRemoveWhenYounger</span></code> which
+defaults to 6. If you request the removal of a backup version that is younger
+than this value, Benji exists with an error:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm V1
+       INFO: $ benji rm V1
+      ERROR: Version V0000000001 is too young. Will not delete.
+</pre></div>
+</div>
+<p>You can force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
+<em>meta backend</em>. It also adds the removed block entries into a deletion
+candidate list.</p>
+<p>In order to really delete blocks from the <em>data backend</em>, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
+<span class="pre">cleanup</span></code>.</p>
+</div>
+<div class="section" id="benji-cleanup">
+<h2>benji cleanup<a class="headerlink" href="#benji-cleanup" title="Permalink to this headline">¶</a></h2>
+<p>To free up space on the <em>data backend</em>, you need to cleanup.
+There are two different cleanup methods, but you’ll usually only need the
+so-called <em>fast-cleanup</em>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji cleanup --help
+usage: benji cleanup [-h] [-f]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -f, --full  Do a full cleanup. This will read the full metadata from the
+              data backend (i.e. backup storage) and compare it to the
+              metadata in the meta backend. Unused data will then be deleted.
+              This is a slow, but complete process. A full cleanup must not
+              run in parallel to ANY other jobs.
+</pre></div>
+</div>
+<div class="section" id="fast-cleanup">
+<h3>fast-cleanup<a class="headerlink" href="#fast-cleanup" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> will go through the list of deletion candidates and check if
+there are blocks which aren’t referenced from any other version anymore.</p>
+<p>These blocks are then deleted from the <em>data backend</em>. The still-in-use blocks
+are removed from the list of candidates.</p>
+<p>In order to provide parallelism (i.e. multiple Benji processes at the same
+time), Benji needs to prevent race-conditions between removing a block
+completely and referencing this block from another version. That is why
+a cleanup will only remove data blocks once they’re on the list of
+deletion condidates for more than one hour.</p>
+</div>
+<div class="section" id="full-cleanup">
+<span id="id1"></span><h3>full-cleanup<a class="headerlink" href="#full-cleanup" title="Permalink to this headline">¶</a></h3>
+<p>There are times (e.g. when your database is corrupted or when you create a new
+database based on export/import) when Benji does not know if the blocks in the
+<em>data backend</em> are all known by the metadata store.</p>
+<p>Then the <code class="docutils literal notranslate"><span class="pre">-full</span></code> option of cleanup comes into play. With this option, Benji will
+read all block UIDs from the backend storage (which can take <em>very</em> long) and
+compare it to the list of known block UIDs in the <em>meta backend</em></p>
+<p>Blocks unknown to the <em>meta backend</em> are then deleted from the <em>data backend</em>.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="administration.html" class="btn btn-neutral float-right" title="Administration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="restore.html" class="btn btn-neutral" title="Restore" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1.0',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ 
+
+
+</body>
+</html>
