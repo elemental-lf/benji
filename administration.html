@@ -241,7 +241,7 @@
 <p>Benji is an important tool when it’s responsible for company-wide backups.
 Backups, scrubs, restores and cleanups must run smoothly and need to be
 monitored closely.</p>
-<p>Also, as Benji has two parts (<em>meta backend and *data backend</em>), both have to
+<p>Also, as Benji has two parts (<em>metadata backend and *data backend</em>), both have to
 be checked regularly and be as highly-available as possible.</p>
 <div class="section" id="secure-your-metadata">
 <span id="administration-meta-backend"></span><h2>Secure your Metadata<a class="headerlink" href="#secure-your-metadata" title="Permalink to this headline">¶</a></h2>
@@ -386,9 +386,11 @@ directories for more ones:</p>
 </pre></div>
 </div>
 <p>With machine readable output you can use the option <code class="docutils literal notranslate"><span class="pre">--include-blocks</span></code>
-to <code class="docutils literal notranslate"><span class="pre">ls</span></code> which also includes all blocks of this version in the output. Version UIDs
-will be represented as simple integers without the zero-filled V prefix. All Benji
-commands are able to take this representation as well.</p>
+to <code class="docutils literal notranslate"><span class="pre">ls</span></code> which also includes all blocks of this version in the output.</p>
+<p>Version UIDs will be represented as simple integers without V prefix
+and being zero-filled. All Benji commands are able to take this
+representation as well, so you can use it in further commands as-is.</p>
+<p>All timestamps are in UTC and without timezone information.</p>
 </div>
 <div class="section" id="debugging">
 <h3>Debugging<a class="headerlink" href="#debugging" title="Permalink to this headline">¶</a></h3>

@@ -7,7 +7,7 @@ Benji is an important tool when it's responsible for company-wide backups.
 Backups, scrubs, restores and cleanups must run smoothly and need to be
 monitored closely.
 
-Also, as Benji has two parts (*meta backend and *data backend*), both have to
+Also, as Benji has two parts (*metadata backend and *data backend*), both have to
 be checked regularly and be as highly-available as possible.
 
 .. _administration-meta-backend:
@@ -147,9 +147,13 @@ directories for more ones::
     2018-06-07T12:51:19
 
 With machine readable output you can use the option ``--include-blocks``
-to ``ls`` which also includes all blocks of this version in the output. Version UIDs
-will be represented as simple integers without the zero-filled V prefix. All Benji
-commands are able to take this representation as well.
+to ``ls`` which also includes all blocks of this version in the output.
+
+Version UIDs will be represented as simple integers without V prefix
+and being zero-filled. All Benji commands are able to take this
+representation as well, so you can use it in further commands as-is.
+
+All timestamps are in UTC and without timezone information.
 
 Debugging
 ~~~~~~~~~

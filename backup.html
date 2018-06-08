@@ -502,9 +502,9 @@ $ benji rm-tag V0000000001 anothertag</div></blockquote>
 the blocks are of no use without the corresponding metadata. Benji
 will need this information to get the blocks back in the correct order and
 restore your image.</p>
-<p>This information is stored in the <em>meta backend</em>. Additionally Benji will
+<p>This information is stored in the <em>metadata backend</em>. Additionally Benji will
 save the metadata on the <em>data backend</em> automatically. Should you lose your
-<em>meta backend</em>, you can restore these metadata backups by using
+<em>metadata backend</em>, you can restore these metadata backups by using
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import-from-backend --help
 usage: benji import-from-backend [-h] version_uid [version_uid ...]
@@ -582,7 +582,7 @@ optional arguments:
                         isn&#39;t specified)
 </pre></div>
 </div>
-<p>You can’t import versions that already exist in the <em>meta backend</em>.</p>
+<p>You can’t import versions that already exist in the <em>metadata backend</em>.</p>
 </div>
 <div class="section" id="the-hints-file">
 <span id="hints-file"></span><h2>The Hints File<a class="headerlink" href="#the-hints-file" title="Permalink to this headline">¶</a></h2>

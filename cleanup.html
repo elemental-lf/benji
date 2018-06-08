@@ -274,7 +274,7 @@ than this value, Benji exists with an error:</p>
 </div>
 <p>You can force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
-<em>meta backend</em>. It also adds the removed block entries into a deletion
+<em>metadata backend</em>. It also adds the removed block entries into a deletion
 candidate list.</p>
 <p>In order to really delete blocks from the <em>data backend</em>, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
 <span class="pre">cleanup</span></code>.</p>
@@ -291,9 +291,9 @@ optional arguments:
   -h, --help  show this help message and exit
   -f, --full  Do a full cleanup. This will read the full metadata from the
               data backend (i.e. backup storage) and compare it to the
-              metadata in the meta backend. Unused data will then be deleted.
-              This is a slow, but complete process. A full cleanup must not
-              run in parallel to ANY other jobs.
+              metadata in the metadata backend. Unused data will then be
+              deleted. This is a slow, but complete process. A full cleanup
+              must not run in parallel to ANY other jobs.
 </pre></div>
 </div>
 <div class="section" id="fast-cleanup">
@@ -315,8 +315,8 @@ database based on export/import) when Benji does not know if the blocks in the
 <em>data backend</em> are all known by the metadata store.</p>
 <p>Then the <code class="docutils literal notranslate"><span class="pre">-full</span></code> option of cleanup comes into play. With this option, Benji will
 read all block UIDs from the backend storage (which can take <em>very</em> long) and
-compare it to the list of known block UIDs in the <em>meta backend</em></p>
-<p>Blocks unknown to the <em>meta backend</em> are then deleted from the <em>data backend</em>.</p>
+compare it to the list of known block UIDs in the <em>metadata backend</em></p>
+<p>Blocks unknown to the <em>metadata backend</em> are then deleted from the <em>data backend</em>.</p>
 </div>
 </div>
 </div>
