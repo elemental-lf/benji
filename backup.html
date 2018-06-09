@@ -101,8 +101,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Backup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#simple-backup">Simple backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#versions">Versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#differential-backup">Differential backup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#examples-of-differential-backups">Examples of differential backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differential-backup">Differential Backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#specifying-a-block-size">Specifying a Block Size</a></li>
@@ -125,22 +125,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#file-based-restore">File-based Restore</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
 </ul>
 </li>
 </ul>
@@ -332,7 +330,7 @@ optional arguments:
 </div>
 </div>
 <div class="section" id="differential-backup">
-<span id="id1"></span><h2>Differential backup<a class="headerlink" href="#differential-backup" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Differential Backup<a class="headerlink" href="#differential-backup" title="Permalink to this headline">¶</a></h2>
 <p>Benji only backups changed blocks. It can do this in two different ways:</p>
 <ol class="arabic simple">
 <li><strong>It can read the whole image</strong>: Checksum each block and look the checksum up
@@ -361,10 +359,10 @@ possibly with the <code class="docutils literal notranslate"><span class="pre">[
 <p>In any case, if the backup source changes size, Benji will assume that
 the size change has happened at the end of the volume, which is the case if you
 resize partitions, logical volumes or Ceph RBD images.</p>
-<div class="section" id="examples-of-differential-backups">
-<h3>Examples of differential backups<a class="headerlink" href="#examples-of-differential-backups" title="Permalink to this headline">¶</a></h3>
-<div class="section" id="lvm-or-any-other-diff-unaware-storage">
-<h4>LVM (or any other diff unaware storage)<a class="headerlink" href="#lvm-or-any-other-diff-unaware-storage" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="lvm-and-other-images">
+<h4>LVM and other Images<a class="headerlink" href="#lvm-and-other-images" title="Permalink to this headline">¶</a></h4>
 <p>Day 1 (initial backup):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ lvcreate --size 1G --snapshot --name snap /dev/vg00/lvol1
 $ benji backup file:///dev/vg00/snap lvol1
@@ -428,7 +426,73 @@ $ benji backup -s backup2 -r /tmp/vm1.diff -f V001234567 rbd://pool/vm1@backup2 
 <h5>Automation<a class="headerlink" href="#automation" title="Permalink to this headline">¶</a></h5>
 <p>This is how you can automate forward differential backups including automatic
 initial backups where necessary:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>.. literalinclude:: ../../scripts/ceph.sh
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="k">function</span> backup::ceph::initial <span class="o">{</span>
+    <span class="nb">local</span> <span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+
+    <span class="nv">SNAPNAME</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-19T11:33:23</span>
+    <span class="nv">TEMPFILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
+
+    <span class="nb">echo</span> <span class="s2">&quot;Performing initial backup of </span><span class="nv">$NAME</span><span class="s2">:</span><span class="nv">$POOL</span><span class="s2">/</span><span class="nv">$IMAGE</span><span class="s2">.&quot;</span>
+
+    rbd snap create <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span>
+    rbd diff --whole-object <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> --format<span class="o">=</span>json &gt;<span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
+    benji backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
+
+    rm -f <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="k">function</span> backup::ceph::differential <span class="o">{</span>
+    <span class="nb">local</span> <span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">LAST_RBD_SNAP</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$5</span><span class="s2">&quot;</span>
+
+    <span class="nb">local</span> <span class="nv">SNAPNAME</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-20T11:33:23</span>
+    <span class="nb">local</span> <span class="nv">TEMPFILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
+
+    <span class="nb">echo</span> <span class="s2">&quot;Performing differential backup of </span><span class="nv">$NAME</span><span class="s2">:</span><span class="nv">$POOL</span><span class="s2">/</span><span class="nv">$IMAGE</span><span class="s2"> from RBD snapshot </span><span class="nv">$LAST_RBD_SNAP</span><span class="s2"> and Benji version </span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">.&quot;</span>
+
+    rbd snap create <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span>
+    rbd diff --whole-object <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> --from-snap <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> --format<span class="o">=</span>json &gt;<span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
+    <span class="c1"># delete old snapshot</span>
+    rbd snap rm <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span>
+    <span class="c1"># and backup</span>
+    benji backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> -f <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
+    
+    rm -f <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
+<span class="o">}</span>
+
+<span class="k">function</span> backup::ceph <span class="o">{</span>
+    <span class="nb">local</span> <span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
+    <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+
+    <span class="c1"># find the latest snapshot name from rbd</span>
+    <span class="nv">LAST_RBD_SNAP</span><span class="o">=</span><span class="k">$(</span>rbd snap ls <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> --format<span class="o">=</span>json <span class="p">|</span> jq -r <span class="s1">&#39;[.[].name] | map(select(test(&quot;^b-&quot;))) | sort | .[-1] // &quot;&quot;&#39;</span><span class="k">)</span>
+    <span class="k">if</span> <span class="o">[</span> -z <span class="nv">$LAST_RBD_SNAP</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+        <span class="nb">echo</span> <span class="s2">&quot;No previous RBD snapshot found, reverting to initial backup.&quot;</span>
+        benji_job_start_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+        backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>
+        benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+    <span class="k">else</span>
+        <span class="c1"># check if a valid version of this RBD snapshot exists</span>
+        <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="k">$(</span>benji -m ls -s <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="p">|</span> jq -r <span class="s1">&#39;.versions[0] | select(.valid == true) | .uid // &quot;&quot;&#39;</span><span class="k">)</span>
+        <span class="k">if</span> <span class="o">[</span> -z <span class="nv">$BENJI_SNAP_VERSION_UID</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+            <span class="nb">echo</span> <span class="s2">&quot;Existing RBD snapshot not found in Benji, deleting it and reverting to initial backup.&quot;</span>
+            benji_job_start_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            rbd snap rm <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span>
+            backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>
+            benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+        <span class="k">else</span>
+            benji_job_start_time -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> -action<span class="o">=</span>backup -type<span class="o">=</span>differential <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            backup::ceph::differential <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span>
+            benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>differential -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+        <span class="k">fi</span>
+    <span class="k">fi</span>
+<span class="o">}</span>
 </pre></div>
 </div>
 <p>This is what it does:</p>
@@ -451,13 +515,14 @@ snapshot. If not, an initial_backup is performed.</li>
 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">--whole-object</span> <span class="pre">&lt;new</span> <span class="pre">snapshot&gt;</span> <span class="pre">--from-snap</span> <span class="pre">&lt;old</span> <span class="pre">snapshot&gt;</span> <span class="pre">--format=json</span></code>.</li>
 <li>Benji then only backups changes as listed in the <em>hints file</em>.</li>
 </ul>
-<p>These functions could be called each day by a small script (or even multiple times
-a day) and will automatically keep only one snapshot and create forward-differential
-backups.</p>
+<p>These functions could be called each day by a small script (or even multiple
+times a day) and will automatically keep only one snapshot and create
+forward-differential backups.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This alone won’t be enough to be safe. You will have to perform
-additional scrubs. Please refer to section <a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
+<p class="last">This alone won’t be enough to be on the safe side. You will have to
+check the validity of the backup data regularly. Please refer to section
+<a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
 </div>
 </div>
 </div>
@@ -465,20 +530,16 @@ additional scrubs. Please refer to section <a class="reference internal" href="s
 </div>
 <div class="section" id="specifying-a-block-size">
 <h2>Specifying a Block Size<a class="headerlink" href="#specifying-a-block-size" title="Permalink to this headline">¶</a></h2>
-<p>To perform a backup Benji splits up the image into equal sized blocks.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Except the last block which may vary in length.</p>
-</div>
+<p>To perform a backup Benji splits up the image into equal sized blocks. <a class="footnote-reference" href="#id3" id="id2">[1]</a></p>
 <p>By default the block size specified in the configuration file is used.
-But the block size can be changed on the command line on a version by version
+But the block size can also be changed on the command line on a version by version
 basis, but be aware that this will affect deduplication and increase the space
 usage.</p>
 <p>One possible use case for different block sizes would be backing up LVM
 volumes and Ceph images with the same Benji installation. While for Ceph 4MB
 is usually the best size, LVM volumes might profit from a smaller block size.</p>
 <p>If you want to base a new version on an old version (as it can be the case when
-doing a differential backup) the block sizes of the old and new version
+doing a differential backup) the block size of the old and new version
 have to match. Benji will terminate with an error if that is not the case.</p>
 </div>
 <div class="section" id="tag-backups">
@@ -495,6 +556,10 @@ the command line switch <code class="docutils literal notranslate"><span class="
 <blockquote>
 <div>$ benji add-tag V0000000001 mytag
 $ benji rm-tag V0000000001 anothertag</div></blockquote>
+<p>In the case of <code class="docutils literal notranslate"><span class="pre">add-tag</span></code> and <code class="docutils literal notranslate"><span class="pre">rm-tag</span></code> you can also specify multiple tags,
+just list them after the first one. It is no error to add or remove tags which
+already exist or which don’t exist anymore respectively, Benji just emits a
+warning in these cases.</p>
 </div>
 <div class="section" id="export-metadata">
 <h2>Export Metadata<a class="headerlink" href="#export-metadata" title="Permalink to this headline">¶</a></h2>
@@ -604,6 +669,12 @@ optional arguments:
 it will not have to recalculate which 4MB blocks are affected by more
 and smaller offset+length tuples (not that that’d take very long).</p>
 </div>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>Except the last block which may vary in length.</td></tr>
+</tbody>
+</table>
 </div>
 </div>
 

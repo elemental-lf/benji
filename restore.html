@@ -101,8 +101,8 @@
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
@@ -125,22 +125,20 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#full-restore">Full restore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#live-mount-via-nbd">Live-mount via NBD</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#mount-read-wite">Mount read-wite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-restores">Full Restores</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-based-restores-nbd-server">File-based Restores (NBD Server)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#read-only-mount">Read-Only Mount</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#edge-cases">Edge-Cases</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#invalid-blocks-versions">Invalid blocks / versions</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
 </ul>
 </li>
 </ul>
@@ -253,29 +251,35 @@ optional arguments:
   -f, --force   Force overwrite of existing files/devices/images
 </pre></div>
 </div>
-<p>There are two possible restore options:</p>
-<div class="section" id="full-restore">
-<h2>Full restore<a class="headerlink" href="#full-restore" title="Permalink to this headline">¶</a></h2>
-<p>A full restore happens either into a file (i.e. an image file), to a device (e.g.
-/dev/hda) or to a Ceph RBD volume.</p>
+<p>There are two possible restore options with Benji.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you determined which <em>version</em> you want to restore it is a
+good idea to protect this <em>version</em> to prevent any accidental
+or automatic removal by any retention policy enforcement that you
+might have configure.</p>
+</div>
+<div class="section" id="full-restores">
+<h2>Full Restores<a class="headerlink" href="#full-restores" title="Permalink to this headline">¶</a></h2>
+<p>A full restore either saves the image into a file (i.e. an image file),
+to a device (e.g. /dev/hda) or to a Ceph RBD volume.</p>
 <p>The target is specified by the URI scheme. Examples:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore &lt;version_uid&gt; file:///var/lib/vms/myvm.img
 $ benji restore -f &lt;version_uid&gt; file:///dev/hdm
 $ benji restore &lt;version_uid&gt; rbd://pool/myvm_restore
 </pre></div>
 </div>
-<p>If the target already exists as</p>
+<p>If the target already exists, i.e.</p>
 <ul class="simple">
 <li>it is a device file</li>
-<li>the rbd volume exists</li>
+<li>the Ceph RBD volume exists</li>
 <li>the image file exists</li>
 </ul>
 <p>you need to <code class="docutils literal notranslate"><span class="pre">--force</span></code> the restore. Without <code class="docutils literal notranslate"><span class="pre">--force</span></code> Benji will throw
 an error and give you a hint:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji restore 90fbbeb6-1fbe-11e7-9f25-a44e314f9270 file://tmp/T
-    INFO: $ /home/dk/develop/benji/env/bin/benji restore 90fbbeb6-1fbe-11e7-9f25-a44e314f9270 file://tmp/T
-   ERROR: Target already exists: file://tmp/T
-Error opening restore target. You must force the restore.
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore V1  file://RESTORE
+    INFO: $ benji restore V1 file://RESTORE
+   ERROR: Restore target RESTORE already exists. Force the restore <span class="k">if</span> you want to overwrite it.
 </pre></div>
 </div>
 <div class="admonition note">
@@ -283,25 +287,35 @@ Error opening restore target. You must force the restore.
 <p class="last">When restoring to a Ceph RBD volume, Benji will create this RBD
 volume for you if it does not exist.</p>
 </div>
-<p>If the restore-target is full of 0x00 bytes, you can use the <code class="docutils literal notranslate"><span class="pre">-s</span></code> or <code class="docutils literal notranslate"><span class="pre">--sparse</span></code>
-option for faster restores. With <code class="docutils literal notranslate"><span class="pre">-s</span></code> benji will not write (i.e. skip) empty
-blocks or blocks that contain only 0x00 bytes.</p>
+<p>If the restore target is full of zeros (or holes will read as zeros which is normally
+the case), you can use the <code class="docutils literal notranslate"><span class="pre">-s</span></code> or <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> option for faster restores.
+With <code class="docutils literal notranslate"><span class="pre">-s</span></code> Benji will not write (i.e. skip) empty blocks or blocks that contain
+only zeros. This will also normally lead to less space usage on the restore target.</p>
 <p>Usually you can use <code class="docutils literal notranslate"><span class="pre">-s</span></code> if your restore target is</p>
 <ul class="simple">
 <li>a new/non-existing Ceph RBD volume</li>
-<li>a new/non-existing image file (benji will then create a sparse file)</li>
+<li>a new/non-existing image file (Benji will then create a sparse file)</li>
 </ul>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
-<p class="last">If you use <code class="docutils literal notranslate"><span class="pre">-s</span></code> on existing images, devices or files, restore-blocks which
-do not exist or contain only 0x00 bytes will not be written, so whatever
-random data was in there before the restore will remain.</p>
+<p class="last">If you use <code class="docutils literal notranslate"><span class="pre">-s</span></code> on existing images, devices or files, restoreed
+blocks which are sparse will not be written, so whatever random data was
+in there before the restore will remain.</p>
 </div>
 </div>
-<div class="section" id="live-mount-via-nbd">
-<h2>Live-mount via NBD<a class="headerlink" href="#live-mount-via-nbd" title="Permalink to this headline">¶</a></h2>
-<p>benji has its own NBD server. So you can mount any existing backup of a
-filesystem directly.</p>
+<div class="section" id="file-based-restores-nbd-server">
+<h2>File-based Restores (NBD Server)<a class="headerlink" href="#file-based-restores-nbd-server" title="Permalink to this headline">¶</a></h2>
+<p>Benji comes with its own NBD server which when started exports all known <em>versions</em>.
+These <em>versions</em> can then be mounted on any Linux host. The requirements on the
+Linux host are:</p>
+<ul class="simple">
+<li>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</li>
+<li>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to
+a NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>) on the Linux host. After that your image data is
+available as a block device. If the image contains a filesystem it can be mounted
+normally. You can then search for the relevant files and restore them.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji nbd --help
 usage: benji nbd [-h] [-a BIND_ADDRESS] [-p BIND_PORT] [-r]
 
@@ -315,20 +329,16 @@ optional arguments:
                         created.
 </pre></div>
 </div>
-<p>Example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd -r 90fbbeb6-1fbe-11e7-9f25-a44e314f9270
-    INFO: $ /home/dk/develop/benji/env/bin/benji nbd -r 90fbbeb6-1fbe-11e7-9f25-a44e314f9270
+<div class="section" id="read-only-mount">
+<h3>Read-Only Mount<a class="headerlink" href="#read-only-mount" title="Permalink to this headline">¶</a></h3>
+<p>This command will run the NBD server in read-only mode and wait for incoming connections:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji nbd -r
     INFO: Starting to serve nbd on <span class="m">127</span>.0.0.1:10809
-    INFO: You may now start
-    INFO:   nbd-client -l <span class="m">127</span>.0.0.1 -p <span class="m">10809</span>
-    INFO: and <span class="k">then</span> get the backup via
-    INFO:   modprobe nbd
-    INFO:   nbd-client -N &lt;version&gt; <span class="m">127</span>.0.0.1 -p <span class="m">10809</span> /dev/nbd0
 </pre></div>
 </div>
-<p>You can then create a new nbd device with the given commands (as root):</p>
+<p>You can then create a new NBD block device (as root):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># modprobe nbd</span>
-<span class="c1"># nbd-client -N 90fbbeb6-1fbe-11e7-9f25-a44e314f9270 127.0.0.1 -p 10809 /dev/nbd0</span>
+<span class="c1"># nbd-client -N V0000000001 127.0.0.1 -p 10809 /dev/nbd0</span>
 Negotiation: ..size <span class="o">=</span> 10MB
 <span class="nv">bs</span><span class="o">=</span><span class="m">1024</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
 
@@ -337,8 +347,19 @@ partprobe /dev/nbd0
 mount -o ro,norecovery /dev/nbd0p1 /mnt
 </pre></div>
 </div>
-<p>The norecovery is required as benji blocks all writes with the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option.
-When you’re done:</p>
+<p>If the image directly contains a filesystem you can skip the partprobe command
+and mount the <code class="docutils literal notranslate"><span class="pre">/dev/nbd0</span></code> device directly. The <code class="docutils literal notranslate"><span class="pre">norecovery</span></code> mount option
+is required as Benji  blocks all writes because of the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option.</p>
+<p>When the NBD server receives an incoming connection it will output something
+like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span> INFO: Incoming connection from <span class="m">127</span>.0.0.1:33714
+DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">7</span>, <span class="nv">len</span><span class="o">=</span><span class="m">17</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;\x00\x00\x00\x0bV0000000001\x00\x00&#39;</span>
+DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">1</span>, <span class="nv">len</span><span class="o">=</span><span class="m">11</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;V0000000001&#39;</span>
+ INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span> Negotiated export: V0000000001
+ INFO: nbd is <span class="nb">read</span> only.
+</pre></div>
+</div>
+<p>When you’re done:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>umount /mnt
 nbd-client -d /dev/nbd0
 </pre></div>
@@ -347,34 +368,28 @@ nbd-client -d /dev/nbd0
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:38316<span class="o">]</span> disconnecting
 </pre></div>
 </div>
-<p>You can then either reconnect or press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> to end the benji nbd server.</p>
-<p>You may also mount the volume from another server. benji by default binds the
+<p>You can then either reconnect or press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> to end Benji’s NBD server.</p>
+<p>You may also mount the volume from another server. Benji by default binds the
 NBD server to 127.0.0.1 (i.e. localhost). For this server to be reachable from
-the outside, bind to 0.0.0.0:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd -a <span class="m">0</span>.0.0.0 -r 90fbbeb6-1fbe-11e7-9f25-a44e314f9270
+the outside bind to 0.0.0.0:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd -a <span class="m">0</span>.0.0.0 -r
 </pre></div>
 </div>
 <p>You can also chose an appropriate port with the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option.</p>
-<div class="section" id="mount-read-wite">
-<h3>Mount read-wite<a class="headerlink" href="#mount-read-wite" title="Permalink to this headline">¶</a></h3>
-<p>In addition to providing read-only access, benji also allows <em>read-write</em> access
+</div>
+<div class="section" id="read-write-mount">
+<h3>Read-Write Mount<a class="headerlink" href="#read-write-mount" title="Permalink to this headline">¶</a></h3>
+<p>In addition to providing read-only access, Benji also allows read-write access
 in a safe way. This means, the backup <strong>will not be modified</strong>.
-The signature is mostly the same:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd 90fbbeb6-1fbe-11e7-9f25-a44e314f9270
-    INFO: $ /home/dk/develop/benji/env/bin/benji nbd 90fbbeb6-1fbe-11e7-9f25-a44e314f9270
+The command sequence is mostly the same (but note the missing <code class="docutils literal notranslate"><span class="pre">-r</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji nbd
     INFO: Starting to serve nbd on <span class="m">127</span>.0.0.1:10809
-    INFO: You may now start
-    INFO:   nbd-client -l <span class="m">127</span>.0.0.1 -p <span class="m">10809</span>
-    INFO: and <span class="k">then</span> get the backup via
-    INFO:   modprobe nbd
-    INFO:   nbd-client -N &lt;version&gt; <span class="m">127</span>.0.0.1 -p <span class="m">10809</span> /dev/nbd0
-    INFO: nbd is read/write.
 </pre></div>
 </div>
 <p>Of course you can then mount the volume read/write and fix all potential
 filesystem errors or database files or you can modify data in any way you want:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># modprobe nbd</span>
-<span class="c1"># nbd-client -N 90fbbeb6-1fbe-11e7-9f25-a44e314f9270 127.0.0.1 -p 10809 /dev/nbd0</span>
+<span class="c1"># nbd-client -N V0000000001 127.0.0.1 -p 10809 /dev/nbd0</span>
 Negotiation: ..size <span class="o">=</span> 10MB
 <span class="nv">bs</span><span class="o">=</span><span class="m">1024</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
 
@@ -383,55 +398,70 @@ Negotiation: ..size <span class="o">=</span> 10MB
 <span class="c1"># echo &#39;test&#39; &gt; /mnt/tmp/test  # example!</span>
 </pre></div>
 </div>
-<p>When you then disconnect from the nbd-client via:</p>
+<p>Any writes to the device will initiate a copy-on-write (COW) of the
+original blocks to a new version that Benji will dynamically create for you.</p>
+<p>After you disconnect from the nbd-client via:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>umount /mnt
 nbd-client -d /dev/nbd0
 </pre></div>
 </div>
-<p>benji will do all the homework to create the copy-on-write backup:</p>
+<p>Benji will start to finalise the COW version. Depending on how many changes
+have been done to the original image this will take some time!</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:46526<span class="o">]</span> disconnecting
-INFO: Fixating version 430d4f4e-2f1d-11e7-b961-a44e314f9270 with <span class="m">1</span> blocks <span class="o">(</span>PLEASE WAIT<span class="o">)</span>
-INFO: Fixation <span class="k">done</span>. Deleting temporary data <span class="o">(</span>PLEASE WAIT<span class="o">)</span>
+INFO: Fixating version V0000000002 with <span class="m">1024</span> blocks, please wait!
+INFO: Fixation <span class="k">done</span>. Deleting temporary data, please wait!
 INFO: Finished.
 </pre></div>
 </div>
-<p>You can then safely press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> in benji in order to end the nbd server.</p>
+<p>You can then safely press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> in order to end the NBD server.</p>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
 <p class="last">If you <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> before the last “INFO: Finished.” is reported,
 your copy-on-write clone will not be written completely and thus be invalid.
-However, the original backup version <strong>will in any case be valid</strong>.</p>
+However, the original backup <em>version</em> <strong>will be untouched in any case</strong>.</p>
 </div>
-<p>Writing to benji NBD will create a copy-on-write backup (example):</p>
+<p>You can see the created COW <em>version</em> with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
-+---------------------+---------------+--------------------------------------+------+------------+--------------------------------------+-------+-----------+---------+
-<span class="p">|</span>         date        <span class="p">|</span> name          <span class="p">|</span> snapshot_name                        <span class="p">|</span> size <span class="p">|</span> size_bytes <span class="p">|</span>                 uid                  <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags    <span class="p">|</span>
-+---------------------+---------------+--------------------------------------+------+------------+--------------------------------------+-------+-----------+---------+
-<span class="p">|</span> <span class="m">2017</span>-05-02 <span class="m">09</span>:53:58 <span class="p">|</span> copy on write <span class="p">|</span> 90fbbeb6-1fbe-11e7-9f25-a44e314f9270 <span class="p">|</span> <span class="m">2560</span> <span class="p">|</span>   <span class="m">10485760</span> <span class="p">|</span> 430d4f4e-2f1d-11e7-b961-a44e314f9270 <span class="p">|</span>   <span class="m">1</span>   <span class="p">|</span>     <span class="m">0</span>     <span class="p">|</span>         <span class="p">|</span>
-+---------------------+---------------+--------------------------------------+------+------------+--------------------------------------+-------+-----------+---------+
-    INFO: Benji complete.
+    INFO: $ benji ls
++---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name <span class="p">|</span> snapshot_name                           <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-10T01:00:43 <span class="p">|</span> V0000000001 <span class="p">|</span> <span class="nb">test</span> <span class="p">|</span>                                         <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
+<span class="p">|</span> <span class="m">2018</span>-06-10T01:01:16 <span class="p">|</span> V0000000002 <span class="p">|</span> <span class="nb">test</span> <span class="p">|</span> nbd-cow-V0000000001-2018-06-10T01:01:16 <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>    True   <span class="p">|</span>      <span class="p">|</span>
++---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
 </pre></div>
 </div>
-<p>The name will be <code class="docutils literal notranslate"><span class="pre">copy</span> <span class="pre">on</span> <span class="pre">write</span></code> and the snapshot_name will be the version UID
-of the originating backup version.</p>
+<p>The name will be the same as the original <em>version</em>. The snapshot_name will start
+with the prefix <em>nbd-cow-</em> followed by the <em>version</em> UID followed by a timestamp.</p>
+<p>The COW <em>version</em> will automatically be marked as protected by Benji to prevent
+removal by any automatic retention policy enforcement that you might have
+configured. This makes sure that your repair work won’t be destroyed. You will
+have to unprotect the <em>version</em> manually when it is no longer needed. After
+that you can remove it normally or wait for your retention policy enforcement
+to clean it up.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">You may safely delete the original version and the copy-on-write
+<p class="last">You can of course also restore the COW <em>version</em> like any other
+<em>version</em> with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">retore</span></code>.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You may safely delete the original <em>version</em> and the COW <em>version</em>
 independently of each other.</p>
 </div>
 </div>
 </div>
-<div class="section" id="edge-cases">
-<h2>Edge-Cases<a class="headerlink" href="#edge-cases" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="invalid-blocks-versions">
-<h3>Invalid blocks / versions<a class="headerlink" href="#invalid-blocks-versions" title="Permalink to this headline">¶</a></h3>
-<p>During full restore, benji will compare each restored block’s checksum to the
-stored checksum from the metadata store <strong>no matter if the block has been
-marked invalid previously</strong>. If it encounters a difference, the block
-and all versions containing this block will be marked <em>invalid</em> and a warning
-will be given:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ERROR: Checksum mismatch during restore <span class="k">for</span> block <span class="m">2558</span> <span class="o">(</span>is: a134381a9760b5569cdaa2b1496483a5cef0428b2de351593599aaac4a5525e8dc97610a3cf515bce685d1e2a1e76c054c3438382588669a909e2073dac1a25c should-be: asd, block-valid: <span class="m">0</span><span class="o">)</span>. Block restored is invalid. Continuing.
- INFO: Marked block invalid <span class="o">(</span>UID 73923236eb5ttp7DJ6BdynMfwMnZamTF, Checksum asd. Affected versions: 90fbbeb6-1fbe-11e7-9f25-a44e314f9270, bc1af5e0-2f1c-11e7-b961-a44e314f9270, 0ffaf1ba-2f1d-11e7-b961-a44e314f9270, 2563c0a4-2f1d-11e7-b961-a44e314f9270, 430d4f4e-2f1d-11e7-b961-a44e314f9270
+<div class="section" id="restore-of-invalid-versions">
+<h2>Restore of invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
+<p>During a restore Benji will compare each restored block’s checksum to the
+stored checksum in the metadata backend <strong>no matter if the block has been
+marked as invalid previously</strong>. If it encounters a difference, the block
+and all versions containing this block will be marked as invalid and a
+warning will be given:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ERROR: Checksum mismatch during restore <span class="k">for</span> block <span class="m">9</span> <span class="o">(</span>UID <span class="m">1</span>-a<span class="o">)</span> <span class="o">(</span>is: e36cee7fd34ae637... should-be: dea186672147e1e3..., block.valid: True<span class="o">)</span>. Block restored is invalid.
+ INFO: Marked block invalid <span class="o">(</span>UID <span class="m">1</span>-a, Checksum dea186672147e1e3. Affected versions: V0000000001, V0000000002
+ INFO: Marked version invalid <span class="o">(</span>UID V0000000001<span class="o">)</span>
+ INFO: Marked version invalid <span class="o">(</span>UID V0000000002<span class="o">)</span>
 </pre></div>
 </div>
 <p>Even when encountering such an error, Benji will continue to restore.</p>
@@ -440,7 +470,6 @@ will be given:</p>
 <p class="last">The philosophy behind this is that restores should always succeed, even if there
 is data corruption. Often invalid data is in irrelevant places or can be fixed later.
 You get as much of your data back as possible!</p>
-</div>
 </div>
 </div>
 </div>
