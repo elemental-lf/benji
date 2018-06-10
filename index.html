@@ -86,7 +86,7 @@
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">Backup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">Deep-scrub and Scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">Deep Scrub and Scrub</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">Restore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-removal-and-cleanup">Version Removal and Cleanup</a></li>
 </ul>
@@ -125,7 +125,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restores">Full Restores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#file-based-restores-nbd-server">File-based Restores (NBD Server)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
@@ -133,6 +133,7 @@
 <li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
@@ -284,13 +285,14 @@ changed blocks.</dd>
 <dd>With supporting block storage (like Ceph’s RBD), a sparse restore is
 possible. This means, sparse blocks (i.e. blocks which are holes or are
 all zeros) will be skipped on restore.</dd>
-<dt><strong>File-based restores</strong></dt>
+<dt><strong>NBD server facilitating file-based restores</strong></dt>
 <dd><p class="first">Benji brings its own NBD (network block device) server which makes backup
-images directly mountable and enables file-based restores - even via the
-network on another machine.</p>
+images directly mountable - even over the network on another machine. This
+enables file-based restores without restoring the whole image.</p>
 <p class="last">These mounts are read/write (unless you specify <code class="docutils literal notranslate"><span class="pre">-r</span></code>) and writing to them
-creates a copy-on-write backup version (<strong>i.e. the original version is not</strong>
-<strong>modified</strong>).</p>
+creates a copy-on-write backup version (<strong>i.e. the original version is not modified</strong>).
+This makes it possible to do repairs on the image (<code class="docutils literal notranslate"><span class="pre">fsck</span></code>, etc.) and restore
+the repaired copy afterwards.</p>
 </dd>
 <dt><strong>Small bandwidth requirements</strong></dt>
 <dd><p class="first">As only changed blocks are written to the backup target, a small connection
@@ -379,7 +381,7 @@ for a full list of licenses.</dd>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#some-vocabulary">Some Vocabulary</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#backup">Backup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">Deep-scrub and Scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#deep-scrub-and-scrub">Deep Scrub and Scrub</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#restore">Restore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#version-removal-and-cleanup">Version Removal and Cleanup</a></li>
 </ul>
@@ -410,10 +412,11 @@ for a full list of licenses.</dd>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restores">Full Restores</a></li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#file-based-restores-nbd-server">File-based Restores (NBD Server)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>

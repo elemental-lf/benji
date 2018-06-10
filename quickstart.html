@@ -87,7 +87,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#some-vocabulary">Some Vocabulary</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#backup">Backup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#deep-scrub-and-scrub">Deep-scrub and Scrub</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deep-scrub-and-scrub">Deep Scrub and Scrub</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#restore">Restore</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#version-removal-and-cleanup">Version Removal and Cleanup</a></li>
 </ul>
@@ -101,8 +101,8 @@
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential backup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="backup.html#examples-of-differential-backups">Examples of differential backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
@@ -125,22 +125,21 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full restore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#live-mount-via-nbd">Live-mount via NBD</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#mount-read-wite">Mount read-wite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restores">Full Restores</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#edge-cases">Edge-Cases</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#invalid-blocks-versions">Invalid blocks / versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#benji-cleanup">benji cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">fast-cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">full-cleanup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
 </ul>
 </li>
 </ul>
@@ -255,8 +254,8 @@ backed up data will be saved. Also referred to as the <em>data backend</em>.</dd
 <dd>A SQL database containing information on how to reassemble the stored blocks
 to get the original data back. Also referred to as the <em>metadata backend</em>.</dd>
 <dt>Version</dt>
-<dd>A version is a backup of a specific backup source at a specific point in time.
-A version is identified by a unique id.</dd>
+<dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
+A <em>version</em> is identified by a unique id.</dd>
 </dl>
 </div>
 <div class="section" id="backup">
@@ -269,12 +268,12 @@ A version is identified by a unique id.</dd>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Initializing a database multiple times does <strong>not</strong> destroy any
-data, instead it will fail because it finds already existing tables.</p>
+<p class="last">Initializing the database multiple times does <strong>not</strong> destroy any
+data. Instead it will fail because it finds already existing tables.</p>
 </div>
 </li>
-<li><p class="first">Create demo data:</p>
-<p>For demonstration purpose, create a 40MB test file:</p>
+<li><p class="first">Create some demo data:</p>
+<p>For demonstration purpose create a 40MB test file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ dd <span class="k">if</span><span class="o">=</span>/dev/urandom <span class="nv">of</span><span class="o">=</span>TESTFILE <span class="nv">bs</span><span class="o">=</span>1M <span class="nv">count</span><span class="o">=</span><span class="m">40</span>
 <span class="m">40</span>+0 records in
 <span class="m">40</span>+0 records out
@@ -337,10 +336,11 @@ machine readable JSON output for usage in scripts:</p>
 errors.</p>
 </div>
 <div class="section" id="deep-scrub-and-scrub">
-<h2>Deep-scrub and Scrub<a class="headerlink" href="#deep-scrub-and-scrub" title="Permalink to this headline">¶</a></h2>
-<p>Deep scrubbing reads all the blocks from the backup target (or some of them if you
-use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option) and compares them with the metadata or, if you pass a
-source option (<code class="docutils literal notranslate"><span class="pre">-s</span></code>), also with the original data.</p>
+<h2>Deep Scrub and Scrub<a class="headerlink" href="#deep-scrub-and-scrub" title="Permalink to this headline">¶</a></h2>
+<p>Deep scrubbing reads all the blocks of a particular <em>version</em> from the data backend
+(or some of them if you use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option) and compares the checksums of these
+blocks to the checksums recorded in the metadata backend. If you pass the
+source option (<code class="docutils literal notranslate"><span class="pre">-s</span></code>) the blocks will also be compared to the original source data.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub v1
     INFO: $ benji deep-scrub v1
     INFO: Deep scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
@@ -355,8 +355,9 @@ source option (<code class="docutils literal notranslate"><span class="pre">-s</
     INFO: Deep scrubbed <span class="m">10</span>/10 blocks <span class="o">(</span><span class="m">100</span>.0%<span class="o">)</span>
 </pre></div>
 </div>
-<p>If an error occurs (for example, if backup target blocks couldn’t be read or data
-has changed), the output from <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> looks like this:</p>
+<p>If an error occurs (for example, if some blocks couldn’t be read or a
+checksum mismatch was detected), the output from <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> looks
+like this:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub v1
     INFO: $ benji deep-scrub v1
     INFO: Deep scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
@@ -365,7 +366,7 @@ has changed), the output from <code class="docutils literal notranslate"><span c
     INFO: Deep scrubbed <span class="m">4</span>/10 blocks <span class="o">(</span><span class="m">40</span>.0%<span class="o">)</span>
     INFO: Deep scrubbed <span class="m">5</span>/10 blocks <span class="o">(</span><span class="m">50</span>.0%<span class="o">)</span>
     INFO: Deep scrubbed <span class="m">6</span>/10 blocks <span class="o">(</span><span class="m">60</span>.0%<span class="o">)</span>
-   ERROR: Checksum mismatch during deep scrub <span class="k">for</span> block <span class="m">6</span> <span class="o">(</span>UID <span class="m">1</span>-7<span class="o">)</span> <span class="o">(</span>is: 729a77dc964e5f543e6f10697386429d5978a1681a86fce1101aa2abcb41c5cc should-be: b70aeb070b95df31f68fd19c99e33f2826bd2c50049ca48c27b58743ab8a8d64<span class="o">)</span>.
+   ERROR: Checksum mismatch during deep scrub of block <span class="m">6</span> <span class="o">(</span>UID <span class="m">1</span>-7<span class="o">)</span> <span class="o">(</span>is: 729a77dc964e5f54... should-be: b70aeb070b95df31...<span class="o">)</span>.
     INFO: Marked block invalid <span class="o">(</span>UID <span class="m">1</span>-7, Checksum b70aeb070b95df31. Affected versions: V0000000001
     INFO: Marked version invalid <span class="o">(</span>UID V0000000001<span class="o">)</span>
     INFO: Deep scrubbed <span class="m">8</span>/10 blocks <span class="o">(</span><span class="m">80</span>.0%<span class="o">)</span>
@@ -387,8 +388,8 @@ signaled by EX_IOERR which is 74 on Linux.</p>
 +---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
 </pre></div>
 </div>
-<p>Just in case you are able to fix the error, just scrub again and Benji will mark the version valid again.</p>
-<p>There is also a little brother to <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> which only check for metadata consistency and block existence:</p>
+<p>Just in case you are able to fix the error, just scrub again and Benji will mark the version as valid again.</p>
+<p>There also is a little brother to <code class="docutils literal notranslate"><span class="pre">deep-scrub</span></code> which only checks metadata consistency and block existence:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji scrub v1
     INFO: $ benji scrub v1
     INFO: Scrubbed <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
@@ -441,16 +442,13 @@ section <a class="reference internal" href="restore.html#restore"><span class="s
 </div>
 <div class="section" id="version-removal-and-cleanup">
 <h2>Version Removal and Cleanup<a class="headerlink" href="#version-removal-and-cleanup" title="Permalink to this headline">¶</a></h2>
-<p>You can remove any given backup version by:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm 8fd42f1a-2364-11e7-8594-00163e8c0370
-    INFO: $ /usr/bin/benji rm 8fd42f1a-2364-11e7-8594-00163e8c0370
-   ERROR: Unexpected exception
-   ERROR: <span class="s1">&#39;Version 8fd42f1a-2364-11e7-8594-00163e8c0370 is too young. Will not delete.&#39;</span>
-   <span class="o">[</span>…<span class="o">]</span>
-    INFO: Benji failed.
+<p>You can remove any given backup <em>version</em> by:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm V0000000001
+    INFO: $ benji rm V0000000001
+   ERROR: Version V0000000001 is too young. Will not delete it.
 </pre></div>
 </div>
-<p>What prevents this version from being deleted is the <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code> option:</p>
+<p>What prevents this <em>version</em> from being deleted is the <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code> option:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>disallowRemoveWhenYounger: <span class="m">6</span>
 </pre></div>
 </div>
@@ -487,13 +485,11 @@ ten blocks have been permanently deleted:</p>
 <p>There is also the option (<code class="docutils literal notranslate"><span class="pre">-f</span></code> or <code class="docutils literal notranslate"><span class="pre">--full</span></code>) to do a full cleanup which iterates
 through all the blocks in the backend storage. This should only be used when an
 inconsistency is suspected as it can take a very long time to complete.</p>
-<blockquote>
-<div><div class="admonition note">
+<div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">A full cleanup must not be run parallel to ANY other Benji jobs.
 Benji will prevent you from doing this by creating a global lock.</p>
 </div>
-</div></blockquote>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
 <p class="last">Parallelism has been tested successfully with PostgreSQL. It might

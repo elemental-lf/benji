@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -9,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Retention Policy Enforcement &mdash; Benji Backup 0.1.0 documentation</title>
   
 
   
@@ -28,8 +27,10 @@
   
     <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="index" title="Index" href="#" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Cleanup" href="cleanup.html" />
+    <link rel="prev" title="Restore" href="restore.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -75,7 +76,7 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
@@ -133,7 +134,7 @@
 <li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Retention Policy Enforcement</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
@@ -215,12 +216,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Index</li>
+      <li>Retention Policy Enforcement</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
+            <a href="_sources/enforce.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -232,11 +235,80 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
+  <div class="section" id="retention-policy-enforcement">
+<h1>Retention Policy Enforcement<a class="headerlink" href="#retention-policy-enforcement" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji enforce --help
+usage: benji enforce [-h] [--dry-run] [-K]
+                     rules_spec version_name [version_name ...]
 
-<h1 id="index">Index</h1>
+positional arguments:
+  rules_spec            Retention rules specification
+  version_name
 
-<div class="genindex-jumpbox">
- 
+optional arguments:
+  -h, --help            show this help message and exit
+  --dry-run             Dry run: Only show which versions would be removed.
+  -K, --keep-backend-metadata
+                        Don&#39;t delete version&#39;s metadata in data backend.
+</pre></div>
+</div>
+<p>Benji supports a simple but flexible mechanism for retention policy enforcement.
+Enforcement is done per <em>version</em> name, i.e. a specific policy is applied to all
+<em>versions</em> with the same name. Enforcement is not automatic and has to be
+initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> for each <em>version</em> name. This is normally done
+as part of a script for example right after creating a new <em>version</em> with
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> or as a separate cronjob.</p>
+<p>The enforcement policy is specified by a comma separated list of time categories:</p>
+<ul class="simple">
+<li>latest (always refers to the youngest versions, regardless of how old they are)</li>
+<li>hours</li>
+<li>days</li>
+<li>weeks</li>
+<li>months</li>
+<li>years.</li>
+</ul>
+<p>Each time interval is directly followed by a positive number, no whitespace is
+allowed.</p>
+<p>Examples:</p>
+<ul class="simple">
+<li>latest3,hours48,days7,weeks4,months12,years3<ul>
+<li>Keep the youngest three versions regardless of their age</li>
+<li>Then keep one version per hour for the last 48 hours</li>
+<li>Then keep one version per week for the last four weeks</li>
+<li>Then keep one version per month for the last twelve months</li>
+<li>Then keep one version per year for the last three years</li>
+</ul>
+</li>
+<li>years3,months12,latest2<ul>
+<li>Keep the youngest two versions</li>
+<li>Then keep one version per month for the last twelve months</li>
+<li>Then keep one version per year for the last three years</li>
+</ul>
+</li>
+<li>hours24,years3<ul>
+<li>Keep one version per hour for the last 72 hours</li>
+</ul>
+</li>
+<li>latest10<ul>
+<li>Keep the  youngest ten versions</li>
+</ul>
+</li>
+</ul>
+<p>Even when you specify the time categories in a different order, they are always
+considered from youngest to oldest (see the second example).</p>
+<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version currently
+falls into a specified category the oldest version of the category below is always kept,
+so that it has a chance to get old enough. So if in third example there is one version
+that is older than 24 hours but younger than one year it will be kept till it is old
+enough even though it falls out of the first specified category.</p>
+<p>If there is overlap between two categories the younger category always takes precedence.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>).
+All removed versions are listed and could be aggregated into a report for example.</p>
+<div class="admonition attention">
+<p class="first admonition-title">Attention</p>
+<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy.
+To exclude versions from enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
+</div>
 </div>
 
 
@@ -244,6 +316,15 @@
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="cleanup.html" class="btn btn-neutral float-right" title="Cleanup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="restore.html" class="btn btn-neutral" title="Restore" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
