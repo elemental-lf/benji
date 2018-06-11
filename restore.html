@@ -126,13 +126,16 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#full-restores">Full Restores</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-restore">Full Restore</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#nbd-server">NBD Server</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#restore-of-invalid-versions">Restore of invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
@@ -242,18 +245,21 @@
   <div class="section" id="restore">
 <span id="id1"></span><h1>Restore<a class="headerlink" href="#restore" title="Permalink to this headline">¶</a></h1>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji restore --help
-usage: benji restore [-h] [-s] [-f] version_uid target
+usage: benji restore [-h] [-s] [-f] [-M] version_uid target
 
 positional arguments:
   version_uid
-  target        Source (URL like, e.g. file:///dev/sda or
-                rbd://pool/imagename)
+  target                Source (URL like, e.g. file:///dev/sda or
+                        rbd://pool/imagename)
 
 optional arguments:
-  -h, --help    show this help message and exit
-  -s, --sparse  Restore only existing blocks. Works only with file and RBD
-                targets, not with LVM. Faster.
-  -f, --force   Force overwrite of existing files/devices/images
+  -h, --help            show this help message and exit
+  -s, --sparse          Restore only existing blocks. Works only with file and
+                        RBD targets, not with LVM. Faster.
+  -f, --force           Force overwrite of existing files/devices/images
+  -M, --metadata-backend-less
+                        Restore directly from data backend without requiring
+                        the metadata backend.
 </pre></div>
 </div>
 <p>There are two possible restore options with Benji.</p>
@@ -264,8 +270,8 @@ good idea to protect this <em>version</em> to prevent any accidental
 or automatic removal by any retention policy enforcement that you
 might have configure.</p>
 </div>
-<div class="section" id="full-restores">
-<h2>Full Restores<a class="headerlink" href="#full-restores" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="full-restore">
+<h2>Full Restore<a class="headerlink" href="#full-restore" title="Permalink to this headline">¶</a></h2>
 <p>A full restore either saves the image into a file (i.e. an image file),
 to a device (e.g. /dev/hda) or to a Ceph RBD volume.</p>
 <p>The target is specified by the URI scheme. Examples:</p>
@@ -306,6 +312,18 @@ only zeros. This will also normally lead to less space usage on the restore targ
 <p class="last">If you use <code class="docutils literal notranslate"><span class="pre">-s</span></code> on existing images, devices or files, restoreed
 blocks which are sparse will not be written, so whatever random data was
 in there before the restore will remain.</p>
+</div>
+<div class="section" id="with-unavailable-metadata-backend">
+<span id="metadata-backend-less"></span><h3>With Unavailable Metadata Backend<a class="headerlink" href="#with-unavailable-metadata-backend" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode (<code class="docutils literal notranslate"><span class="pre">-M</span></code> or <code class="docutils literal notranslate"><span class="pre">--metadata-backend-less</span></code>)
+where it doesn’t require its metadata backend to be up und running. In this mode
+Benji will import the backup of the <em>version’s</em> metadata from the data backend
+into an ad-hoc in-memory database and then restore the image normally. This is
+for failure scenarios where the database is unavailable and you still need to
+restore a <em>version</em>. But because of the database unavailability you can’t just
+execute <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> to determine the right <em>version</em> to restore, you need to
+generate some reports beforehand and save them somewhere to be able to chose
+the right <em>version</em>!</p>
 </div>
 </div>
 <div class="section" id="nbd-server">
@@ -457,7 +475,7 @@ independently of each other.</p>
 </div>
 </div>
 <div class="section" id="restore-of-invalid-versions">
-<h2>Restore of invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
+<h2>Restore of Invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
 <p>During a restore Benji will compare each restored block’s checksum to the
 stored checksum in the metadata backend <strong>no matter if the block has been
 marked as invalid previously</strong>. If it encounters a difference, the block
