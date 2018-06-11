@@ -79,6 +79,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#customise-your-configuration">Customise Your Configuration</a></li>
 </ul>
@@ -236,34 +237,45 @@
             
   <div class="section" id="licenses">
 <span id="id1"></span><h1>Licenses<a class="headerlink" href="#licenses" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Files: src/benji/retentionfilter.py
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Packages: prettytable setproctitle zstandard
+License: BSD
+
+Packages: pycryptodome
+License: BSD , Public Domain
+
+Packages: sqlalchemy boto3 alembic ruamel.yaml aes-keywrap
+License: MIT
+
+Packages: psycopg2
+License: LGPLv3
+
+Packages: python-dateutil
+Copyright:
+    See https://github.com/dateutil/dateutil/blob/master/LICENSE
+License: Apache 2.0, BSD License (Dual License)
+
+Packages: diskcache
+Copyright:
+    2016-2018 Grant Jenks
+License: Apache 2.0
+
+Files: src/benji/retentionfilter.py
 Copyright:
     2014 Jan-Philip Gehrcke (http://gehrcke.de)
-License: MIT License
+    Modified work: 2018 Lars Fenneberg
+License: MIT
 
 Files: src/benji/nbd/nbdserver.py
 Copyright:
     2013-2015 Juan J. Martinez
+    Modified work: 2016 Daniel Kraft
+    Modified work: 2018 Lars Fenneberg
 License: Expat http://directory.fsf.org/wiki/License:Expat
 
 Files: scripts/prometheus.sh
-Copyrigt: 2015 Adrian Colley &lt;aecolley@gmail.com&gt;
+Copyrigt:
+    2015 Adrian Colley &lt;aecolley@gmail.com&gt;
 License: Apache 2.0
-
-Packages: prettytable setproctitle
-License: BSD
-
-Packages: python-dateutil
-License: Simplified BSD
-
-Packages: sqlalchemy boto alembic
-License: MIT License
-
-Packages: pex
-License: Apache 2.0
-
-Packages: psycopg2
-License: LGPLv3
 
 Files: *
 Copyright:

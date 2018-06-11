@@ -80,6 +80,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#customise-your-configuration">Customise Your Configuration</a></li>
 </ul>
@@ -238,8 +239,7 @@
   <div class="section" id="quick-start">
 <span id="quickstart"></span><h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
 <p>This guide will show you how to do a <em>backup</em> - <em>scrub</em> - <em>restore</em> - <em>cleanup</em>
-cycle with <strong>sqlite</strong> as metadata backend and a <strong>file storage</strong> backup target
-(e.g. NFS).</p>
+cycle.</p>
 <div class="section" id="some-vocabulary">
 <h2>Some Vocabulary<a class="headerlink" href="#some-vocabulary" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
@@ -487,7 +487,7 @@ through all the blocks in the backend storage. This should only be used when an
 inconsistency is suspected as it can take a very long time to complete.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">A full cleanup must not be run parallel to ANY other Benji jobs.
+<p class="last">A full cleanup must run in parallel to any other Benji jobs.
 Benji will prevent you from doing this by creating a global lock.</p>
 </div>
 <div class="admonition caution">

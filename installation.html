@@ -80,6 +80,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#centos-7">CentOS 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#common-to-all-distributions">Common to All Distributions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#customise-your-configuration">Customise Your Configuration</a></li>
 </ul>
@@ -250,6 +251,11 @@ apt-get update
 apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For more information about this Personal Package Archive (PPA)
+please see <a class="reference external" href="https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa">https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa</a>.</p>
+</div>
 </div>
 <div class="section" id="centos-7">
 <h2>CentOS 7<a class="headerlink" href="#centos-7" title="Permalink to this headline">¶</a></h2>
@@ -257,6 +263,18 @@ apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y https://centos7.iuscommunity.org/ius-release.rpm
 yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
 </pre></div>
+</div>
+</div>
+<div class="section" id="redhat-enterprise-linux-7">
+<h2>Redhat Enterprise Linux 7<a class="headerlink" href="#redhat-enterprise-linux-7" title="Permalink to this headline">¶</a></h2>
+<p>Almost the some procedure as on CentOS:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y https://rhel7.iuscommunity.org/ius-release.rpm
+yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For more information about the IOS Community Project please see <a class="reference external" href="https://ius.io/">https://ius.io/</a>.</p>
 </div>
 </div>
 <div class="section" id="common-to-all-distributions">
@@ -312,6 +330,8 @@ metadataBackend:
 <p>You might need to change the above paths. Benji will run as a normal user
 without problems, but it will probably need root privileges to access most
 backup sources.</p>
+<p>The configuration above is suited to jump right into the section
+<a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a> and try out everything.</p>
 <p>Please see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for a full list of configuration options.</p>
 </div>
 </div>
