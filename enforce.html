@@ -135,7 +135,10 @@
 <li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of invalid Versions</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Retention Policy Enforcement</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Retention Policy Enforcement</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#policy-specification">Policy Specification</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
@@ -259,7 +262,20 @@ Enforcement is done per <em>version</em> name, i.e. a specific policy is applied
 initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> for each <em>version</em> name. This is normally done
 as part of a script for example right after creating a new <em>version</em> with
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> or as a separate cronjob.</p>
-<p>The enforcement policy is specified by a comma separated list of time categories:</p>
+<p>This Benji command is just for policy enforcement (i.e. thinning out <em>versions</em> by
+removal over time). You have to adjust your schedule to match your policy. If you
+want to keep hourly backups for the last 72 hours (hours72) you have to create
+a new <em>version</em> at least every  hour.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>).
+All removed versions are listed and could be aggregated into a report for example.</p>
+<div class="admonition attention">
+<p class="first admonition-title">Attention</p>
+<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy.
+To exclude versions from enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
+</div>
+<div class="section" id="policy-specification">
+<h2>Policy Specification<a class="headerlink" href="#policy-specification" title="Permalink to this headline">¶</a></h2>
+<p>The enforcement policy is specified as a comma separated list of time categories:</p>
 <ul class="simple">
 <li>latest (always refers to the youngest versions, regardless of how old they are)</li>
 <li>hours</li>
@@ -286,7 +302,7 @@ allowed.</p>
 <li>Then keep one version per year for the last three years</li>
 </ul>
 </li>
-<li>hours24,years3<ul>
+<li>hours72<ul>
 <li>Keep one version per hour for the last 72 hours</li>
 </ul>
 </li>
@@ -297,18 +313,14 @@ allowed.</p>
 </ul>
 <p>Even when you specify the time categories in a different order, they are always
 considered from youngest to oldest (see the second example).</p>
-<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version currently
-falls into a specified category the oldest version of the category below is always kept,
-so that it has a chance to get old enough. So if in third example there is one version
-that is older than 24 hours but younger than one year it will be kept till it is old
-enough even though it falls out of the first specified category.</p>
-<p>If there is overlap between two categories the younger category always takes precedence.</p>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>).
-All removed versions are listed and could be aggregated into a report for example.</p>
-<div class="admonition attention">
-<p class="first admonition-title">Attention</p>
-<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy.
-To exclude versions from enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
+<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version
+currently falls into a specified category the oldest version of the category
+it below is always kept, so that it has a chance to get old enough. So if in
+the third example there is one version which is older than 24 hours but younger
+than one year it will be kept till it is old enough even though it falls out
+of the first specified category.</p>
+<p>If there is overlap between two categories the younger category always takes
+precedence.</p>
 </div>
 </div>
 
