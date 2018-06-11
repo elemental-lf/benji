@@ -170,6 +170,17 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -249,7 +260,7 @@ collection algorithm.</p>
 <h2>Removing old versions<a class="headerlink" href="#removing-old-versions" title="Permalink to this headline">¶</a></h2>
 <p>In order to remove an old version, use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji rm --help
-usage: benji rm [-h] [-f] [-K] version_uid [version_uid ...]
+usage: benji rm [-h] [-f] [-k] version_uid [version_uid ...]
 
 positional arguments:
   version_uid
@@ -258,7 +269,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -f, --force           Force removal of version, even if it&#39;s younger than
                         the configured disallow_rm_when_younger_than_days.
-  -K, --keep-backend-metadata
+  -k, --keep-backend-metadata
                         Don&#39;t delete version&#39;s metadata in data backend.
 </pre></div>
 </div>
@@ -280,7 +291,9 @@ than this value, Benji exists with an error:</p>
 <p>You can force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
 <em>metadata backend</em>. It also adds the removed block entries into a deletion
-candidate list.</p>
+candidate list. By default it also removes the backup of the metadata on
+the data backend. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
+or <code class="docutils literal notranslate"><span class="pre">--keep-backend-metadata</span></code> option.</p>
 <p>In order to really delete blocks from the <em>data backend</em>, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
 <span class="pre">cleanup</span></code>.</p>
 </div>

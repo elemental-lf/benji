@@ -170,6 +170,17 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -255,17 +266,18 @@ disasters happen.</p>
 <div class="section" id="metadata-redundancy">
 <h3>Metadata Redundancy<a class="headerlink" href="#metadata-redundancy" title="Permalink to this headline">¶</a></h3>
 <p>Benji already exports the version metadata to the <em>data backend</em>, too. You
-can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>.</p>
+can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>:</p>
+<p>The metadata-backend-less uses this import from the data backend to
+populate an in-memory database to enable restores when the metadata
+backend is unavailable, please see section <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</p>
 <p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>
 and store them somewhere safe to increase your redundancy even more. It is
-advisable to compress them as the JSON export format is quite verbose.</p>
+advisable to compress them as the JSON export format is quite redundant.</p>
+<p>You can import these exports again with:</p>
+<p>If the imported <em>version</em> already exists in the metadata backend Benji
+terminates with an error and doesn’t proceed with the import.</p>
 <p>So now, even if your backup database server crashes, you’ll still be able
-to reimport all existing versions again.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last"><strong>After</strong> re-importing many versions, it is recommended to start a
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span> <span class="pre">-f</span></code> run as shown in section <a class="reference internal" href="cleanup.html#full-cleanup"><span class="std std-ref">Full Cleanup</span></a>.</p>
-</div>
+to reimport all existing versions again!</p>
 <div class="admonition attention">
 <p class="first admonition-title">Attention</p>
 <p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) versions from the database and

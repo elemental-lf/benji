@@ -170,6 +170,17 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -244,7 +255,7 @@
   <div class="section" id="retention-policy-enforcement">
 <h1>Retention Policy Enforcement<a class="headerlink" href="#retention-policy-enforcement" title="Permalink to this headline">¶</a></h1>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji enforce --help
-usage: benji enforce [-h] [--dry-run] [-K]
+usage: benji enforce [-h] [--dry-run] [-k]
                      rules_spec version_name [version_name ...]
 
 positional arguments:
@@ -254,7 +265,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --dry-run             Dry run: Only show which versions would be removed.
-  -K, --keep-backend-metadata
+  -k, --keep-backend-metadata
                         Don&#39;t delete version&#39;s metadata in data backend.
 </pre></div>
 </div>

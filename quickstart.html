@@ -170,6 +170,17 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -258,8 +269,7 @@ backed up data will be saved. Also referred to as the <em>data backend</em>.</dd
 <dt>Backup Metadata</dt>
 <dd>A SQL database containing information on how to reassemble the stored blocks
 to get the original data back. Also referred to as the <em>metadata backend</em>.
-For restores the metadata backend is not compulsory. See section
-<a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
+For restores the metadata backend is not compulsory. See <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
 <dt>Version</dt>
 <dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
 A <em>version</em> is identified by a unique id.</dd>
