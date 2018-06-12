@@ -120,6 +120,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scrubbing-failures">Scrubbing Failures</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
@@ -254,26 +255,13 @@
             
   <div class="section" id="scrub">
 <span id="scrubbing"></span><h1>Scrub<a class="headerlink" href="#scrub" title="Permalink to this headline">¶</a></h1>
-<p>Scrubbing backups is needed to ensure data consistency.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji scrub --help
-usage: benji scrub [-h] [-p PERCENTILE] version_uid
-
-positional arguments:
-  version_uid           Version UID
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -p PERCENTILE, --percentile PERCENTILE
-                        Only check PERCENTILE percent of the blocks (value
-                        0..100). Default: 100
-</pre></div>
-</div>
+<p>Scrubbing backups is needed to ensure data consistency over time.</p>
 <div class="section" id="reasons-for-scrubbing">
 <h2>Reasons for Scrubbing<a class="headerlink" href="#reasons-for-scrubbing" title="Permalink to this headline">¶</a></h2>
 <p>Benji backs up data in blocks. These blocks are referenced from the metadata
 store. When restoring images, these blocks are read and restored in the order
 the metadata store says. As Benji also does deduplication, an invalid block
-could potentially create invalid restore data on multiple places.</p>
+could potentially create invalid restore data in multiple places.</p>
 <p>Invalid blocks can happen in these cases (probably incomplete):</p>
 <ul class="simple">
 <li>Bit rot / Data degradation (<a class="reference external" href="https://en.wikipedia.org/wiki/Data_degradation">https://en.wikipedia.org/wiki/Data_degradation</a>)</li>
@@ -288,7 +276,21 @@ could potentially create invalid restore data on multiple places.</p>
 <p>Benji implements three different scrubbing methods:</p>
 <div class="section" id="consistency-and-checksum">
 <h3>Consistency and Checksum<a class="headerlink" href="#consistency-and-checksum" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji deep-scrub &lt;version_uid&gt;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub --help
+usage: benji deep-scrub [-h] [-s SOURCE] [-p PERCENTILE] version_uid
+
+positional arguments:
+  version_uid           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SOURCE, --source SOURCE
+                        Source, optional. If given, check if source matches
+                        backup in addition to checksum tests. URL-like format
+                        as in backup.
+  -p PERCENTILE, --percentile PERCENTILE
+                        Only check PERCENTILE percent of the blocks (value
+                        0..100). Default: 100
 </pre></div>
 </div>
 <p>Benji reads block-metadata (UID and checksum) from the metadata store, reads
@@ -311,7 +313,17 @@ storage.</p>
 </div>
 <div class="section" id="consistency-only">
 <h3>Consistency Only<a class="headerlink" href="#consistency-only" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji scrub &lt;version_uid&gt;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji scrub --help
+usage: benji scrub [-h] [-p PERCENTILE] version_uid
+
+positional arguments:
+  version_uid           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p PERCENTILE, --percentile PERCENTILE
+                        Only check PERCENTILE percent of the blocks (value
+                        0..100). Default: 100
 </pre></div>
 </div>
 <p>Benji only checks the metadata consistency between the metadata saved in the
@@ -333,6 +345,74 @@ for doing deep-scrubs but you can reduce their frequency.</p>
 <li>doesn’t check for any structure within blocks</li>
 <li>and doesn’t replay database journals or execute similar repair operations.</li>
 </ul>
+</div>
+<div class="section" id="bulk-scrubbing">
+<h2>Bulk scrubbing<a class="headerlink" href="#bulk-scrubbing" title="Permalink to this headline">¶</a></h2>
+<p>Benji also supports two commands to facilitate bulk scrubbing of versions:
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-scrub</span></code> and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-scrub --help
+usage: benji bulk-scrub [-h] [-p PERCENTILE] [-t TAG] [NAME [NAME ...]]
+
+positional arguments:
+  NAME                  Version names
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p PERCENTILE, --percentile PERCENTILE
+                        Only check PERCENTILE percent of the matching versions
+                        (value 0..100). Default: 100
+  -t TAG, --tag TAG     Scrub only versions matching this tag.
+</pre></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-deep-scrub --help
+usage: benji bulk-deep-scrub [-h] [-t TAG] [-p PERCENTILE] [NAME [NAME ...]]
+
+positional arguments:
+  NAME                  Version names
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TAG, --tag TAG     Scrub only versions matching this tag. Multiple use of
+                        this option constitutes an OR operation.
+  -p PERCENTILE, --percentile PERCENTILE
+                        Only check PERCENTILE percent of the matching versions
+                        (value 0..100). Default: 100
+</pre></div>
+</div>
+<p>Both can take a list of <em>version</em> names. All <em>versions</em> matching these
+names will be scrubbed. If you don’t specify any names all <em>versions</em>
+will be checked.</p>
+<p>If the <code class="docutils literal notranslate"><span class="pre">-t</span></code> or <code class="docutils literal notranslate"><span class="pre">--tag</span></code> is given too, the above  selection is limited
+to  <em>versions</em> also matching the given tag.  If  multiple <code class="docutils literal notranslate"><span class="pre">--tag</span></code> options
+are given, then they constitute an OR  operation.</p>
+<p>By default all matching <em>versions</em> will be scrubbed then. But you can also
+randomly select a certain sample of these <em>versions</em> with <code class="docutils literal notranslate"><span class="pre">--percentile</span></code>
+or <code class="docutils literal notranslate"><span class="pre">-p</span></code>. A <em>version’s</em> size isn’t taken into account when selecting the
+sample, every <em>version</em> is equally eligible.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code> doesn’t support the <code class="docutils literal notranslate"><span class="pre">--source</span></code> option like
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code> because multiple <em>versions</em> could be scrubbed with a
+single command.</p>
+<p>This is a good use cause for tags: You could mark your <em>versions</em> with a list of
+different tags denoting the importance of the backed up data. Then you could scrub
+each class of <em>versions</em> differently:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 14% of the versions are deep scrubbed for data of high importance</span>
+$ benji bulk-deep-scrub --tag high --percentile <span class="m">14</span>
+
+<span class="c1"># 7% of the versions are deep scrubbed for data of medium importance</span>
+$ benji bulk-deep-scrub --tag medium --percentile <span class="m">7</span>
+
+<span class="c1"># 3% of the versions are deep scrubbed for data of low importance</span>
+$ benji bulk-deep-scrub --tag low --percentile <span class="m">3</span>
+
+<span class="c1"># 3% of the versions are scrubbed when they contain reproducible bulk data</span>
+$ benji bulk-scrub --tag bulk --percentile <span class="m">3</span>
+</pre></div>
+</div>
+<p>If you’d call this schedule every day, you’d scrub the important data completely
+about every seven days (statistically), data of medium importance completely every
+fourteen days and low priority data completely every month. Bulk data would also
+be scrubbed completely every month, but only metadata consistency and block
+existence is checked.</p>
 </div>
 <div class="section" id="scrubbing-failures">
 <h2>Scrubbing Failures<a class="headerlink" href="#scrubbing-failures" title="Permalink to this headline">¶</a></h2>
