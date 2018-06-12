@@ -257,7 +257,7 @@
 <p>In this chapter you will learn all possibilities and options for backup.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
 usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD] [-f BASE_VERSION_UID]
-                    [-t [tag [tag ...]]] [-b BLOCK_SIZE]
+                    [-t tag] [-b BLOCK_SIZE]
                     source name
 
 positional arguments:
@@ -272,8 +272,7 @@ optional arguments:
   -r RBD, --rbd RBD     Hints as RBD JSON format
   -f BASE_VERSION_UID, --from-version BASE_VERSION_UID
                         Use this version as base
-  -t [tag [tag ...]], --tag [tag [tag ...]]
-                        Tag this verion with the specified tag(s)
+  -t tag, --tag tag     Tag this verion with the specified tag(s)
   -b BLOCK_SIZE, --block-size BLOCK_SIZE
                         Block size to use for this backup in bytes
 </pre></div>
@@ -340,8 +339,9 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
-                        Limit output to this snapshot name
-  -t TAG, --tag TAG     Limit output to this tag
+                        Limit output to this SNAPSHOT_NAME
+  -t TAG, --tag TAG     Limit output to this TAG. Multiple use constitutes an
+                        OR operation.
   --include-blocks      Include blocks in output
 </pre></div>
 </div>
@@ -590,10 +590,10 @@ save the metadata on the <em>data backend</em> automatically. Should you lose yo
 <em>metadata backend</em>, you can restore these metadata backups by using
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import-from-backend --help
-usage: benji import-from-backend [-h] version_uid [version_uid ...]
+usage: benji import-from-backend [-h] VERSION_UID [VERSION_UID ...]
 
 positional arguments:
-  version_uid  Version UID
+  VERSION_UID  Version UID
 
 optional arguments:
   -h, --help   show this help message and exit
@@ -610,10 +610,10 @@ if you have these features enabled.</p>
 <p>If you want to make your own copies of your metadata you can do so by using
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji export --help
-usage: benji export [-h] [-f] [-o OUTPUT_FILE] version_uid [version_uid ...]
+usage: benji export [-h] [-f] [-o OUTPUT_FILE] VERSION_UID [VERSION_UID ...]
 
 positional arguments:
-  version_uid           Version UID
+  VERSION_UID           Version UID
 
 optional arguments:
   -h, --help            show this help message and exit
