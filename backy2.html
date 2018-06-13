@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Containerised Benji &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>For Backy² Users &mdash; Benji Backup 0.1.0 documentation</title>
   
 
   
@@ -28,8 +28,8 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="For Backy² Users" href="backy2.html" />
-    <link rel="prev" title="Data Layout" href="datalayout.html" /> 
+    <link rel="next" title="Support" href="support.html" />
+    <link rel="prev" title="Containerised Benji" href="container.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -170,18 +170,18 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Containerised Benji</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#images">Images</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#benji-rook">benji-rook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">benji-rook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -234,13 +234,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Containerised Benji</li>
+      <li>For Backy² Users</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/container.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/backy2.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -253,89 +253,51 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="containerised-benji">
-<h1>Containerised Benji<a class="headerlink" href="#containerised-benji" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="images">
-<h2>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="benji-rook">
-<h3>benji-rook<a class="headerlink" href="#benji-rook" title="Permalink to this headline">¶</a></h3>
-<p>This image is based on the <a class="reference external" href="https://rook.io/docs/rook/master/toolbox.html">Rook Toolbox</a>
-image and additionally includes Benji of course and all of its dependencies.
-<code class="docutils literal notranslate"><span class="pre">/usr/local/bin/toolbox.sh</span></code> is still run in the background to update and
-create <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code> so that a direct access to the Ceph RBD images
-is possible. It also includes <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> which is used to find RBD volumes
-to include in the backup from PersistentVolumeClaim resources.</p>
-<p>A container from this image can be parametrised with three enviroment variables:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="19%" />
-<col width="33%" />
-<col width="48%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Name</th>
-<th class="head">Default</th>
-<th class="head">Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>BACKUP_SCHEDULE</td>
-<td>0 33 0 * * *</td>
-<td>Backup interval as a Go cron expression</td>
-</tr>
-<tr class="row-odd"><td>BACKUP_RETENTION</td>
-<td>latest3,hours24,days30,months3</td>
-<td>Retention policy like with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code></td>
-</tr>
-<tr class="row-even"><td>BACKUP_SELECTOR</td>
-<td>nomatch==matchnot</td>
-<td>Kubernetes label selector applied to PVCs</td>
-</tr>
-</tbody>
-</table>
-<p>The BACKUP_SCHEDULE determines how often the actual backup scripts is called.
-This is a <a class="reference external" href="https://godoc.org/github.com/robfig/cron">Go cron expression</a>.</p>
-<p>The backup scripts first  searches for PersistemtVolumeClaims matching the
-BACKUP_SELECTOR. By default there should be no matching PVCs, so you must
-specify a different BACKUP_SELECTOR to get any backups. You can either use
-an existing label or you can augment your PVCs with a new one. If you
-specify an empty string as the BACKUP_SELECTOR all PVCs will be backed up.</p>
-<div class="admonition tip">
-<p class="first admonition-title">Tip</p>
-<p class="last">See <a class="reference external" href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors</a>
-for possible ways to construct your selector.</p>
-</div>
-<p>After each volume backup <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> is called for the volume with
-the retention policy specified in BACKUP_RETENTION. Currently the same
-retention policy is applied to all PVCs. BACKUP_RETENTION and BACKUP_SCHEDULE
-have to be considered together.</p>
-<p>The last step is to call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> to remove blocks on the
-data backend and free the space of deleted <em>versions</em>.</p>
-<p>The backup script uses Ceph’s and Benji’s differential backup features if
-possible. Normally only the initial backup is a full backup. RBD snapshots
-are generated with a prefix of <em>b-</em>.</p>
-</div>
-</div>
-<div class="section" id="helm-charts">
-<h2>Helm Charts<a class="headerlink" href="#helm-charts" title="Permalink to this headline">¶</a></h2>
-<p>Helm charts are the preferred way to deploy Benji’s Docker images.</p>
-<div class="section" id="id1">
-<h3>benji-rook<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
-<p>Benji includes a Helm chart to use the Docker image of the same name. It consists
-of a Deployment and supporting resources and assumes that you have RBAC in place.
-The deployment is composed a two containers: One running the benji-docker image
-and another one running a <a class="reference external" href="https://prometheus.io/">Prometheus</a>
-<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a> where the first container
-pushes its metrics. These can be scraped by a Prometheus server and the Pod generated
-by the Deployment has annotations so that it can be detected automatically.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The deployed resources create a service account which has the right to <em>get</em>,
-<em>list</em> and <em>watch</em> all PersistentVolume and PersistentVolumeClaim resources in all
-namespaces.</p>
-</div>
-</div>
-</div>
+  <div class="section" id="for-backy2-users">
+<span id="backy2"></span><h1>For Backy² Users<a class="headerlink" href="#for-backy2-users" title="Permalink to this headline">¶</a></h1>
+<p>There is no direct migration path from Backy² to Benji. If you
+want to migrate to Benji you’d have to start with a new installation.</p>
+<p>The concepts and most of the command names and options stayed the same
+so Benji should feel familiar to Backy² users. If you currently have
+any scripts deployed together with Backy² they should require only
+few changes to work with Benji. But if your scripts check for specific
+exit codes from Backy² you’d have to adapt those because the have
+all changed with Benji. Also if you used Backy²’s machine readable
+output, there’d be changes required as Benji uses JSON instead of CSV.</p>
+<p>Here’s a list of the new features that differentiate Benji
+from Backy²:</p>
+<ul class="simple">
+<li>Encryption support (AES-256, GCM mode)</li>
+<li>Compression support (zstandard)</li>
+<li>Automatic metadata export to data backend for backup purposes</li>
+<li>Support for Backblaze’s B2 Cloud Storage as a <em>data backend</em></li>
+<li>Variable block size for efficient support of LVM and Ceph in
+one installation of Benji</li>
+<li>More compact metadata storage, the metadata backend now uses
+significantly less disk space</li>
+<li>Database based locking to make it possible to have multiple instances
+on different hosts or in different containers</li>
+<li>New scrubbing mode based on metadata, object existence and length</li>
+<li>Randomly sampled bulk scrubbing of <em>versions</em></li>
+<li>Simple yet flexible retention policy enforcement</li>
+<li>Migration from boto to boto3 with better compatibility for other
+S3 implementations (Google Storage for example)</li>
+<li>Rook integration via Kubernetes deployment based on a Helm chart</li>
+<li>blake2b with 32 byte digest as default hash function</li>
+<li>Optional read caching of blocks</li>
+<li>Configuration file format changed to YAML</li>
+<li>Machine output is JSON instead of CSV</li>
+<li>Import/export format is JSON instead of CSV</li>
+</ul>
+<p>There also have been quite a few changes under the hood:</p>
+<ul class="simple">
+<li>Migration from classic threads and queues to concurrent.futures</li>
+<li>Use Ceph provided Python bindings</li>
+<li>Some refactoring and rewriting to share more code</li>
+<li>Update to database transaction handling</li>
+<li>Update to exit code handling, exit codes have changed</li>
+<li>SQLAlchemy based <em>metadata backend</em> is the only supported backend now</li>
+</ul>
 </div>
 
 
@@ -346,10 +308,10 @@ namespaces.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="backy2.html" class="btn btn-neutral float-right" title="For Backy² Users" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="support.html" class="btn btn-neutral float-right" title="Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="datalayout.html" class="btn btn-neutral" title="Data Layout" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="container.html" class="btn btn-neutral" title="Containerised Benji" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

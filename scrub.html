@@ -122,7 +122,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scrubbing-failures">Scrubbing Failures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
@@ -182,6 +181,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -273,11 +273,20 @@ could potentially create invalid restore data in multiple places.</p>
 </div>
 <div class="section" id="scrubbing-methods">
 <h2>Scrubbing Methods<a class="headerlink" href="#scrubbing-methods" title="Permalink to this headline">¶</a></h2>
-<p>Benji implements three different scrubbing methods:</p>
+<p>Benji implements three different scrubbing methods. Each of these methods
+accepts the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> (short form <code class="docutils literal notranslate"><span class="pre">-p</span></code>) option. With it you
+can limit the scrubbing to a randomly selected percentage of the blocks.</p>
+<div class="admonition attention">
+<p class="first admonition-title">Attention</p>
+<p class="last">When using the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> option with a value of
+less than 100 percent with any of the deep scrubbing commands, an invalid
+<em>version</em> won’t be marked as valid again, when it has been marked as
+invalid in the past. Only a full successful deep-scrub will do that.</p>
+</div>
 <div class="section" id="consistency-and-checksum">
 <h3>Consistency and Checksum<a class="headerlink" href="#consistency-and-checksum" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub --help
-usage: benji deep-scrub [-h] [-s SOURCE] [-p PERCENTILE] version_uid
+usage: benji deep-scrub [-h] [-s SOURCE] [-p BLOCK_PERCENTAGE] version_uid
 
 positional arguments:
   version_uid           Version UID
@@ -288,9 +297,9 @@ optional arguments:
                         Source, optional. If given, check if source matches
                         backup in addition to checksum tests. URL-like format
                         as in backup.
-  -p PERCENTILE, --percentile PERCENTILE
-                        Only check PERCENTILE percent of the blocks (value
-                        0..100). Default: 100
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Only check BLOCK-PERCENTAGE percent of the blocks
+                        (value 1..100). Default: 100
 </pre></div>
 </div>
 <p>Benji reads block-metadata (UID and checksum) from the metadata store, reads
@@ -299,7 +308,7 @@ compares the checksums.</p>
 </div>
 <div class="section" id="using-the-backup-source">
 <h3>Using the Backup Source<a class="headerlink" href="#using-the-backup-source" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji deep-scrub -s &lt;snapshot&gt; &lt;version_uid&gt;
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji deep-scrub --source &lt;snapshot&gt; &lt;version_uid&gt;
 </pre></div>
 </div>
 <p>Benji also reads the backup source for this version. This means that
@@ -314,16 +323,16 @@ storage.</p>
 <div class="section" id="consistency-only">
 <h3>Consistency Only<a class="headerlink" href="#consistency-only" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji scrub --help
-usage: benji scrub [-h] [-p PERCENTILE] version_uid
+usage: benji scrub [-h] [-p BLOCK_PERCENTAGE] version_uid
 
 positional arguments:
   version_uid           Version UID
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PERCENTILE, --percentile PERCENTILE
-                        Only check PERCENTILE percent of the blocks (value
-                        0..100). Default: 100
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Only check BLOCK-PERCENTAGE percent of the blocks
+                        (value 1..100). Default: 100
 </pre></div>
 </div>
 <p>Benji only checks the metadata consistency between the metadata saved in the
@@ -351,61 +360,72 @@ for doing deep-scrubs but you can reduce their frequency.</p>
 <p>Benji also supports two commands to facilitate bulk scrubbing of versions:
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-scrub</span></code> and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-scrub --help
-usage: benji bulk-scrub [-h] [-p PERCENTILE] [-t TAG] [NAME [NAME ...]]
+usage: benji bulk-scrub [-h] [-p BLOCK_PERCENTAGE] [-P VERSION_PERCENTAGE]
+                        [-t TAG]
+                        [NAME [NAME ...]]
 
 positional arguments:
   NAME                  Version names
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PERCENTILE, --percentile PERCENTILE
-                        Only check PERCENTILE percent of the matching versions
-                        (value 0..100). Default: 100
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Only check BLOCK-PERCENTAGE percent of the blocks
+                        (value 1..100). Default: 100
+  -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
+                        Only check VERSION-PERCENTAGE of matching
+                        versions(value 1..100). Default: 100
   -t TAG, --tag TAG     Scrub only versions matching this tag.
 </pre></div>
 </div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-deep-scrub --help
-usage: benji bulk-deep-scrub [-h] [-t TAG] [-p PERCENTILE] [NAME [NAME ...]]
+usage: benji bulk-deep-scrub [-h] [-p BLOCK_PERCENTAGE]
+                             [-P VERSION_PERCENTAGE] [-t TAG]
+                             [NAME [NAME ...]]
 
 positional arguments:
   NAME                  Version names
 
 optional arguments:
   -h, --help            show this help message and exit
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Only check BLOCK-PERCENTAGE percent of the blocks
+                        (value 1..100). Default: 100
+  -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
+                        Only check VERSION-PERCENTAGE of matching
+                        versions(value 1..100). Default: 100
   -t TAG, --tag TAG     Scrub only versions matching this tag. Multiple use of
                         this option constitutes an OR operation.
-  -p PERCENTILE, --percentile PERCENTILE
-                        Only check PERCENTILE percent of the matching versions
-                        (value 0..100). Default: 100
 </pre></div>
 </div>
 <p>Both can take a list of <em>version</em> names. All <em>versions</em> matching these
 names will be scrubbed. If you don’t specify any names all <em>versions</em>
 will be checked.</p>
-<p>If the <code class="docutils literal notranslate"><span class="pre">-t</span></code> or <code class="docutils literal notranslate"><span class="pre">--tag</span></code> is given too, the above  selection is limited
-to  <em>versions</em> also matching the given tag.  If  multiple <code class="docutils literal notranslate"><span class="pre">--tag</span></code> options
-are given, then they constitute an OR  operation.</p>
-<p>By default all matching <em>versions</em> will be scrubbed then. But you can also
-randomly select a certain sample of these <em>versions</em> with <code class="docutils literal notranslate"><span class="pre">--percentile</span></code>
-or <code class="docutils literal notranslate"><span class="pre">-p</span></code>. A <em>version’s</em> size isn’t taken into account when selecting the
+<p>If the <code class="docutils literal notranslate"><span class="pre">--tag</span></code> (short form <code class="docutils literal notranslate"><span class="pre">-t</span></code>) is given too, the above  selection is
+limited to  <em>versions</em> also matching the given tag.  If  multiple <code class="docutils literal notranslate"><span class="pre">--tag</span></code>
+options are given, then they constitute an OR  operation.</p>
+<p>By default all matching <em>versions</em> will be scrubbed. But you can also
+randomly select a certain sample of these <em>versions</em> with <code class="docutils literal notranslate"><span class="pre">--version-percentage</span></code>
+(short form``-P``). A <em>version’s</em> size isn’t taken into account when selecting the
 sample, every <em>version</em> is equally eligible.</p>
+<p>The bulk scrubbing commands also accepts the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> (short
+form <code class="docutils literal notranslate"><span class="pre">-p</span></code>) option.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code> doesn’t support the <code class="docutils literal notranslate"><span class="pre">--source</span></code> option like
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code> because multiple <em>versions</em> could be scrubbed with a
-single command.</p>
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code>.</p>
 <p>This is a good use cause for tags: You could mark your <em>versions</em> with a list of
 different tags denoting the importance of the backed up data. Then you could scrub
 each class of <em>versions</em> differently:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 14% of the versions are deep scrubbed for data of high importance</span>
-$ benji bulk-deep-scrub --tag high --percentile <span class="m">14</span>
+$ benji bulk-deep-scrub --tag high --version-percentage <span class="m">14</span>
 
 <span class="c1"># 7% of the versions are deep scrubbed for data of medium importance</span>
-$ benji bulk-deep-scrub --tag medium --percentile <span class="m">7</span>
+$ benji bulk-deep-scrub --tag medium --version-percentage <span class="m">7</span>
 
 <span class="c1"># 3% of the versions are deep scrubbed for data of low importance</span>
-$ benji bulk-deep-scrub --tag low --percentile <span class="m">3</span>
+$ benji bulk-deep-scrub --tag low --version-percentage <span class="m">3</span>
 
 <span class="c1"># 3% of the versions are scrubbed when they contain reproducible bulk data</span>
-$ benji bulk-scrub --tag bulk --percentile <span class="m">3</span>
+$ benji bulk-scrub --tag bulk --version-percentage <span class="m">3</span>
 </pre></div>
 </div>
 <p>If you’d call this schedule every day, you’d scrub the important data completely
@@ -441,19 +461,6 @@ is invalid data restored.</p>
 deduplication and one block can belong to multiple versions, even to
 different images.</p>
 </div>
-</div>
-<div class="section" id="partial-scrubbing">
-<h2>Partial Scrubbing<a class="headerlink" href="#partial-scrubbing" title="Permalink to this headline">¶</a></h2>
-<p>If scrubbing all your backups creates too much load or takes too long, you can
-use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> parameter. With this parameter, Benji performs a
-<em>partial scrub</em>. It will statistically (i.e. by random) choose the given
-percentage of existing blocks in the version and scrub only these.</p>
-<p>So if you call:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji deep-scrub -p <span class="m">15</span> &lt;version_uid&gt;
-</pre></div>
-</div>
-<p>each day for each version, you’ll have statistically scrubbed 105% of all blocks
-after seven days.</p>
 </div>
 </div>
 

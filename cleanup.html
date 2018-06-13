@@ -122,7 +122,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
@@ -182,6 +181,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -293,7 +293,7 @@ than this value, Benji exists with an error:</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
 <em>metadata backend</em>. It also adds the removed block entries into a deletion
 candidate list. By default it also removes the backup of the metadata on
-the data backend. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
+the <em>data backend</em>. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
 or <code class="docutils literal notranslate"><span class="pre">--keep-backend-metadata</span></code> option.</p>
 <p>In order to really delete blocks from the <em>data backend</em>, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
 <span class="pre">cleanup</span></code>.</p>

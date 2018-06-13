@@ -122,7 +122,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
@@ -182,6 +181,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -353,17 +353,17 @@ optional arguments:
 <p>Benji only backups changed blocks. It can do this in two different ways:</p>
 <ol class="arabic simple">
 <li><strong>It can read the whole image</strong>: Checksum each block and look the checksum up
-in the metadata backend. If it is found, only a reference to the existing
-block will be stored, thus there’s no write action on the data backend.</li>
+in the <em>metadata backend</em>. If it is found, only a reference to the existing
+block will be stored, thus there’s no write action on the <em>data backend</em>.</li>
 <li><strong>It can receive a hints file</strong>: The hints file is a JSON formatted list of
 (offset, size) tuples (see <a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a> for an example) which indicate
 the status (used or changed) of each region of the image.
 Fortunately the format matches exactly the output of
 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>.  In this case it will only read blocks hinted
 at by the <em>hints file</em>, checksum each block and look the checksum up in the
-metadata backend. If it is found (which may rarely happen for file copies
+<em>metadata backend</em>. If it is found (which may rarely happen for file copies
 or when blocks are all zeros), only a reference to the existing block will
-be stored. Otherwise the block is written to the data backend.
+be stored. Otherwise the block is written to the <em>data backend</em>.
 The hints file is passed via the  <code class="docutils literal notranslate"><span class="pre">-r</span></code> or <code class="docutils literal notranslate"><span class="pre">--rbd</span></code> option to
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>.</li>
 </ol>

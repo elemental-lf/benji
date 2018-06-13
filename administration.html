@@ -122,7 +122,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
@@ -182,6 +181,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -268,14 +268,14 @@ disasters happen.</p>
 <h3>Metadata Redundancy<a class="headerlink" href="#metadata-redundancy" title="Permalink to this headline">¶</a></h3>
 <p>Benji already exports the version metadata to the <em>data backend</em>, too. You
 can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>:</p>
-<p>The metadata-backend-less uses this import from the data backend to
+<p>The metadata-backend-less uses this import from the <em>data backend</em> to
 populate an in-memory database to enable restores when the metadata
 backend is unavailable, please see section <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</p>
 <p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>
 and store them somewhere safe to increase your redundancy even more. It is
 advisable to compress them as the JSON export format is quite redundant.</p>
 <p>You can import these exports again with:</p>
-<p>If the imported <em>version</em> already exists in the metadata backend Benji
+<p>If the imported <em>version</em> already exists in the <em>metadata backend</em> Benji
 terminates with an error and doesn’t proceed with the import.</p>
 <p>So now, even if your backup database server crashes, you’ll still be able
 to reimport all existing versions again!</p>
@@ -371,8 +371,8 @@ optional arguments:
 </div>
 <div class="section" id="machine-output">
 <span id="id2"></span><h3>Machine output<a class="headerlink" href="#machine-output" title="Permalink to this headline">¶</a></h3>
-<p>Some commands (like <code class="docutils literal notranslate"><span class="pre">ls</span></code>, <code class="docutils literal notranslate"><span class="pre">stats</span></code>, <code class="docutils literal notranslate"><span class="pre">backup</span></code> and <code class="docutils literal notranslate"><span class="pre">enforce</span></code>) can also produce
-machine readable JSON output for usage in scripts:</p>
+<p>Some commands can also produce machine readable JSON output for usage in
+scripts:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji -m ls
 {
   &quot;metadataVersion&quot;: &quot;1.0.0&quot;,
@@ -396,18 +396,63 @@ machine readable JSON output for usage in scripts:</p>
 <p class="first admonition-title">Note</p>
 <p class="last">Take care to put the <code class="docutils literal notranslate"><span class="pre">-m</span></code> between <code class="docutils literal notranslate"><span class="pre">benji</span></code> and <code class="docutils literal notranslate"><span class="pre">ls</span></code>.</p>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">jq</span></code> is an excellent tool for parsing this data and filtering out the bits you
-want. Here’s a short example, but see the <code class="docutils literal notranslate"><span class="pre">scripts/</span></code> and <code class="docutils literal notranslate"><span class="pre">images/benji-rook/scripts</span></code>
-directories for more ones:</p>
+<p>All messages emitted by Benji are written to STDERR. In contrast
+the machine readable output is written to STDOUT. Also, when using <code class="docutils literal notranslate"><span class="pre">-m</span></code> the
+logging level is adjusted to only output errors. The Benji logfile still gets
+the whole output.</p>
+<p>Here’s a table of commands supporting machine readable output and their
+output:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="78%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Command</th>
+<th class="head">Description of output</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>ls</td>
+<td>List of matching <em>versions</em></td>
+</tr>
+<tr class="row-odd"><td>stats</td>
+<td>List of matching statistics</td>
+</tr>
+<tr class="row-even"><td>backup</td>
+<td>List of newly create <em>version</em></td>
+</tr>
+<tr class="row-odd"><td>enforce</td>
+<td>List of removed <em>versions</em></td>
+</tr>
+<tr class="row-even"><td>scrub</td>
+<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+</tr>
+<tr class="row-odd"><td>deep-scrub</td>
+<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+</tr>
+<tr class="row-even"><td>bulk-scrub</td>
+<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+</tr>
+<tr class="row-odd"><td>bulk-deep-scrub</td>
+<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+</tr>
+</tbody>
+</table>
+<p>All other commands also accept the <code class="docutils literal notranslate"><span class="pre">-m</span></code> switch. But for them only the logging
+level is turned down.</p>
+<p><a class="reference external" href="https://stedolan.github.io/jq/">jq</a> is an excellent tool for parsing this data
+and filtering out the bits you want. Here’s a short example, but see the <code class="docutils literal notranslate"><span class="pre">scripts/</span></code>
+and <code class="docutils literal notranslate"><span class="pre">images/benji-rook/scripts/</span></code> directories for more:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji -m ls | jq -r &#39;.versions[0].date&#39;
 2018-06-07T12:51:19
 </pre></div>
 </div>
 <p>With machine readable output you can use the option <code class="docutils literal notranslate"><span class="pre">--include-blocks</span></code>
-to <code class="docutils literal notranslate"><span class="pre">ls</span></code> which also includes all blocks of this version in the output.</p>
-<p>Version UIDs will be represented as simple integers without V prefix
+to <code class="docutils literal notranslate"><span class="pre">ls</span></code> which includes all blocks of this version in the output.</p>
+<p>Version UIDs will be represented as simple integers without the V prefix
 and being zero-filled. All Benji commands are able to take this
-representation as well, so you can use it in further commands as-is.</p>
+representation as well, so you can use such UIDs in further commands as-is.</p>
 <p>All timestamps are in UTC and without timezone information.</p>
 </div>
 <div class="section" id="debugging">

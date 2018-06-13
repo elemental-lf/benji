@@ -122,7 +122,6 @@
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#partial-scrubbing">Partial Scrubbing</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Restore</a><ul>
@@ -182,6 +181,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -327,8 +327,8 @@ in there before the restore will remain.</p>
 <div class="section" id="with-unavailable-metadata-backend">
 <span id="metadata-backend-less"></span><h3>With Unavailable Metadata Backend<a class="headerlink" href="#with-unavailable-metadata-backend" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode (<code class="docutils literal notranslate"><span class="pre">-M</span></code> or <code class="docutils literal notranslate"><span class="pre">--metadata-backend-less</span></code>)
-where it doesn’t require its metadata backend to be up und running. In this mode
-Benji will import the backup of the <em>version’s</em> metadata from the data backend
+where it doesn’t require its <em>metadata backend</em> to be up und running. In this mode
+Benji will import the backup of the <em>version’s</em> metadata from the <em>data backend</em>
 into an ad-hoc in-memory database and then restore the image normally. This is
 for failure scenarios where the database is unavailable and you still need to
 restore a <em>version</em>. But because of the database unavailability you can’t just
@@ -488,7 +488,7 @@ independently of each other.</p>
 <div class="section" id="restore-of-invalid-versions">
 <h2>Restore of Invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
 <p>During a restore Benji will compare each restored block’s checksum to the
-stored checksum in the metadata backend <strong>no matter if the block has been
+stored checksum in the <em>metadata backend</em> <strong>no matter if the block has been
 marked as invalid previously</strong>. If it encounters a difference, the block
 and all versions containing this block will be marked as invalid and a
 warning will be given:</p>
