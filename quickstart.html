@@ -329,6 +329,22 @@ data. Instead it will fail because it finds already existing tables.</p>
 </div>
 </li>
 </ol>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> supports various options to filter the output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji ls --help
+usage: benji ls [-h] [-s SNAPSHOT_NAME] [-t TAG] [--include-blocks] [name]
+
+positional arguments:
+  name                  Show versions for this name only
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
+                        Limit output to this SNAPSHOT_NAME
+  -t TAG, --tag TAG     Limit output to this TAG. Multiple use constitutes an
+                        OR operation.
+  --include-blocks      Include blocks in output
+</pre></div>
+</div>
 <p>Some commands can also produce machine readable JSON output for usage in scripts:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m ls
 <span class="o">{</span>
@@ -398,11 +414,10 @@ signaled by EX_IOERR which is 74 on Linux.</p>
 <p>Also, the version is marked invalid as you can see here:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
     INFO: $ benji ls
-+---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
-<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name              <span class="p">|</span> snapshot_name <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
-+---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
-<span class="p">|</span> <span class="m">2018</span>-06-06T21:41:41 <span class="p">|</span> V0000000001 <span class="p">|</span> myfirsttestbackup <span class="p">|</span>               <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span> False <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
-+---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
++---------------------+-------------+---------------+---------------+---------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name          <span class="p">|</span> snapshot_name <span class="p">|</span>    size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+---------------+---------------+---------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-13T15:23:00 <span class="p">|</span> V0000000001 <span class="p">|</span> myfirstbackup <span class="p">|</span>               <span class="p">|</span> <span class="m">40</span>.0MiB <span class="p">|</span>     <span class="m">4</span>.0MiB <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
 </pre></div>
 </div>
 <p>Just in case you are able to fix the error, just scrub again and Benji will mark the version as valid again.</p>

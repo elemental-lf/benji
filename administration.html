@@ -282,7 +282,7 @@ to reimport all existing versions again!</p>
 <div class="admonition attention">
 <p class="first admonition-title">Attention</p>
 <p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) versions from the database and
-then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>, the blocks containing the backed up <em>data</em> will
+then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>, the blocks containing the backed up data will
 be removed. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import</span></code> can bring them back, because Benji’s export
 format <em>only</em> contains metadata information.</p>
 </div>
@@ -296,45 +296,43 @@ backup in place.</p>
 <p class="first admonition-title">Caution</p>
 <p class="last">DBMS replication only helps when one server crashes or has a
 failure. It does not help against software-bug related data loss, human
-error and more. So <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code> is the only reliable option for long-term
-data-safety.</p>
+error and more. So the automatic metadata export and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code> are
+the only reliable options for long-term data safety.</p>
 </div>
 </div>
 </div>
 <div class="section" id="secure-your-block-data">
 <h2>Secure your block data<a class="headerlink" href="#secure-your-block-data" title="Permalink to this headline">¶</a></h2>
 <p>Your <em>data backend</em> should be redundant in some way, too. Most cloud
-providers have an SLA which guarantees a certain level of redundancy
-and high-availability. If you manage your <em>data backend</em> yourself, then
-you should look into redundancy technologies like:</p>
+providers have an SLA which guarantees a certain level of availability.
+If you manage your <em>data backend</em> yourself, then you should look into
+redundancy and high-availability technologies like:</p>
 <ul class="simple">
 <li>RAID 1, 5 and 6</li>
 <li>Redundancy provided by a distributed objected store like Ceph or Minio</li>
 <li>DRBD</li>
-<li><dl class="first docutils">
-<dt>Filesystem specific data redundancy and replication mechanisms in filesystem</dt>
-<dd>like Btrs or ZFS</dd>
-</dl>
-</li>
+<li>Filesystem specific data redundancy and replication mechanisms in filesystems
+like Btrs or ZFS</li>
 </ul>
 <p>If your <em>data backend</em> fails or has corruptions, at best corrupted restores will
-be possible. Benji does not store any redundant data and it cannot  restore
+be possible. Benji doesn’t store any redundant data and it cannot  restore
 data from stored checksums alone.</p>
 </div>
 <div class="section" id="monitoring">
 <h2>Monitoring<a class="headerlink" href="#monitoring" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="tips-tricks">
 <h3>Tips &amp; tricks<a class="headerlink" href="#tips-tricks" title="Permalink to this headline">¶</a></h3>
-<p>You should monitor exit codes of Benji closely. Anything != 0 means: There was
-a problem.</p>
+<p>You should monitor exit codes of Benji closely. Anything != 0 means that there
+was a problem.</p>
 <p>Benji writes all output including possible tracebacks and command lines to
 the configured logfile (see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a>).
 If anything goes wrong, you’ll be able to visit this logfile and get
-enough information to troubleshoot the problem, even if this Benji call
-came from an automated script.</p>
+enough information to troubleshoot the problem, even if Benji was called
+from an automated script.</p>
 <p>You should also monitor the success of the backups. In addition to checking the
 exit code, you can do this with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> and see if the column <code class="docutils literal notranslate"><span class="pre">valid</span></code>
-is True. This will be True as soon as the backup has finished successfully.</p>
+is True. For a currently running backup this column is False but it will change
+to True on successful completion of the backup.</p>
 <p>You can also monitor the progress of the backups either by looking at the
 logfile or by checking your process-tree:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ps axfu|grep &quot;[b]acky2&quot;
@@ -358,14 +356,14 @@ optional arguments:
 <p>Example:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji stats
     INFO: $ benji stats
-+---------------------+-------------+------+---------------+----------+------------+------------+-------------+---------------+----------------+-------------+--------------+--------------+---------------+--------------+
-|         date        |     uid     | name | snapshot_name |   size   | block_size | bytes read | blocks read | bytes written | blocks written | bytes dedup | blocks dedup | bytes sparse | blocks sparse | duration (s) |
-+---------------------+-------------+------+---------------+----------+------------+------------+-------------+---------------+----------------+-------------+--------------+--------------+---------------+--------------+
-| 2018-06-07T12:51:20 | V0000000001 | test |               | 41943040 |  4194304   |   41943040 |          10 |      41943040 |             10 |           0 |            0 |            0 |             0 |           0s |
-| 2018-06-08T12:26:53 | V0000000002 | test |               | 41943040 |  4194304   |   41943040 |          10 |      41943040 |             10 |           0 |            0 |            0 |             0 |           0s |
-| 2018-06-08T12:26:56 | V0000000003 | test |               | 41943040 |  4194304   |   41943040 |          10 |             0 |              0 |    41943040 |           10 |            0 |             0 |           0s |
-| 2018-06-08T12:26:58 | V0000000004 | test |               | 41943040 |  4194304   |   41943040 |          10 |             0 |              0 |    41943040 |           10 |            0 |             0 |           0s |
-+---------------------+-------------+------+---------------+----------+------------+------------+-------------+---------------+----------------+-------------+--------------+--------------+---------------+--------------+
++---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
+|         date        | uid         | name | snapshot_name |   size  | block_size |    read | written |   dedup | sparse | duration (s) |
++---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
+| 2018-06-13T15:21:55 | V0000000001 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB | 40.0MiB |    0.0B |   0.0B |          00s |
+| 2018-06-13T15:21:57 | V0000000002 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
+| 2018-06-13T15:21:58 | V0000000003 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
+| 2018-06-13T15:21:59 | V0000000004 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
++---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
 </pre></div>
 </div>
 </div>
