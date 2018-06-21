@@ -81,7 +81,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#common-to-all-distributions">Common to All Distributions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#customise-your-configuration">Customise Your Configuration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
@@ -172,6 +171,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
 </ul>
 </li>
@@ -256,7 +256,10 @@
   <div class="section" id="installation">
 <span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p>Currently there are no pre-built packages but you can easily install Benji
-with <code class="docutils literal notranslate"><span class="pre">pip</span></code>.</p>
+with <code class="docutils literal notranslate"><span class="pre">pip</span></code>. Furthermore there are two Docker images which each contain
+a complete Benji installation. The <code class="docutils literal notranslate"><span class="pre">benji</span></code> image is the easiest and fastest
+way to test Benji but can also be used in production. See section <a class="reference internal" href="container.html#container"><span class="std std-ref">Containerised Benji</span></a>
+for more information about the images.</p>
 <div class="section" id="ubuntu-16-04">
 <h2>Ubuntu 16.04<a class="headerlink" href="#ubuntu-16-04" title="Permalink to this headline">¶</a></h2>
 <p>This version of Ubuntu doesn’t have a current Python installation. But Python 3
@@ -324,32 +327,6 @@ want to install additional dependencies:</p>
 <li><code class="docutils literal notranslate"><span class="pre">diskcache</span></code>: Disk caching support</li>
 <li><code class="docutils literal notranslate"><span class="pre">zstandard</span></code>: Compression support</li>
 </ul>
-</div>
-<div class="section" id="customise-your-configuration">
-<h2>Customise Your Configuration<a class="headerlink" href="#customise-your-configuration" title="Permalink to this headline">¶</a></h2>
-<p>This represents a minimal configuration mit SQLite3 backend and file-based block storage:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1.0.0&#39;</span>
-processName: benji
-logFile: /var/log/benji.log
-hashFunction: blake2b,digest_size<span class="o">=</span><span class="m">32</span>
-blockSize: <span class="m">4194304</span>
-io:
-  file:
-    simultaneousReads: <span class="m">2</span>
-dataBackend:
-  type: file
-  file:
-    path: /var/lib/benji
-metadataBackend:
-  engine: sqlite:///var/lib/benji/benji.sqlite
-</pre></div>
-</div>
-<p>You might need to change the above paths. Benji will run as a normal user
-without problems, but it will probably need root privileges to access most
-backup sources.</p>
-<p>The configuration above is suited to jump right into the section
-<a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a> and try out everything.</p>
-<p>Please see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for a full list of configuration options.</p>
 </div>
 </div>
 

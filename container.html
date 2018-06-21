@@ -81,7 +81,6 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#customise-your-configuration">Customise Your Configuration</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
@@ -172,6 +171,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#images">Images</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#benji-rook">benji-rook</a></li>
 </ul>
 </li>
@@ -254,9 +254,33 @@
            <div itemprop="articleBody">
             
   <div class="section" id="containerised-benji">
-<h1>Containerised Benji<a class="headerlink" href="#containerised-benji" title="Permalink to this headline">¶</a></h1>
+<span id="container"></span><h1>Containerised Benji<a class="headerlink" href="#containerised-benji" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="images">
 <h2>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="benji">
+<h3>benji<a class="headerlink" href="#benji" title="Permalink to this headline">¶</a></h3>
+<p>This image is based on the Debian 9 (Slim Stretch) variant of
+<a class="reference external" href="https://hub.docker.com/_/python/">library/python</a>. It includes
+Benji and its dependencies. Ceph support as well kubectl for Kubernetes
+integration are also present.</p>
+<p>The Benji configuration should be put into <code class="docutils literal notranslate"><span class="pre">/etc/benji/benji.yaml</span></code>.
+Either by inheriting from this image and overwriting it or by mounting
+it directly into the container. By default a minimal test configuration
+is provided by the image.</p>
+<p>The default Docker entry point is just <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>.</p>
+<p>The first use case for this image is to simply test Benji:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker run --interactive --tty --rm elementalnet/benji
+</pre></div>
+</div>
+<p>After that you can directly proceed with step 1 of the instructions
+in section <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a>.</p>
+<p>The second use case would be to get some real work done without
+directly installing Benji on the host. A series of scripts to
+facilitate the calling of Benji are provided under <code class="docutils literal notranslate"><span class="pre">/scripts</span></code>
+inside of the container. They can also be found in the <code class="docutils literal notranslate"><span class="pre">scripts</span></code>
+directory of the source distribution. For an example of how to
+use these scripts please see <code class="docutils literal notranslate"><span class="pre">images/benji-rook/scripts/backup.sh</span></code>.</p>
+</div>
 <div class="section" id="benji-rook">
 <h3>benji-rook<a class="headerlink" href="#benji-rook" title="Permalink to this headline">¶</a></h3>
 <p>This image is based on the <a class="reference external" href="https://rook.io/docs/rook/master/toolbox.html">Rook Toolbox</a>
@@ -268,9 +292,9 @@ to include in the backup from PersistentVolumeClaim resources.</p>
 <p>A container from this image can be parametrised with three enviroment variables:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="19%" />
-<col width="33%" />
-<col width="48%" />
+<col width="32%" />
+<col width="28%" />
+<col width="40%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Name</th>
@@ -291,10 +315,39 @@ to include in the backup from PersistentVolumeClaim resources.</p>
 <td>nomatch==matchnot</td>
 <td>Kubernetes label selector applied to PVCs</td>
 </tr>
+<tr class="row-odd"><td>DEEP_SCRUBBING_ENABLED</td>
+<td>1</td>
+<td>Enable bulk deep scrubbing</td>
+</tr>
+<tr class="row-even"><td>DEEP_SCRUBBING_VERSIONS_PERCENTAGE</td>
+<td>6</td>
+<td>Percentage of versions to check</td>
+</tr>
+<tr class="row-odd"><td>DEEP_SCRUBBING_BLOCKS_PERCENTAGE</td>
+<td>50</td>
+<td>Percentage of blocks to check</td>
+</tr>
+<tr class="row-even"><td>SCRUBBING_ENABLED</td>
+<td>0</td>
+<td>Enable bulk scrubbing</td>
+</tr>
+<tr class="row-odd"><td>SCRUBBING_VERSIONS_PERCENTAGE</td>
+<td>6</td>
+<td>Percentage of versions to check</td>
+</tr>
+<tr class="row-even"><td>SCRUBBING_BLOCKS_PERCENTAGE</td>
+<td>50</td>
+<td>Percentage of blocks to check</td>
+</tr>
+<tr class="row-odd"><td>PROM_PUSH_GATEWAY</td>
+<td>:9091</td>
+<td>Address of Prometheus push gateway</td>
+</tr>
 </tbody>
 </table>
-<p>The BACKUP_SCHEDULE determines how often the actual backup scripts is called.
-This is a <a class="reference external" href="https://godoc.org/github.com/robfig/cron">Go cron expression</a>.</p>
+<p>The BACKUP_SCHEDULE environment variable determines how often the actual backup
+scripts is called. This is a <a class="reference external" href="https://godoc.org/github.com/robfig/cron">Go cron expression</a>.
+There currently is no support for more advanced scheduling options.</p>
 <p>The backup scripts first  searches for PersistemtVolumeClaims matching the
 BACKUP_SELECTOR. By default there should be no matching PVCs, so you must
 specify a different BACKUP_SELECTOR to get any backups. You can either use
@@ -309,11 +362,20 @@ for possible ways to construct your selector.</p>
 the retention policy specified in BACKUP_RETENTION. Currently the same
 retention policy is applied to all PVCs. BACKUP_RETENTION and BACKUP_SCHEDULE
 have to be considered together.</p>
-<p>The last step is to call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> to remove blocks on the
+<p>The next step is to call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> to remove blocks on the
 data backend and free the space of deleted <em>versions</em>.</p>
+<p>The two last steps are deep scrubbing and scrubbing of <em>versions</em> if enabled.
+A random sample of <em>versions</em> is picked according to the configured
+DEEP_SCRUBBING_VERSIONS_PERCENTAGE (or SCRUBBING_VERSIONS_PERCENTAGE
+respectively). Of these <em>versions</em> a randomly sampled selection of blocks
+will be checked. The number of blocks checked from each <em>version</em> is
+determined by DEEP_SCRUBBING_BLOCKS_PERCENTAGE (or SCRUBBING_BLOCKS_PERCENTAGE
+in the case of metadata only scrubbing).</p>
+<p>At the end a number of different <a class="reference external" href="https://prometheus.io/">Prometheus</a> is pushed
+to the configured <a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>.</p>
 <p>The backup script uses Ceph’s and Benji’s differential backup features if
 possible. Normally only the initial backup is a full backup. RBD snapshots
-are generated with a prefix of <em>b-</em>.</p>
+names are generated with a prefix of <em>b-</em>.</p>
 </div>
 </div>
 <div class="section" id="helm-charts">
@@ -323,11 +385,16 @@ are generated with a prefix of <em>b-</em>.</p>
 <h3>benji-rook<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
 <p>Benji includes a Helm chart to use the Docker image of the same name. It consists
 of a Deployment and supporting resources and assumes that you have RBAC in place.
-The deployment is composed a two containers: One running the benji-docker image
+The deployment is composed a two containers: One running the benji-rook Docker image
 and another one running a <a class="reference external" href="https://prometheus.io/">Prometheus</a>
-<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a> where the first container
-pushes its metrics. These can be scraped by a Prometheus server and the Pod generated
-by the Deployment has annotations so that it can be detected automatically.</p>
+<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. These can be scraped
+by a Prometheus server and the Pod generated by the Deployment has annotations
+so that it can be detected automatically:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>annotations:
+  prometheus.io/port: <span class="s2">&quot;{{ .Values.pushgateway.port }}&quot;</span>
+  prometheus.io/scrape: <span class="s2">&quot;true&quot;</span>
+</pre></div>
+</div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">The deployed resources create a service account which has the right to <em>get</em>,
