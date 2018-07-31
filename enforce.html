@@ -280,7 +280,7 @@ as part of a script for example right after creating a new <em>version</em> with
 <p>This Benji command is just for policy enforcement (i.e. thinning out <em>versions</em> by
 removal over time). You have to adjust your schedule to match your policy. If you
 want to keep hourly backups for the last 72 hours (hours72) you have to create
-a new <em>version</em> at least every  hour.</p>
+a new <em>version</em> at least every hour for example.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>).
 All removed versions are listed and could be aggregated into a report for example.</p>
 <div class="admonition attention">
@@ -322,7 +322,7 @@ allowed.</p>
 </ul>
 </li>
 <li>latest10<ul>
-<li>Keep the  youngest ten versions</li>
+<li>Keep the youngest ten versions</li>
 </ul>
 </li>
 </ul>
@@ -330,7 +330,7 @@ allowed.</p>
 considered from youngest to oldest (see the second example).</p>
 <p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version
 currently falls into a specified category the oldest version of the category
-it below is always kept, so that it has a chance to get old enough. So if in
+below it is always kept, so that it has a chance to get old enough. So if in
 the third example there is one version which is older than 24 hours but younger
 than one year it will be kept till it is old enough even though it falls out
 of the first specified category.</p>

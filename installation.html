@@ -309,26 +309,35 @@ python3.6 -m venv /usr/local/beni
 <span class="c1"># Let&#39;s upgrade pip first</span>
 pip install --upgrade pip
 <span class="c1"># And now install Benji and its dependencies</span>
-pip install git+https://github.com/elemental-lf/benji
-pip install git+https://github.com/elemental-lf/sparsebitfield
-pip install git+https://github.com/kurtbrose/aes_keywrap
+pip install --process-dependency-links <span class="s1">&#39;git+https://github.com/elemental-lf/benji&#39;</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">aes_keywrap is available on PyPI, but the version there isn’t
 compatible with Python 3. The source repository contains the
-necessary changes.</p>
+necessary changes. The option <code class="docutils literal notranslate"><span class="pre">--process-dependency-links</span></code> is
+necessary to allow PIP to fetch this external dependency.</p>
 </div>
-<p>If you want to use certain features of Benji in the future you might
-want to install additional dependencies:</p>
+<p>If you want to use certain features of Benji you need to install additional
+dependencies:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">boto3</span></code>: AWS S3 <em>data backend</em> support</li>
+<li><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 <em>data backend</em> support</li>
 <li><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud <em>data backend</em> support</li>
-<li><code class="docutils literal notranslate"><span class="pre">pycryptodome</span></code>: Encryption support</li>
-<li><code class="docutils literal notranslate"><span class="pre">diskcache</span></code>: Disk caching support</li>
-<li><code class="docutils literal notranslate"><span class="pre">zstandard</span></code>: Compression support</li>
+<li><code class="docutils literal notranslate"><span class="pre">encryption</span></code>: Encryption support</li>
+<li><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</li>
+<li><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</li>
 </ul>
+<p>You can do this be specifying a comma delimited list of extra features in square brackets after the package URL:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install --process-dependency-links <span class="s1">&#39;.[encryption,compression,s3,readcache,b2]&#39;</span>
+</pre></div>
+</div>
+<p>To uprgade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is recommended to install and use the compression feature for
+almost all use cases.</p>
+</div>
 </div>
 </div>
 
