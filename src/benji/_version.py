@@ -15,7 +15,7 @@ __all__ = []
 
 package_root = os.path.dirname(os.path.realpath(__file__))
 package_name = os.path.basename(package_root)
-distr_root = os.path.dirname(package_root)
+distr_root = os.path.normpath(os.path.join(package_root, '..', '..'))
 
 STATIC_VERSION_FILE = '_static_version.py'
 
@@ -173,7 +173,7 @@ class _build_py(build_py_orig):
 class _sdist(sdist_orig):
     def make_release_tree(self, base_dir, files):
         super().make_release_tree(base_dir, files)
-        _write_version(os.path.join(base_dir, package_name,
+        _write_version(os.path.join(base_dir, 'src', package_name,
                                     STATIC_VERSION_FILE))
 
 
