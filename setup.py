@@ -8,11 +8,21 @@ except ImportError:
 with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
-version = subprocess.run(['maint-scripts/git-pep440-version'], stdout=subprocess.PIPE).stdout.decode('ascii').strip()
+def get_version_and_cmdclass(package_path):
+    import os
+    from importlib.util import module_from_spec, spec_from_file_location
+    spec = spec_from_file_location('version',
+                                   os.path.join('src', package_path, '_version.py'))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__version__, module.cmdclass
+
+version, cmdclass = get_version_and_cmdclass('benji')
 
 setup(
     name='benji',
     version=version,
+    cmdclass=cmdclass,
     description='A block based deduplicating backup software for Ceph RBD, image files and devices ',
     long_description=long_description,
     long_description_content_type='text/x-rst',
