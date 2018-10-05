@@ -1,12 +1,9 @@
 #
-# spec file for package benji
-# created for openSUSE
+# RPM spec file
 #
 # Copyright (c) Michael Vetter <jubalh@iodoru.org>
 #
 #
-
-
 Name:           benji
 Version:        0.0.0
 Release:        0
@@ -48,7 +45,7 @@ cp etc/benji.yaml %{buildroot}%{_sysconfdir}/benji.yaml
 %doc README.rst
 %license LICENSE.txt
 %{_bindir}/benji
-%{_libexecdir}/python3.6/site-packages/
+%{python3_sitelib}
 %{_sysconfdir}/benji.yaml
 
 %changelog
