@@ -33,9 +33,8 @@ class DataBackend(metaclass=ABCMeta):
     _ENCRYPTION_PACKAGE_PREFIX = PACKAGE_PREFIX + '.encryption'
     _COMPRESSION_PACKAGE_PREFIX = PACKAGE_PREFIX + '.compression'
 
-    # For the benefit of the file and B2 backends these must end in a slash
-    _BLOCKS_PREFIX = 'blocks/'
-    _VERSIONS_PREFIX = 'versions/'
+    _BLOCKS_PREFIX = 'blocks'
+    _VERSIONS_PREFIX = 'versions'
 
     _META_SUFFIX = '.meta'
 
@@ -536,27 +535,36 @@ class DataBackend(metaclass=ABCMeta):
         self._write_executor.shutdown()
         self._read_executor.shutdown()
 
+    def _to_key(self, prefix, object_key):
+        digest = hashlib.md5(object_key.encode('ascii')).hexdigest()
+        return '{}/{}/{}/{}'.format(prefix, digest[0:2], digest[2:4], object_key)
+
+    def _from_key(self, prefix, key):
+        if not key.startswith(prefix):
+            raise RuntimeError('Invalid key name {}, it doesn\'t start with "{}/".'.format(key, prefix))
+        pl = len(prefix)
+        if len(key) <= (pl + 7):
+            raise RuntimeError('Key {} has an invalid length, expected at least {} characters.'.format(key, pl + 7))
+        return key[pl + 7:]
+
     def _block_uid_to_key(self, block_uid):
-        key_name = '{:016x}-{:016x}'.format(block_uid.left, block_uid.right)
-        digest = hashlib.md5(key_name.encode('ascii')).hexdigest()
-        return '{}{}/{}/{}-{}'.format(self._BLOCKS_PREFIX, digest[0:2], digest[2:4], digest[:8], key_name)
+        return self._to_key(self._BLOCKS_PREFIX, '{:016x}-{:016x}'.format(block_uid.left, block_uid.right))
 
     def _key_to_block_uid(self, key):
-        bpl = len(self._BLOCKS_PREFIX)
-        if len(key) != 48 + bpl:
-            raise RuntimeError('Invalid key name {}'.format(key))
-        return BlockUid(int(key[15 + bpl:15 + bpl + 16], 16), int(key[32 + bpl:32 + bpl + 16], 16))
+        object_key = self._from_key(self._BLOCKS_PREFIX, key)
+        if len(object_key) != (16 + 1 + 16):
+            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(object_key, (16 + 1 + 16)))
+        return BlockUid(int(object_key[0:16], 16), int(object_key[17:17 + 16], 16))
 
     def _version_uid_to_key(self, version_uid):
-        return '{}{}/{}/{}'.format(self._VERSIONS_PREFIX, version_uid.readable[-1:], version_uid.readable[-2:-1],
-                                   version_uid.readable)
+        return self._to_key(self._VERSIONS_PREFIX, version_uid.readable)
 
     def _key_to_version_uid(self, key):
-        vpl = len(self._VERSIONS_PREFIX)
+        object_key = self._from_key(self._VERSIONS_PREFIX, key)
         vl = len(VersionUid(1).readable)
-        if len(key) != vpl + vl + 4:
-            raise RuntimeError('Invalid key name {}'.format(key))
-        return VersionUid.create_from_readables(key[vpl + 4:vpl + vl + 4])
+        if len(object_key) != vl:
+            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(object_key, vl))
+        return VersionUid.create_from_readables(object_key)
 
     @abstractmethod
     def _write_object(self, key, data):
