@@ -39,8 +39,8 @@ Main Features
 **Fast backups**
     With the help of Ceph's ``rbd diff``, Benji will only read the blocks
     that have changed since the last backup. Even when this information
-    is not available (like with LVM) Benji will of course still only backup
-    changed blocks.
+    is not available (like with LVM) Benji will still only backup
+    changed blocks of course.
 
 **Fast restores**
     With supporting block storage (like Ceph's RBD), a sparse restore is
@@ -84,7 +84,7 @@ Main Features
     with its own unique random key which makes plaintext attacks even more
     difficult.
 
-**Integrity protection**
+**Integrity**
     Every backed up block keeps a checksum with it. When Benji scrubs the backup,
     it reads the block from the backup target storage, calculates its
     checksum and compares it to the stored checksum. If the checksum differs,
