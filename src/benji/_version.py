@@ -55,15 +55,13 @@ def pep440_format(version_info):
 
 def get_version_from_git():
     try:
-        p = subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
-                             cwd=distr_root,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(
+            ['git', 'rev-parse', '--show-toplevel'], cwd=distr_root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError:
         return
     if p.wait() != 0:
         return
-    if not os.path.samefile(p.communicate()[0].decode().rstrip('\n'),
-                            distr_root):
+    if not os.path.samefile(p.communicate()[0].decode().rstrip('\n'), distr_root):
         # The top-level directory of the current Git repository is not the same
         # as the root directory of the distribution: do not extract the
         # version from Git.
@@ -77,7 +75,8 @@ def get_version_from_git():
             p = subprocess.Popen(
                 ['git', 'describe', '--long', '--always'] + opts,
                 cwd=distr_root,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
         except OSError:
             return
         if p.wait() == 0:
@@ -85,11 +84,9 @@ def get_version_from_git():
     else:
         return
 
-    description = (p.communicate()[0]
-        .decode()
-        .strip('v')  # Tags can have a leading 'v', but the version should not
-        .rstrip('\n')
-        .rsplit('-', 2))  # Split the latest tag, commits since tag, and hash
+    description = (
+        p.communicate()[0].decode().strip('v')  # Tags can have a leading 'v', but the version should not
+        .rstrip('\n').rsplit('-', 2))  # Split the latest tag, commits since tag, and hash
 
     try:
         release, dev, git = description
@@ -146,10 +143,10 @@ def get_version_from_git_archive(version_info):
 
 __version__ = get_version()
 
-
 # The following section defines a module global 'cmdclass',
 # which can be used from setup.py. The 'package_name' and
 # '__version__' module globals are used (but not modified).
+
 
 def _write_version(fname):
     # This could be a hard link, so try to delete it first.  Is there any way
@@ -159,22 +156,21 @@ def _write_version(fname):
     except OSError:
         pass
     with open(fname, 'w') as f:
-        f.write("# This file has been created by setup.py.\n"
-                "version = '{}'\n".format(__version__))
+        f.write("# This file has been created by setup.py.\n" "version = '{}'\n".format(__version__))
 
 
 class _build_py(build_py_orig):
+
     def run(self):
         super().run()
-        _write_version(os.path.join(self.build_lib, package_name,
-                                    STATIC_VERSION_FILE))
+        _write_version(os.path.join(self.build_lib, package_name, STATIC_VERSION_FILE))
 
 
 class _sdist(sdist_orig):
+
     def make_release_tree(self, base_dir, files):
         super().make_release_tree(base_dir, files)
-        _write_version(os.path.join(base_dir, 'src', package_name,
-                                    STATIC_VERSION_FILE))
+        _write_version(os.path.join(base_dir, 'src', package_name, STATIC_VERSION_FILE))
 
 
 cmdclass = dict(sdist=_sdist, build_py=_build_py)

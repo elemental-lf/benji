@@ -15,12 +15,14 @@ from benji.logging import logger
 
 
 class _ConfigDict(dict):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.full_name = None
 
 
 class _ConfigList(list):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.full_name = None
@@ -48,6 +50,7 @@ class Config:
 
     @staticmethod
     def _output_validation_errors(errors):
+
         def traverse(position, path=''):
             if isinstance(position, dict):
                 for key, value in position.items():
