@@ -8,6 +8,7 @@ import logging
 import os
 import random
 import sys
+from functools import partial
 
 import argcomplete
 import pkg_resources
@@ -54,14 +55,14 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def restore(self, version_uid, target, sparse, force, metadata_backend_less=False):
+    def restore(self, version_uid, destination, sparse, force, metadata_backend_less=False):
         version_uid = VersionUid.create_from_readables(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config, in_memory=metadata_backend_less)
             if metadata_backend_less:
-                benji_obj.import_from_backend([version_uid])
-            benji_obj.restore(version_uid, target, sparse, force)
+                benji_obj.metadata_restore([version_uid])
+            benji_obj.restore(version_uid, destination, sparse, force)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -312,50 +313,6 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def diff_meta(self, version_uid1, version_uid2):
-        """ Output difference between two version in blocks.
-        """
-        version_uid1 = VersionUid.create_from_readables(version_uid1)
-        version_uid2 = VersionUid.create_from_readables(version_uid2)
-        # TODO: Feel free to create a default diff format.
-        benji_obj = None
-        try:
-            benji_obj = Benji(self.config)
-            # Check if versions exist
-            blocks1 = benji_obj.ls_version(version_uid1)
-            if not blocks1:
-                raise FileNotFoundError('Version {} doesn\'t exist.'.format(version_uid1.readable))
-            blocks2 = benji_obj.ls_version(version_uid2)
-            if not blocks2:
-                raise FileNotFoundError('Version {} doesn\'t exist.'.format(version_uid2.readable))
-            max_len = max(len(blocks1), len(blocks2))
-            for i in range(max_len):
-                b1 = b2 = None
-                try:
-                    b1 = blocks1.pop(0)
-                except IndexError:
-                    pass
-                try:
-                    b2 = blocks2.pop(0)
-                except IndexError:
-                    pass
-                if b1 and b2:
-                    assert b1.id == b2.id
-                try:
-                    if b1.uid == b2.uid:
-                        print('SAME      {}'.format(b1.id))
-                    elif b1 is None and b2:
-                        print('NEW RIGHT {}'.format(b2.id))
-                    elif b1 and b2 is None:
-                        print('NEW LEFT  {}'.format(b1.id))
-                    else:
-                        print('DIFF      {}'.format(b1.id))
-                except BrokenPipeError:
-                    pass
-        finally:
-            if benji_obj:
-                benji_obj.close()
-
     def stats(self, version_uid, limit=None):
         version_uid = VersionUid.create_from_readables(version_uid)
 
@@ -395,13 +352,13 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def export(self, version_uids, output_file=None, force=False):
+    def metadata_export(self, version_uids, output_file=None, force=False):
         version_uids = VersionUid.create_from_readables(version_uids)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             if output_file is None:
-                benji_obj.export(version_uids, sys.stdout)
+                benji_obj.metadata_export(version_uids, sys.stdout)
             else:
                 if os.path.exists(output_file) and not force:
                     raise FileExistsError('The output file already exists.')
@@ -412,12 +369,12 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def export_to_backend(self, version_uids, force=False):
+    def metadata_backup(self, version_uids, force=False):
         version_uids = VersionUid.create_from_readables(version_uids)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.export_to_backend(version_uids, overwrite=force)
+            benji_obj.metadata_backup(version_uids, overwrite=force)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -435,25 +392,25 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def import_(self, input_file=None):
+    def metadata_import(self, input_file=None):
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             if input_file is None:
-                benji_obj.import_(sys.stdin)
+                benji_obj.metadata_import(sys.stdin)
             else:
                 with open(input_file, 'r') as f:
-                    benji_obj.import_(f)
+                    benji_obj.metadata_import(f)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def import_from_backend(self, version_uids):
+    def metadata_restore(self, version_uids):
         version_uids = VersionUid.create_from_readables(version_uids)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.import_from_backend(version_uids)
+            benji_obj.metadata_restore(version_uids)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -514,277 +471,276 @@ class Commands:
                 benji_obj.close()
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Backup and restore for block devices.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def check_range(minimum, maximum, arg):
+    try:
+        value = int(arg)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err))
 
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+    if value < minimum or value > maximum:
+        raise argparse.ArgumentTypeError('Expected a value between {} and {}, got {}.'.format(minimum, maximum, value))
+
+    return value
+
+
+def main():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('-c', '--config-file', default=None, type=str, help='Specify a non-default configuration file')
     parser.add_argument(
         '-m', '--machine-output', action='store_true', default=False, help='Enable machine-readable JSON output')
-    parser.add_argument('-V', '--version', action='store_true', help='Show version')
-    parser.add_argument('-c', '--configfile', default=None, type=str, help='Specify a non-default configuration file')
     parser.add_argument(
-        '--no-color', action='store_true', default=False, help='Disable colourisation of logged messages')
+        '--no-color', action='store_true', default=False, help='Disable colorization of console logging')
+    parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Enable verbose output')
 
-    subparsers = parser.add_subparsers()
-
-    # INITDB
-    p = subparsers.add_parser(
-        'initdb',
-        help='Initialize the database by populating tables, this will not delete tables or data if they exist')
-    p.set_defaults(func='initdb')
+    subparsers_root = parser.add_subparsers(title='commands')
 
     # BACKUP
-    p = subparsers.add_parser('backup', help="Perform a backup.")
-    p.add_argument('source', help='Source (url-like, e.g. file:///dev/sda or rbd://pool/imagename@snapshot)')\
+    p = subparsers_root.add_parser('backup', help='Perform a backup')
+    p.add_argument('source', help='Source URL')\
         .completer=ChoicesCompleter(('file://', 'rbd://'))
-    p.add_argument('name', help='Backup name (e.g. the hostname)')
+    p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
     p.add_argument('-s', '--snapshot-name', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
-    p.add_argument('-r', '--rbd', default=None, help='Hints as RBD JSON format')
-    p.add_argument('-f', '--from-version', dest='base_version_uid', default=None, help='Use this version as base')
+    p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
+    p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
     p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='tag',
-        default=None,
-        help='Tag this verion with the specified tag(s)')
-    p.add_argument('-b', '--block-size', type=int, help='Block size to use for this backup in bytes')
+        '-t', '--tag', action='append', dest='tags', metavar='TAG', default=None, help='Tag version (may be repeated)')
+    p.add_argument('-b', '--block-size', type=int, help='Block size in bytes')
     p.set_defaults(func='backup')
 
     # RESTORE
-    p = subparsers.add_parser('restore', help="Restore a given backup to a given target.")
-    p.add_argument(
-        '-s',
-        '--sparse',
-        action='store_true',
-        help='Restore only existing blocks. Works only with file ' + 'and RBD targets, not with LVM. Faster.')
-    p.add_argument('-f', '--force', action='store_true', help='Force overwrite of existing files/devices/images')
+    p = subparsers_root.add_parser('restore', help='Restore a backup')
+    p.add_argument('-s', '--sparse', action='store_true', help='Restore only existing blocks')
+    p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing file, device or image')
     p.add_argument(
         '-M',
         '--metadata-backend-less',
         action='store_true',
-        help='Restore directly from data backend without requiring the metadata backend.')
-    p.add_argument('version_uid')
-    p.add_argument('target', help='Source (URL like, e.g. file:///dev/sda or rbd://pool/imagename)')\
+        help='Restore directly from data backend without requiring the metadata backend')
+    p.add_argument('version_uid', help='Version UID to restore')
+    p.add_argument('destination', help='Destination URL')\
         .completer=ChoicesCompleter(('file://', 'rbd://'))
     p.set_defaults(func='restore')
 
+    # NBD
+    p = subparsers_root.add_parser(
+        'nbd', help='Start an NBD server', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
+    p.add_argument('-p', '--bind-port', default=10809, help='Bind to the specified port')
+    p.add_argument('-r', '--read-only', action='store_true', default=False, help='NBD device is read-only')
+    p.set_defaults(func='nbd')
+
+    # LS
+    p = subparsers_root.add_parser('ls', help='List existing versions')
+    p.add_argument('name', nargs='?', default=None, help='Limit output to the specified version name')
+    p.add_argument('-s', '--snapshot-name', default=None, help='Limit output to the specified version snapshot name')
+    p.add_argument(
+        '-t',
+        '--tag',
+        action='append',
+        dest='tags',
+        metavar='TAG',
+        default=None,
+        help='Limit output to versions matching tag (multiple use of this option constitutes a logical or operation)')
+    p.add_argument(
+        '--include-blocks',
+        default=False,
+        action='store_true',
+        help='Include blocks in output (machine readable output only)')
+    p.set_defaults(func='ls')
+
+    # RM
+    p = subparsers_root.add_parser('rm', help='Remove one or more versions')
+    p.add_argument('-f', '--force', action='store_true', help='Force removal (overrides protection of recent versions)')
+    p.add_argument(
+        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup on the data backend')
+    p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
+    p.set_defaults(func='rm')
+
+    # ENFORCE
+    p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
+    p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
+    p.add_argument(
+        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup on the data backend')
+    p.add_argument('rules_spec', help='Retention rules specification')
+    p.add_argument('version_names', metavar='version_name', nargs='+', help='One or more version names')
+    p.set_defaults(func='enforce_retention_policy')
+
+    # CLEANUP
+    p = subparsers_root.add_parser('cleanup', help='Cleanup no longer referenced blocks on the data backend')
+    p.add_argument(
+        '-f', '--full', action='store_true', default=False, help='Scan all blocks on data backend (very slow)')
+    p.set_defaults(func='cleanup')
+
     # PROTECT
-    p = subparsers.add_parser('protect', help="Protect a backup version. Protected versions cannot be removed.")
+    p = subparsers_root.add_parser('protect', help='Protect one or more versions')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help="Version UID")
     p.set_defaults(func='protect')
 
     # UNPROTECT
-    p = subparsers.add_parser('unprotect', help="Unprotect a backup version. Unprotected versions can be removed.")
-    p.add_argument('version_uids', metavar='version_uid', nargs='+', help="Version UID")
+    p = subparsers_root.add_parser('unprotect', help='Unprotect one or more versions')
+    p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='unprotect')
 
-    # RM
-    p = subparsers.add_parser(
-        'rm',
-        help="Remove the given backup versions. This will only remove meta data and you will have to cleanup after this.")
-    p.add_argument(
-        '-f',
-        '--force',
-        action='store_true',
-        help="Force removal of version, even if it's younger than the configured disallow_rm_when_younger_than_days.")
-    p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Don\'t delete version\'s metadata in data backend.')
-    p.add_argument('version_uids', metavar='version_uid', nargs='+')
-    p.set_defaults(func='rm')
-
-    # ENFORCE
-    p = subparsers.add_parser('enforce', help="Enforce the given retenion policy on each listed version.")
-    p.add_argument('--dry-run', action='store_true', help='Dry run: Only show which versions would be removed.')
-    p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Don\'t delete version\'s metadata in data backend.')
-    p.add_argument('rules_spec', help='Retention rules specification')
-    p.add_argument('version_names', metavar='version_name', nargs='+')
-    p.set_defaults(func='enforce_retention_policy')
-
-    # SCRUB
-    p = subparsers.add_parser('scrub', help="Scrub a given backup and check for consistency.")
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        default=100,
-        help="Only check BLOCK-PERCENTAGE percent of the blocks (value 1..100). Default: 100")
-    p.add_argument('version_uid', help='Version UID')
-    p.set_defaults(func='scrub')
-
-    # DEEP-SCRUB
-    p = subparsers.add_parser('deep-scrub', help="Deep scrub a given backup and check for consistency.")
-    p.add_argument(
-        '-s',
-        '--source',
-        default=None,
-        help='Source, optional. If given, check if source matches backup in addition to checksum tests. URL-like format as in backup.')
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        default=100,
-        help="Only check BLOCK-PERCENTAGE percent of the blocks (value 1..100). Default: 100")
-    p.add_argument('version_uid', help='Version UID')
-    p.set_defaults(func='deep_scrub')
-
-    # BULK-SCRUB
-    p = subparsers.add_parser('bulk-scrub', help="Bulk deep scrub all matching versions.")
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        default=100,
-        help="Only check BLOCK-PERCENTAGE percent of the blocks (value 1..100). Default: 100")
-    p.add_argument(
-        '-P',
-        '--version-percentage',
-        default=100,
-        help="Only check VERSION-PERCENTAGE of matching versions(value 1..100). Default: 100")
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Scrub only versions matching this tag.')
-    p.add_argument('names', metavar='NAME', nargs='*', help="Version names")
-    p.set_defaults(func='bulk_scrub')
-
-    # BULK-DEEP-SCRUB
-    p = subparsers.add_parser('bulk-deep-scrub', help="Bulk deep scrub all matching versions.")
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        default=100,
-        help="Only check BLOCK-PERCENTAGE percent of the blocks (value 1..100). Default: 100")
-    p.add_argument(
-        '-P',
-        '--version-percentage',
-        default=100,
-        help="Only check VERSION-PERCENTAGE of matching versions(value 1..100). Default: 100")
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Scrub only versions matching this tag. Multiple use of this option constitutes an OR operation.')
-    p.add_argument('names', metavar='NAME', nargs='*', help="Version names")
-    p.set_defaults(func='bulk_deep_scrub')
-
-    # Export
-    p = subparsers.add_parser('export', help='Export the metadata of one or more versions to a file or standard out.')
-    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
-    p.add_argument('-f', '--force', action='store_true', help='Force overwrite of existing output file')
-    p.add_argument(
-        '-o', '--output-file', help='Write export into this file (stdout is used if this option isn\'t specified)')
-    p.set_defaults(func='export')
-
-    # Import
-    p = subparsers.add_parser(
-        'import', help='Import the metadata of one or more versions from a file or standard input.')
-    p.add_argument('-i', '--input-file', help='Read from this file (stdin is used if this option isn\'t specified)')
-    p.set_defaults(func='import_')
-
-    # Export to data backend
-    p = subparsers.add_parser('export-to-backend', help='Export metadata of one or more versions to the data backend')
-    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
-    p.add_argument('-f', '--force', action='store_true', help='Force overwrite of existing metadata in data backend')
-    p.set_defaults(func='export_to_backend')
-
-    # Import from data backend
-    p = subparsers.add_parser(
-        'import-from-backend', help="Import metadata of one ore more versions from the data backend")
-    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
-    p.set_defaults(func='import_from_backend')
-
-    # CLEANUP
-    p = subparsers.add_parser('cleanup', help="Clean unreferenced blobs.")
-    p.add_argument(
-        '-f',
-        '--full',
-        action='store_true',
-        default=False,
-        help='Do a full cleanup. This will read the full metadata from the data backend (i.e. backup storage) '
-        'and compare it to the metadata in the metadata backend. Unused data will then be deleted. '
-        'This is a slow, but complete process. A full cleanup must not run in parallel to ANY other jobs.')
-    p.set_defaults(func='cleanup')
-
-    # LS
-    p = subparsers.add_parser('ls', help="List existing backups.")
-    p.add_argument('name', nargs='?', default=None, help='Show versions for this name only')
-    p.add_argument('-s', '--snapshot-name', default=None, help="Limit output to this SNAPSHOT_NAME")
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Limit output to this TAG. Multiple use constitutes an OR operation.')
-    p.add_argument('--include-blocks', default=False, action='store_true', help='Include blocks in output')
-    p.set_defaults(func='ls')
-
-    # STATS
-    p = subparsers.add_parser('stats', help="Show statistics")
-    p.add_argument('version_uid', nargs='?', default=None, help='Show statistics for this version')
-    p.add_argument('-l', '--limit', default=None, help="Limit output to this number (default: unlimited)")
-    p.set_defaults(func='stats')
-
-    # diff-meta
-    p = subparsers.add_parser('diff-meta', help="Output a diff between two versions")
-    p.add_argument('version_uid1', help='Left version')
-    p.add_argument('version_uid2', help='Right version')
-    p.set_defaults(func='diff_meta')
-
-    # NBD
-    p = subparsers.add_parser('nbd', help="Start an nbd server")
-    p.add_argument('-a', '--bind-address', default='127.0.0.1', help="Bind to this ip address (default: 127.0.0.1)")
-    p.add_argument('-p', '--bind-port', default=10809, help="Bind to this port (default: 10809)")
-    p.add_argument(
-        '-r',
-        '--read-only',
-        action='store_true',
-        default=False,
-        help='Read only if set, otherwise a copy on write backup is created.')
-    p.set_defaults(func='nbd')
-
     # ADD TAG
-    p = subparsers.add_parser('add-tag', help="Add a named tag to a backup version.")
+    p = subparsers_root.add_parser('add-tag', help='Add a tag to a version')
     p.add_argument('version_uid')
     p.add_argument('names', metavar='NAME', nargs='+')
     p.set_defaults(func='add_tag')
 
     # REMOVE TAG
-    p = subparsers.add_parser('rm-tag', help="Remove a named tag from a backup version.")
+    p = subparsers_root.add_parser('rm-tag', help='Remove a tag from a version')
     p.add_argument('version_uid')
     p.add_argument('names', metavar='NAME', nargs='+')
     p.set_defaults(func='rm_tag')
 
+    # SCRUB
+    p = subparsers_root.add_parser(
+        'scrub',
+        help='Check block existence and metadata consistency of a version',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument(
+        '-p',
+        '--block-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument('version_uid', help='Version UID')
+    p.set_defaults(func='scrub')
+
+    # DEEP-SCRUB
+    p = subparsers_root.add_parser(
+        'deep-scrub',
+        help='Check version data integrity of a version',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('-s', '--source', default=None, help='Additionally compare version against source URL')
+    p.add_argument(
+        '-p',
+        '--block-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument('version_uid', help='Version UID')
+    p.set_defaults(func='deep_scrub')
+
+    # BULK-SCRUB
+    p = subparsers_root.add_parser(
+        'bulk-scrub',
+        help='Check block existence and metadata consistency of multiple versions',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument(
+        '-p',
+        '--block-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-P',
+        '--version-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-t',
+        '--tag',
+        action='append',
+        dest='tags',
+        metavar='TAG',
+        default=None,
+        help='Limit scrubbed versions based on tag (multiple use of this option constitutes a logical or operation)')
+    p.add_argument('names', metavar='name', nargs='*', help="Version name")
+    p.set_defaults(func='bulk_scrub')
+
+    # BULK-DEEP-SCRUB
+    p = subparsers_root.add_parser(
+        'bulk-deep-scrub',
+        help='Check version data integrity of multiple versions',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument(
+        '-p',
+        '--block-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-P',
+        '--version-percentage',
+        type=partial(check_range, 1, 100),
+        default=100,
+        help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-t',
+        '--tag',
+        action='append',
+        dest='tags',
+        metavar='TAG',
+        default=None,
+        help='Limit scrubbed versions based on tag (multiple use of this option constitutes a logical or operation)')
+    p.add_argument('names', metavar='name', nargs='*', help='Version name')
+    p.set_defaults(func='bulk_deep_scrub')
+
+    # METADATA EXPORT
+    p = subparsers_root.add_parser(
+        'metadata-export', help='Export the metadata of one or more versions to a file or standard output')
+    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
+    p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing output file')
+    p.add_argument('-o', '--output-file', help='Output file (standard output if missing)')
+    p.set_defaults(func='metadata_export')
+
+    # METADATA IMPORT
+    p = subparsers_root.add_parser(
+        'metadata-import', help='Import the metadata of one or more versions from a file or standard input')
+    p.add_argument('-i', '--input-file', help='Input file (standard input if missing)')
+    p.set_defaults(func='metadata_import')
+
+    # METADATA BACKUP
+    p = subparsers_root.add_parser(
+        'netadata-backup', help='Back up the metadata of one or more versions to the data backend')
+    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
+    p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata in the data backend')
+    p.set_defaults(func='metadata_backup')
+
+    # METADATA RESTORE
+    p = subparsers_root.add_parser(
+        'metadata-restore', help='Restore the metadata of one ore more versions from the data backend')
+    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
+    p.set_defaults(func='metadata_restore')
+
+    # STATS
+    p = subparsers_root.add_parser('stats', help='Show backup statistics')
+    p.add_argument('version_uid', nargs='?', default=None, help='Limit output to the specified version')
+    p.add_argument('-l', '--limit', default=None, help='Limit output to this number of entries')
+    p.set_defaults(func='stats')
+
+    # VERSION-INFO
+    p = subparsers_root.add_parser('version-info', help='Program version information')
+    p.set_defaults(func='version_info')
+
+    # INITDB
+    p = subparsers_root.add_parser('initdb', help='Initialize the database (will not delete existing tables or data)')
+    p.set_defaults(func='initdb')
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
-
-    if args.version:
-        print(__version__)
-        exit(os.EX_OK)
 
     if not hasattr(args, 'func'):
         parser.print_usage()
         exit(os.EX_USAGE)
+
+    if args.func == 'version_info':
+        print(__version__)
+        exit(os.EX_OK)
 
     if args.verbose:
         console_level = logging.DEBUG
     else:
         console_level = logging.INFO
 
-    if args.configfile is not None and args.configfile != '':
+    if args.config_file is not None and args.config_file != '':
         try:
-            cfg = open(args.configfile, 'r', encoding='utf-8').read()
+            cfg = open(args.config_file, 'r', encoding='utf-8').read()
         except FileNotFoundError:
-            logger.error('File {} not found.'.format(args.configfile))
+            logger.error('File {} not found.'.format(args.config_file))
             exit(os.EX_USAGE)
         config = Config(cfg=cfg)
     else:
@@ -801,10 +757,9 @@ def main():
 
     # Pass over to function
     func_args = dict(args._get_kwargs())
-    del func_args['configfile']
+    del func_args['config_file']
     del func_args['func']
     del func_args['verbose']
-    del func_args['version']
     del func_args['machine_output']
     del func_args['no_color']
 

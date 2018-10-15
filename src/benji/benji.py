@@ -12,37 +12,12 @@ from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
 from urllib import parse
 
-from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, NoChange, ConfigurationError, \
-    ScrubbingError
+from benji.data_backend.factory import DataBackendFactory
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, NoChange, ScrubbingError
 from benji.logging import logger
 from benji.metadata import BlockUid, MetadataBackend
 from benji.retentionfilter import RetentionFilter
 from benji.utils import data_hexdigest, notify, parametrized_hash_function
-
-
-def blocks_from_hints(hints, block_size):
-    """ Helper method """
-    sparse_blocks = set()
-    read_blocks = set()
-    for offset, length, exists in hints:
-        start_block = offset // block_size
-        end_block = (offset + length - 1) // block_size
-        if exists:
-            for i in range(start_block, end_block + 1):
-                read_blocks.add(i)
-        else:
-            if offset % block_size > 0:
-                # Start block is only partially sparse, make sure it is read
-                read_blocks.add(start_block)
-
-            if (offset + length) % block_size > 0:
-                # End block is only partially sparse, make sure it is read
-                read_blocks.add(end_block)
-
-            for i in range(start_block, end_block + 1):
-                sparse_blocks.add(i)
-
-    return sparse_blocks, read_blocks
 
 
 class Benji:
@@ -89,7 +64,7 @@ class Benji:
 
     def _clone_version(self, name, snapshot_name, size=None, base_version_uid=None):
         """ Prepares the metadata for a new version.
-        If from_version_uid is given, this is taken as the base, otherwise
+        If base_version_uid is given, this is taken as the base, otherwise
         a pure sparse version is created.
         """
         if base_version_uid:
@@ -582,13 +557,13 @@ class Benji:
             read_blocks = set(range(num_blocks))
 
         version = self._clone_version(name, snapshot_name, source_size, base_version_uid)
-        self._locking.update_version_lock(version.uid, reason='Backup')
+        self._locking.update_version_lock(version.uid, reason='Backing up')
         blocks = self._metadata_backend.get_blocks_by_version(version.uid)
 
         if base_version_uid and hints is not None:
             # SANITY CHECK:
             # Check some blocks outside of hints if they are the same in the
-            # from_version backup and in the current backup. If they
+            # base_version backup and in the current backup. If they
             # aren't, either hints are wrong (e.g. from a wrong snapshot diff)
             # or source doesn't match. In any case, the resulting backup won't
             # be good.
@@ -638,7 +613,7 @@ class Benji:
                     # Block is already in database, no need to update it
                     logger.debug('Keeping block {}'.format(block.id))
                 notify(
-                    self._process_name, 'Backup version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
+                    self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
                         version.uid.readable, source, (i + 1) / len(blocks) * 100))
 
             # precompute checksum of a sparse block
@@ -707,7 +682,7 @@ class Benji:
                     pass
 
                 notify(
-                    self._process_name, 'Backup version {} from {} ({:.1f}%)'.format(
+                    self._process_name, 'Backing up version {} from {} ({:.1f}%)'.format(
                         version.uid.readable, source, done_read_jobs / read_jobs * 100))
                 if done_read_jobs % log_every_jobs == 0 or done_read_jobs == read_jobs:
                     logger.info('Backed up {}/{} blocks ({:.1f}%)'.format(done_read_jobs, read_jobs,
@@ -748,7 +723,7 @@ class Benji:
 
         self._metadata_backend.set_version(version.uid, valid=True)
 
-        self.export_to_backend([version.uid], overwrite=True, locking=False)
+        self.metadata_backup([version.uid], overwrite=True, locking=False)
 
         if tags:
             for tag in tags:
@@ -813,11 +788,11 @@ class Benji:
         # finished
         self._metadata_backend.close()
 
-    def export(self, version_uids, f):
+    def metadata_export(self, version_uids, f):
         try:
             locked_version_uids = []
             for version_uid in version_uids:
-                self._locking.lock_version(version_uid, reason='Exporting version')
+                self._locking.lock_version(version_uid, reason='Exporting version metadata')
                 locked_version_uids.append(version_uid)
 
             self._metadata_backend.export(version_uids, f)
@@ -826,19 +801,19 @@ class Benji:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
 
-    def export_to_backend(self, version_uids, overwrite=False, locking=True):
+    def metadata_backup(self, version_uids, overwrite=False, locking=True):
         try:
             locked_version_uids = []
             if locking:
                 for version_uid in version_uids:
-                    self._locking.lock_version(version_uid, reason='Exporting version to data backend')
+                    self._locking.lock_version(version_uid, reason='Back up version metadata')
                     locked_version_uids.append(version_uid)
 
             for version_uid in version_uids:
                 with StringIO() as metadata_export:
                     self._metadata_backend.export([version_uid], metadata_export)
                     self._data_backend.save_version(version_uid, metadata_export.getvalue(), overwrite=overwrite)
-                logger.info('Exported version {} metadata to backend storage.'.format(version_uid.readable))
+                logger.info('Backed up version {} metadata.'.format(version_uid.readable))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -846,13 +821,13 @@ class Benji:
     def export_any(self, *args, **kwargs):
         return self._metadata_backend.export_any(*args, **kwargs)
 
-    def import_(self, f):
+    def metadata_import(self, f):
         # TODO: Find a good way to lock here
         version_uids = self._metadata_backend.import_(f)
         for version_uid in version_uids:
             logger.info('Imported version {} metadata.'.format(version_uid.readable))
 
-    def import_from_backend(self, version_uids):
+    def metadata_restore(self, version_uids):
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -863,7 +838,7 @@ class Benji:
                 metadata_import_data = self._data_backend.read_version(version_uid)
                 with StringIO(metadata_import_data) as metadata_import:
                     self._metadata_backend.import_(metadata_import)
-                logger.info('Imported version {} metadata from backend storage.'.format(version_uid.readable))
+                logger.info('Restored version {} metadata.'.format(version_uid.readable))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1004,7 +979,6 @@ class BenjiStore:
         return b''.join(data)
 
     def get_cow_version(self, base_version):
-        #_clone_version(self, name, snapshot_name, size=None, from_version_uid=None):
         cow_version = self._benji_obj._clone_version(
             name=base_version.name,
             snapshot_name='nbd-cow-{}-{}'.format(
