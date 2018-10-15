@@ -518,6 +518,31 @@ class Benji:
             self._data_backend.rm_version(version_uid)
         logger.info('Removed backup version {} metadata from backend storage.'.format(version_uid.readable))
 
+    @staticmethod
+    def _blocks_from_hints(hints, block_size):
+        """ Helper method """
+        sparse_blocks = set()
+        read_blocks = set()
+        for offset, length, exists in hints:
+            start_block = offset // block_size
+            end_block = (offset + length - 1) // block_size
+            if exists:
+                for i in range(start_block, end_block + 1):
+                    read_blocks.add(i)
+            else:
+                if offset % block_size > 0:
+                    # Start block is only partially sparse, make sure it is read
+                    read_blocks.add(start_block)
+
+                if (offset + length) % block_size > 0:
+                    # End block is only partially sparse, make sure it is read
+                    read_blocks.add(end_block)
+
+                for i in range(start_block, end_block + 1):
+                    sparse_blocks.add(i)
+
+        return sparse_blocks, read_blocks
+
     def backup(self, name, snapshot_name, source, hints=None, base_version_uid=None, tags=None):
         """ Create a backup from source.
         If hints are given, they must be tuples of (offset, length, exists)
@@ -546,7 +571,7 @@ class Benji:
                 if max_offset > source_size:
                     raise InputDataError('Hints have higher offsets than source file.')
 
-                sparse_blocks, read_blocks = blocks_from_hints(hints, self._block_size)
+                sparse_blocks, read_blocks = self._blocks_from_hints(hints, self._block_size)
             else:
                 # Two snapshots can be completely identical between one backup and next
                 logger.warning('Hints are empty, assuming nothing has changed.')
