@@ -1,0 +1,223 @@
+configurationVersion:
+  type: string
+  required: True
+  nullable: False
+  allowed:
+    - '1.0.0'
+    
+logFile:
+  type: string
+  default: null
+blockSize:
+  type: integer
+  nullable: False
+  min: 1
+  default: 4194304
+hashFunction:
+  type: string
+  nullable: False
+  empty: False
+  default: 'blake2b,digest_size=32'
+processName:
+  type: string
+  nullable: False
+  empty: False
+  default: 'benji'
+disallowRemoveWhenYounger:
+  type: integer
+  nullable: False
+  min: 0
+  default: 6
+  
+metadataBackend:
+  required: True
+  nullable: False
+  empty: False
+  schema:  
+    engine:
+      type: string
+      required: True
+      nullable: False
+      empty: False
+
+dataBackends:
+  type: dict
+  required: True
+  nullable: False
+  empty: False
+  schema:
+    defaultStorage:
+      type: string
+      required: True
+      nullable: False
+    
+    storages:
+      type: list
+      nullable: False
+      empty: False
+      schema:
+        type: dict
+        schema:
+          identifier:
+            type: string
+            required: True
+            nullable: False
+            empty: False
+          module:
+            type: string
+            required: True
+            nullable: False
+            empty: False
+          configuration:
+            type: dict
+            allow_unknown: True
+            schema:
+              simultaneousWrites:
+                type: integer
+                nullable: False
+                min: 1
+                default: 1
+              simultaneousReads:
+                type: integer
+                nullable: False
+                min: 1
+                default: 1
+              bandwidthRead:
+                type: integer
+                nullable: False
+                min: 0
+                default: 0
+              bandwidthWrite:
+                type: integer
+                nullable: False
+                min: 0
+                default: 0
+              consistencyCheckWrites:
+                type: boolean
+                nullable: False
+                default: False
+              activeTransforms:
+                type: list
+                nullable: False
+
+              hmac:
+                type: dict
+                nullable: False
+                allow_unknown: False
+                schema:
+                  key:
+                    type: binary
+                    nullable: False
+                    minlength: 8
+                    excludes:
+                      - password
+                      - kdfSalt
+                      - kdfIterations
+                  password:
+                    type: string
+                    nullable: False
+                    minlength: 8
+                    dependencies:
+                      - kdfSalt
+                      - kdfIterations
+                  kdfSalt:
+                    type: binary
+                    nullable: False
+                    minlength: 8
+                    dependencies:
+                      - password
+                      - kdfIterations
+                  kdfIterations:
+                    type: integer
+                    nullable: False
+                    min: 1000
+                    dependencies:
+                      - password
+                      - kdfSalt
+
+              readCache:
+                type: dict
+                nullable: False
+                allow_unknown: False
+                schema:
+                  directory:
+                    type: string
+                    required: True
+                    nullable: False
+                    empty: False
+                    dependencies:
+                      - maximumSize
+                  maximumSize:
+                    type: integer
+                    required: True
+                    nullable: False
+                    min: 1
+                    dependencies:
+                      - directory
+
+    transforms:
+      type: list
+      schema:
+        type: dict
+        schema:
+          identifier:
+            type: string
+            required: True
+            nullable: False
+            empty: False
+          module:
+            type: string
+            required: True
+            nullable: False
+            empty: False
+          configuration:
+            type: dict
+            nullable: False
+            empty: False
+
+nbd:
+  type: dict
+  nullable: False
+  schema:
+    cacheDirectory:
+      type: string
+      required: True
+      nullable: False
+      default: '/tmp'
+      
+io:
+  type: dict
+  nullable: False
+  schema:
+    file:
+     type: dict
+     schema:
+        simultaneousReads:
+          type: integer
+          nullable: False
+          min: 1
+          default: 1
+    rbd:
+      type: dict
+      schema:
+        cephConfigFile:
+          type: string
+          nullable: False
+          empty: False
+          default: '/etc/ceph/ceph.conf'
+        simultaneousReads:
+          type: integer
+          nullable: False
+          min: 1
+          default: 1
+        newImageFeatures:
+          type: list
+          nullable: False
+          schema:
+            type: string
+            regex: '^RBD_FEATURE_'
+        clientIdentifier:
+          type: string
+          nullable: False
+          empty: False
+          default: 'admin'

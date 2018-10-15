@@ -3,14 +3,27 @@
 import operator
 import os
 from functools import reduce
-from io import StringIO
 from os.path import expanduser
 from pathlib import Path
 
+from cerberus import Validator
+from pkg_resources import resource_filename
 from ruamel.yaml import YAML
 
 from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
+
+
+class _ConfigDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.full_name = None
+
+
+class _ConfigList(list):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.full_name = None
 
 
 class Config:
@@ -20,47 +33,7 @@ class Config:
     CONFIG_DIR = 'benji'
     CONFIG_FILE = 'benji.yaml'
 
-    DEFAULT_CONFIG = """
-    logFile: null
-    blockSize: 4194304
-    hashFunction: blake2b,digest_size=32
-    processName: benji
-    disallowRemoveWhenYounger: 6
-    dataBackend:
-      simultaneousWrites: 1
-      simultaneousReads: 1
-      bandwidthRead: 0
-      bandwidthWrite: 0
-      s3:
-        multiDelete: true
-        useSsl: true
-        addressingStyle: path
-        disableEncodingType: false
-      b2:
-        writeObjectAttempts: 1
-        readObjectAttempts: 1
-        uploadAttempts: 5
-    nbd:
-      cacheDirectory: /tmp
-    io:
-      file:
-        simultaneousReads: 1
-      rbd:
-        cephConfigFile: /etc/ceph/ceph.conf
-        simultaneousReads: 1
-        clientIdentifier: admin
-    """
-
-    REDACT = """
-        dataBackend:
-          s3:
-            awsAccessKeyId: '<redacted>'
-            awsSecretAccessKey: '<redacted>'
-          b2:
-            accountId: '<redacted>'
-            applicationKey: '<redacted>'
-          encryption: '<redacted>'
-        """
+    CONFIG_SCHEMA_TEMPLATE = 'benji-config-schema-{}.yaml'
 
     # Source: https://stackoverflow.com/questions/823196/yaml-merge-in-python
     @classmethod
@@ -73,9 +46,23 @@ class Config:
                     user[k] = cls._merge_dicts(user[k], v)
         return user
 
-    def __init__(self, cfg=None, sources=None, merge_defaults=True):
+    @staticmethod
+    def _output_validation_errors(errors):
+        def traverse(position, path=''):
+            if isinstance(position, dict):
+                for key, value in position.items():
+                    traverse(value, path + ('.' if path else '') + str(key))
+            elif isinstance(position, list):
+                for value in position:
+                    if isinstance(value, dict):
+                        traverse(value, path)
+                    else:
+                        logger.error('  {}: {}'.format(path, value))
+
+        traverse(errors)
+
+    def __init__(self, cfg=None, sources=None):
         yaml = YAML(typ='safe', pure=True)
-        default_config = yaml.load(self.DEFAULT_CONFIG)
 
         if cfg is None:
             if not sources:
@@ -87,7 +74,7 @@ class Config:
                     try:
                         config = yaml.load(Path(source))
                     except Exception as exception:
-                        raise ConfigurationError('Configuration file {} is invalud.'.format(source)) from exception
+                        raise ConfigurationError('Configuration file {} is invalid.'.format(source)) from exception
                     if config is None:
                         raise ConfigurationError('Configuration file {} is empty.'.format(source))
                     break
@@ -106,16 +93,23 @@ class Config:
         if config['configurationVersion'] != self.CONFIG_VERSION:
             raise ConfigurationError('Unknown configuration version {}.'.format(config['configurationVersion']))
 
-        if merge_defaults:
-            self._merge_dicts(config, default_config)
+        try:
+            schema_file = resource_filename(__name__, self.CONFIG_SCHEMA_TEMPLATE.format(self.CONFIG_VERSION))
+            schema = yaml.load(Path(schema_file))
+        except Exception as exception:
+            raise ConfigurationError('Schema file {} is invalid.'.format(schema_file)) from exception
 
-        with StringIO() as redacted_config_string:
-            redacted_config = yaml.load(self.REDACT)
-            self._merge_dicts(redacted_config, config)
-            yaml.dump(redacted_config, redacted_config_string)
-            logger.debug('Loaded configuration: {}'.format(redacted_config_string.getvalue()))
+        validator = Validator(schema)
+        if not validator:
+            raise ConfigurationError('Schema file {} is invalid.'.format(schema_file))
 
-        self.config = config
+        if not validator.validate(config):
+            logger.error('Configuration validation errors:')
+            self._output_validation_errors(validator.errors)
+            raise ConfigurationError('Configuration is invalid.')
+
+        self.config = validator.document
+        logger.debug('Loaded configuration (includes defaults): {}'.format(self.config))
 
     def _get_sources(self):
         sources = ['/etc/{file}'.format(file=self.CONFIG_FILE)]
@@ -125,17 +119,24 @@ class Config:
         return sources
 
     @staticmethod
-    def _get(dict_, name, *args, types=None, check_func=None, check_message=None):
-        if '__position' in dict_:
-            full_name = '{}.{}'.format(dict_['__position'], name)
+    def _get(root, name, *args, types=None, check_func=None, check_message=None, full_name_override=None, index=None):
+        if full_name_override is not None:
+            full_name = full_name_override
+        elif hasattr(root, 'full_name') and root.full_name:
+            full_name = root.full_name
         else:
-            full_name = name
+            full_name = ''
+
+        if index is not None:
+            full_name = '{}{}{}'.format(full_name, '.' if full_name else '', index)
+
+        full_name = '{}{}{}'.format(full_name, '.' if full_name else '', name)
 
         if len(args) > 1:
             raise InternalError('Called with more than two arguments for key {}.'.format(full_name))
 
         try:
-            value = reduce(operator.getitem, name.split('.'), dict_)
+            value = reduce(operator.getitem, name.split('.'), root)
             if types is not None and not isinstance(value, types):
                 raise TypeError('Config value {} has wrong type {}, expected {}.'.format(full_name, type(value), types))
             if check_func is not None and not check_func(value):
@@ -145,7 +146,11 @@ class Config:
                 else:
                     raise ConfigurationError('Config option {} is invalid: {}.'.format(full_name, check_message))
             if isinstance(value, dict):
-                value['__position'] = name
+                value = _ConfigDict(value)
+                value.full_name = full_name
+            elif isinstance(value, list):
+                value = _ConfigList(value)
+                value.full_name = full_name
             return value
         except KeyError:
             if len(args) == 1:

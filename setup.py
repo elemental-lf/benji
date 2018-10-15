@@ -45,7 +45,7 @@ Topic :: System :: Archiving :: Backup
         '': 'src',
     },
     package_data={
-        'benji': ['sql_migrations/alembic.ini'],
+        'benji': ['benji-config-schema.yaml', 'sql_migrations/alembic.ini'],
     },
     zip_safe=False,  # ONLY because of alembic.ini. The rest is zip-safe.
     install_requires=[
@@ -59,6 +59,7 @@ Topic :: System :: Archiving :: Backup
         'argcomplete>=1.9.4',
         'sparsebitfield>=0.2.2',
         'colorlog>=3.1.4',
+        'cerberus>=1.2',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
