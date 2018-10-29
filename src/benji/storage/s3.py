@@ -4,37 +4,32 @@ import threading
 from itertools import islice
 
 import boto3
-from botocore.client import Config
+from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
 
-from benji.data_backends import ReadCacheDataBackend
+from benji.config import Config
 from benji.logging import logger
+from benji.storage.base import ReadCacheStorageBase
 
 
-class DataBackend(ReadCacheDataBackend):
-    """ A DataBackend which stores in S3 compatible storages. The files are
-    stored in a configurable bucket. """
-
-    NAME = 's3'
+class Storage(ReadCacheStorageBase):
 
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, config):
+    def __init__(self, *, config, name, storage_id, module_configuration):
+        aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', types=str)
+        aws_secret_access_key = Config.get_from_dict(module_configuration, 'awsSecretAccessKey', types=str)
+        region_name = Config.get_from_dict(module_configuration, 'regionName', None, types=str)
+        endpoint_url = Config.get_from_dict(module_configuration, 'endpointUrl', None, types=str)
+        use_ssl = Config.get_from_dict(module_configuration, 'useSsl', None, types=bool)
+        addressing_style = Config.get_from_dict(module_configuration, 'addressingStyle', None, types=str)
+        signature_version = Config.get_from_dict(module_configuration, 'signatureVersion', None, types=str)
 
-        our_config = config.get('dataBackend.{}'.format(self.NAME), types=dict)
-        aws_access_key_id = config.get_from_dict(our_config, 'awsAccessKeyId', types=str)
-        aws_secret_access_key = config.get_from_dict(our_config, 'awsSecretAccessKey', types=str)
-        region_name = config.get_from_dict(our_config, 'regionName', None, types=str)
-        endpoint_url = config.get_from_dict(our_config, 'endpointUrl', None, types=str)
-        use_ssl = config.get_from_dict(our_config, 'useSsl', None, types=bool)
-        addressing_style = config.get_from_dict(our_config, 'addressingStyle', None, types=str)
-        signature_version = config.get_from_dict(our_config, 'signatureVersion', None, types=str)
-
-        self._bucket_name = config.get_from_dict(our_config, 'bucketName', types=str)
-        self._multi_delete = config.get_from_dict(our_config, 'multiDelete', types=bool)
-        self._disable_encoding_type = config.get_from_dict(our_config, 'disableEncodingType', types=bool)
+        self._bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
+        self._multi_delete = Config.get_from_dict(module_configuration, 'multiDelete', types=bool)
+        self._disable_encoding_type = Config.get_from_dict(module_configuration, 'disableEncodingType', types=bool)
 
         self._resource_config = {
             'aws_access_key_id': aws_access_key_id,
@@ -57,28 +52,12 @@ class DataBackend(ReadCacheDataBackend):
         if signature_version:
             resource_config['signature_version'] = signature_version
 
-        self._resource_config['config'] = Config(**resource_config)
-
+        self._resource_config['config'] = BotoCoreClientConfig(**resource_config)
         self._local = threading.local()
         self._init_connection()
-
-        # create our bucket
-        exists = True
-        try:
-            self._local.resource.meta.client.head_bucket(Bucket=self._bucket_name)
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchBucket' or e.response['Error']['Code'] == '404':
-                # Doesn't exists...
-                exists = False
-            else:
-                raise
-
-        if not exists:
-            self._local.resource.create_bucket(Bucket=self._bucket_name)
-
         self._local.bucket = self._local.resource.Bucket(self._bucket_name)
 
-        super().__init__(config)
+        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
     def _init_connection(self):
         if not hasattr(self._local, 'session'):
@@ -137,9 +116,6 @@ class DataBackend(ReadCacheDataBackend):
             object.delete()
 
     def _rm_many_objects(self, keys):
-        """ Deletes many keys from the data backend and returns a list
-        of keys that couldn't be deleted.
-        """
         self._init_connection()
         errors = []
         if self._multi_delete:

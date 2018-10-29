@@ -19,6 +19,7 @@ import benji.exception
 from benji.benji import Benji, BenjiStore
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
+from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.metadata import Version, VersionUid
 from benji.nbdserver import NbdServer
@@ -34,16 +35,25 @@ class Commands:
         self.machine_output = machine_output
         self.config = config
 
-    def backup(self, name, snapshot_name, source, rbd, base_version_uid, block_size=None, tags=None):
+    def backup(self,
+               version_name,
+               snapshot_name,
+               source,
+               rbd_hints,
+               base_version_uid,
+               block_size=None,
+               tags=None,
+               storage=None):
         base_version_uid = VersionUid.create_from_readables(base_version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config, block_size=block_size)
             hints = None
-            if rbd:
-                data = ''.join([line for line in fileinput.input(rbd).readline()])
+            if rbd_hints:
+                data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
                 hints = hints_from_rbd_diff(data)
-            backup_version_uid = benji_obj.backup(name, snapshot_name, source, hints, base_version_uid, tags)
+            backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid, tags,
+                                                  storage)
             if self.machine_output:
                 benji_obj.export_any(
                     {
@@ -236,11 +246,13 @@ class Commands:
     @classmethod
     def _ls_versions_tbl_output(cls, versions):
         tbl = PrettyTable()
-        # TODO: number of invalid blocks, used disk space, shared disk space
-        tbl.field_names = ['date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'valid', 'protected', 'tags']
+        tbl.field_names = [
+            'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'valid', 'protected', 'storage', 'tags'
+        ]
         tbl.align['name'] = 'l'
         tbl.align['snapshot_name'] = 'l'
         tbl.align['tags'] = 'l'
+        tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
         for version in versions:
@@ -253,6 +265,7 @@ class Commands:
                 PrettyPrint.bytes(version.block_size),
                 version.valid,
                 version.protected,
+                StorageFactory.storage_id_to_name(version.storage_id),
                 ",".join(sorted([t.name for t in version.tags])),
             ])
         print(tbl)
@@ -261,12 +274,13 @@ class Commands:
     def _stats_tbl_output(cls, stats):
         tbl = PrettyTable()
         tbl.field_names = [
-            'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'read', 'written', 'dedup', 'sparse',
-            'duration (s)'
+            'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',
+            'sparse', 'duration (s)'
         ]
         tbl.align['uid'] = 'l'
         tbl.align['name'] = 'l'
         tbl.align['snapshot_name'] = 'l'
+        tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
         tbl.align['read'] = 'r'
@@ -285,6 +299,7 @@ class Commands:
                 stat.version_snapshot_name,
                 PrettyPrint.bytes(stat.version_size),
                 PrettyPrint.bytes(stat.version_block_size),
+                StorageFactory.storage_id_to_name(stats.version_storage_id),
                 PrettyPrint.bytes(stat.bytes_read),
                 PrettyPrint.bytes(stat.bytes_written),
                 PrettyPrint.bytes(stat.bytes_dedup),
@@ -340,14 +355,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def cleanup(self, full):
+    def cleanup(self):
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            if full:
-                benji_obj.cleanup_full()
-            else:
-                benji_obj.cleanup_fast()
+            benji_obj.cleanup()
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -379,19 +391,6 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def nbd(self, bind_address, bind_port, read_only):
-        benji_obj = None
-        try:
-            benji_obj = Benji(self.config)
-            store = BenjiStore(benji_obj)
-            addr = (bind_address, bind_port)
-            server = NbdServer(addr, store, read_only)
-            logger.info("Starting to serve nbd on %s:%s" % (addr[0], addr[1]))
-            server.serve_forever()
-        finally:
-            if benji_obj:
-                benji_obj.close()
-
     def metadata_import(self, input_file=None):
         benji_obj = None
         try:
@@ -405,12 +404,23 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_restore(self, version_uids):
+    def metadata_restore(self, version_uids, storage=None):
         version_uids = VersionUid.create_from_readables(version_uids)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.metadata_restore(version_uids)
+            benji_obj.metadata_restore(version_uids, storage)
+        finally:
+            if benji_obj:
+                benji_obj.close()
+
+    def metadata_ls(self, storage=None):
+        benji_obj = None
+        try:
+            benji_obj = Benji(self.config)
+            version_uids = benji_obj.metadata_ls(storage)
+            for version_uid in version_uids:
+                print(version_uid.readable)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -470,6 +480,19 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
+    def nbd(self, bind_address, bind_port, read_only):
+        benji_obj = None
+        try:
+            benji_obj = Benji(self.config)
+            store = BenjiStore(benji_obj)
+            addr = (bind_address, bind_port)
+            server = NbdServer(addr, store, read_only)
+            logger.info("Starting to serve nbd on %s:%s" % (addr[0], addr[1]))
+            server.serve_forever()
+        finally:
+            if benji_obj:
+                benji_obj.close()
+
 
 def check_range(minimum, maximum, arg):
     try:
@@ -497,15 +520,16 @@ def main():
 
     # BACKUP
     p = subparsers_root.add_parser('backup', help='Perform a backup')
-    p.add_argument('source', help='Source URL')\
-        .completer=ChoicesCompleter(('file://', 'rbd://'))
-    p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
     p.add_argument('-s', '--snapshot-name', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
     p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
     p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
     p.add_argument(
         '-t', '--tag', action='append', dest='tags', metavar='TAG', default=None, help='Tag version (may be repeated)')
     p.add_argument('-b', '--block-size', type=int, help='Block size in bytes')
+    p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
+    p.add_argument('source', help='Source URL') \
+        .completer=ChoicesCompleter(('file://', 'rbd://'))
+    p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
     p.set_defaults(func='backup')
 
     # RESTORE
@@ -520,6 +544,7 @@ def main():
     p.add_argument('version_uid', help='Version UID to restore')
     p.add_argument('destination', help='Destination URL')\
         .completer=ChoicesCompleter(('file://', 'rbd://'))
+
     p.set_defaults(func='restore')
 
     # NBD
@@ -568,8 +593,6 @@ def main():
 
     # CLEANUP
     p = subparsers_root.add_parser('cleanup', help='Cleanup no longer referenced blocks on the data backend')
-    p.add_argument(
-        '-f', '--full', action='store_true', default=False, help='Scan all blocks on data backend (very slow)')
     p.set_defaults(func='cleanup')
 
     # PROTECT
@@ -703,8 +726,14 @@ def main():
     # METADATA RESTORE
     p = subparsers_root.add_parser(
         'metadata-restore', help='Restore the metadata of one ore more versions from the data backend')
+    p.add_argument('-S', '--storage', help='Destination storage (if unspecified the default is used)')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
     p.set_defaults(func='metadata_restore')
+
+    # METADATA LS
+    p = subparsers_root.add_parser('metadata-ls', help='List the version metadata backup')
+    p.add_argument('-S', '--storage', help='Destination storage (if unspecified the default is used)')
+    p.set_defaults(func='metadata_ls')
 
     # STATS
     p = subparsers_root.add_parser('stats', help='Show backup statistics')

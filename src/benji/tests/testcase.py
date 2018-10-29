@@ -1,4 +1,3 @@
-import importlib
 import logging
 import os
 import random
@@ -8,8 +7,7 @@ from binascii import hexlify
 
 from benji.benji import Benji
 from benji.config import Config
-from benji.data_backends import DataBackend
-from benji.exception import ConfigurationError
+from benji.factory import StorageFactory, IOFactory
 from benji.logging import init_logging
 from benji.metadata import MetadataBackend
 
@@ -33,8 +31,8 @@ class TestCase():
         def __init__(self):
             self.path = 'benji-test_' + TestCase.random_string(16)
             for dir in [
-                    self.path, self.path + '/data', self.path + '/lock', self.path + '/nbd-cache',
-                    self.path + '/read-cache'
+                    self.path, self.path + '/data', self.path + '/data-2', self.path + '/lock',
+                    self.path + '/nbd-cache', self.path + '/read-cache'
             ]:
                 os.mkdir(dir)
 
@@ -46,34 +44,40 @@ class TestCase():
         self.testpath = self.TestPath()
         init_logging(None, logging.DEBUG)
 
-        self.config = Config(cfg=self.CONFIG.format(testpath=self.testpath.path), merge_defaults=False)
+        self.config = Config(cfg=self.CONFIG.format(testpath=self.testpath.path))
 
     def tearDown(self):
         self.testpath.close()
 
 
-class BackendTestCase(TestCase):
+class DataBackendTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
 
-        name = self.config.get('dataBackend.type', None, types=str)
-        if name is not None:
-            try:
-                DataBackendLib = importlib.import_module('{}.{}'.format(DataBackend.PACKAGE_PREFIX, name))
-            except ImportError:
-                raise ConfigurationError('Data backend type {} not found.'.format(name))
-            else:
-                self.data_backend = DataBackendLib.DataBackend(self.config)
-                self.data_backend.rm_many(self.data_backend.list_blocks())
-                for version_uid in self.data_backend.list_versions():
-                    self.data_backend.rm_version(version_uid)
+        default_storage = self.config.get('dataBackends.defaultStorage', types=str)
+        StorageFactory.initialize(self.config)
 
-        name = self.config.get('metadataBackend', None, types=dict)
-        if name is not None:
-            metadata_backend = MetadataBackend(self.config)
-            metadata_backend.initdb(_migratedb=False, _destroydb=True)
-            self.metadata_backend = metadata_backend.open(_migratedb=False)
+        self.storage = StorageFactory.get(default_storage)
+        self.storage.rm_many(self.storage.list_blocks())
+        for version_uid in self.storage.list_versions():
+            self.storage.rm_version(version_uid)
+
+    def tearDown(self):
+        uids = self.storage.list_blocks()
+        self.assertEqual(0, len(uids))
+        StorageFactory.close()
+        super().tearDown()
+
+
+class SQLTestCase(TestCase):
+
+    def setUp(self):
+        super().setUp()
+
+        metadata_backend = MetadataBackend(self.config)
+        metadata_backend.initdb(_migratedb=False, _destroydb=True)
+        self.metadata_backend = metadata_backend.open(_migratedb=False)
 
     def tearDown(self):
         if hasattr(self, 'data_backend'):

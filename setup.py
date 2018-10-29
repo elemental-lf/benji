@@ -45,7 +45,7 @@ Topic :: System :: Archiving :: Backup
         '': 'src',
     },
     package_data={
-        'benji': ['benji-config-schema.yaml', 'sql_migrations/alembic.ini'],
+        'benji': ['schemas/*/*.yaml', 'sql_migrations/alembic.ini'],
     },
     zip_safe=False,  # ONLY because of alembic.ini. The rest is zip-safe.
     install_requires=[
@@ -60,11 +60,12 @@ Topic :: System :: Archiving :: Backup
         'sparsebitfield>=0.2.2',
         'colorlog>=3.1.4',
         'cerberus>=1.2',
+        'pycryptodome>=3.6.1',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
         'b2': ['b2>=1.3.2'],
-        'encryption': ['pycryptodome>=3.6.1', 'aes-keywrap>17.12.1'],
+        'encryption': ['aes-keywrap>17.12.1'],
         'compression': ['zstandard>=0.9.0'],
         'readcache': ['diskcache>=3.0.6'],
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,

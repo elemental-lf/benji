@@ -12,8 +12,9 @@ from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
 from urllib import parse
 
-from benji.data_backend.factory import DataBackendFactory
-from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, NoChange, ScrubbingError
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, NoChange, ScrubbingError, \
+    ConfigurationError
+from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
 from benji.metadata import BlockUid, MetadataBackend
 from benji.retentionfilter import RetentionFilter
@@ -34,13 +35,11 @@ class Benji:
         self._hash_function = parametrized_hash_function(config.get('hashFunction', types=str))
         self._process_name = config.get('processName', types=str)
 
-        from benji.data_backends import DataBackend
-        name = config.get('dataBackend.type', types=str)
-        try:
-            self._data_backend_module = importlib.import_module('{}.{}'.format(DataBackend.PACKAGE_PREFIX, name))
-        except ImportError:
-            raise ConfigurationError('Data backend type {} not found.'.format(name))
-        self._data_backend_object = None
+        IOFactory.initialize(config)
+
+        StorageFactory.initialize(self.config)
+        default_storage = self.config.get('defaultStorage', types=str)
+        self._default_storage_id = StorageFactory.name_to_storage_id(default_storage)
 
         metadata_backend = MetadataBackend(config, in_memory=in_memory)
         if initdb or in_memory:
@@ -54,42 +53,44 @@ class Benji:
         if self._locking.is_locked():
             raise AlreadyLocked('Another instance is already running.')
 
-    # This implements a lazy creation of the data backend object so that any network connections
-    # are only opened and expensive encryption calculations are only done when the object is really used.
-    @property
-    def _data_backend(self):
-        if not self._data_backend_object:
-            self._data_backend_object = self._data_backend_module.DataBackend(self.config)
-        return self._data_backend_object
-
-    def _clone_version(self, name, snapshot_name, size=None, base_version_uid=None):
+    def _prepare_version(self, version_name, version_snapshot_name, storage_name=None, size=None, base_version_uid=None):
         """ Prepares the metadata for a new version.
         If base_version_uid is given, this is taken as the base, otherwise
         a pure sparse version is created.
         """
+        storage_id = StorageFactory.name_to_storage_id(storage_name) if storage_name else None
         if base_version_uid:
             old_version = self._metadata_backend.get_version(base_version_uid)  # raise if not exists
             if not old_version.valid:
-                raise UsageError('You cannot base new version on an invalid one.')
+                raise UsageError('You cannot base a new version on an old invalid one.')
             if old_version.block_size != self._block_size:
-                raise UsageError('You cannot base new version on an old version with a different block size.')
+                raise UsageError('You cannot base a new version on an old version with a different block size.')
+            if storage_id is not None and old_version.storage_id != storage_id:
+                raise UsageError('Base version and new version have to be in the same storage.')
+            new_storage_id = old_version.storage_id
             old_blocks = self._metadata_backend.get_blocks_by_version(base_version_uid)
-            if not size:
-                size = old_version.size
-        else:
-            old_blocks = None
-            if not size:
-                raise InternalError('Size needs to be specified if there is no base version.')
+            if size is not None:
+                new_size = size
+            else:
+                new_size = old_version.size
 
-        num_blocks = int(math.ceil(size / self._block_size))
+        else:
+            new_storage_id = storage_id if storage_id is not None else self._default_storage_id
+            old_blocks = None
+            if size is None:
+                raise InternalError('Size needs to be specified if there is no base version.')
+            new_size = size
+
+        num_blocks = int(math.ceil(new_size / self._block_size))
 
         try:
             # we always start with invalid versions, then validate them after backup
             version = self._metadata_backend.create_version(
-                version_name=name,
-                snapshot_name=snapshot_name,
-                size=size,
+                version_name=version_name,
+                snapshot_name=version_snapshot_name,
+                size=new_size,
                 block_size=self._block_size,
+                storage_id=new_storage_id,
                 valid=False,
                 protected=True)
             self._locking.lock_version(version.uid, reason='Preparing version')
@@ -118,7 +119,7 @@ class Benji:
 
                 # the last block can differ in size, so let's check
                 _offset = id * self._block_size
-                new_block_size = min(self._block_size, size - _offset)
+                new_block_size = min(self._block_size, new_size - _offset)
                 if new_block_size != block_size:
                     # last block changed, so set back all info
                     block_size = new_block_size
@@ -132,7 +133,6 @@ class Benji:
 
             self._metadata_backend.commit()
         except:
-            self._metadata_backend.rollback()
             if version:
                 self._metadata_backend.set_version(version.uid, protected=False)
             if self._locking.is_version_locked(version.uid):
@@ -157,29 +157,8 @@ class Benji:
     def stats(self, version_uid=None, limit=None):
         return self._metadata_backend.get_stats(version_uid, limit)
 
-    def _get_io_by_source(self, source, block_size):
-        res = parse.urlparse(source)
-
-        if res.params or res.query or res.fragment:
-            raise UsageError('The supplied URL {} is invalid.'.format(source))
-
-        scheme = res.scheme
-        if not scheme:
-            raise UsageError('The supplied URL {} is invalid. You must provide a scheme (e.g. file://).'.format(source))
-
-        try:
-            from benji.io import IO
-            IOLib = importlib.import_module('{}.{}'.format(IO.PACKAGE_PREFIX, scheme))
-        except ImportError:
-            raise UsageError('IO scheme {} not supported.'.format(scheme))
-
-        return IOLib.IO(
-            config=self.config,
-            block_size=block_size,
-            hash_function=self._hash_function,
-        )
-
     def _scrub_prepare(self, *, version, blocks, history, block_percentage, deep_scrub):
+        storage = StorageFactory.get_by_storage_id(version.storage_id)
         read_jobs = 0
         for i, block in enumerate(blocks):
             notify(
@@ -189,7 +168,7 @@ class Benji:
                 logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep scrub' if deep_scrub else 'Scrub',
                                                                                 block.id, block.uid))
                 continue
-            if history and block.uid in history:
+            if history and history.seen(version.storage_id, block.uid):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
                     'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid))
                 continue
@@ -197,7 +176,7 @@ class Benji:
                 logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
                     'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
             else:
-                self._data_backend.read(block.deref(), metadata_only=(not deep_scrub))
+                storage.read(block.deref(), metadata_only=(not deep_scrub))
                 read_jobs += 1
         return read_jobs
 
@@ -226,11 +205,12 @@ class Benji:
 
         valid = True
         try:
+            storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = self._scrub_prepare(
                 version=version, blocks=blocks, history=history, block_percentage=block_percentage, deep_scrub=False)
 
             done_read_jobs = 0
-            for entry in self._data_backend.read_get_completed():
+            for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
                     logger.error('Data backend read failed: {}'.format(entry))
@@ -245,7 +225,7 @@ class Benji:
                     block, data, metadata = entry
 
                 try:
-                    self._data_backend.check_block_metadata(block=block, data_length=None, metadata=metadata)
+                    storage.check_block_metadata(block=block, data_length=None, metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
                     self._metadata_backend.set_blocks_invalid(block.uid)
@@ -255,7 +235,7 @@ class Benji:
                     raise
 
                 if history:
-                    history.add(block.uid)
+                    history.add(version.storage_id, block.uid)
 
                 self._scrub_report_progress(
                     version_uid=version_uid,
@@ -291,20 +271,21 @@ class Benji:
             blocks = self._metadata_backend.get_blocks_by_version(version_uid)
 
             if source:
-                io = self._get_io_by_source(source, version.block_size)
-                io.open_r(source)
+                io = IOFactory.get(source, version.block_size)
+                io.open_r()
         except:
             self._locking.unlock_version(version_uid)
             raise
 
         valid = True
         try:
-            old_use_read_cache = self._data_backend.use_read_cache(False)
+            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            old_use_read_cache = storage.use_read_cache(False)
             read_jobs = self._scrub_prepare(
                 version=version, blocks=blocks, history=history, block_percentage=block_percentage, deep_scrub=True)
 
             done_read_jobs = 0
-            for entry in self._data_backend.read_get_completed():
+            for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
                     logger.error('Data backend read failed: {}'.format(entry))
@@ -319,7 +300,7 @@ class Benji:
                     block, data, metadata = entry
 
                 try:
-                    self._data_backend.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
+                    storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
                     self._metadata_backend.set_blocks_invalid(block.uid)
@@ -349,7 +330,7 @@ class Benji:
                         # then the source is invalid.
 
                 if history:
-                    history.add(block.uid)
+                    history.add(version.storage_id, block.uid)
 
                 self._scrub_report_progress(
                     version_uid=version_uid,
@@ -364,7 +345,7 @@ class Benji:
             if source:
                 io.close()
             # Restore old read cache setting
-            self._data_backend.use_read_cache(old_use_read_cache)
+            storage.use_read_cache(old_use_read_cache)
             notify(self._process_name)
 
         if read_jobs != done_read_jobs:
@@ -396,17 +377,20 @@ class Benji:
                 version_uid.readable, target))
             blocks = self._metadata_backend.get_blocks_by_version(version_uid)
 
-            io = self._get_io_by_source(target, version.block_size)
-            io.open_w(target, version.size, force)
+            self._storage = version.storage_id
+
+            io = IOFactory.get(target, version.block_size)
+            io.open_w(version.size, force)
         except:
             self._locking.unlock_version(version_uid)
             raise
 
         try:
+            storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = 0
             for i, block in enumerate(blocks):
                 if block.uid:
-                    self._data_backend.read(block.deref())
+                    storage.read(block.deref())
                     read_jobs += 1
                 elif not sparse:
                     io.write(block, b'\0' * block.size)
@@ -424,7 +408,7 @@ class Benji:
 
             done_read_jobs = 0
             log_every_jobs = read_jobs // 200 + 1  # about every half percent
-            for entry in self._data_backend.read_get_completed():
+            for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
                     logger.error('Data backend read failed: {}'.format(entry))
@@ -441,7 +425,7 @@ class Benji:
                 io.write(block, data)
 
                 try:
-                    self._data_backend.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
+                    storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
                     self._metadata_backend.set_blocks_invalid(block.uid)
@@ -504,7 +488,8 @@ class Benji:
 
             if not keep_backend_metadata:
                 try:
-                    self._data_backend.rm_version(version_uid)
+                    storage = StorageFactory.get_by_storage_id(version.storage_id)
+                    storage.rm_version(version_uid)
                     logger.info('Removed version {} metadata from backend storage.'.format(version_uid.readable))
                 except FileNotFoundError:
                     logger.warning('Unable to remove version {} metadata from backend storage, the object wasn\'t found.'
@@ -513,14 +498,8 @@ class Benji:
 
             logger.info('Removed backup version {} with {} blocks.'.format(version_uid.readable, num_blocks))
 
-    def rm_from_backend(self, version_uid):
-        with self._locking.with_version_lock(version_uid, reason='Removing version from data backend'):
-            self._data_backend.rm_version(version_uid)
-        logger.info('Removed backup version {} metadata from backend storage.'.format(version_uid.readable))
-
     @staticmethod
     def _blocks_from_hints(hints, block_size):
-        """ Helper method """
         sparse_blocks = set()
         read_blocks = set()
         for offset, length, exists in hints:
@@ -543,13 +522,18 @@ class Benji:
 
         return sparse_blocks, read_blocks
 
-    def backup(self, name, snapshot_name, source, hints=None, base_version_uid=None, tags=None):
+    def backup(self,
+               version_name,
+               version_snapshot_name,
+               source,
+               hints=None,
+               base_version_uid=None,
+               tags=None,
+               storage_name=None):
         """ Create a backup from source.
-        If hints are given, they must be tuples of (offset, length, exists)
-        where offset and length are integers and exists is a boolean. Then, only
-        data within hints will be backed up.
-        Otherwise, the backup reads source and looks if checksums match with
-        the target.
+        If hints are given, they must be tuples of (offset, length, exists) where offset and length are integers and
+        exists is a boolean. In this case only data within hints will be backed up.
+        Otherwise, the backup reads source and looks if checksums match with the target.
         """
         stats = {
             'bytes_read': 0,
@@ -558,8 +542,8 @@ class Benji:
             'bytes_sparse': 0,
             'start_time': time.time(),
         }
-        io = self._get_io_by_source(source, self._block_size)
-        io.open_r(source)
+        io = IOFactory.get(source, self._block_size)
+        io.open_r()
         source_size = io.size()
 
         num_blocks = int(math.ceil(source_size / self._block_size))
@@ -581,7 +565,12 @@ class Benji:
             sparse_blocks = set()
             read_blocks = set(range(num_blocks))
 
-        version = self._clone_version(name, snapshot_name, source_size, base_version_uid)
+        version = self._prepare_version(
+            version_name=version_name,
+            version_snapshot_name=version_snapshot_name,
+            size=source_size,
+            base_version_uid=base_version_uid,
+            storage_name=storage_name)
         self._locking.update_version_lock(version.uid, reason='Backing up')
         blocks = self._metadata_backend.get_blocks_by_version(version.uid)
 
@@ -609,9 +598,10 @@ class Benji:
                 if isinstance(entry, Exception):
                     raise entry
                 else:
-                    source_block, source_data, source_data_checksum = entry
+                    source_block, source_data = entry
 
                 # check metadata checksum with the newly read one
+                source_data_checksum = data_hexdigest(self._hash_function, source_data)
                 if source_block.checksum != source_data_checksum:
                     logger.error("Source and backup don't match in regions outside of the ones indicated by the hints.")
                     logger.error("Looks like the hints don't match or the source is different.")
@@ -623,6 +613,7 @@ class Benji:
             logger.info('Finished sanity check. Checked {} blocks {}.'.format(num_reading, check_block_ids))
 
         try:
+            storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = 0
             for i, block in enumerate(blocks):
                 if block.id in read_blocks or not block.valid:
@@ -652,12 +643,13 @@ class Benji:
                 if isinstance(entry, Exception):
                     raise entry
                 else:
-                    block, data, data_checksum = entry
+                    block, data = entry
 
                 stats['bytes_read'] += len(data)
 
                 # dedup
-                existing_block = self._metadata_backend.get_block_by_checksum(data_checksum)
+                data_checksum = data_hexdigest(self._hash_function, data)
+                existing_block = self._metadata_backend.get_block_by_checksum(data_checksum, version.storage_id)
                 if data_checksum == sparse_block_checksum and block.size == self._block_size:
                     # if the block is only \0, set it as a sparse block.
                     stats['bytes_sparse'] += block.size
@@ -683,14 +675,14 @@ class Benji:
                 else:
                     block.uid = BlockUid(version.uid.int, block.id + 1)
                     block.checksum = data_checksum
-                    self._data_backend.save(block, data)
+                    storage.save(block, data)
                     write_jobs += 1
                     logger.debug('Queued block {} for write (checksum {}...)'.format(block.id, data_checksum[:16]))
 
                 done_read_jobs += 1
 
                 try:
-                    for saved_block in self._data_backend.save_get_completed(timeout=0):
+                    for saved_block in storage.save_get_completed(timeout=0):
                         if isinstance(saved_block, Exception):
                             raise saved_block
 
@@ -714,7 +706,7 @@ class Benji:
                                                                           done_read_jobs / read_jobs * 100))
 
             try:
-                for saved_block in self._data_backend.save_get_completed():
+                for saved_block in storage.save_get_completed():
                     if isinstance(saved_block, Exception):
                         raise saved_block
 
@@ -760,9 +752,10 @@ class Benji:
             base_version_uid=base_version_uid,
             hints_supplied=hints is not None,
             version_date=version.date,
-            version_name=name,
-            version_snapshot_name=snapshot_name,
+            version_name=version_name,
+            version_snapshot_name=version_snapshot_name,
             version_size=source_size,
+            version_storage_id=version.storage_id,
             version_block_size=self._block_size,
             bytes_read=stats['bytes_read'],
             bytes_written=stats['bytes_written'],
@@ -776,29 +769,16 @@ class Benji:
         # It might be tempting to return a Version object here but this will only lead to SQLAlchemy errors
         return version.uid
 
-    def cleanup_fast(self, dt=3600):
+    def cleanup(self, dt=3600):
         with self._locking.with_lock(
-                lock_name='cleanup-fast', reason='Cleanup (fast)',
-                locked_msg='Another fast cleanup is already running.'):
-            for uid_list in self._metadata_backend.get_delete_candidates(dt):
-                logger.debug('Cleanup-fast: Deleting UIDs from data backend: {}'.format(uid_list))
-                no_del_uids = self._data_backend.rm_many(uid_list)
+                lock_name='cleanup', reason='Cleanup', locked_msg='Another cleanup is already running.'):
+            for hit_list in self._metadata_backend.get_delete_candidates(dt):
+                for storage_id, uids in hit_list.items():
+                    storage = StorageFactory.get_by_storage_id(storage_id)
+                    logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name, uids))
+                no_del_uids = storage.rm_many(uids)
                 if no_del_uids:
-                    logger.info('Cleanup-fast: Unable to delete these UIDs from data backend: {}'.format(uid_list))
-
-    def cleanup_full(self):
-        with self._locking.with_lock(
-                reason='Cleanup (full)', locked_msg='Another instance has already taken the global lock.'):
-            active_blob_uids = set(self._data_backend.list_blocks())
-            active_block_uids = set(self._metadata_backend.get_all_block_uids())
-            delete_candidates = active_blob_uids.difference(active_block_uids)
-            for delete_candidate in delete_candidates:
-                logger.debug('Cleanup: Removing UID {}'.format(delete_candidate))
-                try:
-                    self._data_backend.rm(delete_candidate)
-                except FileNotFoundError:
-                    continue
-            logger.info('Cleanup: Removed {} blobs'.format(len(delete_candidates)))
+                    logger.info('Unable to delete these UIDs from storage {}: {}'.format(storage.name, no_del_uids))
 
     def add_tag(self, version_uid, name):
         self._metadata_backend.add_tag(version_uid, name)
@@ -807,9 +787,9 @@ class Benji:
         self._metadata_backend.rm_tag(version_uid, name)
 
     def close(self):
-        if self._data_backend_object:
-            self._data_backend.close()
-        # Close metadata backend after data backend so that any open locks are held until all data backend jobs have
+        StorageFactory.close()
+        IOFactory.close()
+        # Close metadata backend after storage so that any open locks are held until all storage jobs have
         # finished
         self._metadata_backend.close()
 
@@ -827,18 +807,20 @@ class Benji:
                 self._locking.unlock_version(version_uid)
 
     def metadata_backup(self, version_uids, overwrite=False, locking=True):
+        versions = [self._metadata_backend.get_version(version_uid) for version_uid in version_uids]
         try:
             locked_version_uids = []
             if locking:
-                for version_uid in version_uids:
-                    self._locking.lock_version(version_uid, reason='Back up version metadata')
-                    locked_version_uids.append(version_uid)
+                for version in versions:
+                    self._locking.lock_version(version.uid, reason='Backing up version metadata')
+                    locked_version_uids.append(version.uid)
 
-            for version_uid in version_uids:
+            for version in versions:
                 with StringIO() as metadata_export:
-                    self._metadata_backend.export([version_uid], metadata_export)
-                    self._data_backend.save_version(version_uid, metadata_export.getvalue(), overwrite=overwrite)
-                logger.info('Backed up version {} metadata.'.format(version_uid.readable))
+                    self._metadata_backend.export([version.uid], metadata_export)
+                    storage = StorageFactory.get_by_storage_id(version.storage_id)
+                    storage.save_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
+                logger.info('Backed up version {} metadata.'.format(version.uid.readable))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -852,21 +834,33 @@ class Benji:
         for version_uid in version_uids:
             logger.info('Imported version {} metadata.'.format(version_uid.readable))
 
-    def metadata_restore(self, version_uids):
+    def metadata_restore(self, version_uids, storage_name=None):
+        if storage_name is not None:
+            storage = StorageFactory.get_by_name(storage_name)
+        else:
+            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
         try:
             locked_version_uids = []
             for version_uid in version_uids:
-                self._locking.lock_version(version_uid, reason='Importing version from data backend')
+                self._locking.lock_version(version_uid, reason='Restoring version metadata')
                 locked_version_uids.append(version_uid)
 
             for version_uid in version_uids:
-                metadata_import_data = self._data_backend.read_version(version_uid)
+
+                metadata_import_data = storage.read_version(version_uid)
                 with StringIO(metadata_import_data) as metadata_import:
                     self._metadata_backend.import_(metadata_import)
                 logger.info('Restored version {} metadata.'.format(version_uid.readable))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
+
+    def metadata_ls(self, storage_name=None):
+        if storage_name is not None:
+            storage = StorageFactory.get_by_name(storage_name)
+        else:
+            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
+        return storage.list_versions()
 
     def enforce_retention_policy(self, version_name, rules_spec, dry_run=False, keep_backend_metadata=False):
         versions = self._metadata_backend.get_versions(version_name=version_name)
@@ -960,9 +954,10 @@ class BenjiStore:
         digest = hashlib.md5(filename.encode('ascii')).hexdigest()
         return '{}/{}/{}-{}'.format(digest[0:2], digest[2:4], digest[:8], filename)
 
-    def _read(self, block, offset=0, length=None):
+    def _read(self, version, block, offset=0, length=None):
         if block.uid not in self._block_cache:
-            data = self._benji_obj._data_backend.read(block, sync=True)
+            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            data = storage.read(block, sync=True)
             filename = os.path.join(self._cachedir, self._cache_filename(block.uid))
             try:
                 with open(filename, 'wb') as f:
@@ -1000,13 +995,13 @@ class BenjiStore:
             elif not block.uid:  # sparse block
                 data.append(b'\0' * length)
             else:
-                data.append(self._read(block, offset, length))
+                data.append(self._read(version, block, offset, length))
         return b''.join(data)
 
     def get_cow_version(self, base_version):
-        cow_version = self._benji_obj._clone_version(
-            name=base_version.name,
-            snapshot_name='nbd-cow-{}-{}'.format(
+        cow_version = self._benji_obj._prepare_version(
+            version_name=base_version.name,
+            version_snapshot_name='nbd-cow-{}-{}'.format(
                 base_version.uid.readable, datetime.datetime.now().isoformat(timespec='seconds')),
             base_version_uid=base_version.uid)
         self._benji_obj._locking.update_version_lock(cow_version.uid, reason='NBD COW')
@@ -1045,7 +1040,8 @@ class BenjiStore:
             else:
                 # read the block from the original, update it and write it back
                 if block.uid:
-                    write_data = BytesIO(self._benji_obj._data_backend.read(block, sync=True))
+                    storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
+                    write_data = BytesIO(storage.read(block, sync=True))
                     write_data.seek(_offset)
                     write_data.write(dataio.read(length))
                     write_data.seek(0)
@@ -1067,12 +1063,13 @@ class BenjiStore:
         logger.info('Fixating version {} with {} blocks, please wait!'.format(
             cow_version.uid, len(self._cow[cow_version.uid.int].items())))
 
+        storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
         for block in self._cow[cow_version.uid.int].values():
             logger.debug('Fixating block {} uid {}'.format(block.id, block.uid))
             data = self._read(block)
 
             # dump changed data
-            self._benji_obj._data_backend.save(block, data, sync=True)
+            storage.save(block, data, sync=True)
             logger.debug('Stored block {} uid {}'.format(block.id, block.uid))
 
             # TODO: Add deduplication (maybe share code with backup?), detect sparse blocks?

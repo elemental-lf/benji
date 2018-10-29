@@ -7,16 +7,18 @@ class test_file(DatabackendTestCase, unittest.TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        hashFunction: blake2b,digest_size=32
-        dataBackend:
-          type: file
-          file:
-            path: {testpath}/data
-          consistencyCheckWrites: True
-          simultaneousWrites: 1
-          simultaneousReads: 1
-          bandwidthRead: 0
-          bandwidthWrite: 0
+        metadataBackend:
+          engine: sqlite://
+        dataBackends:
+          defaultStorage: file-1
+          storages:
+            - identifier: file-1
+              module: file
+              configuration:
+                path: {testpath}/data
+                consistencyCheckWrites: True
+                hmac:
+                  key: !!binary CPJlYMjRjfbXWOcqsE309A==
         """
 
 

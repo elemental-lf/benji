@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from benji.exception import InternalError, NoChange
 from benji.metadata import BlockUid, VersionUid
-from benji.tests.testcase import BackendTestCase
+from benji.tests.testcase import SQLTestCase as SQLTestCaseBase
 
 
 class SQLTestCase:
@@ -12,6 +12,7 @@ class SQLTestCase:
             version_name='backup-name',
             snapshot_name='snapshot-name',
             size=16 * 1024 * 4096,
+            storage_id=1,
             block_size=4 * 1024 * 4096,
             valid=False)
         self.metadata_backend.commit()
@@ -59,6 +60,7 @@ class SQLTestCase:
                 version_name='backup-name',
                 snapshot_name='snapshot-name',
                 size=16 * 1024 * 4096,
+                storage_id=1,
                 block_size=4 * 1024 * 4096,
                 valid=False)
             version = self.metadata_backend.get_version(version.uid)
@@ -71,6 +73,7 @@ class SQLTestCase:
             snapshot_name='snapshot-name-' + self.random_string(12),
             size=256 * 1024 * 4096,
             block_size=1024 * 4096,
+            storage_id=1,
             valid=False)
         self.metadata_backend.commit()
 
@@ -84,7 +87,7 @@ class SQLTestCase:
         self.metadata_backend.commit()
 
         for id, checksum in enumerate(checksums):
-            block = self.metadata_backend.get_block_by_checksum(checksum)
+            block = self.metadata_backend.get_block_by_checksum(checksum, 1)
             self.assertEqual(id, block.id)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uids[id], block.uid)
@@ -120,11 +123,6 @@ class SQLTestCase:
             self.assertEqual(checksums[id], dereferenced_block.checksum)
             self.assertEqual(1024 * 4096, dereferenced_block.size)
             self.assertTrue(dereferenced_block.valid)
-
-        uids_all = self.metadata_backend.get_all_block_uids()
-        for uid in uids_all:
-            self.assertIn(uid, uids)
-        self.assertEqual(num_blocks, len(uids_all))
 
         self.metadata_backend.rm_version(version.uid)
         self.metadata_backend.commit()
@@ -200,24 +198,37 @@ class SQLTestCase:
         self.assertEqual(VersionUid(3), uids[2])
 
 
-class SQLTestCaseSQLLite(SQLTestCase, BackendTestCase, TestCase):
+class SQLTestCaseSQLLite(SQLTestCase, SQLTestCaseBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        hashFunction: blake2b,digest_size=32
+        dataBackends:
+          defaultStorage: 1
         metadataBackend: 
           engine: sqlite:///{testpath}/benji.sqlite
         """
 
 
-class SQLTestCasePostgreSQL(SQLTestCase, BackendTestCase, TestCase):
+class SQLTestCaseSQLLiteInMemory(SQLTestCase, SQLTestCaseBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        lockDirectory: {testpath}/lock
-        hashFunction: blake2b,digest_size=32
+        dataBackends:
+          defaultStorage: 1
+        metadataBackend: 
+          engine: sqlite://
+        """
+
+
+class SQLTestCasePostgreSQL(SQLTestCase, SQLTestCaseBase, TestCase):
+
+    CONFIG = """
+        configurationVersion: '1.0.0'
+        logFile: /dev/stderr
+        dataBackends:
+          defaultStorage: 1
         metadataBackend: 
           engine: postgresql://benji:verysecret@localhost:15432/benji
         """

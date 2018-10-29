@@ -2,11 +2,12 @@
 # -*- encoding: utf-8 -*-
 import operator
 import os
+from copy import deepcopy
 from functools import reduce
 from os.path import expanduser
 from pathlib import Path
 
-from cerberus import Validator
+from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
 from ruamel.yaml import YAML
 
@@ -14,39 +15,71 @@ from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
 
 
-class _ConfigDict(dict):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.full_name = None
-
-
-class _ConfigList(list):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.full_name = None
-
-
 class Config:
+    _CONFIG_DIRS = ['/etc', '/etc/benji']
+    _CONFIG_FILE = 'benji.yaml'
 
-    CONFIG_VERSION = '1.0.0'
+    _SCHEMA_VERSION = '1.0.0'
+    _YAML_SUFFIX = '.yaml'
+    _PARENTS_KEY = 'parents'
 
-    CONFIG_DIR = 'benji'
-    CONFIG_FILE = 'benji.yaml'
+    _schema_registry = {}
 
-    CONFIG_SCHEMA_TEMPLATE = 'benji-config-schema-{}.yaml'
+    @staticmethod
+    def _schema_name(module, version):
+        return '{}-{}'.format(module, version)
 
-    # Source: https://stackoverflow.com/questions/823196/yaml-merge-in-python
+    @classmethod
+    def add_schema(cls, *, module, version, file):
+        yaml = YAML(typ='safe', pure=True)
+        name = cls._schema_name(module, version)
+        try:
+            schema = yaml.load(Path(file))
+            cls._schema_registry[name] = schema
+        except FileNotFoundError:
+            raise InternalError('Schema {} not found or not accessible.'.format(file))
+        except SchemaError as exception:
+            raise InternalError('Schema {} is invalid.'.format(file)) from exception
+
     @classmethod
     def _merge_dicts(cls, user, default):
         if isinstance(user, dict) and isinstance(default, dict):
             for k, v in default.items():
                 if k not in user:
-                    user[k] = v
+                    user[k] = deepcopy(v)
                 else:
                     user[k] = cls._merge_dicts(user[k], v)
         return user
+
+    @classmethod
+    def _resolve_schema(cls, *, name):
+        try:
+            child = cls._schema_registry[name]
+        except KeyError:
+            raise InternalError('Schema for module {} is missing.'.format(name))
+        result = {}
+        if cls._PARENTS_KEY in child:
+            parent_names = child[cls._PARENTS_KEY]
+            for parent_name in parent_names:
+                parent = cls._resolve_schema(name=parent_name)
+                cls._merge_dicts(result, parent)
+        result = cls._merge_dicts(result, child)
+        if cls._PARENTS_KEY in result:
+            del result[cls._PARENTS_KEY]
+        logger.debug('Resolved schema for {}: {}.'.format(name, result))
+        return result
+
+    @classmethod
+    def _get_validator(cls, *, module, version):
+        name = cls._schema_name(module, version)
+        schema = cls._resolve_schema(name=name)
+        try:
+            validator = Validator(schema)
+        except SchemaError as exception:
+            logger.error('Schema {} validation errors:'.format(name))
+            cls._output_validation_errors(exception.args[0])
+            raise InternalError('Schema {} is invalid.'.format(name)) from exception
+        return validator
 
     @staticmethod
     def _output_validation_errors(errors):
@@ -63,6 +96,16 @@ class Config:
                         logger.error('  {}: {}'.format(path, value))
 
         traverse(errors)
+
+    @classmethod
+    def validate(cls, module, config):
+        validator = cls._get_validator(module=module, version=cls._SCHEMA_VERSION)
+        if not validator.validate({'configuration': config}):
+            logger.error('Configuration validation errors:')
+            cls._output_validation_errors(validator.errors)
+            raise ConfigurationError('Configuration is invalid.')
+
+        return validator.document['configuration']
 
     def __init__(self, cfg=None, sources=None):
         yaml = YAML(typ='safe', pure=True)
@@ -90,35 +133,15 @@ class Config:
             if config is None:
                 raise ConfigurationError('Configuration string is empty.')
 
-        if 'configurationVersion' not in config or type(config['configurationVersion']) is not str:
-            raise ConfigurationError('Configuration version is missing or not a string.')
-
-        if config['configurationVersion'] != self.CONFIG_VERSION:
-            raise ConfigurationError('Unknown configuration version {}.'.format(config['configurationVersion']))
-
-        try:
-            schema_file = resource_filename(__name__, self.CONFIG_SCHEMA_TEMPLATE.format(self.CONFIG_VERSION))
-            schema = yaml.load(Path(schema_file))
-        except Exception as exception:
-            raise ConfigurationError('Schema file {} is invalid.'.format(schema_file)) from exception
-
-        validator = Validator(schema)
-        if not validator:
-            raise ConfigurationError('Schema file {} is invalid.'.format(schema_file))
-
-        if not validator.validate(config):
-            logger.error('Configuration validation errors:')
-            self._output_validation_errors(validator.errors)
-            raise ConfigurationError('Configuration is invalid.')
-
-        self.config = validator.document
-        logger.debug('Loaded configuration (includes defaults): {}'.format(self.config))
+        self._config = self.validate(module=__name__, config=config)
+        logger.debug('Loaded configuration: {}'.format(self._config))
 
     def _get_sources(self):
-        sources = ['/etc/{file}'.format(file=self.CONFIG_FILE)]
-        sources.append('/etc/{dir}/{file}'.format(dir=self.CONFIG_DIR, file=self.CONFIG_FILE))
-        sources.append(expanduser('~/.{file}'.format(file=self.CONFIG_FILE)))
-        sources.append(expanduser('~/{file}'.format(file=self.CONFIG_FILE)))
+        sources = []
+        for directory in self._CONFIG_DIRS:
+            sources.append('{directory}/{file}'.format(directory=directory, file=self._CONFIG_FILE))
+        sources.append(expanduser('~/.{file}'.format(file=self._CONFIG_FILE)))
+        sources.append(expanduser('~/{file}'.format(file=self._CONFIG_FILE)))
         return sources
 
     @staticmethod
@@ -165,8 +188,32 @@ class Config:
                     raise KeyError('Config option {} is missing.'.format(full_name)) from None
 
     def get(self, name, *args, **kwargs):
-        return Config._get(self.config, name, *args, **kwargs)
+        return Config._get(self._config, name, *args, **kwargs)
 
     @staticmethod
     def get_from_dict(dict_, name, *args, **kwargs):
         return Config._get(dict_, name, *args, **kwargs)
+
+
+class _ConfigDict(dict):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.full_name = None
+
+
+class _ConfigList(list):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.full_name = None
+
+
+schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), Config._SCHEMA_VERSION)
+for filename in os.listdir(schema_base_path):
+    full_path = os.path.join(schema_base_path, filename)
+    if not os.path.isfile(full_path) or not full_path.endswith(Config._YAML_SUFFIX):
+        continue
+    module = filename[0:len(filename) - len(Config._YAML_SUFFIX)]
+    logger.debug('Loading  schema {} for module {}, version {}.'.format(full_path, module, Config._SCHEMA_VERSION))
+    Config.add_schema(module=module, version=Config._SCHEMA_VERSION, file=full_path)

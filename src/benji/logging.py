@@ -42,6 +42,7 @@ def init_logging(logfile, console_level, no_color=False):
     # silence b2
     logging.getLogger('b2').setLevel(logging.WARN)
 
+    # To enable query logging
     #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     logger.info('$ ' + ' '.join(sys.argv))

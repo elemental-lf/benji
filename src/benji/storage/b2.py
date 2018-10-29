@@ -12,52 +12,43 @@ from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
 from b2.download_dest import DownloadDestBytes
 from b2.exception import B2Error, FileNotPresent
-from benji.data_backends import ReadCacheDataBackend
+from benji.config import Config
 from benji.logging import logger
+from benji.storage.base import ReadCacheStorageBase
 
 
-class DataBackend(ReadCacheDataBackend):
-    """ A DataBackend which stores its data in a BackBlaze (B2) file store."""
-
-    NAME = 'b2'
+class Storage(ReadCacheStorageBase):
 
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *, config, name, storage_id, module_configuration):
+        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
-        our_config = config.get('dataBackend.{}'.format(self.NAME), types=dict)
-        account_id = config.get_from_dict(our_config, 'accountId', types=str)
-        application_key = config.get_from_dict(our_config, 'applicationKey', types=str)
-        bucket_name = config.get_from_dict(our_config, 'bucketName', types=str)
+        account_id = Config.get_from_dict(module_configuration, 'accountId', types=str)
+        application_key = Config.get_from_dict(module_configuration, 'applicationKey', types=str)
+        bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
 
-        account_info_file = config.get_from_dict(our_config, 'accountInfoFile', None, types=str)
+        account_info_file = Config.get_from_dict(module_configuration, 'accountInfoFile', None, types=str)
         if account_info_file is not None:
             account_info = SqliteAccountInfo(file_name=account_info_file)
         else:
             account_info = InMemoryAccountInfo()
 
-        b2.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = config.get_from_dict(
-            our_config,
+        b2.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(
+            module_configuration,
             'uploadAttempts',
-            types=int,
-            check_func=lambda v: v >= 1,
-            check_message='Must be a positive integer')
+            types=int)
 
-        self._write_object_attempts = config.get_from_dict(
-            our_config,
+        self._write_object_attempts = Config.get_from_dict(
+            module_configuration,
             'writeObjectAttempts',
-            types=int,
-            check_func=lambda v: v >= 1,
-            check_message='Must be a positive integer')
+            types=int)
 
-        self._read_object_attempts = config.get_from_dict(
-            our_config,
+        self._read_object_attempts = Config.get_from_dict(
+            module_configuration,
             'readObjectAttempts',
-            types=int,
-            check_func=lambda v: v >= 1,
-            check_message='Must be a positive integer')
+            types=int)
 
         self.service = b2.api.B2Api(account_info)
         if account_info_file is not None:

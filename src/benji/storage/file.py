@@ -3,28 +3,22 @@
 
 import os
 
-from benji.data_backends import DataBackend as _DataBackend
+from benji.config import Config
+from benji.storage.base import StorageBase
 
 
-# This backend assumes the slash ("/") as the path separator!
-class DataBackend(_DataBackend):
-    """ A DataBackend which stores in files. The files are stored in directories
-    starting with the bytes of the generated key. The depth of this structure
-    is configurable via the DEPTH parameter, which defaults to 2. """
-
-    NAME = 'file'
+class Storage(StorageBase):
 
     WRITE_QUEUE_LENGTH = 10
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *, config, name, storage_id, module_configuration):
+        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
         if os.sep != '/':
-            raise RuntimeError('The file data backend only works with / as path separator.')
+            raise RuntimeError('This module only works with / as a path separator.')
 
-        our_config = config.get('dataBackend.{}'.format(self.NAME), types=dict)
-        self.path = config.get_from_dict(our_config, 'path', types=str)
+        self.path = Config.get_from_dict(module_configuration, 'path', types=str)
 
         # Ensure that self.path ends in a slash
         if not self.path.endswith('/'):

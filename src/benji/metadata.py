@@ -225,6 +225,7 @@ class Stats(Base):
     version_date = Column("date", DateTime, nullable=False)
     version_snapshot_name = Column(String, nullable=False)
     version_size = Column(BigInteger, nullable=False)
+    version_storage_id = Column(Integer, nullable=False)
     version_block_size = Column(BigInteger, nullable=False)
     bytes_read = Column(BigInteger, nullable=False)
     bytes_written = Column(BigInteger, nullable=False)
@@ -239,10 +240,11 @@ class Version(Base):
     __table_args__ = {'sqlite_autoincrement': True}
     uid = Column(VersionUidType, primary_key=True, nullable=False)
     date = Column("date", DateTime, nullable=False)
-    name = Column(String, nullable=False, default='')
+    name = Column(String, nullable=False, default='', index=True)
     snapshot_name = Column(String, nullable=False, server_default='', default='')
     size = Column(BigInteger, nullable=False)
     block_size = Column(Integer, nullable=False)
+    storage_id = Column(Integer, nullable=False)
     valid = Column(Boolean, nullable=False)
     protected = Column(Boolean, nullable=False)
 
@@ -359,8 +361,9 @@ class DeletedBlock(Base):
     # BigInteger as the id could get large over time
     # Use INTEGER with SQLLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
     id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False)
-    uid_left = Column(Integer, nullable=True)
-    uid_right = Column(Integer, nullable=True)
+    storage_id = Column(Integer, nullable=False)
+    uid_left = Column(Integer, nullable=False)
+    uid_right = Column(Integer, nullable=False)
 
     uid = composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
     __table_args__ = (Index('ix_blocks_uid_left_uid_right_2', 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
@@ -455,11 +458,12 @@ class MetadataBackend:
     def commit(self):
         self._session.commit()
 
-    def create_version(self, version_name, snapshot_name, size, block_size, valid=False, protected=False):
+    def create_version(self, version_name, snapshot_name, size, storage_id, block_size, valid=False, protected=False):
         version = Version(
             name=version_name,
             snapshot_name=snapshot_name,
             size=size,
+            storage_id=storage_id,
             block_size=block_size,
             valid=valid,
             protected=protected,
@@ -475,8 +479,8 @@ class MetadataBackend:
         return version
 
     def set_stats(self, *, version_uid, base_version_uid, hints_supplied, version_date, version_name,
-                  version_snapshot_name, version_size, version_block_size, bytes_read, bytes_written, bytes_dedup,
-                  bytes_sparse, duration_seconds):
+                  version_snapshot_name, version_size, version_storage_id, version_block_size, bytes_read,
+                  bytes_written, bytes_dedup, bytes_sparse, duration_seconds):
         stats = Stats(
             version_uid=version_uid,
             base_version_uid=base_version_uid,
@@ -485,6 +489,7 @@ class MetadataBackend:
             version_name=version_name,
             version_snapshot_name=version_snapshot_name,
             version_size=version_size,
+            version_storage_id=version_storage_id,
             version_block_size=version_block_size,
             bytes_read=bytes_read,
             bytes_written=bytes_written,
@@ -662,9 +667,10 @@ class MetadataBackend:
 
         return block
 
-    def get_block_by_checksum(self, checksum):
+    def get_block_by_checksum(self, checksum, storage_id):
         try:
-            block = self._session.query(Block).filter_by(checksum=checksum, valid=True).first()
+            block = self._session.query(Block).filter_by(
+                checksum=checksum, valid=True).join(Version).filter_by(storage_id=storage_id).first()
         except:
             self._session.rollback()
             raise
@@ -682,18 +688,20 @@ class MetadataBackend:
 
     def rm_version(self, version_uid):
         try:
-            affected_blocks = self._session.query(Block).filter_by(version_uid=version_uid)
+            version = self._session.query(Version).filter_by(uid=version_uid).first()
+            affected_blocks = self._session.query(Block).filter_by(version_uid=version.uid)
             num_blocks = affected_blocks.count()
             for affected_block in affected_blocks:
                 if affected_block.uid:
                     deleted_block = DeletedBlock(
+                        storage_id=version.storage_id,
                         uid=affected_block.uid,
                         date=datetime.datetime.utcnow(),
                     )
                     self._session.add(deleted_block)
             # The following delete statement will cascade this delete to the blocks table
             # and delete all blocks
-            self._session.query(Version).filter_by(uid=version_uid).delete()
+            self._session.query(Version).filter_by(uid=version.uid).delete()
             self._session.commit()
         except:
             self._session.rollback()
@@ -716,7 +724,7 @@ class MetadataBackend:
                 break
 
             false_positives = set()
-            hit_list = set()
+            hit_list = {}
             for candidate in delete_candidates:
                 rounds += 1
                 if rounds % 1000 == 0:
@@ -733,7 +741,9 @@ class MetadataBackend:
                     false_positives.add(candidate.uid)
                     false_positives_count += 1
                 else:
-                    hit_list.add(candidate.uid)
+                    if candidate.storage_id not in hit_list:
+                        hit_list[candidate.storage_id] = set()
+                    hit_list[candidate.storage_id].add(candidate.uid)
                     hit_list_count += 1
 
             if false_positives:
@@ -744,9 +754,9 @@ class MetadataBackend:
                     .delete(synchronize_session=False)
 
             if hit_list:
-                logger.debug("Cleanup-fast: {} delete candidates will be really deleted.".format(len(hit_list)))
-                self._session.query(DeletedBlock).filter(
-                    DeletedBlock.uid.in_(hit_list)).delete(synchronize_session=False)
+                for uids in hit_list.values():
+                    self._session.query(DeletedBlock).filter(
+                        DeletedBlock.uid.in_(uids)).delete(synchronize_session=False)
                 yield (hit_list)
 
         self._session.commit()
@@ -754,15 +764,6 @@ class MetadataBackend:
             false_positives_count,
             hit_list_count,
         ))
-
-    def get_all_block_uids(self):
-        try:
-            rows = self._session.query(Block.uid_left, Block.uid_right).group_by(Block.uid_left, Block.uid_right).all()
-        except:
-            self._session.rollback()
-            raise
-
-        return [BlockUid(b[0], b[1]) for b in rows]
 
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
@@ -877,6 +878,7 @@ class MetadataBackend:
                 name=version_dict['name'],
                 snapshot_name=version_dict['snapshot_name'],
                 size=version_dict['size'],
+                storage_id=version_dict['storage_id'],
                 block_size=version_dict['block_size'],
                 valid=version_dict['valid'],
                 protected=version_dict['protected'],

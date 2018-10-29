@@ -56,7 +56,8 @@ class SmokeTestCase:
         block_size = random.sample({512, 1024, 2048, 4096}, 1)[0]
         scrub_history = BlockUidHistory()
         deep_scrub_history = BlockUidHistory()
-        for i in range(100):
+        storage_name = 's1'
+        for i in range(1, 100):
             print('Run {}'.format(i + 1))
             hints = []
             if not os.path.exists(image_filename):
@@ -101,20 +102,25 @@ class SmokeTestCase:
             benji_obj = self.benjiOpen(initdb=initdb, block_size=block_size)
             initdb = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version_uid = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename,
-                                               hints_from_rbd_diff(hints.read()), base_version)
+                version_uid = benji_obj.backup(
+                    version_name='data-backup',
+                    version_snapshot_name='snapshot-name',
+                    source='file://' + image_filename,
+                    hints=hints_from_rbd_diff(hints.read()) if base_version else None,
+                    base_version_uid=base_version,
+                    storage_name=storage_name)
             benji_obj.close()
             version_uids.append(version_uid)
 
             benji_obj = self.benjiOpen(initdb=initdb)
             benji_obj.rm(version_uid, force=True, keep_backend_metadata=True)
             benji_obj.close()
-            print('  Remove version successful')
+            print('  Removal of version successful')
 
             benji_obj = self.benjiOpen(initdb=initdb)
-            benji_obj.import_from_backend([version_uid])
+            benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.close()
-            print('  Import version from backend successful')
+            print('  Restore of version from data backend successful')
 
             benji_obj = self.benjiOpen(initdb=initdb)
             blocks = benji_obj.ls_version(version_uid)
@@ -169,7 +175,7 @@ class SmokeTestCase:
             print('  Restore successful')
 
             benji_obj = self.benjiOpen(in_memory=True)
-            benji_obj.import_from_backend([version_uid])
+            benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.restore(version_uid, 'file://' + restore_filename_2, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_2))
@@ -186,11 +192,17 @@ class SmokeTestCase:
 
             if (i % 7) == 0:
                 benji_obj = self.benjiOpen(initdb=initdb)
-                benji_obj.cleanup_fast(dt=0)
+                benji_obj.cleanup(dt=0)
                 benji_obj.close()
             if (i % 13) == 0:
                 scrub_history = BlockUidHistory()
                 deep_scrub_history = BlockUidHistory()
+            if (i % 23) == 0:
+                base_version = None
+                if storage_name == 's1':
+                    storage_name = 's2'
+                else:
+                    storage_name = 's1'
 
 
 class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
@@ -201,31 +213,54 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
             logFile: /dev/stderr
             hashFunction: blake2b,digest_size=32
             blockSize: 4096
-            io:
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
                 simultaneousReads: 2
-            dataBackend:
-              type: file
-              file:
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: file
+              configuration:
                 path: {testpath}/data
                 consistencyCheckWrites: True
-                activeCompression: zstd
-                activeEncyption: k1
-              compression:
-                - type: zstd
-                  materials:
-                    level: 1
-              encryption:
-                - identifier: k1
-                  type: aes_256_gcm
-                  materials:
-                    kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
-                    kdfIterations: 20000
-                    password: "this is a very secret password"                    
-              simultaneousWrites: 5
-              simultaneousReads: 5
-              bandwidthRead: 0
-              bandwidthWrite: 0
+                simultaneousWrites: 5
+                simultaneousReads: 5                    
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+            - name: s2
+              storageId: 2
+              module: file
+              configuration:
+                path: {testpath}/data-2
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5                    
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123        
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
             metadataBackend: 
               engine: sqlite:///{testpath}/benji.sqlite
             """
@@ -237,36 +272,57 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            lockDirectory: {testpath}/lock
             hashFunction: blake2b,digest_size=32
             blockSize: 4096
-            exportMetadata: True
-            io:
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
                 simultaneousReads: 2
-            dataBackend:
-              type: file
-              file:
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: file
+              configuration:
                 path: {testpath}/data
                 consistencyCheckWrites: True
-                activeCompression: zstd
-                activeEncyption: k1
-              compression:
-                - type: zstd
-                  materials:
-                    level: 1
-              encryption:
-                - identifier: k1
-                  type: aes_256_gcm
-                  materials:
-                    kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
-                    kdfIterations: 20000
-                    password: "this is a very secret password" 
-              simultaneousWrites: 5
-              simultaneousReads: 5
-              bandwidthRead: 0
-              bandwidthWrite: 0
-            metadataBackend: 
+                simultaneousWrites: 5
+                simultaneousReads: 5                    
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+            - name: s2
+              storageId: 2
+              module: file
+              configuration:
+                path: {testpath}/data-2
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5                    
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123        
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
+            metadataBackend:
               engine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
@@ -279,12 +335,17 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
             logFile: /dev/stderr
             hashFunction: blake2b,digest_size=32
             blockSize: 4096
-            io:
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
                 simultaneousReads: 2
-            dataBackend:
-              type: s3
-              s3:
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: s3
+              configuration:
                 awsAccessKeyId: minio
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
@@ -292,26 +353,46 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True
-                activeCompression: zstd
-                activeEncyption: k1
-              compression:
-                - type: zstd
-                  materials:
-                    level: 1
-              encryption:
-                - identifier: k1
-                  type: aes_256_gcm
-                  materials:
-                    kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
-                    kdfIterations: 20000
-                    password: "this is a very secret password" 
-              simultaneousWrites: 1
-              simultaneousReads: 1
-              bandwidthRead: 0
-              bandwidthWrite: 0
+                consistencyCheckWrites: True                 
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+            - name: s2
+              storageId: 2
+              module: s3
+              configuration:
+                awsAccessKeyId: minio
+                awsSecretAccessKey: minio123
+                endpointUrl: http://127.0.0.1:9901/
+                bucketName: benji-2
+                multiDelete: true
+                addressingStyle: path
+                disableEncodingType: false
+                consistencyCheckWrites: True                 
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123        
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
             metadataBackend: 
-              engine: sqlite:///{testpath}/benji.sqlite
+              engine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
 
@@ -321,46 +402,72 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCase, TestCas
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            lockDirectory: {testpath}/lock
             hashFunction: blake2b,digest_size=32
             blockSize: 4096
-            exportMetadata: True
-            io:
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
                 simultaneousReads: 2
-            dataBackend:
-              type: s3
-              s3:
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: s3
+              configuration:
                 awsAccessKeyId: minio
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji
-                multiDelete: false
+                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True
-                activeCompression: zstd
-                activeEncyption: k1
-              compression:
-                - type: zstd
-                  materials:
-                    level: 1
-              encryption:
-                - identifier: k1
-                  type: aes_256_gcm
-                  materials:
-                    kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
-                    kdfIterations: 20000
-                    password: "this is a very secret password" 
-              simultaneousWrites: 1
-              simultaneousReads: 1
-              bandwidthRead: 0
-              bandwidthWrite: 0
-              readCache:
-                directory: {testpath}/read-cache
-                maximumSize: 16777216
+                consistencyCheckWrites: True                 
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+                readCache:
+                  directory: {testpath}/read-cache
+                  maximumSize: 16777216              
+            - name: s2
+              storageId: 2
+              module: s3
+              configuration:
+                awsAccessKeyId: minio
+                awsSecretAccessKey: minio123
+                endpointUrl: http://127.0.0.1:9901/
+                bucketName: benji-2
+                multiDelete: true
+                addressingStyle: path
+                disableEncodingType: false
+                consistencyCheckWrites: True                 
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+                readCache:
+                  directory: {testpath}/read-cache-2
+                  maximumSize: 16777216                        
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
             metadataBackend: 
-              engine: sqlite:///{testpath}/benji.sqlite
+              engine: postgresql://benji:verysecret@localhost:15432/benji              
             """
 
 

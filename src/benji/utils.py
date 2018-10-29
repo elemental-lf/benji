@@ -8,9 +8,10 @@ import sys
 from ast import literal_eval
 from threading import Lock
 from time import time
-
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
+from Crypto.Hash import SHA512
+from Crypto.Protocol.KDF import PBKDF2
 
 from benji.exception import ConfigurationError
 from benji.logging import logger
@@ -84,6 +85,10 @@ def future_results_as_completed(futures, semaphore=None, timeout=None):
             result = exception
         del future
         yield result
+
+
+def derive_key(*, password, salt, iterations, key_length):
+    return PBKDF2(password=password, salt=salt, dkLen=key_length, count=iterations, hmac_hash_module=SHA512)
 
 
 class PrettyPrint:

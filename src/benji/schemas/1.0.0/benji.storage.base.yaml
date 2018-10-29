@@ -1,0 +1,64 @@
+configuration:
+  type: dict
+  required: True
+  nullable: False
+  empty: False
+  schema:
+    activeTransforms:
+      type: list
+      nullable: False
+      empty: False
+      schema:
+        type: string
+    simultaneousWrites:
+      type: integer
+      nullable: False
+      empty: False
+      min: 1
+      default: 1
+    simultaneousReads:
+      type: integer
+      nullable: False
+      empty: False
+      min: 1
+      default: 1
+    bandwidthRead:
+      type: integer
+      nullable: False
+      empty: False
+      min: 0
+      default: 0
+    bandwidthWrite:
+      type: integer
+      nullable: False
+      empty: False
+      min: 0
+      default: 0
+    consistencyCheckWrites:
+      type: boolean
+      nullable: False
+      empty: False
+      default: False
+    hmac:
+      type: dict
+      nullable: False
+      empty: False
+      schema:
+        password:
+          type: string
+          nullable: False
+          empty: False
+          required: True
+          minlength: 8
+        kdfSalt:
+          type: binary
+          nullable: False
+          empty: False
+          required: True
+          minlength: 8
+        kdfIterations:
+          type: integer
+          nullable: False
+          empty: False
+          required: True
+          min: 1000

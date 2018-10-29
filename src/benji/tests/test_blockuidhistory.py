@@ -7,33 +7,51 @@ from benji.metadata import BlockUid
 
 class BlockUidHistoryTestCase(unittest.TestCase):
 
-    def test_contains(self):
+    def test_seen(self):
         history = BlockUidHistory()
-        blocks_in = set()
-        blocks_out = set()
-        block_exists = set()
-        for i in range(0, 10000):
-            block = BlockUid(random.randint(1, 10000000), random.randint(1, 100000000))
-            if block in block_exists:
+        blocks_in_1 = set()
+        blocks_out_1 = set()
+        block_exists_1 = set()
+        blocks_in_2 = set()
+        blocks_out_2 = set()
+        block_exists_2 = set()
+        for i in range(0, 100000):
+            block = BlockUid(random.randint(1, 2**8), random.randint(1, 2**64 - 1))
+            if block in block_exists_1:
                 continue
-            block_exists.add(block)
-            if random.randint(1, 100) > 50:
-                blocks_in.add(block)
-                history.add(block)
-                self.assertTrue(block in history)
+            block_exists_1.add(block)
+            if random.randint(1, 100) > 20:
+                blocks_in_1.add(block)
+                history.add(1, block)
+                self.assertTrue(history.seen(1, block))
             else:
-                blocks_out.add(block)
-                self.assertFalse(block in history)
-        if len(block_exists) <= 10:
-            history_lst = []
-            for left, sbf in history._history.items():
-                for right in sbf:
-                    history_lst.append(BlockUid(left, right))
-            print('All blocks        : {}'.format(sorted(block_exists)))
-            print('History           : {}'.format(sorted(history_lst)))
-            print('History (expected): {}'.format(sorted(blocks_in)))
-            print('Not in history    : {}'.format(sorted(blocks_out)))
-        for block in blocks_in:
-            self.assertTrue(block in history)
-        for block in blocks_out:
-            self.assertFalse(block in history)
+                blocks_out_1.add(block)
+                self.assertFalse(history.seen(1, block))
+        for i in range(0, 100000):
+            block = BlockUid(random.randint(1, 2**8), random.randint(1, 2**20))
+            if block in block_exists_2:
+                continue
+            block_exists_2.add(block)
+            if random.randint(1, 100) > 20:
+                blocks_in_2.add(block)
+                history.add(2, block)
+                self.assertTrue(history.seen(2, block))
+            else:
+                blocks_out_2.add(block)
+                self.assertFalse(history.seen(2, block))
+        for block in blocks_in_1:
+            self.assertTrue(history.seen(1, block))
+        for block in blocks_out_1:
+            self.assertFalse(history.seen(1, block))
+        for block in blocks_in_2:
+            self.assertTrue(history.seen(2, block))
+        for block in blocks_out_2:
+            self.assertFalse(history.seen(2, block))
+
+    def test_oom(self):
+        history = BlockUidHistory()
+        for i in range(0, 10000000):
+            storage_id = random.randint(1, 4)
+            block = BlockUid(random.randint(1, 2**8), random.randint(1, 2**24))
+            history.add(storage_id, block)
+            self.assertTrue(history.seen(storage_id, block))

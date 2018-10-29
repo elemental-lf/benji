@@ -1,0 +1,26 @@
+parents:
+- benji.io.base-1.0.0
+configuration:
+  type: dict
+  required: True
+  nullable: False
+  empty: False
+  schema:
+    cephConfigFile:
+      type: string
+      nullable: False
+      empty: False
+      default: /etc/ceph/ceph.conf
+    clientIdentifier:
+      type: string
+      nullable: False
+      empty: False
+      default: admin
+    newImageFeatures:
+      type: list
+      nullable: False
+      empty: False
+      default: ['RBD_FEATURE_LAYERING']
+      schema:
+        type: string
+        regex: '^RBD_FEATURE_'

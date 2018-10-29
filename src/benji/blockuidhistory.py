@@ -1,24 +1,24 @@
 # noinspection PyUnresolvedReferences
 from sparsebitfield import SparseBitfield
 
-from benji.metadata import BlockUidBase
-
 
 class BlockUidHistory:
 
     def __init__(self):
         self._history = {}
 
-    def add(self, block_uid):
+    def add(self, storage_id, block_uid):
         history = self._history
-        if block_uid.left not in history:
-            history[block_uid.left] = SparseBitfield()
-        history[block_uid.left].add(block_uid.right)
+        if storage_id not in history:
+            history[storage_id] = {}
+        if block_uid.left not in history[storage_id]:
+            history[storage_id][block_uid.left] = SparseBitfield()
+        history[storage_id][block_uid.left].add(block_uid.right)
 
-    def __contains__(self, block_uid):
+    def seen(self, storage_id, block_uid):
         history = self._history
-        if not isinstance(block_uid, BlockUidBase):
-            raise TypeError('Called with wrong type {}.'.format(type(block_uid)))
-        if block_uid.left not in history:
+        if storage_id not in history:
             return False
-        return block_uid.right in history[block_uid.left]
+        if block_uid.left not in history[storage_id]:
+            return False
+        return block_uid.right in history[storage_id][block_uid.left]
