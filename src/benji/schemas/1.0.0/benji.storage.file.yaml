@@ -1,13 +1,9 @@
 parents:
   - benji.storage.base-1.0.0
 configuration:
-  type: dict
   required: True
-  nullable: False
-  empty: False
   schema:
     path:
       type: string
-      nullable: False
       empty: False
-      default: '/tmp'
+      required: True

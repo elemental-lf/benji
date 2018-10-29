@@ -1,0 +1,3 @@
+configuration:
+  type: dict
+  nullable: True

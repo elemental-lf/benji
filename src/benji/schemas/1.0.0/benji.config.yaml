@@ -1,13 +1,11 @@
 configuration:
   type: dict
   required: True
-  nullable: False
   empty: False
   schema:
     configurationVersion:
       type: string
       required: True
-      nullable: False
       empty: False
       allowed:
         - '1.0.0'
@@ -18,46 +16,38 @@ configuration:
       nullable: True
     blockSize:
       type: integer
-      nullable: False
       min: 512
       max: 33554432
       default: 4194304
     hashFunction:
       type: string
-      nullable: False
       empty: False
       default: 'blake2b,digest_size=32'
     processName:
       type: string
-      nullable: False
       empty: False
       default: 'benji'
     disallowRemoveWhenYounger:
       type: integer
-      nullable: False
       empty: False
       min: 0
       default: 6
 
     metadataBackend:
       required: True
-      nullable: False
       empty: False
       schema:
         engine:
           type: string
           required: True
-          nullable: False
           empty: False
 
     defaultStorage:
       type: string
       required: True
-      nullable: False
 
     storages:
       type: list
-      nullable: False
       empty: False
       required: True
       schema:
@@ -66,18 +56,15 @@ configuration:
           name:
             type: string
             required: True
-            nullable: False
             empty: False
           storageId:
             type: integer
             required: True
-            nullable: False
             empty: False
             min: 1
           module:
             type: string
             required: True
-            nullable: False
             empty: False
           configuration:
             type: dict
@@ -85,7 +72,6 @@ configuration:
 
     transforms:
       type: list
-      nullable: False
       empty: False
       schema:
         type: dict
@@ -93,12 +79,10 @@ configuration:
           name:
             type: string
             required: True
-            nullable: False
             empty: False
           module:
             type: string
             required: True
-            nullable: False
             empty: False
           configuration:
             type: dict
@@ -106,31 +90,27 @@ configuration:
 
     nbd:
       type: dict
-      nullable: False
       default: {}
       schema:
         cacheDirectory:
           type: string
           required: True
-          nullable: False
           default: '/tmp'
 
     ios:
       type: list
-      nullable: False
       empty: False
+      required: True
       schema:
         type: dict
         schema:
           name:
             type: string
             required: True
-            nullable: False
             empty: False
           module:
             type: string
             required: True
-            nullable: False
             empty: False
           configuration:
             type: dict

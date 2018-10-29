@@ -1,13 +1,12 @@
+parents:
+- benji.io.base-1.0.0
 configuration:
-  type: dict
   required: True
-  nullable: False
-  empty: False
   schema:
     masterKey:
       type: binary
-      nullable: False
       empty: False
+      require: True
       minlength: 32
       maxlength: 32
       excludes:
@@ -16,8 +15,8 @@ configuration:
         - password
     kdfSalt:
       type: binary
-      nullable: False
       empty: False
+      require: True
       minlength: 8
       excludes:
         - masterKey
@@ -26,8 +25,8 @@ configuration:
         - password
     kdfIterations:
       type: integer
-      nullable: False
       empty: False
+      require: True
       min: 1000
       excludes:
         - masterKey
@@ -36,8 +35,8 @@ configuration:
         - password
     password:
       type: string
-      nullable: False
       empty: False
+      require: True
       minlength: 8
       excludes:
         - masterKey

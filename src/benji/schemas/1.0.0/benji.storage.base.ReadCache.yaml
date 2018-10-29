@@ -3,25 +3,21 @@ parents:
 configuration:
   type: dict
   required: True
-  nullable: False
   empty: False
   schema:
     readCache:
       type: dict
-      nullable: False
       empty: False
       schema:
         directory:
           type: string
           required: True
-          nullable: False
           empty: False
           dependencies:
           - maximumSize
         maximumSize:
           type: integer
           required: True
-          nullable: False
           min: 1
           dependencies:
           - directory

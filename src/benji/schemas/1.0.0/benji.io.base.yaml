@@ -1,12 +1,10 @@
 configuration:
   type: dict
+  nullable: True
   required: True
-  nullable: False
-  empty: False
   schema:
     simultaneousReads:
       type: integer
-      nullable: False
       empty: False
       min: 1
       default: 1

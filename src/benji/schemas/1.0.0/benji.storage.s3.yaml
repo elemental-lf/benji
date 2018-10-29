@@ -1,54 +1,41 @@
 parents:
 - benji.storage.base.ReadCache-1.0.0
 configuration:
-  type: dict
   required: True
-  nullable: False
-  empty: False
   schema:
     awsAccessKeyId:
       type: string
-      nullable: False
       empty: False
       required: True
     awsSecretAccessKey:
       type: string
-      nullable: False
       empty: False
       required: True
     regionName:
       type: string
-      nullable: False
       empty: False
     endpointUrl:
       type: string
-      nullable: False
       empty: False
     useSsl:
       type: boolean
-      nullable: False
       empty: False
       default: True
     addressingStyle:
       type: string
-      nullable: False
       empty: False
     signatureVersion:
       type: string
-      nullable: False
       empty: False
     bucketName:
       type: string
-      nullable: False
       empty: False
       required: True
     multiDelete:
       type: boolean
-      nullable: False
       empty: False
       default: True
     disableEncodingType:
       type: boolean
-      nullable: False
       empty: False
       default: False

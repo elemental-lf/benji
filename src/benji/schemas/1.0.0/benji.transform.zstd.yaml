@@ -1,16 +1,12 @@
+parents:
+  - benji.io.base-1.0.0
 configuration:
-  type: dict
-  required: True
-  nullable: False
-  empty: False
   schema:
     level:
       type: integer
-      nullable: False
       empty: False
       default: 3
       min: 1
     dictDataFile:
       type: string
-      nullable: False
       empty: False
