@@ -100,12 +100,14 @@ class Config:
     @classmethod
     def validate(cls, module, config):
         validator = cls._get_validator(module=module, version=cls._SCHEMA_VERSION)
-        if not validator.validate({'configuration': config}):
+        if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')
             cls._output_validation_errors(validator.errors)
-            raise ConfigurationError('Configuration is invalid.')
+            raise ConfigurationError('Configuration for module {} is invalid.'.format(module))
 
-        return validator.document['configuration']
+        config_validated =  validator.document['configuration']
+        logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
+        return config_validated
 
     def __init__(self, cfg=None, sources=None):
         yaml = YAML(typ='safe', pure=True)

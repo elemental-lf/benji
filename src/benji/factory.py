@@ -49,7 +49,10 @@ class StorageFactory:
                 raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
                     __package__, cls._MODULE, module))
             else:
-                configuration = config.validate(module.__name__, config=configuration)
+                try:
+                    configuration = config.validate(module.__name__, config=configuration)
+                except ConfigurationError as exception:
+                    raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
                 cls._modules[storage_id] = _ModuleInstance(
                     module=module,
                     arguments={
@@ -142,7 +145,10 @@ class TransformFactory:
                 raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
                     __package__, cls._MODULE, module))
             else:
-                configuration = config.validate(module.__name__, config=configuration)
+                try:
+                    configuration = config.validate(module.__name__, config=configuration)
+                except ConfigurationError as exception:
+                    raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
                 cls._modules[name] = _ModuleInstance(
                     module=module, arguments={
                         'config': config,
@@ -177,7 +183,6 @@ class TransformFactory:
 class IOFactory:
 
     _MODULE = 'io'
-    _DEFAULT_IOS = ['file', 'rbd']
 
     _modules = {}
 
@@ -194,7 +199,6 @@ class IOFactory:
             configuration = Config.get_from_dict(
                 module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
 
-            logger.debug(cls._modules)
             if name in cls._modules:
                 raise ConfigurationError('Duplicate {} name {} in list {}.'.format(cls._MODULE, name, modules.full_name))
 
@@ -204,8 +208,10 @@ class IOFactory:
                 raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
                     __package__, cls._MODULE, module))
             else:
-                print(configuration)
-                configuration = config.validate(module.__name__, config=configuration)
+                try:
+                    configuration = config.validate(module.__name__, config=configuration)
+                except ConfigurationError as exception:
+                    raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
                 cls._modules[name] = _ModuleInstance(
                     module=module, arguments={
                         'config': config,
@@ -216,12 +222,6 @@ class IOFactory:
     @classmethod
     def initialize(cls, config):
         ios = config.get('ios', None, types=list)
-        io_names = [io['name'] for io in ios]
-        for name in cls._DEFAULT_IOS:
-            if name in io_names:
-                logger.debug('Default IO {} overridden by user.'.format(name))
-                continue
-            ios.append({'module': name, 'name': name, 'configuration': {}})
         cls._import_modules(config, ios)
 
     @classmethod
