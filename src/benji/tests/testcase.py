@@ -55,10 +55,10 @@ class DataBackendTestCase(TestCase):
     def setUp(self):
         super().setUp()
 
-        default_storage = self.config.get('dataBackends.defaultStorage', types=str)
+        default_storage = self.config.get('defaultStorage', types=str)
         StorageFactory.initialize(self.config)
 
-        self.storage = StorageFactory.get(default_storage)
+        self.storage = StorageFactory.get_by_name(default_storage)
         self.storage.rm_many(self.storage.list_blocks())
         for version_uid in self.storage.list_versions():
             self.storage.rm_version(version_uid)
