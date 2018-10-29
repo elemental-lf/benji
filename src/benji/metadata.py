@@ -865,6 +865,18 @@ class MetadataBackend:
     def import_1_0_0(self, json_input):
         version_uids = []
         for version_dict in json_input['versions']:
+            if not isinstance(version_dict, dict):
+                raise InputDataError('Import file is invalid.')
+
+            if 'uid' not in version_dict:
+                raise InputDataError('Import file is invalid (hint: uid).')
+
+            if not isinstance(version_dict['tags'], list):
+                raise InputDataError('Version {} contains invalid data (hint: tags).'.format(VersionUid(version_dict['uid']).readable))
+
+            if not isinstance(version_dict['blocks'], list):
+                raise InputDataError('Version {} contains invalid data (hint blocks).'.format(VersionUid(version_dict['uid']).readable))
+
             try:
                 self.get_version(version_dict['uid'])
             except KeyError:
@@ -887,6 +899,8 @@ class MetadataBackend:
             self._session.flush()
 
             for block_dict in version_dict['blocks']:
+                if not isinstance(block_dict, dict):
+                    raise InputDataError('Version {} contains invalid data (hint blocks).'.format(VersionUid(version_dict['uid']).readable))
                 block_dict['version_uid'] = version.uid
                 block_dict['date'] = datetime.datetime.strptime(block_dict['date'], '%Y-%m-%dT%H:%M:%S')
                 block_dict['uid_left'] = int(block_dict['uid']['left']) if block_dict['uid']['left'] is not None else None
@@ -896,6 +910,8 @@ class MetadataBackend:
             self._session.bulk_insert_mappings(Block, version_dict['blocks'])
 
             for tag_dict in version_dict['tags']:
+                if not isinstance(tag_dict, dict):
+                    raise InputDataError('Version {} contains invalid data (hint: tags).'.format(VersionUid(version_dict['uid']).readable))
                 tag_dict['version_uid'] = version.uid
             self._session.bulk_insert_mappings(Tag, version_dict['tags'])
 
