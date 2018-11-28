@@ -9,7 +9,7 @@ import time
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Union, Optional, Dict, Tuple, List
+from typing import Union, Optional, Dict, Tuple, List, Sequence, Set
 
 from diskcache import Cache
 from typing_extensions import Final
@@ -265,7 +265,7 @@ class StorageBase(metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
 
-    def rm_many(self, uids: List[BlockUidBase]) -> List[BlockUid]:
+    def rm_many(self, uids: Union[Sequence[BlockUid], Set[BlockUid]]) -> List[BlockUid]:
         keys = [self._block_uid_to_key(uid) for uid in uids]
         metadata_keys = [key + self._META_SUFFIX for key in keys]
 

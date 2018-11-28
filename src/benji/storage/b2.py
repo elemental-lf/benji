@@ -3,6 +3,7 @@
 import logging
 import random
 import time
+from typing import List, Any
 
 import b2
 import b2.api
@@ -12,7 +13,7 @@ from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
 from b2.download_dest import DownloadDestBytes
 from b2.exception import B2Error, FileNotPresent
-from benji.config import Config
+from benji.config import Config, _ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
 
@@ -22,7 +23,7 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config, name, storage_id, module_configuration):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
         account_id = Config.get_from_dict(module_configuration, 'accountId', types=str)
@@ -65,7 +66,7 @@ class Storage(ReadCacheStorageBase):
 
         self.bucket = self.service.get_bucket_by_name(bucket_name)
 
-    def _write_object(self, key, data):
+    def _write_object(self, key: str, data: bytes) -> None:
         for i in range(self._write_object_attempts):
             try:
                 self.bucket.upload_bytes(data, key)
@@ -81,7 +82,7 @@ class Storage(ReadCacheStorageBase):
             else:
                 break
 
-    def _read_object(self, key):
+    def _read_object(self, key: str) -> bytes:
         for i in range(self._read_object_attempts):
             data_io = DownloadDestBytes()
             try:
@@ -102,7 +103,7 @@ class Storage(ReadCacheStorageBase):
 
         return data_io.get_bytes_written()
 
-    def _file_info(self, key):
+    def _file_info(self, key: str) -> Any:
         r = self.bucket.list_file_names(key, 1)
         for entry in r['files']:
             file_version_info = b2.file_version.FileVersionInfoFactory.from_api_response(entry)
@@ -111,7 +112,7 @@ class Storage(ReadCacheStorageBase):
 
         raise FileNotFoundError('Object {} not found.'.format(key))
 
-    def _read_object_length(self, key):
+    def _read_object_length(self, key: str) -> int:
         for i in range(self._read_object_attempts):
             try:
                 file_version_info = self._file_info(key)
@@ -131,7 +132,7 @@ class Storage(ReadCacheStorageBase):
 
         return file_version_info.size
 
-    def _rm_object(self, key):
+    def _rm_object(self, key: str) -> None:
         try:
             file_version_info = self._file_info(key)
             self.bucket.delete_file_version(file_version_info.id_, file_version_info.file_name)
@@ -141,7 +142,7 @@ class Storage(ReadCacheStorageBase):
             else:
                 raise
 
-    def _rm_many_objects(self, keys):
+    def _rm_many_objects(self, keys: List[str]) -> List[str]:
         """ Deletes many keys from the data backend and returns a list
         of keys that couldn't be deleted.
         """
@@ -154,7 +155,7 @@ class Storage(ReadCacheStorageBase):
                 errors.append(key)
         return errors
 
-    def _list_objects(self, prefix=''):
+    def _list_objects(self, prefix: str) -> List[str]:
         return [
             file_version_info.file_name
             for (file_version_info, folder_name) in self.bucket.ls(folder_to_list=prefix, recursive=True)

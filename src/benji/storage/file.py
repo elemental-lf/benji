@@ -2,8 +2,9 @@
 # -*- encoding: utf-8 -*-
 
 import os
+from typing import List
 
-from benji.config import Config
+from benji.config import Config, _ConfigDict
 from benji.storage.base import StorageBase
 
 
@@ -12,7 +13,7 @@ class Storage(StorageBase):
     WRITE_QUEUE_LENGTH = 10
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config, name, storage_id, module_configuration):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
         if os.sep != '/':
@@ -24,7 +25,7 @@ class Storage(StorageBase):
         if not self.path.endswith('/'):
             self.path = self.path + '/'
 
-    def _write_object(self, key, data):
+    def _write_object(self, key: str, data: bytes) -> None:
         filename = os.path.join(self.path, key)
 
         try:
@@ -35,7 +36,7 @@ class Storage(StorageBase):
             with open(filename, 'wb') as f:
                 f.write(data)
 
-    def _read_object(self, key):
+    def _read_object(self, key: str) -> bytes:
         filename = os.path.join(self.path, key)
 
         if not os.path.exists(filename):
@@ -46,7 +47,7 @@ class Storage(StorageBase):
 
         return data
 
-    def _read_object_length(self, key):
+    def _read_object_length(self, key: str) -> int:
         filename = os.path.join(self.path, key)
 
         if not os.path.exists(filename):
@@ -54,14 +55,14 @@ class Storage(StorageBase):
 
         return os.path.getsize(filename)
 
-    def _rm_object(self, key):
+    def _rm_object(self, key: str) -> None:
         filename = os.path.join(self.path, key)
 
         if not os.path.exists(filename):
             raise FileNotFoundError('File {} not found.'.format(filename))
         os.unlink(filename)
 
-    def _rm_many_objects(self, keys):
+    def _rm_many_objects(self, keys: List[str]) -> List[str]:
         errors = []
         for key in keys:
             try:
@@ -70,7 +71,7 @@ class Storage(StorageBase):
                 errors.append(key)
         return errors
 
-    def _list_objects(self, prefix):
+    def _list_objects(self, prefix: str) -> List[str]:
         matches = []
         for root, dirnames, filenames in os.walk(os.path.join(self.path, prefix)):
             for filename in filenames:

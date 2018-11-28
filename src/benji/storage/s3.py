@@ -2,13 +2,14 @@
 # -*- encoding: utf-8 -*-
 import threading
 from itertools import islice
+from typing import List
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
 
-from benji.config import Config
+from benji.config import Config, _ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
 
@@ -18,7 +19,7 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config, name, storage_id, module_configuration):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
         aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', types=str)
         aws_secret_access_key = Config.get_from_dict(module_configuration, 'awsSecretAccessKey', types=str)
         region_name = Config.get_from_dict(module_configuration, 'regionName', None, types=str)
@@ -59,7 +60,7 @@ class Storage(ReadCacheStorageBase):
 
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
-    def _init_connection(self):
+    def _init_connection(self) -> None:
         if not hasattr(self._local, 'session'):
             logger.debug('Initializing S3 session and resource for {}'.format(threading.current_thread().name))
             self._local.session = boto3.session.Session()
@@ -69,12 +70,12 @@ class Storage(ReadCacheStorageBase):
             self._local.resource = self._local.session.resource('s3', **self._resource_config)
             self._local.bucket = self._local.resource.Bucket(self._bucket_name)
 
-    def _write_object(self, key, data):
+    def _write_object(self, key: str, data: bytes) -> None:
         self._init_connection()
         object = self._local.bucket.Object(key)
         object.put(Body=data)
 
-    def _read_object(self, key):
+    def _read_object(self, key: str) -> bytes:
         self._init_connection()
         object = self._local.bucket.Object(key)
         try:
@@ -88,7 +89,7 @@ class Storage(ReadCacheStorageBase):
 
         return data
 
-    def _read_object_length(self, key):
+    def _read_object_length(self, key: str) -> int:
         self._init_connection()
         object = self._local.bucket.Object(key)
         try:
@@ -115,9 +116,9 @@ class Storage(ReadCacheStorageBase):
         else:
             object.delete()
 
-    def _rm_many_objects(self, keys):
+    def _rm_many_objects(self, keys: List[str]) -> List[str]:
         self._init_connection()
-        errors = []
+        errors: List[str] = []
         if self._multi_delete:
             # Amazon (at least) only handles 1000 deletes at a time
             # Split list into parts of at most 1000 elements
@@ -139,9 +140,6 @@ class Storage(ReadCacheStorageBase):
                     errors.append(key)
         return errors
 
-    def _list_objects(self, prefix=None):
+    def _list_objects(self, prefix: str) -> List[str]:
         self._init_connection()
-        if prefix is None:
-            return [object.key for object in self._local.bucket.objects]
-        else:
-            return [object.key for object in self._local.bucket.objects.filter(Prefix=prefix)]
+        return [object.key for object in self._local.bucket.objects.filter(Prefix=prefix)]
