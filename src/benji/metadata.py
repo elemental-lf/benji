@@ -9,6 +9,7 @@ import time
 import uuid
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
+from typing import Union, List, Tuple, TextIO, Dict, cast, Generator, Iterator, Set, Any
 
 import sqlalchemy
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
@@ -21,24 +22,27 @@ from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
 from sqlalchemy.types import TypeDecorator
 
+from benji.config import Config
 from benji.exception import InputDataError, InternalError, NoChange, AlreadyLocked
 from benji.logging import logger
 
 
 class VersionUid:
 
-    def __init__(self, value):
+    def __init__(self, value) -> None:
         self._value = value
 
     @staticmethod
-    def create_from_readables(readables):
+    def create_from_readables(readables: Union[None, List, Tuple, str, int]) -> Union[None, List['VersionUid'], 'VersionUid']:
         if readables is None:
             return None
         input_is_list = isinstance(readables, (list, tuple))
         if not input_is_list:
-            readables = [readables]
+            readables_list = cast(Union[List, Tuple], [readables])
+        else:
+            readables_list = cast(Union[List, Tuple], readables)
         version_uids = []
-        for readable in readables:
+        for readable in readables_list:
             if isinstance(readable, int):
                 pass
             elif isinstance(readable, str):
@@ -59,36 +63,36 @@ class VersionUid:
         return version_uids if input_is_list else version_uids[0]
 
     @property
-    def int(self):
+    def to_int(self) -> int:
         return self._value
 
     @property
-    def readable(self):
+    def readable(self) -> str:
         return 'V' + str(self._value).zfill(10)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.readable
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, VersionUid):
-            return self.int == other.int
+            return self.to_int == other.to_int
         elif isinstance(other, int):
-            return self.int == other
+            return self.to_int == other
         else:
             return False
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
-    def __hash__(self):
-        return hash(self.int)
+    def __hash__(self) -> int:
+        return self.to_int
 
 
 class VersionUidType(TypeDecorator):
 
     impl = Integer
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: Union[None, int, str, VersionUid], dialect) -> Union[None, int]:
         if value is None:
             return None
         elif isinstance(value, int):
@@ -100,11 +104,11 @@ class VersionUidType(TypeDecorator):
                 raise InternalError('Supplied string value "{}" represents no integer VersionUidType.process_bind_param'
                                     .format(value)) from None
         elif isinstance(value, VersionUid):
-            return value.int
+            return value.to_int
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
-    def process_result_value(self, value, dialect):
+    def process_result_value(self, value: int, dialect) -> Union[None, VersionUid]:
         if value is not None:
             return VersionUid(value)
         else:
@@ -115,13 +119,13 @@ class Checksum(TypeDecorator):
 
     impl = LargeBinary
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: Union[None, str], dialect) -> Union[None, bytes]:
         if value is not None:
             return unhexlify(value)
         else:
             return None
 
-    def process_result_value(self, value, dialect):
+    def process_result_value(self, value: bytes, dialect) -> Union[None, str]:
         if value is not None:
             return hexlify(value).decode('ascii')
         else:
@@ -132,57 +136,63 @@ class BlockUidComparator(CompositeProperty.Comparator):
 
     def in_(self, other):
         clauses = self.__clause_element__().clauses
-        other_tuples = [element.__composite_values__() for element in other]
+        other_tuples = [element.__composite_values__ for element in other]
         return sqlalchemy.sql.or_(
             *[sqlalchemy.sql.and_(*[clauses[0] == element[0], clauses[1] == element[1]]) for element in other_tuples])
 
 
 class BlockUidBase:
 
-    def __repr__(self):
+    # This is just a placeholder for type checking and will be overridden below
+    def __init__(self):
+        self.left = None
+        self.right = None
+
+    def __repr__(self) -> str:
         return "{:x}-{:x}".format(self.left if self.left is not None else 0, self.right
                                   if self.right is not None else 0)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, BlockUidBase) and \
                other.left == self.left and \
                other.right == self.right
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.left is not None and self.right is not None
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.left, self.right))
 
     # For sorting
-    def __lt__(self, other):
+    def __lt__(self, other: 'BlockUidBase') -> bool:
         return self.left < other.left or self.left == other.left and self.right < other.right
 
 
 class DereferencedBlockUid(BlockUidBase):
 
-    def __init__(self, left, right):
+    def __init__(self, left: int, right: int) -> None:
         self._left = left
         self._right = right
 
     @property
-    def left(self):
+    def left(self) -> int:
         return self._left
 
     @property
-    def right(self):
+    def right(self) -> int:
         return self._right
 
-    def __composite_values__(self):
+    @property
+    def __composite_values__(self) -> Tuple[int, int]:
         return self.left, self.right
 
 
 class BlockUid(BlockUidBase, MutableComposite):
 
-    def __init__(self, left, right):
+    def __init__(self, left: int, right: int) -> None:
         self.left = left
         self.right = right
 
@@ -190,7 +200,7 @@ class BlockUid(BlockUidBase, MutableComposite):
         object.__setattr__(self, key, value)
         self.changed()
 
-    def __composite_values__(self):
+    def __composite_values__(self) -> Tuple[int, int]:
         return self.left, self.right
 
     @classmethod
@@ -205,14 +215,14 @@ class BlockUid(BlockUidBase, MutableComposite):
     # This object includes a dict to other SQLAlchemy objects in _parents. Use the same approach as with Blocks
     # to get rid of them when passing information between threads.
     # The named tuple doesn't have all the semantics of the original object.
-    def deref(self):
+    def deref(self) -> DereferencedBlockUid:
         return DereferencedBlockUid(
             left=self.left,
             right=self.right,
         )
 
 
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
 class Stats(Base):
@@ -272,13 +282,13 @@ class Tag(Base):
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)
     name = Column(String, nullable=False, primary_key=True)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Tag(version_uid='%s', name='%s')>" % (self.version_uid, self.name)
 
 
 class DereferencedBlock:
 
-    def __init__(self, uid, version_uid, id, date, checksum, size, valid):
+    def __init__(self, uid: BlockUidBase, version_uid: VersionUid, id: int, date: datetime.datetime, checksum: str, size: int, valid: bool) -> None:
         self.uid = uid
         self.version_uid = version_uid
         self.id = id
@@ -287,20 +297,14 @@ class DereferencedBlock:
         self.size = size
         self.valid = valid
 
+    # Getter and setter need to directly follow each other
+    # See https://github.com/python/mypy/issues/1465
     @property
-    def uid(self):
+    def uid(self) -> BlockUidBase:
         return self._uid
 
-    @property
-    def uid_left(self):
-        return self._uid.left
-
-    @property
-    def uid_right(self):
-        return self._uid.right
-
     @uid.setter
-    def uid(self, uid):
+    def uid(self, uid: BlockUidBase) -> None:
         if isinstance(uid, DereferencedBlockUid):
             self._uid = uid
         elif isinstance(uid, BlockUid):
@@ -308,7 +312,15 @@ class DereferencedBlock:
         else:
             raise InternalError('Unexpected type {} for uid in DereferencedBlockUid.uid.setter'.format(type(uid)))
 
-    def __repr__(self):
+    @property
+    def uid_left(self) -> int:
+        return self._uid.left
+
+    @property
+    def uid_right(self) -> int:
+        return self._uid.right
+
+    def __repr__(self) -> str:
         return "<DereferencedBlockUid(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
 
 
@@ -337,7 +349,7 @@ class Block(Base):
         Index('ix_blocks_checksum', 'checksum'),
     )
 
-    def deref(self):
+    def deref(self) -> DereferencedBlock:
         """ Dereference this to a namedtuple so that we can pass it around
         without any thread inconsistencies
         """
@@ -368,7 +380,7 @@ class DeletedBlock(Base):
     uid = composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
     __table_args__ = (Index('ix_blocks_uid_left_uid_right_2', 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<DeletedBlock(id='%s', uid='%s')>" % (self.id, self.uid)
 
 
@@ -380,7 +392,7 @@ class Lock(Base):
     reason = Column(String, nullable=False)
     date = Column("date", DateTime, nullable=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Lock(host='%s' process_id='%s' lock_name='%s')>" % (self.host, self.process_id, self.lock_name)
 
 
@@ -393,14 +405,14 @@ class MetadataBackend:
 
     _locking = None
 
-    def __init__(self, config, in_memory=False):
+    def __init__(self, config: Config, in_memory: bool=False) -> None:
         if not in_memory:
             self._engine = sqlalchemy.create_engine(config.get('metadataBackend.engine', types=str))
         else:
             logger.info('Running in metadata-backend-less mode.')
             self._engine = sqlalchemy.create_engine('sqlite://')
 
-    def open(self, _migratedb=True):
+    def open(self, _migratedb: bool=True) -> 'MetadataBackend':
         if _migratedb:
             try:
                 self.migrate_db()
@@ -422,7 +434,7 @@ class MetadataBackend:
         self._commit_block_counter = 0
         return self
 
-    def migrate_db(self):
+    def migrate_db(self) -> None:
         # FIXME: fix to use supplied config
         # migrate the db to the lastest version
         from alembic.config import Config
@@ -433,7 +445,7 @@ class MetadataBackend:
             #command.upgrade(alembic_cfg, "head", sql=True)
             command.upgrade(alembic_cfg, "head")
 
-    def initdb(self, _destroydb=False, _migratedb=True):
+    def initdb(self, _destroydb: bool=False, _migratedb: bool=True) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
         if _destroydb:
             Base.metadata.drop_all(self._engine)
@@ -455,10 +467,10 @@ class MetadataBackend:
                 # mark the version table, "stamping" it with the most recent rev:
                 command.stamp(alembic_cfg, "head")
 
-    def commit(self):
+    def commit(self) -> None:
         self._session.commit()
 
-    def create_version(self, version_name, snapshot_name, size, storage_id, block_size, valid=False, protected=False):
+    def create_version(self, version_name: str, snapshot_name: str, size: int, storage_id: int, block_size: int, valid: bool=False, protected: bool=False) -> Version:
         version = Version(
             name=version_name,
             snapshot_name=snapshot_name,
@@ -478,9 +490,9 @@ class MetadataBackend:
 
         return version
 
-    def set_stats(self, *, version_uid, base_version_uid, hints_supplied, version_date, version_name,
-                  version_snapshot_name, version_size, version_storage_id, version_block_size, bytes_read,
-                  bytes_written, bytes_dedup, bytes_sparse, duration_seconds):
+    def set_stats(self, *, version_uid: VersionUid, base_version_uid: VersionUid, hints_supplied: bool, version_date: datetime.datetime, version_name: str,
+                  version_snapshot_name: str, version_size: int, version_storage_id: int, version_block_size: int, bytes_read: int,
+                  bytes_written: int, bytes_dedup: int, bytes_sparse: int, duration_seconds: int) -> None:
         stats = Stats(
             version_uid=version_uid,
             base_version_uid=base_version_uid,
@@ -504,7 +516,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def get_stats(self, version_uid=None, limit=None):
+    def get_stats(self, version_uid: VersionUid=None, limit: bool=None) -> Iterator[Stats]:
         """ gets the <limit> newest entries """
         if version_uid:
             try:
@@ -529,7 +541,7 @@ class MetadataBackend:
 
             return reversed(stats)
 
-    def set_version(self, version_uid, *, valid=None, protected=None):
+    def set_version(self, version_uid: VersionUid, *, valid: bool=None, protected: bool=None):
         try:
             version = self.get_version(version_uid)
             if valid is not None:
@@ -547,7 +559,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def get_version(self, version_uid):
+    def get_version(self, version_uid: VersionUid) -> Version:
         version = None
         try:
             version = self._session.query(Version).filter_by(uid=version_uid).first()
@@ -559,7 +571,7 @@ class MetadataBackend:
 
         return version
 
-    def get_versions(self, version_uid=None, version_name=None, version_snapshot_name=None, version_tags=None):
+    def get_versions(self, version_uid: VersionUid=None, version_name: str=None, version_snapshot_name: str=None, version_tags: List[str]=None) -> List[Version]:
         try:
             query = self._session.query(Version)
             if version_uid:
@@ -577,7 +589,7 @@ class MetadataBackend:
 
         return versions
 
-    def add_tag(self, version_uid, name):
+    def add_tag(self, version_uid: VersionUid, name: str) -> None:
         """ Add a tag to a version_uid, do nothing if the tag already exists.
         """
         tag = Tag(
@@ -594,7 +606,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def rm_tag(self, version_uid, name):
+    def rm_tag(self, version_uid: VersionUid, name: str) -> None:
         try:
             deleted = self._session.query(Tag).filter_by(version_uid=version_uid, name=name).delete()
             self._session.commit()
@@ -605,7 +617,7 @@ class MetadataBackend:
         if deleted != 1:
             raise NoChange('Version {} has not tag {}.'.format(version_uid.readable, name))
 
-    def set_block(self, id, version_uid, block_uid, checksum, size, valid, upsert=True):
+    def set_block(self, id: int, version_uid: VersionUid, block_uid: BlockUidBase, checksum: str, size: int, valid: bool, upsert: bool=True) -> None:
         try:
             block = None
             if upsert:
@@ -639,7 +651,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def set_blocks_invalid(self, block_uid):
+    def set_blocks_invalid(self, block_uid: BlockUidBase) -> List[VersionUid]:
         try:
             affected_version_uids = self._session.query(distinct(Block.version_uid)).filter_by(uid=block_uid).all()
             affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]
@@ -658,7 +670,7 @@ class MetadataBackend:
 
         return affected_version_uids
 
-    def get_block(self, block_uid):
+    def get_block(self, block_uid: BlockUidBase) -> Block:
         try:
             block = self._session.query(Block).filter_by(uid=block_uid).first()
         except:
@@ -677,7 +689,7 @@ class MetadataBackend:
 
         return block
 
-    def get_blocks_by_version(self, version_uid):
+    def get_blocks_by_version(self, version_uid: VersionUid) -> List[Block]:
         try:
             blocks = self._session.query(Block).filter_by(version_uid=version_uid).order_by(Block.id).all()
         except:
@@ -686,7 +698,7 @@ class MetadataBackend:
 
         return blocks
 
-    def rm_version(self, version_uid):
+    def rm_version(self, version_uid: VersionUid) -> int:
         try:
             version = self._session.query(Version).filter_by(uid=version_uid).first()
             affected_blocks = self._session.query(Block).filter_by(version_uid=version.uid)
@@ -701,7 +713,7 @@ class MetadataBackend:
                     self._session.add(deleted_block)
             # The following delete statement will cascade this delete to the blocks table
             # and delete all blocks
-            self._session.query(Version).filter_by(uid=version.uid).delete()
+            self._session.query(Version).filter_by(uid=version_uid).delete()
             self._session.commit()
         except:
             self._session.rollback()
@@ -709,7 +721,7 @@ class MetadataBackend:
 
         return num_blocks
 
-    def get_delete_candidates(self, dt=3600):
+    def get_delete_candidates(self, dt: int=3600) -> Generator[Dict[int, Set[BlockUid]], None, None]:
         rounds = 0
         false_positives_count = 0
         hit_list_count = 0
@@ -724,7 +736,7 @@ class MetadataBackend:
                 break
 
             false_positives = set()
-            hit_list = {}
+            hit_list: Dict[int, Set[BlockUid]] = {}
             for candidate in delete_candidates:
                 rounds += 1
                 if rounds % 1000 == 0:
@@ -768,7 +780,7 @@ class MetadataBackend:
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
-    def new_benji_encoder(ignore_fields, ignore_relationships):
+    def new_benji_encoder(ignore_fields: List, ignore_relationships: List):
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -808,7 +820,7 @@ class MetadataBackend:
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat(timespec='seconds')
                 elif isinstance(obj, VersionUid):
-                    return obj.int
+                    return obj.to_int
                 elif isinstance(obj, BlockUid):
                     return {'left': obj.left, 'right': obj.right}
 
@@ -816,7 +828,7 @@ class MetadataBackend:
 
         return BenjiEncoder
 
-    def export_any(self, root_dict, f, ignore_fields=None, ignore_relationships=None):
+    def export_any(self, root_dict: Dict, f: TextIO, ignore_fields: List=None, ignore_relationships: List=None) -> None:
         ignore_fields = list(ignore_fields) if ignore_fields is not None else []
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
@@ -837,10 +849,10 @@ class MetadataBackend:
             indent=2,
         )
 
-    def export(self, version_uids, f):
+    def export(self, version_uids: List[VersionUid], f: TextIO):
         self.export_any({'versions': [self.get_version(version_uid) for version_uid in version_uids]}, f)
 
-    def import_(self, f):
+    def import_(self, f: TextIO) -> List[VersionUid]:
         try:
             f.seek(0)
             json_input = json.load(f)
@@ -862,8 +874,8 @@ class MetadataBackend:
 
         return version_uids
 
-    def import_1_0_0(self, json_input):
-        version_uids = []
+    def import_1_0_0(self, json_input: Dict) -> List[VersionUid]:
+        version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
                 raise InputDataError('Import file is invalid.')
@@ -915,7 +927,7 @@ class MetadataBackend:
                 tag_dict['version_uid'] = version.uid
             self._session.bulk_insert_mappings(Tag, version_dict['tags'])
 
-            version_uids.append(VersionUid.create_from_readables(version_dict['uid']))
+            version_uids.extend(cast(List[VersionUid], VersionUid.create_from_readables(version_dict['uid'])))
 
         return version_uids
 
@@ -933,13 +945,13 @@ class MetaBackendLocking:
 
     GLOBAL_LOCK = 'global'
 
-    def __init__(self, session):
+    def __init__(self, session) -> None:
         self._session = session
         self._host = platform.node()
         self._uuid = uuid.uuid1().hex
-        self._locks = {}
+        self._locks: Dict[str, Lock] = {}
 
-    def lock(self, *, lock_name=GLOBAL_LOCK, reason=None, locked_msg=None):
+    def lock(self, *, lock_name: str=GLOBAL_LOCK, reason: str=None, locked_msg: str=None):
         if lock_name in self._locks:
             raise InternalError('Attempt to acquire lock "{}" twice'.format(lock_name))
 
@@ -965,7 +977,7 @@ class MetaBackendLocking:
         else:
             self._locks[lock_name] = lock
 
-    def is_locked(self, *, lock_name=GLOBAL_LOCK):
+    def is_locked(self, *, lock_name: str=GLOBAL_LOCK) -> bool:
         try:
             locks = self._session.query(Lock).filter_by(
                 host=self._host, lock_name=lock_name, process_id=self._uuid).all()
@@ -975,7 +987,7 @@ class MetaBackendLocking:
         else:
             return len(locks) > 0
 
-    def update_lock(self, *, lock_name=GLOBAL_LOCK, reason=None):
+    def update_lock(self, *, lock_name: str=GLOBAL_LOCK, reason: str=None) -> None:
         try:
             lock = self._session.query(Lock).filter_by(
                 host=self._host, lock_name=lock_name, process_id=self._uuid).first()
@@ -987,7 +999,7 @@ class MetaBackendLocking:
             self._session.rollback()
             raise
 
-    def unlock(self, *, lock_name=GLOBAL_LOCK):
+    def unlock(self, *, lock_name: str=GLOBAL_LOCK) -> None:
         if lock_name not in self._locks:
             raise InternalError('Attempt to release lock "{}" even though it isn\'t held'.format(lock_name))
 
@@ -1001,7 +1013,7 @@ class MetaBackendLocking:
         else:
             del self._locks[lock_name]
 
-    def unlock_all(self):
+    def unlock_all(self) -> None:
         for lock_name, lock in self._locks.items():
             try:
                 logger.error('Lock {} not released correctly, trying to release it now.'.format(lock))
@@ -1011,23 +1023,23 @@ class MetaBackendLocking:
                 pass
         self._locks = {}
 
-    def lock_version(self, version_uid, reason=None):
+    def lock_version(self, version_uid: VersionUid, reason: str=None) -> None:
         self.lock(
             lock_name=version_uid.readable,
             reason=reason,
             locked_msg='Version {} is already locked.'.format(version_uid.readable))
 
-    def is_version_locked(self, version_uid):
+    def is_version_locked(self, version_uid: VersionUid) -> bool:
         return self.is_locked(lock_name=version_uid.readable)
 
-    def update_version_lock(self, version_uid, reason=None):
+    def update_version_lock(self, version_uid: VersionUid, reason: str=None) -> None:
         self.update_lock(lock_name=version_uid.readable, reason=reason)
 
-    def unlock_version(self, version_uid):
+    def unlock_version(self, version_uid: VersionUid) -> None:
         self.unlock(lock_name=version_uid.readable)
 
     @contextmanager
-    def with_lock(self, *, lock_name=GLOBAL_LOCK, reason=None, locked_msg=None, unlock=True):
+    def with_lock(self, *, lock_name: str=GLOBAL_LOCK, reason: str=None, locked_msg: str=None, unlock: bool=True) -> Iterator[None]:
         self.lock(lock_name=lock_name, reason=reason, locked_msg=locked_msg)
         try:
             yield
@@ -1039,7 +1051,7 @@ class MetaBackendLocking:
                 self.unlock(lock_name=lock_name)
 
     @contextmanager
-    def with_version_lock(self, version_uid, reason=None, unlock=True):
+    def with_version_lock(self, version_uid: VersionUid, reason: str=None, unlock: bool=True) -> Iterator[None]:
         self.lock_version(version_uid, reason=reason)
         try:
             yield

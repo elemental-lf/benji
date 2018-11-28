@@ -7,37 +7,43 @@ import os
 import threading
 import time
 from abc import ABCMeta, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
+from typing import Union, Optional, Dict, Tuple, List
 
 from diskcache import Cache
+from typing_extensions import Final
 
-from benji.config import Config
+from benji.config import Config, _ConfigDict
 from benji.storage.dicthmac import DictHMAC
 from benji.exception import InternalError, ConfigurationError
 from benji.factory import TransformFactory
 from benji.logging import logger
-from benji.metadata import BlockUid, VersionUid
+from benji.metadata import BlockUid, VersionUid, DereferencedBlock, BlockUidBase
+from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
 
 
 class StorageBase(metaclass=ABCMeta):
 
-    _TRANSFORMS_KEY = 'transforms'
-    _SIZE_KEY = 'size'
-    _OBJECT_SIZE_KEY = 'object_size'
-    _CHECKSUM_KEY = 'checksum'
-    _HMAC_KEY = 'hmac'
+    READ_QUEUE_LENGTH = 1
+    WRITE_QUEUE_LENGTH = 1
 
-    _BLOCKS_PREFIX = 'blocks/'
-    _VERSIONS_PREFIX = 'versions/'
+    _TRANSFORMS_KEY: Final[str] = 'transforms'
+    _SIZE_KEY: Final[str] = 'size'
+    _OBJECT_SIZE_KEY: Final[str] = 'object_size'
+    _CHECKSUM_KEY: Final[str] = 'checksum'
+    _HMAC_KEY: Final[str] = 'hmac'
 
-    _META_SUFFIX = '.meta'
+    _BLOCKS_PREFIX: Final[str] = 'blocks/'
+    _VERSIONS_PREFIX: Final[str] = 'versions/'
 
-    def __init__(self, *, config, name, storage_id, module_configuration):
+    _META_SUFFIX: Final[str] = '.meta'
+
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict) -> None:
         self._name = name
         self._storage_id = storage_id
-        self._active_transforms = []
+        self._active_transforms: List[TransformBase] = []
 
         active_transforms = Config.get_from_dict(module_configuration, 'activeTransforms', None, types=list)
         if active_transforms is not None:
@@ -67,11 +73,10 @@ class StorageBase(metaclass=ABCMeta):
             if hmac_config_options_count == 3:
                 hmac_key = derive_key(
                     salt=hmac_kdf_salt, iterations=hmac_kdf_iterations, key_length=32, password=hmac_password)
+        self._dict_hmac: Optional[DictHMAC] = None
         if hmac_key is not None:
             logger.info('Enabling HMAC metadata integrity protection for storage {}.'.format(name))
-            self._dict_hmac = DictHMAC(dict_key=self._HMAC_KEY, key=hmac_key)
-        else:
-            self._dict_hmac = None
+            self._dict_hmac = DictHMAC(hmac_key=self._HMAC_KEY, secret_key=hmac_key)
 
         self.read_throttling = TokenBucket()
         self.read_throttling.set_rate(bandwidth_read)  # 0 disables throttling
@@ -79,23 +84,23 @@ class StorageBase(metaclass=ABCMeta):
         self.write_throttling.set_rate(bandwidth_write)  # 0 disables throttling
 
         self._read_executor = ThreadPoolExecutor(max_workers=simultaneous_reads, thread_name_prefix='Storage-Reader')
-        self._read_futures = []
+        self._read_futures: List[Future] = []
         self._read_semaphore = BoundedSemaphore(simultaneous_reads + self.READ_QUEUE_LENGTH)
 
         self._write_executor = ThreadPoolExecutor(max_workers=simultaneous_writes, thread_name_prefix='Storage-Writer')
-        self._write_futures = []
+        self._write_futures: List[Future] = []
         self._write_semaphore = BoundedSemaphore(simultaneous_writes + self.WRITE_QUEUE_LENGTH)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def storage_id(self):
+    def storage_id(self) -> int:
         return self._storage_id
 
-    def _build_metadata(self, *, size, object_size, transforms_metadata, checksum=None):
-        metadata = {
+    def _build_metadata(self, *, size: int, object_size: int, transforms_metadata: List[Dict]=None, checksum: str=None) -> Tuple[Dict, bytes]:
+        metadata: Dict = {
             self._SIZE_KEY: size,
             self._OBJECT_SIZE_KEY: object_size,
         }
@@ -111,7 +116,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return metadata, json.dumps(metadata, separators=(',', ':')).encode('utf-8')
 
-    def _decode_metadata(self, *, metadata_json, key, data_length):
+    def _decode_metadata(self, *, metadata_json: bytes, key: str, data_length: int) -> Dict:
         metadata = json.loads(metadata_json.decode('utf-8'))
 
         if self._dict_hmac:
@@ -127,7 +132,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return metadata
 
-    def _check_write(self, *, key, metadata_key, data_expected):
+    def _check_write(self, *, key: str, metadata_key: str, data_expected: bytes) -> None:
         data_actual = self._read_object(key)
         metadata_actual_json = self._read_object(metadata_key)
 
@@ -138,7 +143,7 @@ class StorageBase(metaclass=ABCMeta):
         if data_expected != data_actual:
             raise InternalError('Written and read data of {} differ.'.format(key))
 
-    def _write(self, block, data):
+    def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
         data, transforms_metadata = self._encapsulate(data)
 
         metadata, metadata_json = self._build_metadata(
@@ -168,7 +173,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return block
 
-    def save(self, block, data, sync=False):
+    def save(self, block: DereferencedBlock, data: bytes, sync: bool=False) -> None:
         if sync:
             self._write(block, data)
         else:
@@ -184,20 +189,20 @@ class StorageBase(metaclass=ABCMeta):
 
             self._write_futures.append(self._write_executor.submit(write_with_release))
 
-    def save_get_completed(self, timeout=None):
+    def save_get_completed(self, timeout: Optional[int]=None) -> DereferencedBlock:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._write_futures, timeout=timeout)
 
-    def _read(self, block, metadata_only):
+    def _read(self, block: DereferencedBlock, metadata_only: bool) -> Tuple[DereferencedBlock, Optional[bytes], Dict]:
         key = self._block_uid_to_key(block.uid)
         metadata_key = key + self._META_SUFFIX
         t1 = time.time()
+        data: Optional[bytes] = None
         if not metadata_only:
             data = self._read_object(key)
             data_length = len(data)
         else:
-            data = None
             data_length = self._read_object_length(key)
         metadata_json = self._read_object(metadata_key)
         time.sleep(self.read_throttling.consume(len(data) if data else 0 + len(metadata_json)))
@@ -210,14 +215,14 @@ class StorageBase(metaclass=ABCMeta):
                 self._CHECKSUM_KEY, block.id, block.uid))
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
-            data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])
+            data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY]) # type: ignore
 
         logger.debug('{} read data of uid {} in {:.2f}s{}'.format(threading.current_thread().name, block.uid, t2 - t1,
                                                                   ' (metadata only)' if metadata_only else ''))
 
         return block, data, metadata
 
-    def read(self, block, sync=False, metadata_only=False):
+    def read(self, block: DereferencedBlock, sync: Optional[bool]=False, metadata_only: bool=False) -> Optional[bytes]:
         if sync:
             return self._read(block, metadata_only)[1]
         else:
@@ -227,13 +232,14 @@ class StorageBase(metaclass=ABCMeta):
                 return self._read(block, metadata_only)
 
             self._read_futures.append(self._read_executor.submit(read_with_acquire))
+            return None
 
-    def read_get_completed(self, timeout=None):
+    def read_get_completed(self, timeout: Optional[int]=None) -> Tuple[DereferencedBlock, bytes, Dict]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
 
-    def check_block_metadata(self, *, block, data_length, metadata):
+    def check_block_metadata(self, *, block: DereferencedBlock, data_length: int, metadata: Dict) -> None:
         # Existence of keys has already been checked in _decode_metadata() and _read()
         if metadata[self._SIZE_KEY] != block.size:
             raise ValueError('Mismatch between recorded block size and data length in metadata for block {} (UID {}). '
@@ -248,7 +254,7 @@ class StorageBase(metaclass=ABCMeta):
                              'Expected: {}, got: {}.'.format(block.id, block.uid, block.checksum[:16],
                                                              metadata[self._CHECKSUM_KEY][:16]))
 
-    def rm(self, uid):
+    def rm(self, uid: BlockUidBase) -> None:
         key = self._block_uid_to_key(uid)
         metadata_key = key + self._META_SUFFIX
         try:
@@ -259,7 +265,7 @@ class StorageBase(metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
 
-    def rm_many(self, uids):
+    def rm_many(self, uids: List[BlockUidBase]) -> List[BlockUid]:
         keys = [self._block_uid_to_key(uid) for uid in uids]
         metadata_keys = [key + self._META_SUFFIX for key in keys]
 
@@ -267,7 +273,7 @@ class StorageBase(metaclass=ABCMeta):
         self._rm_many_objects(metadata_keys)
         return [self._key_to_block_uid(error) for error in errors]
 
-    def list_blocks(self):
+    def list_blocks(self) -> List[BlockUid]:
         keys = self._list_objects(self._BLOCKS_PREFIX)
         block_uids = []
         for key in keys:
@@ -280,7 +286,7 @@ class StorageBase(metaclass=ABCMeta):
                 pass
         return block_uids
 
-    def list_versions(self):
+    def list_versions(self) -> List[VersionUid]:
         keys = self._list_objects(self._VERSIONS_PREFIX)
         version_uids = []
         for key in keys:
@@ -293,7 +299,7 @@ class StorageBase(metaclass=ABCMeta):
                 pass
         return version_uids
 
-    def read_version(self, version_uid):
+    def read_version(self, version_uid: VersionUid) -> str:
         key = self._version_uid_to_key(version_uid)
         metadata_key = key + self._META_SUFFIX
         data = self._read_object(key)
@@ -308,10 +314,9 @@ class StorageBase(metaclass=ABCMeta):
             raise ValueError('Length mismatch of original data for object {}. Expected: {}, got: {}.'.format(
                 key, metadata[self._SIZE_KEY], len(data)))
 
-        data = data.decode('utf-8')
-        return data
+        return data.decode('utf-8')
 
-    def save_version(self, version_uid, data, overwrite=False):
+    def save_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool]=False) -> None:
         key = self._version_uid_to_key(version_uid)
         metadata_key = key + self._META_SUFFIX
 
@@ -323,15 +328,15 @@ class StorageBase(metaclass=ABCMeta):
             else:
                 raise FileExistsError('Version {} already exists in storage.'.format(version_uid.readable))
 
-        data = data.encode('utf-8')
-        size = len(data)
+        data_bytes = data.encode('utf-8')
+        size = len(data_bytes)
 
-        data, transforms_metadata = self._encapsulate(data)
+        data_bytes, transforms_metadata = self._encapsulate(data_bytes)
         metadata, metadata_json = self._build_metadata(
-            size=size, object_size=len(data), transforms_metadata=transforms_metadata)
+            size=size, object_size=len(data_bytes), transforms_metadata=transforms_metadata)
 
         try:
-            self._write_object(key, data)
+            self._write_object(key, data_bytes)
             self._write_object(metadata_key, metadata_json)
         except:
             try:
@@ -342,9 +347,9 @@ class StorageBase(metaclass=ABCMeta):
             raise
 
         if self._consistency_check_writes:
-            self._check_write(key=key, metadata_key=metadata_key, data_expected=data)
+            self._check_write(key=key, metadata_key=metadata_key, data_expected=data_bytes)
 
-    def rm_version(self, version_uid):
+    def rm_version(self, version_uid: VersionUid) -> None:
         key = self._version_uid_to_key(version_uid)
         metadata_key = key + self._META_SUFFIX
         try:
@@ -355,7 +360,7 @@ class StorageBase(metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
 
-    def _encapsulate(self, data):
+    def _encapsulate(self, data: bytes) -> Tuple[bytes, List]:
         if self._active_transforms is not None:
             transforms_metadata = []
             for transform in self._active_transforms:
@@ -371,7 +376,7 @@ class StorageBase(metaclass=ABCMeta):
         else:
             return data, []
 
-    def _decapsulate(self, data, transforms_metadata):
+    def _decapsulate(self, data: bytes, transforms_metadata: List[Dict]) -> bytes:
         for element in reversed(transforms_metadata):
             name = element['name']
             module = element['module']
@@ -386,16 +391,16 @@ class StorageBase(metaclass=ABCMeta):
                 raise IOError('Unknown transform {} in object metadata.'.format(name))
         return data
 
-    def wait_reads_finished(self):
+    def wait_reads_finished(self) -> None:
         concurrent.futures.wait(self._read_futures)
 
-    def wait_saves_finished(self):
+    def wait_saves_finished(self) -> None:
         concurrent.futures.wait(self._write_futures)
 
-    def use_read_cache(self, enable):
+    def use_read_cache(self, enable: bool) -> bool:
         return False
 
-    def close(self):
+    def close(self) -> None:
         if len(self._read_futures) > 0:
             logger.warning('Data backend closed with {} outstanding read jobs, cancelling them.'.format(
                 len(self._read_futures)))
@@ -403,7 +408,7 @@ class StorageBase(metaclass=ABCMeta):
                 future.cancel()
             logger.debug('Data backend cancelled all outstanding read jobs.')
             # Get all jobs so that the semaphore gets released and still waiting jobs can complete
-            for future in self.read_get_completed():
+            for result in self.read_get_completed():
                 pass
             logger.debug('Data backend read results from all outstanding read jobs.')
         if len(self._write_futures) > 0:
@@ -417,11 +422,11 @@ class StorageBase(metaclass=ABCMeta):
         self._write_executor.shutdown()
         self._read_executor.shutdown()
 
-    def _to_key(self, prefix, object_key):
+    def _to_key(self, prefix: str, object_key: str) -> str:
         digest = hashlib.md5(object_key.encode('ascii')).hexdigest()
         return '{}{}/{}/{}'.format(prefix, digest[0:2], digest[2:4], object_key)
 
-    def _from_key(self, prefix, key):
+    def _from_key(self, prefix: str, key: str) -> str:
         if not key.startswith(prefix):
             raise RuntimeError('Invalid key name {}, it doesn\'t start with "{}".'.format(key, prefix))
         pl = len(prefix)
@@ -429,55 +434,55 @@ class StorageBase(metaclass=ABCMeta):
             raise RuntimeError('Key {} has an invalid length, expected at least {} characters.'.format(key, pl + 6))
         return key[pl + 6:]
 
-    def _block_uid_to_key(self, block_uid):
+    def _block_uid_to_key(self, block_uid: BlockUidBase) -> str:
         return self._to_key(self._BLOCKS_PREFIX, '{:016x}-{:016x}'.format(block_uid.left, block_uid.right))
 
-    def _key_to_block_uid(self, key):
+    def _key_to_block_uid(self, key: str) -> BlockUid:
         object_key = self._from_key(self._BLOCKS_PREFIX, key)
         if len(object_key) != (16 + 1 + 16):
             raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
                 object_key, (16 + 1 + 16)))
         return BlockUid(int(object_key[0:16], 16), int(object_key[17:17 + 16], 16))
 
-    def _version_uid_to_key(self, version_uid):
+    def _version_uid_to_key(self, version_uid: VersionUid) -> str:
         return self._to_key(self._VERSIONS_PREFIX, version_uid.readable)
 
-    def _key_to_version_uid(self, key):
+    def _key_to_version_uid(self, key: str) -> VersionUid:
         object_key = self._from_key(self._VERSIONS_PREFIX, key)
         vl = len(VersionUid(1).readable)
         if len(object_key) != vl:
             raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
                 object_key, vl))
-        return VersionUid.create_from_readables(object_key)
+        return VersionUid.create_from_readables(object_key) # type: ignore
 
     @abstractmethod
-    def _write_object(self, key, data):
+    def _write_object(self, key: str, data: bytes):
         raise NotImplementedError
 
     @abstractmethod
-    def _read_object(self, key):
+    def _read_object(self, key: str) -> bytes:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_object_length(self, key):
+    def _read_object_length(self, key: str) -> int:
         raise NotImplementedError
 
     @abstractmethod
-    def _rm_object(self):
+    def _rm_object(self, key: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def _rm_many_objects(self):
+    def _rm_many_objects(self, keys: List[str]) -> List[str]:
         raise NotImplementedError
 
     @abstractmethod
-    def _list_objects(self):
+    def _list_objects(self, prefix: str) -> List[str]:
         raise NotImplementedError
 
 
 class ReadCacheStorageBase(StorageBase):
 
-    def __init__(self, *, config, name, storage_id, module_configuration):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict) -> None:
         read_cache_directory = Config.get_from_dict(module_configuration, 'readCache.directory', None, types=str)
         read_cache_maximum_size = Config.get_from_dict(module_configuration, 'readCache.maximumSize', None, types=int)
 
@@ -505,7 +510,7 @@ class ReadCacheStorageBase(StorageBase):
         # Start reader and write threads after the disk cached is created, so that they see it.
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
-    def _read(self, block, metadata_only):
+    def _read(self, block: DereferencedBlock, metadata_only: bool) -> Tuple[DereferencedBlock, Optional[bytes], Dict]:
         key = self._block_uid_to_key(block.uid)
         metadata_key = key + self._META_SUFFIX
         if self._read_cache is not None and self._use_read_cache:
@@ -527,12 +532,12 @@ class ReadCacheStorageBase(StorageBase):
 
         return block, data, metadata
 
-    def use_read_cache(self, enable):
+    def use_read_cache(self, enable: bool) -> bool:
         old_value = self._use_read_cache
         self._use_read_cache = enable
         return old_value
 
-    def close(self):
+    def close(self) -> None:
         super().close()
         if self._read_cache is not None:
             (cache_hits, cache_misses) = self._read_cache.stats()

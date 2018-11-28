@@ -771,7 +771,7 @@ def main():
         except FileNotFoundError:
             logger.error('File {} not found.'.format(args.config_file))
             exit(os.EX_USAGE)
-        config = Config(cfg=cfg)
+        config = Config(ad_hoc_config=cfg)
     else:
         config = Config()
 

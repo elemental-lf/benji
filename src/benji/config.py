@@ -6,6 +6,7 @@ from copy import deepcopy
 from functools import reduce
 from os.path import expanduser
 from pathlib import Path
+from typing import List, Callable, Tuple, Union, Dict, Any, Optional
 
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
@@ -13,6 +14,20 @@ from ruamel.yaml import YAML
 
 from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
+
+
+class _ConfigDict(dict):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.full_name: Optional[str] = None
+
+
+class _ConfigList(list):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.full_name: Optional[str] = None
 
 
 class Config:
@@ -23,14 +38,14 @@ class Config:
     _YAML_SUFFIX = '.yaml'
     _PARENTS_KEY = 'parents'
 
-    _schema_registry = {}
+    _schema_registry: Dict[str, Dict] = {}
 
     @staticmethod
-    def _schema_name(module, version):
+    def _schema_name(module: str, version: str) -> str:
         return '{}-{}'.format(module, version)
 
     @classmethod
-    def add_schema(cls, *, module, version, file):
+    def add_schema(cls, *, module: str, version: str, file: str) -> None:
         yaml = YAML(typ='safe', pure=True)
         name = cls._schema_name(module, version)
         try:
@@ -42,22 +57,22 @@ class Config:
             raise InternalError('Schema {} is invalid.'.format(file)) from exception
 
     @classmethod
-    def _merge_dicts(cls, user, default):
-        if isinstance(user, dict) and isinstance(default, dict):
-            for k, v in default.items():
-                if k not in user:
-                    user[k] = deepcopy(v)
+    def _merge_dicts(cls, result, parent):
+        if isinstance(result, dict) and isinstance(parent, dict):
+            for k, v in parent.items():
+                if k not in result:
+                    result[k] = deepcopy(v)
                 else:
-                    user[k] = cls._merge_dicts(user[k], v)
-        return user
+                    result[k] = cls._merge_dicts(result[k], v)
+        return result
 
     @classmethod
-    def _resolve_schema(cls, *, name):
+    def _resolve_schema(cls, *, name: str) -> Dict:
         try:
             child = cls._schema_registry[name]
         except KeyError:
             raise InternalError('Schema for module {} is missing.'.format(name))
-        result = {}
+        result: Dict = {}
         if cls._PARENTS_KEY in child:
             parent_names = child[cls._PARENTS_KEY]
             for parent_name in parent_names:
@@ -70,7 +85,7 @@ class Config:
         return result
 
     @classmethod
-    def _get_validator(cls, *, module, version):
+    def _get_validator(cls, *, module: str, version: str) -> Validator:
         name = cls._schema_name(module, version)
         schema = cls._resolve_schema(name=name)
         try:
@@ -82,14 +97,14 @@ class Config:
         return validator
 
     @staticmethod
-    def _output_validation_errors(errors):
+    def _output_validation_errors(errors) -> None:
 
-        def traverse(position, path=''):
-            if isinstance(position, dict):
-                for key, value in position.items():
+        def traverse(cursor, path=''):
+            if isinstance(cursor, dict):
+                for key, value in cursor.items():
                     traverse(value, path + ('.' if path else '') + str(key))
-            elif isinstance(position, list):
-                for value in position:
+            elif isinstance(cursor, list):
+                for value in cursor:
                     if isinstance(value, dict):
                         traverse(value, path)
                     else:
@@ -98,21 +113,21 @@ class Config:
         traverse(errors)
 
     @classmethod
-    def validate(cls, module, config):
+    def validate(cls, module: str, config: Union[Dict, _ConfigDict]) -> Dict:
         validator = cls._get_validator(module=module, version=cls._SCHEMA_VERSION)
         if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')
             cls._output_validation_errors(validator.errors)
             raise ConfigurationError('Configuration for module {} is invalid.'.format(module))
 
-        config_validated =  validator.document['configuration']
+        config_validated = validator.document['configuration']
         logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
         return config_validated
 
-    def __init__(self, cfg=None, sources=None):
+    def __init__(self, ad_hoc_config: Dict=None, sources: List[str]=None) -> None:
         yaml = YAML(typ='safe', pure=True)
 
-        if cfg is None:
+        if ad_hoc_config is None:
             if not sources:
                 sources = self._get_sources()
 
@@ -131,14 +146,14 @@ class Config:
                 raise ConfigurationError('No configuration file found in the default places ({}).'.format(
                     ', '.join(sources)))
         else:
-            config = yaml.load(cfg)
+            config = yaml.load(ad_hoc_config)
             if config is None:
                 raise ConfigurationError('Configuration string is empty.')
 
-        self._config = self.validate(module=__name__, config=config)
+        self._config = _ConfigDict(self.validate(module=__name__, config=config))
         logger.debug('Loaded configuration: {}'.format(self._config))
 
-    def _get_sources(self):
+    def _get_sources(self) -> List[str]:
         sources = []
         for directory in self._CONFIG_DIRS:
             sources.append('{directory}/{file}'.format(directory=directory, file=self._CONFIG_FILE))
@@ -147,7 +162,7 @@ class Config:
         return sources
 
     @staticmethod
-    def _get(root, name, *args, types=None, check_func=None, check_message=None, full_name_override=None, index=None):
+    def _get(root, name: str, *args, types: Any=None, check_func: Callable[[object], bool]=None, check_message: str=None, full_name_override: str=None, index: int=None) -> object:
         if full_name_override is not None:
             full_name = full_name_override
         elif hasattr(root, 'full_name') and root.full_name:
@@ -189,26 +204,12 @@ class Config:
                 else:
                     raise KeyError('Config option {} is missing.'.format(full_name)) from None
 
-    def get(self, name, *args, **kwargs):
+    def get(self, name: str, *args, **kwargs) -> Any:
         return Config._get(self._config, name, *args, **kwargs)
 
     @staticmethod
-    def get_from_dict(dict_, name, *args, **kwargs):
+    def get_from_dict(dict_: _ConfigDict, name: str, *args, **kwargs) -> Any:
         return Config._get(dict_, name, *args, **kwargs)
-
-
-class _ConfigDict(dict):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.full_name = None
-
-
-class _ConfigList(list):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.full_name = None
 
 
 schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), Config._SCHEMA_VERSION)

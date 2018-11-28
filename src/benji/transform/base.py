@@ -1,25 +1,28 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 from abc import abstractmethod, ABCMeta
+from typing import Dict, Tuple, Optional
+
+from benji.config import Config, _ConfigDict
 
 
 class TransformBase(metaclass=ABCMeta):
 
-    def __init__(self, *, config, name, module_configuration):
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict) -> None:
         self._name = name
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def module(self):
+    def module(self) -> str:
         return self.__class__.__module__.split('.')[-1]
 
     @abstractmethod
-    def encapsulate(self, *, data):
+    def encapsulate(self, *, data: bytes) -> Tuple[Optional[bytes], Optional[Dict]]:
         pass
 
     @abstractmethod
-    def decapsulate(self, *, data, materials):
+    def decapsulate(self, *, data: bytes, materials: Dict) -> bytes:
         pass

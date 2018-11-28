@@ -673,7 +673,7 @@ class Benji:
                     stats['bytes_dedup'] += len(data)
                     logger.debug('Found existing block for id {} with UID {}'.format(block.id, existing_block.uid))
                 else:
-                    block.uid = BlockUid(version.uid.int, block.id + 1)
+                    block.uid = BlockUid(version.uid.to_int, block.id + 1)
                     block.checksum = data_checksum
                     storage.save(block, data)
                     write_jobs += 1
@@ -976,7 +976,7 @@ class BenjiStore:
 
     def read(self, version, cow_version, offset, length):
         if cow_version:
-            cow = self._cow[cow_version.uid.int]
+            cow = self._cow[cow_version.uid.to_int]
         else:
             cow = None
         read_list = self._block_list(version, offset, length)
@@ -1005,7 +1005,7 @@ class BenjiStore:
                 base_version.uid.readable, datetime.datetime.now().isoformat(timespec='seconds')),
             base_version_uid=base_version.uid)
         self._benji_obj._locking.update_version_lock(cow_version.uid, reason='NBD COW')
-        self._cow[cow_version.uid.int] = {}  # contains version_uid: dict() of block id -> uid
+        self._cow[cow_version.uid.to_int] = {}  # contains version_uid: dict() of block id -> uid
         return cow_version
 
     def _save(self, block, data):
@@ -1026,7 +1026,7 @@ class BenjiStore:
     def write(self, cow_version, offset, data):
         """ Copy on write backup writer """
         dataio = BytesIO(data)
-        cow = self._cow[cow_version.uid.int]
+        cow = self._cow[cow_version.uid.to_int]
         write_list = self._block_list(cow_version, offset, len(data))
         for block, _offset, length in write_list:
             if block is None:
@@ -1048,7 +1048,7 @@ class BenjiStore:
                 else:  # was a sparse block
                     write_data = BytesIO(data)
                 # Save a copy of the changed data and record the changed block UID
-                block.uid = BlockUid(cow_version.uid.int, block.id + 1)
+                block.uid = BlockUid(cow_version.uid.to_int, block.id + 1)
                 block.checksum = None
                 self._save(block, write_data.read())
                 cow[block.id] = block
@@ -1061,10 +1061,10 @@ class BenjiStore:
     def fixate(self, cow_version):
         # save blocks into version
         logger.info('Fixating version {} with {} blocks, please wait!'.format(
-            cow_version.uid, len(self._cow[cow_version.uid.int].items())))
+            cow_version.uid, len(self._cow[cow_version.uid.to_int].items())))
 
         storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
-        for block in self._cow[cow_version.uid.int].values():
+        for block in self._cow[cow_version.uid.to_int].values():
             logger.debug('Fixating block {} uid {}'.format(block.id, block.uid))
             data = self._read(block)
 
@@ -1087,8 +1087,8 @@ class BenjiStore:
             # rm this block from cache
             # rm block uid from self._block_cache
             pass
-        for block_id, block in self._cow[cow_version.uid.int].items():
+        for block_id, block in self._cow[cow_version.uid.to_int].items():
             pass
-        del (self._cow[cow_version.uid.int])
+        del (self._cow[cow_version.uid.to_int])
         self._benji_obj._locking.unlock_version(cow_version.uid)
         logger.info('Finished.')

@@ -65,17 +65,17 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         """
 
     def test_load_from_string(self):
-        config = Config(cfg=self.CONFIG)
+        config = Config(ad_hoc_config=self.CONFIG)
         self.assertEqual('/var/log/benji.log', config.get('logFile', types=str))
         self.assertEqual(4194304, config.get('blockSize', types=int))
 
     def test_dict(self):
-        config = Config(cfg=self.CONFIG)
+        config = Config(ad_hoc_config=self.CONFIG)
         nbd = config.get('nbd', types=dict)
         self.assertEqual('nbd', nbd.full_name)
 
     def test_lists(self):
-        config = Config(cfg=self.CONFIG)
+        config = Config(ad_hoc_config=self.CONFIG)
         ios = config.get('ios', types=list)
         self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'),_ConfigList))
         self.assertRaises(TypeError, lambda: Config.get_from_dict(ios[0], 'configuration.newImageFeatures', types=int))
@@ -84,22 +84,22 @@ class ConfigTestCase(TestCase, unittest.TestCase):
     def test_correct_version(self):
         self.assertTrue(
             isinstance(
-                Config(cfg=self.CONFIG), Config))
+                Config(ad_hoc_config=self.CONFIG), Config))
 
     def test_wrong_version(self):
         self.assertRaises(ConfigurationError,
-                          lambda: Config(cfg=self.CONFIG_INVALID_VERSION))
+                          lambda: Config(ad_hoc_config=self.CONFIG_INVALID_VERSION))
 
     def test_missing_version(self):
-        self.assertRaises(ConfigurationError, lambda: Config(cfg='a: {b: 1, c: 2}'))
+        self.assertRaises(ConfigurationError, lambda: Config(ad_hoc_config='a: {b: 1, c: 2}'))
 
     def test_defaults(self):
-        config = Config(cfg=self.CONFIG)
+        config = Config(ad_hoc_config=self.CONFIG)
         self.assertEqual('benji', config.get('processName'))
         self.assertEqual('blake2b,digest_size=32', config.get('hashFunction'))
 
     def test_missing(self):
-        config = Config(cfg=self.CONFIG)
+        config = Config(ad_hoc_config=self.CONFIG)
         self.assertRaises(KeyError, lambda: config.get('missing.option'))
 
     def test_get_with_dict(self):
@@ -123,4 +123,8 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         configuration = {'asdasdas': 'dasdasd'}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
         configuration = {}
+        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
+        configuration = {'path': '/var/tmp', 'bandwidthRead': -1}
+        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
+        configuration = {'path': [1,2,3]}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))

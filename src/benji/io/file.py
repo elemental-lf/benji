@@ -3,23 +3,23 @@
 import os
 import threading
 import time
+from typing import Optional, BinaryIO, Tuple
 
+from benji.config import _ConfigDict, Config
 from benji.io.base import IOBase
 from benji.logging import logger
+from benji.metadata import DereferencedBlock
 
 
 class IO(IOBase):
 
-    def __init__(self, *, config, name, module_configuration, path, block_size):
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str, block_size: int) -> None:
         super().__init__(
             config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
 
-        self._writer = None
+        self._writer: Optional[BinaryIO] = None
 
-    def open_r(self):
-        super().open_r()
-
-    def open_w(self, size=None, force=False):
+    def open_w(self, size: int, force: bool=False) -> None:
         if os.path.exists(self._path):
             if not force:
                 raise FileExistsError(
@@ -35,13 +35,13 @@ class IO(IOBase):
                 f.seek(size - 1)
                 f.write(b'\0')
 
-    def size(self):
+    def size(self) -> int:
         with open(self._path, 'rb') as source_file:
             source_file.seek(0, 2)  # to the end
             source_size = source_file.tell()
         return source_size
 
-    def _read(self, block):
+    def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
         with open(self._path, 'rb') as source_file:
             offset = block.id * self._block_size
             t1 = time.time()
@@ -62,7 +62,7 @@ class IO(IOBase):
 
         return block, data
 
-    def write(self, block, data):
+    def write(self, block: DereferencedBlock, data: bytes) -> None:
         if not self._writer:
             self._writer = open(self._path, 'rb+')
 
@@ -72,7 +72,7 @@ class IO(IOBase):
         os.posix_fadvise(self._writer.fileno(), offset, len(data), os.POSIX_FADV_DONTNEED)
         assert written == len(data)
 
-    def close(self):
+    def close(self) -> None:
         super().close()
         if self._writer:
             self._writer.close()

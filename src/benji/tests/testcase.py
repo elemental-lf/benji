@@ -44,7 +44,7 @@ class TestCase():
         self.testpath = self.TestPath()
         init_logging(None, logging.DEBUG)
 
-        self.config = Config(cfg=self.CONFIG.format(testpath=self.testpath.path))
+        self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 
     def tearDown(self):
         self.testpath.close()

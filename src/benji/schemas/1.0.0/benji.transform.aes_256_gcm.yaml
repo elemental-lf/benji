@@ -1,12 +1,12 @@
 parents:
-- benji.io.base-1.0.0
+  - benji.io.base-1.0.0
 configuration:
   required: True
   schema:
     masterKey:
       type: binary
       empty: False
-      require: True
+      required: True
       minlength: 32
       maxlength: 32
       excludes:
@@ -16,7 +16,7 @@ configuration:
     kdfSalt:
       type: binary
       empty: False
-      require: True
+      required: True
       minlength: 8
       excludes:
         - masterKey
@@ -26,7 +26,7 @@ configuration:
     kdfIterations:
       type: integer
       empty: False
-      require: True
+      required: True
       min: 1000
       excludes:
         - masterKey
@@ -36,7 +36,7 @@ configuration:
     password:
       type: string
       empty: False
-      require: True
+      required: True
       minlength: 8
       excludes:
         - masterKey

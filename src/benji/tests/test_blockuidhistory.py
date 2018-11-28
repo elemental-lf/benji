@@ -50,7 +50,7 @@ class BlockUidHistoryTestCase(unittest.TestCase):
 
     def test_oom(self):
         history = BlockUidHistory()
-        for i in range(0, 10000000):
+        for i in range(0, 1000000):
             storage_id = random.randint(1, 4)
             block = BlockUid(random.randint(1, 2**8), random.randint(1, 2**24))
             history.add(storage_id, block)

@@ -6,8 +6,12 @@ import json
 import setproctitle
 import sys
 from ast import literal_eval
+from concurrent.futures import Future
+from datetime import datetime
 from threading import Lock
 from time import time
+from typing import List, Tuple, Union
+
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
 from Crypto.Hash import SHA512
@@ -17,7 +21,7 @@ from benji.exception import ConfigurationError
 from benji.logging import logger
 
 
-def hints_from_rbd_diff(rbd_diff):
+def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
     """ Return the required offset:length tuples from a rbd json diff
     """
     data = json.loads(rbd_diff)
@@ -25,7 +29,6 @@ def hints_from_rbd_diff(rbd_diff):
 
 
 def parametrized_hash_function(config_hash_function):
-    hash_name = None
     hash_args = None
     try:
         hash_name, hash_args = config_hash_function.split(',', 1)
@@ -55,7 +58,7 @@ def data_hexdigest(hash_function, data):
 
 
 # old_msg is used as a stateful storage between calls
-def notify(process_name, msg='', old_msg=''):
+def notify(process_name: str, msg: str='', old_msg: str=''):
     """ This method can receive notifications and append them in '[]' to the
     process name seen in ps, top, ...
     """
@@ -71,11 +74,11 @@ def notify(process_name, msg='', old_msg=''):
 
 # This is tricky to implement as we need to make sure that we don't hold a reference to the completed Future anymore.
 # Indeed it's so tricky that older Python versions had the same problem. See https://bugs.python.org/issue27144.
-def future_results_as_completed(futures, semaphore=None, timeout=None):
+def future_results_as_completed(futures: List[Future], semaphore=None, timeout: int=None):
     if sys.version_info < (3, 6, 4):
         logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' + 'Upgrade your Python to at least 3.6.4.')
 
-    for future in concurrent.futures.as_completed(futures, timeout=timeout):
+    for future in concurrent.futures.as_completed(futures, timeout=timeout): # type: ignore
         futures.remove(future)
         if semaphore and not future.cancelled():
             semaphore.release()
@@ -94,7 +97,7 @@ def derive_key(*, password, salt, iterations, key_length):
 class PrettyPrint:
     # Based on https://code.activestate.com/recipes/578113-human-readable-format-for-a-given-time-delta/
     @staticmethod
-    def duration(duration):
+    def duration(duration: int) -> str:
         delta = relativedelta(seconds=duration)
         attrs = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
         readable = []
@@ -104,7 +107,8 @@ class PrettyPrint:
         return ' '.join(readable)
 
     # Based on: https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
-    def bytes(num, suffix='B'):
+    @staticmethod
+    def bytes(num: Union[int, float], suffix: str='B') -> str:
         for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
             if abs(num) < 1024.0:
                 return "%3.1f%s%s" % (num, unit, suffix)
@@ -112,7 +116,7 @@ class PrettyPrint:
         return "%.1f%s%s" % (num, 'Yi', suffix)
 
     @staticmethod
-    def local_time(date):
+    def local_time(date: datetime) -> str:
         return date.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -122,18 +126,18 @@ class TokenBucket:
     An implementation of the token bucket algorithm.
     """
 
-    def __init__(self):
-        self.tokens = 0
+    def __init__(self) -> None:
+        self.tokens = 0.0
         self.rate = 0
         self.last = time()
         self.lock = Lock()
 
-    def set_rate(self, rate):
+    def set_rate(self, rate: int) -> None:
         with self.lock:
             self.rate = rate
             self.tokens = self.rate
 
-    def consume(self, tokens):
+    def consume(self, tokens: int) -> float:
         with self.lock:
             if not self.rate:
                 return 0
@@ -149,22 +153,6 @@ class TokenBucket:
             self.tokens -= tokens
 
             if self.tokens >= 0:
-                #print("Tokens: {}".format(self.tokens))
                 return 0
             else:
-                #print("Recommended nap: {}".format(-self.tokens / self.rate))
                 return -self.tokens / self.rate
-
-
-#if __name__ == '__main__':
-#    import sys
-#    from time import sleep
-#    bucket = TokenBucket()
-#    bucket.set_rate(80*1024*1024)  # 80MB/s
-#    for _ in range(100):
-#        print("Tokens: {}".format(bucket.tokens))
-#        nap = bucket.consume(4*1024*1024)
-#        print(nap)
-#        sleep(nap)
-#        print(".")
-#    sys.exit(0)

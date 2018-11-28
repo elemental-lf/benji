@@ -6,12 +6,14 @@ import os
 import subprocess
 
 from distutils.command.build_py import build_py as build_py_orig
+from typing import List
+
 from setuptools.command.sdist import sdist as sdist_orig
 
 Version = namedtuple('Version', ('release', 'dev', 'labels'))
 
 # No public API
-__all__ = []
+__all__: List = []
 
 package_root = os.path.dirname(os.path.realpath(__file__))
 package_name = os.path.basename(package_root)

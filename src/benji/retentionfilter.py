@@ -28,20 +28,22 @@ import re
 import time
 from collections import OrderedDict
 from collections import defaultdict
+from typing import List, Dict
 
 from benji.exception import UsageError
 from benji.logging import logger
+from benji.metadata import Version
 
 
-class RetentionFilter():
+class RetentionFilter:
 
     valid_categories = ('latest', 'hours', 'days', 'weeks', 'months', 'years')
 
     # This method is taken from timegaps/main.py, its original name is parse_rules_from_cmdline.
     @classmethod
-    def _parse_rules(cls, rules_spec):
+    def _parse_rules(cls, rules_spec: str) -> OrderedDict:
         tokens = rules_spec.split(',')
-        rules_dict = {}
+        rules_dict: Dict[str, int] = {}
         for token in tokens:
             if not token:
                 raise ValueError('Empty retention policy element.')
@@ -59,20 +61,20 @@ class RetentionFilter():
                 continue
             raise ValueError('Invalid retention policy element {}.'.format(token))
 
-        rules = OrderedDict()
+        rules: OrderedDict[str, int] = OrderedDict()
         for category in cls.valid_categories:
             if category in rules_dict:
                 rules[category] = rules_dict[category]
 
         return rules
 
-    def __init__(self, rules_spec, reference_time=None):
+    def __init__(self, rules_spec: str, reference_time: float=None) -> None:
         self.reference_time = time.time() if reference_time is None else reference_time
         self.rules = self._parse_rules(rules_spec)
         logger.debug('Retention filter set up with reference time {} and rules {}'.format(
             self.reference_time, self.rules))
 
-    def filter(self, versions):
+    def filter(self, versions: List[Version]) -> List[Version]:
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 
@@ -141,7 +143,7 @@ class _Timedelta:
     30 days, years are 365 days, weeks are 7 days, one day is 24 hours.
     """
 
-    def __init__(self, t, reference_time):
+    def __init__(self, t: float, reference_time: float) -> None:
         # Expect two numeric values. Might raise TypeError for other types.
         seconds_earlier = reference_time - t
         if seconds_earlier < 0:
@@ -152,6 +154,6 @@ class _Timedelta:
         self.months = int(seconds_earlier // 2592000)  # 60 * 60 * 24 * 30
         self.years = int(seconds_earlier // 31536000)  # 60 * 60 * 24 * 365
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<_TimeDelta(hours={}, days={}, weeks={}, months={}, years={})>'\
                     .format(self.hours, self.days, self.weeks, self.months, self.years)

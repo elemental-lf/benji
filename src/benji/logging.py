@@ -4,13 +4,14 @@
 import logging
 import sys
 from logging.handlers import WatchedFileHandler
+from typing import Optional
 
 import colorlog
 
 logger = logging.getLogger(__name__)
 
 
-def init_logging(logfile, console_level, no_color=False):
+def init_logging(logfile: Optional[str], console_level: int, no_color: bool=False):
     handlers = []
 
     if no_color:
@@ -22,11 +23,11 @@ def init_logging(logfile, console_level, no_color=False):
     console.setLevel(console_level)
     handlers.append(console)
 
-    if not logfile is None:
-        logfile = WatchedFileHandler(logfile)
-        logfile.setLevel(logging.INFO)
-        logfile.setFormatter(logging.Formatter('%(asctime)s [%(process)d] %(message)s'))
-        handlers.append(logfile)
+    if logfile is not None:
+        logfile_handler = WatchedFileHandler(logfile)
+        logfile_handler.setLevel(logging.INFO)
+        logfile_handler.setFormatter(logging.Formatter('%(asctime)s [%(process)d] %(message)s'))
+        handlers.append(logfile_handler) # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...
 
     logging.basicConfig(handlers=handlers, level=logging.DEBUG)
 
@@ -43,7 +44,7 @@ def init_logging(logfile, console_level, no_color=False):
     logging.getLogger('b2').setLevel(logging.WARN)
 
     # To enable query logging
-    #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     logger.info('$ ' + ' '.join(sys.argv))
 

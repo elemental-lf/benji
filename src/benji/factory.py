@@ -2,30 +2,33 @@
 # -*- encoding: utf-8 -*-
 import importlib
 from collections import namedtuple
+from typing import Dict
 from urllib import parse
 
-from benji.config import Config
+from benji.config import Config, _ConfigList
 
 from benji.exception import ConfigurationError, InternalError, UsageError
-from benji.logging import logger
+from benji.io.base import IOBase
+from benji.storage.base import StorageBase
+from benji.transform.base import TransformBase
 
-_ModuleInstance = namedtuple('_ModuleInstance', ['module', 'arguments'])
+_FactoryModule = namedtuple('_FactoryModule', ['module', 'arguments'])
 
 
 class StorageFactory:
 
     _MODULE = 'storage'
 
-    _modules = {}
-    _name_to_storage_id = {}
-    _storage_id_to_name = {}
-    _instances = {}
+    _modules: Dict[int, _FactoryModule] = {}
+    _name_to_storage_id: Dict[str, int] = {}
+    _storage_id_to_name: Dict[int, str] = {}
+    _instances: Dict[int, StorageBase] = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise InternalError('StorageFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config, modules):
+    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -37,11 +40,11 @@ class StorageFactory:
                 module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
 
             if name in cls._name_to_storage_id:
-                raise ConfigurationError('Duplicate {} name {} in list {}.'.format(cls._MODULE, name, modules.full_name))
+                raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
             if storage_id in cls._storage_id_to_name:
-                raise ConfigurationError('Duplicate {} id {} in list {}.'.format(cls._MODULE, storage_id,
-                                                                                 modules.full_name))
+                raise ConfigurationError('Duplicate id {} in list {}.'.format(storage_id,
+                                         modules.full_name))
 
             try:
                 module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
@@ -53,7 +56,7 @@ class StorageFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
-                cls._modules[storage_id] = _ModuleInstance(
+                cls._modules[storage_id] = _FactoryModule(
                     module=module,
                     arguments={
                         'config': config,
@@ -65,13 +68,13 @@ class StorageFactory:
                 cls._storage_id_to_name[storage_id] = name
 
     @classmethod
-    def initialize(cls, config):
+    def initialize(cls, config: Config) -> None:
         TransformFactory.initialize(config)
-        storages = config.get('storages', types=list)
+        storages: _ConfigList = config.get('storages', types=list)
         cls._import_modules(config, storages)
 
     @classmethod
-    def close(cls):
+    def close(cls) -> None:
         for storage in cls._instances.values():
             storage.close()
 
@@ -83,7 +86,7 @@ class StorageFactory:
         TransformFactory.close()
 
     @classmethod
-    def get_by_storage_id(cls, storage_id):
+    def get_by_storage_id(cls, storage_id: int) -> StorageBase:
         if storage_id not in cls._instances:
             if storage_id not in cls._modules:
                 raise ConfigurationError('Storage id {} is undefined.'.format(storage_id))
@@ -95,21 +98,21 @@ class StorageFactory:
         return cls._instances[storage_id]
 
     @classmethod
-    def get_by_name(cls, name):
-        if not name in cls._name_to_storage_id:
+    def get_by_name(cls, name: str) -> StorageBase:
+        if name not in cls._name_to_storage_id:
             raise ConfigurationError('Storage name {} is undefined.'.format(name))
 
         return cls.get_by_storage_id(cls._name_to_storage_id[name])
 
     @classmethod
-    def storage_id_to_name(cls, storage_id):
+    def storage_id_to_name(cls, storage_id: int) -> str:
         if storage_id in cls._storage_id_to_name:
             return cls._storage_id_to_name[storage_id]
         else:
             raise ConfigurationError('Storage id {} is undefined.'.format(storage_id))
 
     @classmethod
-    def name_to_storage_id(cls, name):
+    def name_to_storage_id(cls, name: str) -> int:
         if name in cls._name_to_storage_id:
             return cls._name_to_storage_id[name]
         else:
@@ -120,14 +123,14 @@ class TransformFactory:
 
     _MODULE = 'transform'
 
-    _modules = {}
-    _instances = {}
+    _modules: Dict[str, _FactoryModule] = {}
+    _instances: Dict[str, TransformBase] = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise InternalError('TransformFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config, modules):
+    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -137,7 +140,7 @@ class TransformFactory:
                 module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
 
             if name in cls._modules:
-                raise ConfigurationError('Duplicate {} name {} in list {}.'.format(cls._MODULE, name, modules.full_name))
+                raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
             try:
                 module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
@@ -149,7 +152,7 @@ class TransformFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _ModuleInstance(
+                cls._modules[name] = _FactoryModule(
                     module=module, arguments={
                         'config': config,
                         'name': name,
@@ -157,18 +160,18 @@ class TransformFactory:
                     })
 
     @classmethod
-    def initialize(cls, config):
-        transforms = config.get('transforms', None, types=list)
+    def initialize(cls, config: Config) -> None:
+        transforms: _ConfigList = config.get('transforms', None, types=list)
         if transforms is not None:
             cls._import_modules(config, transforms)
 
     @classmethod
-    def close(cls):
+    def close(cls) -> None:
         cls._modules = {}
         cls._instances = {}
 
     @classmethod
-    def get_by_name(cls, name):
+    def get_by_name(cls, name: str) -> TransformBase:
         if name not in cls._instances:
             if name not in cls._modules:
                 raise ConfigurationError('Transform name {} is undefined.'.format(name))
@@ -184,13 +187,13 @@ class IOFactory:
 
     _MODULE = 'io'
 
-    _modules = {}
+    _modules: Dict[str, _FactoryModule] = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise InternalError('IOFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config, modules):
+    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -200,7 +203,7 @@ class IOFactory:
                 module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
 
             if name in cls._modules:
-                raise ConfigurationError('Duplicate {} name {} in list {}.'.format(cls._MODULE, name, modules.full_name))
+                raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
             try:
                 module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
@@ -212,7 +215,7 @@ class IOFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _ModuleInstance(
+                cls._modules[name] = _FactoryModule(
                     module=module, arguments={
                         'config': config,
                         'name': name,
@@ -220,16 +223,16 @@ class IOFactory:
                     })
 
     @classmethod
-    def initialize(cls, config):
-        ios = config.get('ios', None, types=list)
+    def initialize(cls, config: Config) -> None:
+        ios: _ConfigList = config.get('ios', None, types=list)
         cls._import_modules(config, ios)
 
     @classmethod
-    def close(cls):
+    def close(cls) -> None:
         cls._modules = {}
 
     @classmethod
-    def get(cls, url, block_size):
+    def get(cls, url: str, block_size: int) -> IOBase:
         res = parse.urlparse(url)
 
         if res.params or res.query or res.fragment:
