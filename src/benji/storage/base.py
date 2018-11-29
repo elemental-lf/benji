@@ -19,7 +19,7 @@ from benji.storage.dicthmac import DictHMAC
 from benji.exception import InternalError, ConfigurationError, BenjiException
 from benji.factory import TransformFactory
 from benji.logging import logger
-from benji.metadata import BlockUid, VersionUid, DereferencedBlock, BlockUidBase
+from benji.metadata import BlockUid, VersionUid, DereferencedBlock, BlockUidBase, DereferencedBlockUid
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
 
@@ -280,7 +280,7 @@ class StorageBase(metaclass=ABCMeta):
                                  cast(str, block.checksum)[:16],  # We know that block.checksum is set
                                  metadata[self._CHECKSUM_KEY][:16]))
 
-    def rm(self, uid: BlockUidBase) -> None:
+    def rm(self, uid: Union[DereferencedBlockUid, BlockUid]) -> None:
         key = self._block_uid_to_key(uid)
         metadata_key = key + self._META_SUFFIX
         try:
@@ -460,7 +460,7 @@ class StorageBase(metaclass=ABCMeta):
             raise RuntimeError('Key {} has an invalid length, expected at least {} characters.'.format(key, pl + 6))
         return key[pl + 6:]
 
-    def _block_uid_to_key(self, block_uid: BlockUidBase) -> str:
+    def _block_uid_to_key(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> str:
         return self._to_key(self._BLOCKS_PREFIX, '{:016x}-{:016x}'.format(block_uid.left, block_uid.right))
 
     def _key_to_block_uid(self, key: str) -> BlockUid:

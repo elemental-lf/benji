@@ -8,8 +8,6 @@ from benji.config import Config, _ConfigList
 
 from benji.exception import ConfigurationError, InternalError, UsageError
 from benji.io.base import IOBase
-from benji.storage.base import StorageBase
-from benji.transform.base import TransformBase
 
 
 class _StorageFactoryModule(NamedTuple):
@@ -24,7 +22,7 @@ class StorageFactory:
     _modules: Dict[int, _StorageFactoryModule] = {}
     _name_to_storage_id: Dict[str, int] = {}
     _storage_id_to_name: Dict[int, str] = {}
-    _instances: Dict[int, StorageBase] = {}
+    _instances: Dict[int, Any] = {}
 
     def __init__(self) -> None:
         raise InternalError('StorageFactory constructor called.')
@@ -87,7 +85,7 @@ class StorageFactory:
         TransformFactory.close()
 
     @classmethod
-    def get_by_storage_id(cls, storage_id: int) -> StorageBase:
+    def get_by_storage_id(cls, storage_id: int) -> Any:
         if storage_id not in cls._instances:
             if storage_id not in cls._modules:
                 raise ConfigurationError('Storage id {} is undefined.'.format(storage_id))
@@ -99,7 +97,7 @@ class StorageFactory:
         return cls._instances[storage_id]
 
     @classmethod
-    def get_by_name(cls, name: str) -> StorageBase:
+    def get_by_name(cls, name: str) -> Any:
         if name not in cls._name_to_storage_id:
             raise ConfigurationError('Storage name {} is undefined.'.format(name))
 
@@ -125,7 +123,7 @@ class TransformFactory:
     _MODULE = 'transform'
 
     _modules: Dict[str, _StorageFactoryModule] = {}
-    _instances: Dict[str, TransformBase] = {}
+    _instances: Dict[str, Any] = {}
 
     def __init__(self) -> None:
         raise InternalError('TransformFactory constructor called.')
@@ -172,7 +170,7 @@ class TransformFactory:
         cls._instances = {}
 
     @classmethod
-    def get_by_name(cls, name: str) -> TransformBase:
+    def get_by_name(cls, name: str) -> Any:
         if name not in cls._instances:
             if name not in cls._modules:
                 raise ConfigurationError('Transform name {} is undefined.'.format(name))

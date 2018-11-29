@@ -137,7 +137,7 @@ class BlockUidComparator(CompositeProperty.Comparator):
 
     def in_(self, other):
         clauses = self.__clause_element__().clauses
-        other_tuples = [element.__composite_values__ for element in other]
+        other_tuples = [element.__composite_values__() for element in other]
         return sqlalchemy.sql.or_(
             *[sqlalchemy.sql.and_(*[clauses[0] == element[0], clauses[1] == element[1]]) for element in other_tuples])
 
@@ -670,7 +670,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def set_block_invalid(self, block_uid: BlockUidBase) -> List[VersionUid]:
+    def set_block_invalid(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> List[VersionUid]:
         try:
             affected_version_uids = self._session.query(distinct(Block.version_uid)).filter_by(uid=block_uid).all()
             affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]
@@ -689,7 +689,7 @@ class MetadataBackend:
 
         return affected_version_uids
 
-    def get_block(self, block_uid: BlockUidBase) -> Block:
+    def get_block(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> Block:
         try:
             block = self._session.query(Block).filter_by(uid=block_uid).first()
         except:
@@ -950,7 +950,7 @@ class MetadataBackend:
                 tag_dict['version_uid'] = version.uid
             self._session.bulk_insert_mappings(Tag, version_dict['tags'])
 
-            version_uids.extend(cast(List[VersionUid], VersionUid.create_from_readables(version_dict['uid'])))
+            version_uids.append(cast(VersionUid, VersionUid.create_from_readables(version_dict['uid'])))
 
         return version_uids
 
