@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 import threading
 from itertools import islice
-from typing import List
+from typing import List, Sequence
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
@@ -116,7 +116,7 @@ class Storage(ReadCacheStorageBase):
         else:
             object.delete()
 
-    def _rm_many_objects(self, keys: List[str]) -> List[str]:
+    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
         self._init_connection()
         errors: List[str] = []
         if self._multi_delete:

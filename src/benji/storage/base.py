@@ -9,7 +9,7 @@ import time
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Union, Optional, Dict, Tuple, List, Sequence, Set, overload, cast, Generator, Any
+from typing import Union, Optional, Dict, Tuple, List, Sequence, Set, overload, cast, Generator, Any, AbstractSet
 
 from diskcache import Cache
 from typing_extensions import Final
@@ -291,7 +291,7 @@ class StorageBase(metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
 
-    def rm_many(self, uids: Union[Sequence[BlockUid], Set[BlockUid]]) -> List[BlockUid]:
+    def rm_many(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
         keys = [self._block_uid_to_key(uid) for uid in uids]
         metadata_keys = [key + self._META_SUFFIX for key in keys]
 
@@ -402,7 +402,7 @@ class StorageBase(metaclass=ABCMeta):
         else:
             return data, []
 
-    def _decapsulate(self, data: bytes, transforms_metadata: List[Dict]) -> bytes:
+    def _decapsulate(self, data: bytes, transforms_metadata: Sequence[Dict]) -> bytes:
         for element in reversed(transforms_metadata):
             name = element['name']
             module = element['module']
@@ -498,7 +498,7 @@ class StorageBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def _rm_many_objects(self, keys: List[str]) -> List[str]:
+    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
         raise NotImplementedError
 
     @abstractmethod

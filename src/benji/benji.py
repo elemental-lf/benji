@@ -9,7 +9,8 @@ import random
 import time
 from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
-from typing import List, Tuple, TextIO, Optional, Set, Collection, NamedTuple, Dict, Any, cast, Iterator, Union
+from typing import List, Tuple, TextIO, Optional, Set, Collection, NamedTuple, Dict, Any, cast, Iterator, Union, \
+    Sequence
 
 from diskcache import Cache
 from mypy_extensions import TypedDict
@@ -550,7 +551,7 @@ class Benji:
             logger.info('Removed backup version {} with {} blocks.'.format(version_uid.readable, num_blocks))
 
     @staticmethod
-    def _blocks_from_hints(hints: List[Tuple[int, int, bool]], block_size: int) -> Tuple[Set[int], Set[int]]:
+    def _blocks_from_hints(hints: Sequence[Tuple[int, int, bool]], block_size: int) -> Tuple[Set[int], Set[int]]:
         sparse_blocks = set()
         read_blocks = set()
         for offset, length, exists in hints:
@@ -871,7 +872,7 @@ class Benji:
         # finished
         self._metadata_backend.close()
 
-    def metadata_export(self, version_uids: List[VersionUid], f: TextIO) -> None:
+    def metadata_export(self, version_uids: Sequence[VersionUid], f: TextIO) -> None:
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -884,7 +885,7 @@ class Benji:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
 
-    def metadata_backup(self, version_uids: List[VersionUid], overwrite: bool = False, locking: bool = True) -> None:
+    def metadata_backup(self, version_uids: Sequence[VersionUid], overwrite: bool = False, locking: bool = True) -> None:
         versions = [self._metadata_backend.get_version(version_uid) for version_uid in version_uids]
         try:
             locked_version_uids = []
@@ -912,7 +913,7 @@ class Benji:
         for version_uid in version_uids:
             logger.info('Imported version {} metadata.'.format(version_uid.readable))
 
-    def metadata_restore(self, version_uids: List[VersionUid], storage_name: str = None) -> None:
+    def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
         if storage_name is not None:
             storage = StorageFactory.get_by_name(storage_name)
         else:

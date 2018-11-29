@@ -9,7 +9,7 @@ import time
 import uuid
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
-from typing import Union, List, Tuple, TextIO, Dict, cast, Generator, Iterator, Set, Any, Optional
+from typing import Union, List, Tuple, TextIO, Dict, cast, Generator, Iterator, Set, Any, Optional, Sequence
 
 import sqlalchemy
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
@@ -869,7 +869,7 @@ class MetadataBackend:
             indent=2,
         )
 
-    def export(self, version_uids: List[VersionUid], f: TextIO):
+    def export(self, version_uids: Sequence[VersionUid], f: TextIO):
         self.export_any({'versions': [self.get_version(version_uid) for version_uid in version_uids]}, f)
 
     def import_(self, f: TextIO) -> List[VersionUid]:

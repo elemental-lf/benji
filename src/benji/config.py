@@ -6,7 +6,7 @@ from copy import deepcopy
 from functools import reduce
 from os.path import expanduser
 from pathlib import Path
-from typing import List, Callable, Tuple, Union, Dict, Any, Optional
+from typing import List, Callable, Tuple, Union, Dict, Any, Optional, Sequence
 
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
@@ -124,7 +124,7 @@ class Config:
         logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
         return config_validated
 
-    def __init__(self, ad_hoc_config: Dict = None, sources: List[str] = None) -> None:
+    def __init__(self, ad_hoc_config: Dict = None, sources: Sequence[str] = None) -> None:
         yaml = YAML(typ='safe', pure=True)
 
         if ad_hoc_config is None:

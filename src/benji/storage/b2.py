@@ -3,7 +3,7 @@
 import logging
 import random
 import time
-from typing import List, Any
+from typing import List, Any, Sequence
 
 import b2
 import b2.api
@@ -135,7 +135,7 @@ class Storage(ReadCacheStorageBase):
             else:
                 raise
 
-    def _rm_many_objects(self, keys: List[str]) -> List[str]:
+    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
         """ Deletes many keys from the data backend and returns a list
         of keys that couldn't be deleted.
         """

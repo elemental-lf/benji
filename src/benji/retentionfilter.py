@@ -28,7 +28,7 @@ import re
 import time
 from collections import OrderedDict
 from collections import defaultdict
-from typing import List, Dict
+from typing import List, Dict, Sequence
 
 from benji.exception import UsageError
 from benji.logging import logger
@@ -74,7 +74,7 @@ class RetentionFilter:
         logger.debug('Retention filter set up with reference time {} and rules {}'.format(
             self.reference_time, self.rules))
 
-    def filter(self, versions: List[Version]) -> List[Version]:
+    def filter(self, versions: Sequence[Version]) -> List[Version]:
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 
