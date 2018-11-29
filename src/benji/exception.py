@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+from typing import Union
+
+from benji.metadata import DereferencedBlock, Block
+
+
 class BenjiException(Exception):
     pass
 
@@ -34,3 +39,5 @@ class NbdServerAbortedNegotiationError(BenjiException, IOError):
 
 class ScrubbingError(BenjiException, IOError):
     pass
+
+

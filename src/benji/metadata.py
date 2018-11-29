@@ -670,7 +670,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def set_blocks_invalid(self, block_uid: BlockUidBase) -> List[VersionUid]:
+    def set_block_invalid(self, block_uid: BlockUidBase) -> List[VersionUid]:
         try:
             affected_version_uids = self._session.query(distinct(Block.version_uid)).filter_by(uid=block_uid).all()
             affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]

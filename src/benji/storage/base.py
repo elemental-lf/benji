@@ -16,12 +16,23 @@ from typing_extensions import Final
 
 from benji.config import Config, _ConfigDict
 from benji.storage.dicthmac import DictHMAC
-from benji.exception import InternalError, ConfigurationError
+from benji.exception import InternalError, ConfigurationError, BenjiException
 from benji.factory import TransformFactory
 from benji.logging import logger
 from benji.metadata import BlockUid, VersionUid, DereferencedBlock, BlockUidBase
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
+
+
+class InvalidBlockException(BenjiException, IOError):
+    def __init__(self, message: str, block: DereferencedBlock) ->  None:
+        super().__init__(message)
+
+        self._block = block
+
+    @property
+    def block(self) -> DereferencedBlock:
+        return self._block
 
 
 class StorageBase(metaclass=ABCMeta):
@@ -146,7 +157,7 @@ class StorageBase(metaclass=ABCMeta):
 
         # Comparing encapsulated data here
         if data_expected != data_actual:
-            raise InternalError('Written and read data of {} differ.'.format(key))
+            raise ValueError('Written and read data of {} differ.'.format(key))
 
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
         data, transforms_metadata = self._encapsulate(data)
@@ -174,7 +185,10 @@ class StorageBase(metaclass=ABCMeta):
         logger.debug('{} wrote data of uid {} in {:.2f}s'.format(threading.current_thread().name, block.uid, t2 - t1))
 
         if self._consistency_check_writes:
-            self._check_write(key=key, metadata_key=metadata_key, data_expected=data)
+            try:
+                self._check_write(key=key, metadata_key=metadata_key, data_expected=data)
+            except (KeyError, ValueError) as exception:
+                raise InvalidBlockException('Check write of block {} (UID {}) failed.'.format(block.id, block.uid), block) from exception
 
         return block
 
@@ -213,11 +227,14 @@ class StorageBase(metaclass=ABCMeta):
         time.sleep(self.read_throttling.consume(len(data) if data else 0 + len(metadata_json)))
         t2 = time.time()
 
-        metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
+        try:
+            metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
+        except (KeyError, ValueError) as exception:
+            raise InvalidBlockException('Metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid), block) from exception
 
         if self._CHECKSUM_KEY not in metadata:
-            raise KeyError('Required metadata key {} is missing for block {} (UID {}).'.format(
-                self._CHECKSUM_KEY, block.id, block.uid))
+            raise InvalidBlockException('Required metadata key {} is missing for block {} (UID {}).'.format(
+                self._CHECKSUM_KEY, block.id, block.uid), block)
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
             data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore

@@ -22,6 +22,7 @@ from benji.logging import logger
 from benji.metadata import BlockUid, MetadataBackend, VersionUid, Version, Block, DereferencedBlock, \
     DereferencedBlockUid
 from benji.retentionfilter import RetentionFilter
+from benji.storage.base import InvalidBlockException
 from benji.utils import data_hexdigest, notify, parametrized_hash_function
 
 
@@ -248,10 +249,10 @@ class Benji:
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
-                    logger.error('Data backend read failed: {}'.format(entry))
                     # If it really is a data inconsistency mark blocks invalid
-                    if isinstance(entry, (KeyError, ValueError)):
-                        self._metadata_backend.set_blocks_invalid(block.uid)
+                    if isinstance(entry, InvalidBlockException):
+                        logger.error('Data backend read failed: {}'.format(entry))
+                        self._metadata_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
                         valid = False
                         continue
                     else:
@@ -263,7 +264,7 @@ class Benji:
                     storage.check_block_metadata(block=block, data_length=None, metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
-                    self._metadata_backend.set_blocks_invalid(block.uid)
+                    self._metadata_backend.set_block_invalid(block.uid)
                     valid = False
                     continue
                 except:
@@ -292,7 +293,7 @@ class Benji:
         # A scrub (in contrast to a deep-scrub) can only ever mark a version as invalid. To mark it as valid
         # there is not enough information.
         if not valid:
-            # version is set invalid by set_blocks_invalid.
+            # version is set invalid by set_block_invalid.
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.readable))
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid.readable))
 
@@ -326,10 +327,10 @@ class Benji:
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
-                    logger.error('Data backend read failed: {}'.format(entry))
                     # If it really is a data inconsistency mark blocks invalid
-                    if isinstance(entry, (KeyError, ValueError)):
-                        self._metadata_backend.set_blocks_invalid(block.uid)
+                    if isinstance(entry, InvalidBlockException):
+                        logger.error('Data backend read failed: {}'.format(entry))
+                        self._metadata_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
                         valid = False
                         continue
                     else:
@@ -341,7 +342,7 @@ class Benji:
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
-                    self._metadata_backend.set_blocks_invalid(block.uid)
+                    self._metadata_backend.set_block_invalid(block.uid)
                     valid = False
                     continue
                 except:
@@ -353,7 +354,7 @@ class Benji:
                         'Checksum mismatch during deep scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.id, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
-                    self._metadata_backend.set_blocks_invalid(block.uid)
+                    self._metadata_backend.set_block_invalid(block.uid)
                     valid = False
                     continue
 
@@ -400,7 +401,7 @@ class Benji:
                 self._locking.unlock_version(version_uid)
                 raise
         else:
-            # version is set invalid by set_blocks_invalid.
+            # version is set invalid by set_block_invalid.
             # FIXME: This message might be misleading in the case where a source mismatch occurs where
             # FIXME: we set state to False but don't mark any blocks as invalid.
             logger.error('Marked version {} invalid because it has errors.'.format(version_uid.readable))
@@ -457,7 +458,7 @@ class Benji:
                     logger.error('Data backend read failed: {}'.format(entry))
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, (KeyError, ValueError)):
-                        self._metadata_backend.set_blocks_invalid(block.uid)
+                        self._metadata_backend.set_block_invalid(block.uid)
                         continue
                     else:
                         raise entry
@@ -471,7 +472,7 @@ class Benji:
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
-                    self._metadata_backend.set_blocks_invalid(block.uid)
+                    self._metadata_backend.set_block_invalid(block.uid)
                     continue
                 except:
                     raise
@@ -482,7 +483,7 @@ class Benji:
                                  'block.valid: {}). Block restored is invalid.'.format(
                                      block.id, block.uid, data_checksum[:16],
                                      cast(str, block.checksum)[:16], block.valid))  # We know that block.checksum is set
-                    self._metadata_backend.set_blocks_invalid(block.uid)
+                    self._metadata_backend.set_block_invalid(block.uid)
                 else:
                     logger.debug('Restored block {} successfully ({} bytes).'.format(block.id, block.size))
 
