@@ -13,13 +13,14 @@ from benji.metadata import DereferencedBlock
 
 class IO(IOBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str, block_size: int) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str,
+                 block_size: int) -> None:
         super().__init__(
             config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
 
         self._writer: Optional[BinaryIO] = None
 
-    def open_w(self, size: int, force: bool=False) -> None:
+    def open_w(self, size: int, force: bool = False) -> None:
         if os.path.exists(self._path):
             if not force:
                 raise FileExistsError(
@@ -28,8 +29,8 @@ class IO(IOBase):
             else:
                 if size > self.size():
                     raise IOError(
-                        'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'
-                        .format(self.name, self._path, self.size(), size))
+                        'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
+                            self.name, self._path, self.size(), size))
         else:
             with open(self._path, 'wb') as f:
                 f.seek(size - 1)

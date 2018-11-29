@@ -83,7 +83,13 @@ class SQLTestCase:
         for id in range(num_blocks):
             checksums.append(self.random_hex(64))
             uids.append(BlockUid(1, id))
-            self.metadata_backend.set_block(id, version.uid, uids[id], checksums[id], 1024 * 4096, True)
+            self.metadata_backend.set_block(
+                id=id,
+                version_uid=version.uid,
+                block_uid=uids[id],
+                checksum=checksums[id],
+                size=1024 * 4096,
+                valid=True)
         self.metadata_backend.commit()
 
         for id, checksum in enumerate(checksums):

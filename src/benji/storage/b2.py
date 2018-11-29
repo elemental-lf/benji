@@ -36,20 +36,11 @@ class Storage(ReadCacheStorageBase):
         else:
             account_info = InMemoryAccountInfo()
 
-        b2.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(
-            module_configuration,
-            'uploadAttempts',
-            types=int)
+        b2.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(module_configuration, 'uploadAttempts', types=int)
 
-        self._write_object_attempts = Config.get_from_dict(
-            module_configuration,
-            'writeObjectAttempts',
-            types=int)
+        self._write_object_attempts = Config.get_from_dict(module_configuration, 'writeObjectAttempts', types=int)
 
-        self._read_object_attempts = Config.get_from_dict(
-            module_configuration,
-            'readObjectAttempts',
-            types=int)
+        self._read_object_attempts = Config.get_from_dict(module_configuration, 'readObjectAttempts', types=int)
 
         self.service = b2.api.B2Api(account_info)
         if account_info_file is not None:
@@ -93,8 +84,9 @@ class Storage(ReadCacheStorageBase):
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
-                        logger.warning('Download of object with key {} to B2 failed, will try again in {:.2f} seconds.'
-                                       .format(key, sleep_time))
+                        logger.warning(
+                            'Download of object with key {} to B2 failed, will try again in {:.2f} seconds.'.format(
+                                key, sleep_time))
                         time.sleep(sleep_time)
                         continue
                     raise
@@ -122,8 +114,9 @@ class Storage(ReadCacheStorageBase):
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
-                        logger.warning('Object length request for key {} to B2 failed, will try again in {:.2f} seconds.'
-                                       .format(key, sleep_time))
+                        logger.warning(
+                            'Object length request for key {} to B2 failed, will try again in {:.2f} seconds.'.format(
+                                key, sleep_time))
                         time.sleep(sleep_time)
                         continue
                     raise

@@ -13,7 +13,7 @@ from benji.config import Config, _ConfigDict
 
 class Transform(TransformBase):
 
-    def __init__(self, *, config:Config, name: str, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
 
         master_key: Optional[bytes] = Config.get_from_dict(module_configuration, 'masterKey', None, types=bytes)
@@ -60,8 +60,9 @@ class Transform(TransformBase):
 
         envelope_key = aes_unwrap_key(self._master_key, envelope_key)
         if len(envelope_key) != 32:
-            raise ValueError('Encryption materials key envelope_key has wrong length of {}. It must be 32 bytes long.'
-                             .format(len(envelope_key)))
+            raise ValueError(
+                'Encryption materials key envelope_key has wrong length of {}. It must be 32 bytes long.'.format(
+                    len(envelope_key)))
 
         decryptor = AES.new(envelope_key, AES.MODE_GCM, nonce=iv)
         return decryptor.decrypt(data)

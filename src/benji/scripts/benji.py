@@ -55,12 +55,11 @@ class Commands:
             backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid, tags,
                                                   storage)
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions': benji_obj.ls(version_uid=backup_version_uid)
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': benji_obj.ls(version_uid=backup_version_uid)
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -131,23 +130,21 @@ class Commands:
             benji_obj.scrub(version_uid, block_percentage=block_percentage)
         except benji.exception.ScrubbingError:
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions': benji_obj.ls(version_uid=version_uid),
-                        'errors': benji_obj.ls(version_uid=version_uid)
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'errors': benji_obj.ls(version_uid=version_uid)
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions': benji_obj.ls(version_uid=version_uid),
-                        'errors': []
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'errors': []
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -162,23 +159,21 @@ class Commands:
             benji_obj.deep_scrub(version_uid, source=source, block_percentage=block_percentage)
         except benji.exception.ScrubbingError:
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions': benji_obj.ls(version_uid=version_uid),
-                        'errors': benji_obj.ls(version_uid=version_uid)
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'errors': benji_obj.ls(version_uid=version_uid)
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions': benji_obj.ls(version_uid=version_uid),
-                        'errors': []
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'errors': []
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -215,24 +210,22 @@ class Commands:
                     raise
             if errors:
                 if self.machine_output:
-                    benji_obj.export_any(
-                        {
-                            'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
-                            'errors': [benji_obj.ls(version_uid=version.uid)[0] for version in errors]
-                        },
-                        sys.stdout,
-                        ignore_relationships=[((Version,), ('blocks',))])
+                    benji_obj.export_any({
+                        'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
+                        'errors': [benji_obj.ls(version_uid=version.uid)[0] for version in errors]
+                    },
+                                         sys.stdout,
+                                         ignore_relationships=[((Version,), ('blocks',))])
                 raise benji.exception.ScrubbingError('One or more version had scrubbing errors: {}.'.format(', '.join(
                     [version.uid.readable for version in errors])))
             else:
                 if self.machine_output:
-                    benji_obj.export_any(
-                        {
-                            'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
-                            'errors': []
-                        },
-                        sys.stdout,
-                        ignore_relationships=[((Version,), ('blocks',))])
+                    benji_obj.export_any({
+                        'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
+                        'errors': []
+                    },
+                                         sys.stdout,
+                                         ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -290,8 +283,9 @@ class Commands:
         tbl.align['duration (s)'] = 'r'
         for stat in stats:
             augmented_version_uid = '{}{}{}'.format(
-                stat.version_uid.readable, ',\nbase {}'.format(stat.base_version_uid.readable)
-                if stat.base_version_uid else '', ', hints' if stat.hints_supplied else '')
+                stat.version_uid.readable,
+                ',\nbase {}'.format(stat.base_version_uid.readable) if stat.base_version_uid else '',
+                ', hints' if stat.hints_supplied else '')
             tbl.add_row([
                 PrettyPrint.local_time(stat.version_date),
                 augmented_version_uid,
@@ -469,13 +463,11 @@ class Commands:
                         dry_run=dry_run,
                         keep_backend_metadata=keep_backend_metadata))
             if self.machine_output:
-                benji_obj.export_any(
-                    {
-                        'versions':
-                        [benji_obj.ls(version_uid=version_uid)[0] for version_uid in dismissed_version_uids]
-                    },
-                    sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({
+                    'versions': [benji_obj.ls(version_uid=version_uid)[0] for version_uid in dismissed_version_uids]
+                },
+                                     sys.stdout,
+                                     ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()

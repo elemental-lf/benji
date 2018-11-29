@@ -14,7 +14,20 @@ class DictHMACHashTestCase(unittest.TestCase):
         self.dh.add_hexdigest(self.data_2)
 
     def test_result(self):
-        self.assertDictEqual(self.data, {'a': 10, 'b': 'test', 'c': True, 'e': {'a': 1, 'b': 'test'}, 'hmac': {'algorithm': 'sha256', 'digest': '330cad929c84fc1d11b906216808688f140dd53eabff58fe900228cac53e24ce'}})
+        self.assertDictEqual(
+            self.data, {
+                'a': 10,
+                'b': 'test',
+                'c': True,
+                'e': {
+                    'a': 1,
+                    'b': 'test'
+                },
+                'hmac': {
+                    'algorithm': 'sha256',
+                    'digest': '330cad929c84fc1d11b906216808688f140dd53eabff58fe900228cac53e24ce'
+                }
+            })
 
     def test_different_digest(self):
         self.assertNotEqual(self.data, self.data_2)

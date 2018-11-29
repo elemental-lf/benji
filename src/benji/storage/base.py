@@ -9,7 +9,7 @@ import time
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Union, Optional, Dict, Tuple, List, Sequence, Set
+from typing import Union, Optional, Dict, Tuple, List, Sequence, Set, overload, cast, Generator, Any
 
 from diskcache import Cache
 from typing_extensions import Final
@@ -99,7 +99,12 @@ class StorageBase(metaclass=ABCMeta):
     def storage_id(self) -> int:
         return self._storage_id
 
-    def _build_metadata(self, *, size: int, object_size: int, transforms_metadata: List[Dict]=None, checksum: str=None) -> Tuple[Dict, bytes]:
+    def _build_metadata(self,
+                        *,
+                        size: int,
+                        object_size: int,
+                        transforms_metadata: List[Dict] = None,
+                        checksum: str = None) -> Tuple[Dict, bytes]:
         metadata: Dict = {
             self._SIZE_KEY: size,
             self._OBJECT_SIZE_KEY: object_size,
@@ -173,7 +178,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return block
 
-    def save(self, block: DereferencedBlock, data: bytes, sync: bool=False) -> None:
+    def save(self, block: DereferencedBlock, data: bytes, sync: bool = False) -> None:
         if sync:
             self._write(block, data)
         else:
@@ -189,7 +194,7 @@ class StorageBase(metaclass=ABCMeta):
 
             self._write_futures.append(self._write_executor.submit(write_with_release))
 
-    def save_get_completed(self, timeout: Optional[int]=None) -> DereferencedBlock:
+    def save_get_completed(self, timeout: int = None) -> Generator[Union[DereferencedBlock, BaseException], None, None]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._write_futures, timeout=timeout)
@@ -215,14 +220,14 @@ class StorageBase(metaclass=ABCMeta):
                 self._CHECKSUM_KEY, block.id, block.uid))
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
-            data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY]) # type: ignore
+            data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore
 
         logger.debug('{} read data of uid {} in {:.2f}s{}'.format(threading.current_thread().name, block.uid, t2 - t1,
                                                                   ' (metadata only)' if metadata_only else ''))
 
         return block, data, metadata
 
-    def read(self, block: DereferencedBlock, sync: Optional[bool]=False, metadata_only: bool=False) -> Optional[bytes]:
+    def read(self, block: DereferencedBlock, sync: bool = False, metadata_only: bool = False) -> Optional[bytes]:
         if sync:
             return self._read(block, metadata_only)[1]
         else:
@@ -234,12 +239,13 @@ class StorageBase(metaclass=ABCMeta):
             self._read_futures.append(self._read_executor.submit(read_with_acquire))
             return None
 
-    def read_get_completed(self, timeout: Optional[int]=None) -> Tuple[DereferencedBlock, bytes, Dict]:
+    def read_get_completed(self, timeout: int = None
+                          ) -> Generator[Union[Tuple[DereferencedBlock, bytes, Dict], BaseException], Any, Any]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
 
-    def check_block_metadata(self, *, block: DereferencedBlock, data_length: int, metadata: Dict) -> None:
+    def check_block_metadata(self, *, block: DereferencedBlock, data_length: Optional[int], metadata: Dict) -> None:
         # Existence of keys has already been checked in _decode_metadata() and _read()
         if metadata[self._SIZE_KEY] != block.size:
             raise ValueError('Mismatch between recorded block size and data length in metadata for block {} (UID {}). '
@@ -251,8 +257,11 @@ class StorageBase(metaclass=ABCMeta):
 
         if block.checksum != metadata[self._CHECKSUM_KEY]:
             raise ValueError('Mismatch between recorded block checksum and checksum in metadata for block {} (UID {}). '
-                             'Expected: {}, got: {}.'.format(block.id, block.uid, block.checksum[:16],
-                                                             metadata[self._CHECKSUM_KEY][:16]))
+                             'Expected: {}, got: {}.'.format(
+                                 block.id,
+                                 block.uid,
+                                 cast(str, block.checksum)[:16],  # We know that block.checksum is set
+                                 metadata[self._CHECKSUM_KEY][:16]))
 
     def rm(self, uid: BlockUidBase) -> None:
         key = self._block_uid_to_key(uid)
@@ -316,7 +325,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return data.decode('utf-8')
 
-    def save_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool]=False) -> None:
+    def save_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool] = False) -> None:
         key = self._version_uid_to_key(version_uid)
         metadata_key = key + self._META_SUFFIX
 
@@ -453,7 +462,7 @@ class StorageBase(metaclass=ABCMeta):
         if len(object_key) != vl:
             raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
                 object_key, vl))
-        return VersionUid.create_from_readables(object_key) # type: ignore
+        return VersionUid.create_from_readables(object_key)  # type: ignore
 
     @abstractmethod
     def _write_object(self, key: str, data: bytes):

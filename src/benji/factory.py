@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import importlib
-from collections import namedtuple
-from typing import Dict
+from typing import Dict, NamedTuple, Any
 from urllib import parse
 
 from benji.config import Config, _ConfigList
@@ -12,14 +11,17 @@ from benji.io.base import IOBase
 from benji.storage.base import StorageBase
 from benji.transform.base import TransformBase
 
-_FactoryModule = namedtuple('_FactoryModule', ['module', 'arguments'])
+
+class _StorageFactoryModule(NamedTuple):
+    module: Any
+    arguments: Dict[str, Any]
 
 
 class StorageFactory:
 
     _MODULE = 'storage'
 
-    _modules: Dict[int, _FactoryModule] = {}
+    _modules: Dict[int, _StorageFactoryModule] = {}
     _name_to_storage_id: Dict[str, int] = {}
     _storage_id_to_name: Dict[int, str] = {}
     _instances: Dict[int, StorageBase] = {}
@@ -43,8 +45,7 @@ class StorageFactory:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
             if storage_id in cls._storage_id_to_name:
-                raise ConfigurationError('Duplicate id {} in list {}.'.format(storage_id,
-                                         modules.full_name))
+                raise ConfigurationError('Duplicate id {} in list {}.'.format(storage_id, modules.full_name))
 
             try:
                 module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
@@ -56,7 +57,7 @@ class StorageFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
-                cls._modules[storage_id] = _FactoryModule(
+                cls._modules[storage_id] = _StorageFactoryModule(
                     module=module,
                     arguments={
                         'config': config,
@@ -123,7 +124,7 @@ class TransformFactory:
 
     _MODULE = 'transform'
 
-    _modules: Dict[str, _FactoryModule] = {}
+    _modules: Dict[str, _StorageFactoryModule] = {}
     _instances: Dict[str, TransformBase] = {}
 
     def __init__(self) -> None:
@@ -152,7 +153,7 @@ class TransformFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _FactoryModule(
+                cls._modules[name] = _StorageFactoryModule(
                     module=module, arguments={
                         'config': config,
                         'name': name,
@@ -187,7 +188,7 @@ class IOFactory:
 
     _MODULE = 'io'
 
-    _modules: Dict[str, _FactoryModule] = {}
+    _modules: Dict[str, _StorageFactoryModule] = {}
 
     def __init__(self) -> None:
         raise InternalError('IOFactory constructor called.')
@@ -215,7 +216,7 @@ class IOFactory:
                     configuration = config.validate(module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _FactoryModule(
+                cls._modules[name] = _StorageFactoryModule(
                     module=module, arguments={
                         'config': config,
                         'name': name,

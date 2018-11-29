@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Tuple, Union, Optional, List
+from typing import Tuple, Union, Optional, List, Generator
 
 from benji.config import _ConfigDict, Config
 from benji.logging import logger
@@ -15,7 +15,8 @@ class IOBase(metaclass=ABCMeta):
 
     READ_QUEUE_LENGTH = 5
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str, block_size: int) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str,
+                 block_size: int) -> None:
         self._name = name
         self._path = path
         self._block_size = block_size
@@ -39,7 +40,7 @@ class IOBase(metaclass=ABCMeta):
     def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
         raise NotImplementedError()
 
-    def read(self, block: DereferencedBlock, sync: bool=False):
+    def read(self, block: DereferencedBlock, sync: bool = False):
         if sync:
             return self._read(block)[1]
         else:
@@ -48,13 +49,14 @@ class IOBase(metaclass=ABCMeta):
                 self._read_semaphore.acquire()
                 return self._read(block)
 
-            self._read_futures.append(self._read_executor.submit(read_with_acquire)) # type: ignore
+            self._read_futures.append(self._read_executor.submit(read_with_acquire))  # type: ignore
 
-    def read_get_completed(self, timeout: Optional[int]=None) -> Tuple[DereferencedBlock, bytes]:
+    def read_get_completed(self, timeout: Optional[int] = None
+                          ) -> Generator[Union[Tuple[DereferencedBlock, bytes], BaseException], None, None]:
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
 
     @abstractmethod
-    def open_w(self, size: int, force: bool=False) -> None:
+    def open_w(self, size: int, force: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod

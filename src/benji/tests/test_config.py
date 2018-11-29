@@ -77,18 +77,16 @@ class ConfigTestCase(TestCase, unittest.TestCase):
     def test_lists(self):
         config = Config(ad_hoc_config=self.CONFIG)
         ios = config.get('ios', types=list)
-        self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'),_ConfigList))
+        self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'), _ConfigList))
         self.assertRaises(TypeError, lambda: Config.get_from_dict(ios[0], 'configuration.newImageFeatures', types=int))
-        self.assertEqual('RBD_FEATURE_EXCLUSIVE_LOCK', Config.get_from_dict(ios[0], 'configuration.newImageFeatures')[1])
+        self.assertEqual('RBD_FEATURE_EXCLUSIVE_LOCK',
+                         Config.get_from_dict(ios[0], 'configuration.newImageFeatures')[1])
 
     def test_correct_version(self):
-        self.assertTrue(
-            isinstance(
-                Config(ad_hoc_config=self.CONFIG), Config))
+        self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG), Config))
 
     def test_wrong_version(self):
-        self.assertRaises(ConfigurationError,
-                          lambda: Config(ad_hoc_config=self.CONFIG_INVALID_VERSION))
+        self.assertRaises(ConfigurationError, lambda: Config(ad_hoc_config=self.CONFIG_INVALID_VERSION))
 
     def test_missing_version(self):
         self.assertRaises(ConfigurationError, lambda: Config(ad_hoc_config='a: {b: 1, c: 2}'))
@@ -114,17 +112,19 @@ class ConfigTestCase(TestCase, unittest.TestCase):
 
     def test_validation(self):
         configuration = {'path': '/var/tmp'}
-        self.assertEqual({'bandwidthRead': 0,
-                          'bandwidthWrite': 0,
-                          'consistencyCheckWrites': False,
-                          'path': '/var/tmp',
-                          'simultaneousReads': 1,
-                          'simultaneousWrites': 1}, Config.validate('benji.storage.file', configuration))
+        self.assertEqual({
+            'bandwidthRead': 0,
+            'bandwidthWrite': 0,
+            'consistencyCheckWrites': False,
+            'path': '/var/tmp',
+            'simultaneousReads': 1,
+            'simultaneousWrites': 1
+        }, Config.validate('benji.storage.file', configuration))
         configuration = {'asdasdas': 'dasdasd'}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
         configuration = {}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
         configuration = {'path': '/var/tmp', 'bandwidthRead': -1}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
-        configuration = {'path': [1,2,3]}
+        configuration = {'path': [1, 2, 3]}
         self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))

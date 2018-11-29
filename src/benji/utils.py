@@ -10,7 +10,7 @@ from concurrent.futures import Future
 from datetime import datetime
 from threading import Lock
 from time import time
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Generator, Any
 
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
@@ -45,8 +45,8 @@ def parametrized_hash_function(config_hash_function):
 
     from benji.metadata import Block
     if len(hash_function_w_kwargs.digest()) > Block.MAXIMUM_CHECKSUM_LENGTH:
-        raise ConfigurationError('Specified hash function exceeds maximum digest length of {}.'
-                                 .format(Block.MAXIMUM_CHECKSUM_LENGTH))
+        raise ConfigurationError('Specified hash function exceeds maximum digest length of {}.'.format(
+            Block.MAXIMUM_CHECKSUM_LENGTH))
 
     return hash_function_w_kwargs
 
@@ -58,7 +58,7 @@ def data_hexdigest(hash_function, data):
 
 
 # old_msg is used as a stateful storage between calls
-def notify(process_name: str, msg: str='', old_msg: str=''):
+def notify(process_name: str, msg: str = '', old_msg: str = ''):
     """ This method can receive notifications and append them in '[]' to the
     process name seen in ps, top, ...
     """
@@ -74,11 +74,12 @@ def notify(process_name: str, msg: str='', old_msg: str=''):
 
 # This is tricky to implement as we need to make sure that we don't hold a reference to the completed Future anymore.
 # Indeed it's so tricky that older Python versions had the same problem. See https://bugs.python.org/issue27144.
-def future_results_as_completed(futures: List[Future], semaphore=None, timeout: int=None):
+def future_results_as_completed(futures: List[Future], semaphore=None,
+                                timeout: int = None) -> Generator[Any, None, None]:
     if sys.version_info < (3, 6, 4):
         logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' + 'Upgrade your Python to at least 3.6.4.')
 
-    for future in concurrent.futures.as_completed(futures, timeout=timeout): # type: ignore
+    for future in concurrent.futures.as_completed(futures, timeout=timeout):  # type: ignore
         futures.remove(future)
         if semaphore and not future.cancelled():
             semaphore.release()
@@ -108,7 +109,7 @@ class PrettyPrint:
 
     # Based on: https://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
     @staticmethod
-    def bytes(num: Union[int, float], suffix: str='B') -> str:
+    def bytes(num: Union[int, float], suffix: str = 'B') -> str:
         for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
             if abs(num) < 1024.0:
                 return "%3.1f%s%s" % (num, unit, suffix)

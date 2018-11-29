@@ -124,7 +124,7 @@ class Config:
         logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
         return config_validated
 
-    def __init__(self, ad_hoc_config: Dict=None, sources: List[str]=None) -> None:
+    def __init__(self, ad_hoc_config: Dict = None, sources: List[str] = None) -> None:
         yaml = YAML(typ='safe', pure=True)
 
         if ad_hoc_config is None:
@@ -162,7 +162,14 @@ class Config:
         return sources
 
     @staticmethod
-    def _get(root, name: str, *args, types: Any=None, check_func: Callable[[object], bool]=None, check_message: str=None, full_name_override: str=None, index: int=None) -> object:
+    def _get(root,
+             name: str,
+             *args,
+             types: Any = None,
+             check_func: Callable[[object], bool] = None,
+             check_message: str = None,
+             full_name_override: str = None,
+             index: int = None) -> object:
         if full_name_override is not None:
             full_name = full_name_override
         elif hasattr(root, 'full_name') and root.full_name:
@@ -184,8 +191,8 @@ class Config:
                 raise TypeError('Config value {} has wrong type {}, expected {}.'.format(full_name, type(value), types))
             if check_func is not None and not check_func(value):
                 if check_message is None:
-                    raise ConfigurationError('Config option {} has the right type but the supplied value is invalid.'
-                                             .format(full_name))
+                    raise ConfigurationError(
+                        'Config option {} has the right type but the supplied value is invalid.'.format(full_name))
                 else:
                     raise ConfigurationError('Config option {} is invalid: {}.'.format(full_name, check_message))
             if isinstance(value, dict):

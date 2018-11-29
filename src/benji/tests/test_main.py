@@ -6,12 +6,12 @@ from unittest.mock import Mock
 
 import benji.benji
 from benji.metadata import BlockUid, VersionUid
-from benji.tests.testcase import BackendTestCase
+from benji.tests.testcase import BenjiTestCase
 
 BLOCK_SIZE = 1024 * 4096
 
 
-class MiscTestCase(BackendTestCase, TestCase):
+class MiscTestCase(BenjiTestCase, TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
@@ -79,7 +79,7 @@ class MiscTestCase(BackendTestCase, TestCase):
         id = 0
         version = backend.create_version(
             version_name=name, snapshot_name=snapshot_name, size=50000, block_size=5000, valid=True)
-        backend.set_block(id, version.uid, block_uid, checksum, size, True)
+        backend.set_block(id=id, version_uid=version.uid, block_uid=block_uid, checksum=checksum, size=size, valid=True)
 
         block = backend.get_block(block_uid)
 
@@ -101,7 +101,8 @@ class MiscTestCase(BackendTestCase, TestCase):
         size = 5000
 
         for id in range(TESTLEN):
-            backend.set_block(id, version.uid, block_uids[id], checksums[id], size, True)
+            backend.set_block(
+                id=id, version_uid=version.uid, block_uid=block_uids[id], checksum=checksums[id], size=size, valid=True)
 
         blocks = backend.get_blocks_by_version(version.uid)
         self.assertEqual(len(blocks), TESTLEN)

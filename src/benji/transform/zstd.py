@@ -53,7 +53,7 @@ class Transform(TransformBase):
         self._compressors[thread_id] = cctx
         return cctx
 
-    def _get_decompressor(self, dict_id: int=0) -> zstandard.ZstdDecompressor:
+    def _get_decompressor(self, dict_id: int = 0) -> zstandard.ZstdDecompressor:
         thread_id = threading.get_ident()
 
         if thread_id in self._decompressors:

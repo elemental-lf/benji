@@ -17,7 +17,8 @@ from benji.metadata import DereferencedBlock
 
 class IO(IOBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str, block_size: int) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str,
+                 block_size: int) -> None:
         super().__init__(
             config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
 
@@ -56,7 +57,7 @@ class IO(IOBase):
         except rbd.ImageNotFound:
             raise FileNotFoundError('Image or snapshot not found for IO path {}.'.format(self._path)) from None
 
-    def open_w(self, size: int, force: bool=False) -> None:
+    def open_w(self, size: int, force: bool = False) -> None:
         re_match = re.match('^rbd://([^/]+)/([^@]+)$', self._path)
         if not re_match:
             raise UsageError('IO path {} is invalid . Need {}://<pool>/<imagename>.'.format(self._path, self.name))
@@ -80,8 +81,8 @@ class IO(IOBase):
             else:
                 if size < self.size():
                     raise IOError(
-                        'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'
-                        .format(self._name, self._path, self.size(), size))
+                        'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
+                            self._name, self._path, self.size(), size))
 
     def size(self) -> int:
         ioctx = self._cluster.open_ioctx(self._pool_name)
@@ -114,7 +115,7 @@ class IO(IOBase):
             self._writer = rbd.Image(ioctx, self._image_name)
 
         offset = block.id * self._block_size
-        written = self._writer.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED) # type: ignore
+        written = self._writer.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)  # type: ignore
         assert written == len(data)
         if written != len(data):
             raise IOError('Wanted to write {} bytes to restore target {}://{}, but only {} bytes written.', len(data),

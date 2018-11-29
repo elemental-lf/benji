@@ -11,7 +11,7 @@ import colorlog
 logger = logging.getLogger(__name__)
 
 
-def init_logging(logfile: Optional[str], console_level: int, no_color: bool=False):
+def init_logging(logfile: Optional[str], console_level: int, no_color: bool = False):
     handlers = []
 
     if no_color:
@@ -27,7 +27,7 @@ def init_logging(logfile: Optional[str], console_level: int, no_color: bool=Fals
         logfile_handler = WatchedFileHandler(logfile)
         logfile_handler.setLevel(logging.INFO)
         logfile_handler.setFormatter(logging.Formatter('%(asctime)s [%(process)d] %(message)s'))
-        handlers.append(logfile_handler) # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...
+        handlers.append(logfile_handler)  # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...
 
     logging.basicConfig(handlers=handlers, level=logging.DEBUG)
 

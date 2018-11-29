@@ -68,7 +68,7 @@ class RetentionFilter:
 
         return rules
 
-    def __init__(self, rules_spec: str, reference_time: float=None) -> None:
+    def __init__(self, rules_spec: str, reference_time: float = None) -> None:
         self.reference_time = time.time() if reference_time is None else reference_time
         self.rules = self._parse_rules(rules_spec)
         logger.debug('Retention filter set up with reference time {} and rules {}'.format(
