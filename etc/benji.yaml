@@ -1,8 +1,9 @@
 configurationVersion: '1.0.0'
 
-# Where should the logfile be placed?
-# Benji will by default log INFO, WARNING and ERROR to this log.
-# If you also need DEBUG information, please start Benji with '-v'.
+# Logfile location (default: null)
+# Setting this to null disables logging to a file, this might be useful when running Benji inside a container.
+# Benji will by default log INFO, WARNING and ERROR to this file. If you also need DEBUG information, please start
+# Benji with the '-v' option.
 logFile: /var/log/benji.log
 
 # Default block size. 4MB are recommended for backup of Ceph RBD images.
@@ -12,9 +13,10 @@ logFile: /var/log/benji.log
 # might profit from a smaller block size.
 blockSize: 4194304
 
-# Hash function to use. Use a large one to avoid collisions.
-# DO NOT CHANGE WHEN BACKUPS EXIST
-hashFunction: blake2b,digest_size=32
+# Hash function to use for calculating block checksum
+# There is normally no reason to change the default.
+# DO NOT CHANGE WHEN BACKUPS EXIST!
+hashFunction: BLAKE2b,digest_bits=256
 
 # This name will be used to identify a specific configuration in the
 # process list and could be used to distinguish several parallel installations.
@@ -24,13 +26,12 @@ processName: benji
 # able to delete any version)
 disallowRemoveWhenYounger: 6
 
-metadataBackend:
-  # Which SQL Server?
-  # Available servers:
-  #   sqlite:////path/to/sqlitefile
-  #   postgresql:///database
-  #   postgresql://user:password@host:port/database
-  engine: sqlite:////var/lib/benji/benji.sqlite
+# Database engine (default: none)
+# See https://docs.sqlalchemy.org/en/latest/core/engines.html for options.
+# Only postgresql (dialect psycopg2) and sqlite are tested with during development.
+# Examples: postgresql://scott:tiger@localhost/mydatabase',
+#           sqlite:////var/lib/benji/benji.sqlite
+metadataEngine: sqlite:////var/lib/benji/benji.sqlite
 
 dataBackend:
   # Which data backend to use?

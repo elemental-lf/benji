@@ -1,11 +1,9 @@
 configurationVersion: '1.0.0'
-dataBackends:
-  defaultStorage: storage-1
-  storages:
-    - name: storage-1
-      storageId: 1
-      module: file
-      configuration:
-        path: /tmp/benji-data
-metadataBackend:
-  engine: sqlite:///tmp/benji.sqlite
+metadataEngine: sqlite:///tmp/benji.sqlite
+defaultStorage: storage-1
+storages:
+  - name: storage-1
+    storageId: 1
+    module: file
+    configuration:
+      path: /tmp/benji-data
