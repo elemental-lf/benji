@@ -70,7 +70,7 @@ class DataBackendTestCase(TestCase):
         super().tearDown()
 
 
-class SQLTestCase(TestCase):
+class MetadataTestCase(TestCase):
 
     def setUp(self):
         super().setUp()

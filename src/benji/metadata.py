@@ -270,7 +270,7 @@ class Version(Base):
         passive_deletes=True,
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Version(uid='%s', name='%s', snapshot_name='%s', date='%s')>" % (self.uid, self.name, self.snapshot_name, self.date)
 
 
@@ -362,7 +362,7 @@ class Block(Base):
             valid=self.valid,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Block(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
 
 
@@ -406,7 +406,7 @@ class MetadataBackend:
 
     def __init__(self, config: Config, in_memory: bool = False) -> None:
         if not in_memory:
-            self._engine = sqlalchemy.create_engine(config.get('metadataBackend.engine', types=str))
+            self._engine = sqlalchemy.create_engine(config.get('metadataEngine', types=str))
         else:
             logger.info('Running in metadata-backend-less mode.')
             self._engine = sqlalchemy.create_engine('sqlite://')

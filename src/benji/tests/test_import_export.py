@@ -1256,8 +1256,7 @@ class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCase, TestCase
             ios:
               - name: file
                 module: file
-            metadataBackend: 
-              engine: sqlite:///{testpath}/benji.sqlite
+            metadataEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
@@ -1283,6 +1282,5 @@ class ImportExportTestCasePostgreSQL_File(
             ios:
               - name: file
                 module: file                                 
-            metadataBackend: 
-              engine: postgresql://benji:verysecret@localhost:15432/benji
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
             """

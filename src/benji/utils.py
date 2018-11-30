@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import concurrent
-import hashlib
 import json
 import setproctitle
 import sys
 from ast import literal_eval
 from concurrent.futures import Future
 from datetime import datetime
+from importlib import import_module
 from threading import Lock
 from time import time
-from typing import List, Tuple, Union, Generator, Any
+from typing import List, Tuple, Union, Generator, Any, Optional, Dict
 
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
@@ -26,35 +26,6 @@ def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
     """
     data = json.loads(rbd_diff)
     return [(l['offset'], l['length'], False if l['exists'] == 'false' or not l['exists'] else True) for l in data]
-
-
-def parametrized_hash_function(config_hash_function):
-    hash_args = None
-    try:
-        hash_name, hash_args = config_hash_function.split(',', 1)
-    except ValueError:
-        hash_name = config_hash_function
-    hash_function = getattr(hashlib, hash_name)
-    if hash_function is None:
-        raise ConfigurationError('Unsupported hash function {}.'.format(hash_name))
-    kwargs = {}
-    if hash_args is not None:
-        kwargs = dict((k, literal_eval(v)) for k, v in (pair.split('=') for pair in hash_args.split(',')))
-    logger.debug('Using hash function {} with kwargs {}'.format(hash_name, kwargs))
-    hash_function_w_kwargs = hash_function(**kwargs)
-
-    from benji.metadata import Block
-    if len(hash_function_w_kwargs.digest()) > Block.MAXIMUM_CHECKSUM_LENGTH:
-        raise ConfigurationError('Specified hash function exceeds maximum digest length of {}.'.format(
-            Block.MAXIMUM_CHECKSUM_LENGTH))
-
-    return hash_function_w_kwargs
-
-
-def data_hexdigest(hash_function, data):
-    hash = hash_function.copy()
-    hash.update(data)
-    return hash.hexdigest()
 
 
 # old_msg is used as a stateful storage between calls
@@ -93,6 +64,49 @@ def future_results_as_completed(futures: List[Future], semaphore=None,
 
 def derive_key(*, password, salt, iterations, key_length):
     return PBKDF2(password=password, salt=salt, dkLen=key_length, count=iterations, hmac_hash_module=SHA512)
+
+
+class BlockHash:
+
+    _CRYPTO_PACKAGE = 'Crypto.Hash'
+
+    _hash_module: Any
+    _hash_kwargs: Dict[str, Any]
+
+    def __init__(self, hash_function_config: str) -> None:
+        hash_args: Optional[str] = None
+        try:
+            hash_name, hash_args = hash_function_config.split(',', 1)
+        except ValueError:
+            hash_name = hash_function_config
+
+        try:
+            hash_module = import_module('{}.{}'.format(self._CRYPTO_PACKAGE, hash_name))
+        except ImportError as exception:
+            raise ConfigurationError('Unsupported block hash {}.'.format(hash_name)) from exception
+
+        hash_kwargs = {}
+        if hash_args is not None:
+            hash_kwargs = dict((k, literal_eval(v)) for k, v in (pair.split('=') for pair in hash_args.split(',')))
+
+        try:
+            hash = hash_module.new(**hash_kwargs)
+        except (TypeError, ValueError) as exception:
+            raise ConfigurationError(
+                'Unsupported or invalid block hash arguments: {}.'.format(hash_kwargs)) from exception
+
+        from benji.metadata import Block
+        if len(hash.digest()) > Block.MAXIMUM_CHECKSUM_LENGTH:
+            raise ConfigurationError('Specified block hash {} exceeds maximum digest length of {} bytes.'.format(
+                hash_name, Block.MAXIMUM_CHECKSUM_LENGTH))
+
+        logger.debug('Using block hash {} with kwargs {}.'.format(hash_name, hash_kwargs))
+
+        self._hash_module = hash_module
+        self._hash_kwargs = hash_kwargs
+
+    def data_hexdigest(self, data: bytes) -> str:
+        return self._hash_module.new(data=data, **self._hash_kwargs).hexdigest()
 
 
 class PrettyPrint:

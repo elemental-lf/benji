@@ -13,8 +13,7 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1
-        metadataBackend:
-          engine: sqlite:////var/lib/benji/benji.sqlite
+        metadataEngine: sqlite:////var/lib/benji/benji.sqlite
         storages:
           - name: file
             module: file
@@ -41,8 +40,7 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1
-        metadataBackend:
-          engine: sqlite:////var/lib/benji/benji.sqlite
+        metadataEngine: sqlite:////var/lib/benji/benji.sqlite
         storages:
           - name: file
             module: file

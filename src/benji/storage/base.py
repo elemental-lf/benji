@@ -25,7 +25,8 @@ from benji.utils import TokenBucket, future_results_as_completed, derive_key
 
 
 class InvalidBlockException(BenjiException, IOError):
-    def __init__(self, message: str, block: DereferencedBlock) ->  None:
+
+    def __init__(self, message: str, block: DereferencedBlock) -> None:
         super().__init__(message)
 
         self._block = block
@@ -188,7 +189,8 @@ class StorageBase(metaclass=ABCMeta):
             try:
                 self._check_write(key=key, metadata_key=metadata_key, data_expected=data)
             except (KeyError, ValueError) as exception:
-                raise InvalidBlockException('Check write of block {} (UID {}) failed.'.format(block.id, block.uid), block) from exception
+                raise InvalidBlockException('Check write of block {} (UID {}) failed.'.format(block.id, block.uid),
+                                            block) from exception
 
         return block
 
@@ -230,11 +232,13 @@ class StorageBase(metaclass=ABCMeta):
         try:
             metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
         except (KeyError, ValueError) as exception:
-            raise InvalidBlockException('Metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid), block) from exception
+            raise InvalidBlockException('Metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid),
+                                        block) from exception
 
         if self._CHECKSUM_KEY not in metadata:
-            raise InvalidBlockException('Required metadata key {} is missing for block {} (UID {}).'.format(
-                self._CHECKSUM_KEY, block.id, block.uid), block)
+            raise InvalidBlockException(
+                'Required metadata key {} is missing for block {} (UID {}).'.format(self._CHECKSUM_KEY, block.id,
+                                                                                    block.uid), block)
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
             data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore
@@ -428,21 +432,21 @@ class StorageBase(metaclass=ABCMeta):
 
     def close(self) -> None:
         if len(self._read_futures) > 0:
-            logger.warning('Data backend closed with {} outstanding read jobs, cancelling them.'.format(
+            logger.warning('Storage backend closed with {} outstanding read jobs, cancelling them.'.format(
                 len(self._read_futures)))
             for future in self._read_futures:
                 future.cancel()
-            logger.debug('Data backend cancelled all outstanding read jobs.')
+            logger.debug('Storage backend cancelled all outstanding read jobs.')
             # Get all jobs so that the semaphore gets released and still waiting jobs can complete
             for result in self.read_get_completed():
                 pass
-            logger.debug('Data backend read results from all outstanding read jobs.')
+            logger.debug('Storage backend read results from all outstanding read jobs.')
         if len(self._write_futures) > 0:
-            logger.warning('Data backend closed with {} outstanding write jobs, cancelling them.'.format(
+            logger.warning('Storage backend closed with {} outstanding write jobs, cancelling them.'.format(
                 len(self._write_futures)))
             for future in self._write_futures:
                 future.cancel()
-            logger.debug('Data backend cancelled all outstanding write jobs.')
+            logger.debug('Storage backend cancelled all outstanding write jobs.')
             # Write jobs release their semaphore at completion so we don't need to collect the results
             self._write_futures = []
         self._write_executor.shutdown()

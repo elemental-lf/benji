@@ -2,10 +2,10 @@ from unittest import TestCase
 
 from benji.exception import InternalError, NoChange
 from benji.metadata import BlockUid, VersionUid
-from benji.tests.testcase import SQLTestCase as SQLTestCaseBase
+from benji.tests.testcase import MetadataTestCase as SQLTestCaseBase, MetadataTestCase
 
 
-class SQLTestCase:
+class MetadataTestBase:
 
     def test_version(self):
         version = self.metadata_backend.create_version(
@@ -137,9 +137,10 @@ class SQLTestCase:
 
         count = 0
         for uids_deleted in self.metadata_backend.get_delete_candidates(-1):
-            for uid in uids_deleted:
-                self.assertIn(uid, uids)
-                count += 1
+            for storage in uids_deleted.values():
+                for uid in storage:
+                    self.assertIn(uid, uids)
+                    count += 1
         self.assertEqual(num_blocks, count)
 
     def test_lock_version(self):
@@ -204,37 +205,58 @@ class SQLTestCase:
         self.assertEqual(VersionUid(3), uids[2])
 
 
-class SQLTestCaseSQLLite(SQLTestCase, SQLTestCaseBase, TestCase):
+class MetadataTestCaseSQLLite(MetadataTestCase, MetadataTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        dataBackends:
-          defaultStorage: 1
-        metadataBackend: 
-          engine: sqlite:///{testpath}/benji.sqlite
+        ios:
+        - name: file
+          module: file
+        defaultStorage: s1
+        storages:
+        - name: s1
+          storageId: 1
+          module: file
+          configuration:
+            path: {testpath}/data
+        metadataEngine: sqlite:///{testpath}/benji.sqlite
         """
 
 
-class SQLTestCaseSQLLiteInMemory(SQLTestCase, SQLTestCaseBase, TestCase):
+class MetadataTestCaseSQLLiteInMemory(MetadataTestCase, MetadataTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        dataBackends:
-          defaultStorage: 1
-        metadataBackend: 
-          engine: sqlite://
+        ios:
+        - name: file
+          module: file
+        defaultStorage: s1
+        storages:
+        - name: s1
+          storageId: 1
+          module: file
+          configuration:
+            path: {testpath}/data
+        metadataEngine: sqlite://       
         """
 
 
-class SQLTestCasePostgreSQL(SQLTestCase, SQLTestCaseBase, TestCase):
+class MetadataTestCasePostgreSQL(MetadataTestCase, MetadataTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        dataBackends:
-          defaultStorage: 1
-        metadataBackend: 
-          engine: postgresql://benji:verysecret@localhost:15432/benji
+        ios:
+        - name: file
+          module: file
+        defaultStorage: s1
+        storages:
+        - name: s1
+          storageId: 1
+          module: file
+          configuration:
+            path: {testpath}/data
+        metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
         """

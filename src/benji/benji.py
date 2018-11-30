@@ -24,7 +24,7 @@ from benji.metadata import BlockUid, MetadataBackend, VersionUid, Version, Block
     DereferencedBlockUid
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException
-from benji.utils import data_hexdigest, notify, parametrized_hash_function
+from benji.utils import notify, BlockHash
 
 
 class Benji:
@@ -44,7 +44,7 @@ class Benji:
         else:
             self._block_size = block_size
 
-        self._hash_function = parametrized_hash_function(config.get('hashFunction', types=str))
+        self._block_hash = BlockHash(config.get('hashFunction', types=str))
         self._process_name = config.get('processName', types=str)
 
         IOFactory.initialize(config)
@@ -252,7 +252,7 @@ class Benji:
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Data backend read failed: {}'.format(entry))
+                        logger.error('Storage backend read failed: {}'.format(entry))
                         self._metadata_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
                         valid = False
                         continue
@@ -330,7 +330,7 @@ class Benji:
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Data backend read failed: {}'.format(entry))
+                        logger.error('Storage backend read failed: {}'.format(entry))
                         self._metadata_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
                         valid = False
                         continue
@@ -349,7 +349,7 @@ class Benji:
                 except:
                     raise
 
-                data_checksum = data_hexdigest(self._hash_function, data)
+                data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
                     logger.error(
                         'Checksum mismatch during deep scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
@@ -365,7 +365,7 @@ class Benji:
                         logger.error('Source data has changed for block {} (UID {}) (is: {}... should-be: {}...). '
                                      'Won\'t set this block to invalid, because the source looks wrong.'.format(
                                          block, block.uid,
-                                         data_hexdigest(self._hash_function, source_data)[:16], data_checksum[:16]))
+                                         self._block_hash.data_hexdigest(source_data)[:16], data_checksum[:16]))
                         valid = False
                         # We are not setting the block invalid here because
                         # when the block is there AND the checksum is good,
@@ -456,7 +456,7 @@ class Benji:
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
-                    logger.error('Data backend read failed: {}'.format(entry))
+                    logger.error('Storage backend read failed: {}'.format(entry))
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, (KeyError, ValueError)):
                         self._metadata_backend.set_block_invalid(block.uid)
@@ -478,7 +478,7 @@ class Benji:
                 except:
                     raise
 
-                data_checksum = data_hexdigest(self._hash_function, data)
+                data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
                     logger.error('Checksum mismatch during restore for block {} (UID {}) (is: {}... should-be: {}..., '
                                  'block.valid: {}). Block restored is invalid.'.format(
@@ -663,7 +663,7 @@ class Benji:
                     source_block, source_data = cast(Tuple[DereferencedBlock, bytes], entry)
 
                 # check metadata checksum with the newly read one
-                source_data_checksum = data_hexdigest(self._hash_function, source_data)
+                source_data_checksum = self._block_hash.data_hexdigest(source_data)
                 if source_block.checksum != source_data_checksum:
                     logger.error("Source and backup don't match in regions outside of the ones indicated by the hints.")
                     logger.error("Looks like the hints don't match or the source is different.")
@@ -701,7 +701,7 @@ class Benji:
                         version.uid.readable, source, (i + 1) / len(blocks) * 100))
 
             # precompute checksum of a sparse block
-            sparse_block_checksum = data_hexdigest(self._hash_function, b'\0' * self._block_size)
+            sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
 
             done_read_jobs = 0
             write_jobs = 0
@@ -716,7 +716,7 @@ class Benji:
                 stats['bytes_read'] += len(data)
 
                 # dedup
-                data_checksum = data_hexdigest(self._hash_function, data)
+                data_checksum = self._block_hash.data_hexdigest(data)
                 existing_block = self._metadata_backend.get_block_by_checksum(data_checksum, version.storage_id)
                 if data_checksum == sparse_block_checksum and block.size == self._block_size:
                     # if the block is only \0, set it as a sparse block.
@@ -1165,7 +1165,7 @@ class BenjiStore:
             logger.debug('Stored block {} uid {}'.format(block.id, block.uid))
 
             # TODO: Add deduplication (maybe share code with backup?), detect sparse blocks?
-            checksum = data_hexdigest(self._benji_obj._hash_function, data)
+            checksum = self._benji_obj._block_hash.data_hexdigest(data)
             self._benji_obj._metadata_backend.set_block(
                 id=block.id,
                 version_uid=cow_version.uid,

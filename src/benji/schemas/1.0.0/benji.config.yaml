@@ -22,7 +22,7 @@ configuration:
     hashFunction:
       type: string
       empty: False
-      default: 'blake2b,digest_size=32'
+      default: 'BLAKE2b,digest_bits=256'
     processName:
       type: string
       empty: False
@@ -32,19 +32,24 @@ configuration:
       empty: False
       min: 0
       default: 6
-
-    metadataBackend:
+    metadataEngine:
+      type: string
       required: True
       empty: False
-      schema:
-        engine:
-          type: string
-          required: True
-          empty: False
-
     defaultStorage:
       type: string
       required: True
+      empty: False
+
+    nbd:
+      type: dict
+      default: {}
+      schema:
+        cacheDirectory:
+          type: string
+          required: True
+          empty: False
+          default: '/tmp'
 
     storages:
       type: list
@@ -67,6 +72,7 @@ configuration:
             required: True
             empty: False
           configuration:
+            # This is checked against another schema
             type: dict
             allow_unknown: True
 
@@ -85,17 +91,9 @@ configuration:
             required: True
             empty: False
           configuration:
+            # This is checked against another schema
             type: dict
             allow_unknown: True
-
-    nbd:
-      type: dict
-      default: {}
-      schema:
-        cacheDirectory:
-          type: string
-          required: True
-          default: '/tmp'
 
     ios:
       type: list
@@ -113,5 +111,6 @@ configuration:
             required: True
             empty: False
           configuration:
+            # This is checked against another schema
             type: dict
             allow_unknown: True

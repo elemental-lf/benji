@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
+
 class BenjiException(Exception):
     pass
 
@@ -35,5 +36,3 @@ class NbdServerAbortedNegotiationError(BenjiException, IOError):
 
 class ScrubbingError(BenjiException, IOError):
     pass
-
-

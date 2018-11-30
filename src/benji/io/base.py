@@ -8,7 +8,7 @@ from typing import Tuple, Union, Optional, List, Generator
 from benji.config import _ConfigDict, Config
 from benji.logging import logger
 from benji.metadata import Block, DereferencedBlock
-from benji.utils import future_results_as_completed, parametrized_hash_function
+from benji.utils import future_results_as_completed
 
 
 class IOBase(metaclass=ABCMeta):
