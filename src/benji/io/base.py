@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Tuple, Union, Optional, List, Generator
+from typing import Tuple, Union, Optional, List, cast, Iterator
 
 from benji.config import _ConfigDict, Config
 from benji.logging import logger
@@ -40,19 +40,21 @@ class IOBase(metaclass=ABCMeta):
     def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
         raise NotImplementedError()
 
-    def read(self, block: DereferencedBlock, sync: bool = False):
-        if sync:
-            return self._read(block)[1]
-        else:
+    def read(self, block: Union[DereferencedBlock, Block]) -> None:
+        block_deref = block.deref() if isinstance(block, Block) else block
 
-            def read_with_acquire():
-                self._read_semaphore.acquire()
-                return self._read(block)
+        def read_with_acquire():
+            self._read_semaphore.acquire()
+            return self._read(block_deref)
 
-            self._read_futures.append(self._read_executor.submit(read_with_acquire))  # type: ignore
+        self._read_futures.append(cast(ThreadPoolExecutor, self._read_executor).submit(read_with_acquire))
 
-    def read_get_completed(self, timeout: Optional[int] = None
-                          ) -> Generator[Union[Tuple[DereferencedBlock, bytes], BaseException], None, None]:
+    def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        return self._read(block_deref)[1]
+
+    def read_get_completed(
+            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
 
     @abstractmethod

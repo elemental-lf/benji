@@ -7,10 +7,26 @@ configuration:
       type: string
       empty: False
       required: True
+      excludes:
+        - awsAccessKeyIdFile
+    awsAccessKeyIdFile:
+      type: string
+      empty: False
+      required: True
+      excludes:
+        - awsAccessKeyId
     awsSecretAccessKey:
       type: string
       empty: False
       required: True
+      excludes:
+        - awsSecretAccessKeyFile
+    awsSecretAccessKeyFile:
+      type: string
+      required: True
+      empty: False
+      excludes:
+        - awsSecretAccessKey
     regionName:
       type: string
       empty: False

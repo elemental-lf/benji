@@ -1,7 +1,7 @@
 from sparsebitfield import SparseBitfield
-from typing import Union, Dict
+from typing import Dict
 
-from benji.metadata import BlockUid, DereferencedBlockUid
+from benji.metadata import BlockUid
 
 
 class BlockUidHistory:
@@ -9,7 +9,7 @@ class BlockUidHistory:
     def __init__(self) -> None:
         self._history: Dict[int, Dict[int, SparseBitfield]] = {}
 
-    def add(self, storage_id: int, block_uid: Union[BlockUid, DereferencedBlockUid]) -> None:
+    def add(self, storage_id: int, block_uid: BlockUid) -> None:
         history = self._history
         if storage_id not in history:
             history[storage_id] = {}
@@ -17,7 +17,7 @@ class BlockUidHistory:
             history[storage_id][block_uid.left] = SparseBitfield()
         history[storage_id][block_uid.left].add(block_uid.right)
 
-    def seen(self, storage_id: int, block_uid: Union[BlockUid, DereferencedBlockUid]) -> bool:
+    def seen(self, storage_id: int, block_uid: BlockUid) -> bool:
         history = self._history
         if storage_id not in history:
             return False

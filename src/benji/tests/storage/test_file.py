@@ -7,20 +7,24 @@ class test_file(DatabackendTestCase, unittest.TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        metadataBackend:
-          engine: sqlite://
-        defaultStorage: file-1          
+        metadataEngine: sqlite://
+        defaultStorage: storage-1
+        
         storages:
-        - name: file-1
-          module: file
-          storageId: 1
-          configuration:
-            path: {testpath}/data
-            consistencyCheckWrites: True
-            hmac:
-              password: geheim12345
-              kdfIterations: 1000
-              kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+          - name: storage-1
+            storageId: 1
+            module: file
+            configuration:
+              path: {testpath}/data
+              consistencyCheckWrites: True
+              hmac:
+                password: geheim12345
+                kdfIterations: 1000
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                
+        ios:
+            - name: file
+              module: file              
         """
 
 

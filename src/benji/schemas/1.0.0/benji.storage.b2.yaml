@@ -7,10 +7,26 @@ configuration:
       type: string
       required: True
       empty: False
+      excludes:
+        - accountIdFile
+    accountIdFile:
+      type: string
+      required: True
+      empty: False
+      excludes:
+        - accountId
     applicationKey:
       type: string
       required: True
       empty: False
+      excludes:
+        - applicationKeyFile
+    applicationKeyFile:
+      type: string
+      required: True
+      empty: False
+      excludes:
+        - applicationKey
     bucketName:
       type: string
       required: True

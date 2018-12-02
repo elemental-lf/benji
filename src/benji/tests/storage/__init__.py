@@ -1,5 +1,4 @@
 import random
-from unittest.mock import Mock
 
 from benji.metadata import Block, BlockUid, VersionUid
 from benji.tests.testcase import DataBackendTestCase
@@ -15,13 +14,13 @@ class DatabackendTestCase(DataBackendTestCase):
         self.assertEqual(0, len(saved_uids))
 
         blocks = [
-            Mock('Block', uid=BlockUid(i + 1, i + 100), size=BLOB_SIZE, checksum='CHECKSUM') for i in range(NUM_BLOBS)
+            Block(uid=BlockUid(i + 1, i + 100), size=BLOB_SIZE, checksum='0000000000000000') for i in range(NUM_BLOBS)
         ]
         data_by_uid = {}
         for block in blocks:
             data = self.random_bytes(BLOB_SIZE)
             self.assertEqual(BLOB_SIZE, len(data))
-            self.storage.save(block, data, sync=True)
+            self.storage.save_sync(block, data)
             data_by_uid[block.uid] = data
 
         saved_uids = self.storage.list_blocks()
@@ -34,7 +33,7 @@ class DatabackendTestCase(DataBackendTestCase):
         self.assertEqual(0, len(uids_set.symmetric_difference(saved_uids_set)))
 
         for block in blocks:
-            data = self.storage.read(block, sync=True)
+            data = self.storage.read_sync(block)
             self.assertEqual(data_by_uid[block.uid], data)
 
         for block in blocks:
@@ -50,7 +49,7 @@ class DatabackendTestCase(DataBackendTestCase):
         self.assertEqual(0, len(saved_uids))
 
         blocks = [
-            Mock('Block', uid=BlockUid(i + 1, i + 100), size=BLOB_SIZE, checksum='CHECKSUM') for i in range(NUM_BLOBS)
+            Block(uid=BlockUid(i + 1, i + 100), size=BLOB_SIZE, checksum='0000000000000000') for i in range(NUM_BLOBS)
         ]
         data_by_uid = {}
         for block in blocks:
@@ -91,9 +90,9 @@ class DatabackendTestCase(DataBackendTestCase):
     def _test_rm_many(self):
         NUM_BLOBS = 15
 
-        blocks = [Mock('Block', uid=BlockUid(i + 1, i + 100), size=1, checksum='CHECKSUM') for i in range(NUM_BLOBS)]
+        blocks = [Block(uid=BlockUid(i + 1, i + 100), size=1, checksum='0000000000000000') for i in range(NUM_BLOBS)]
         for block in blocks:
-            self.storage.save(block, b'B', sync=True)
+            self.storage.save_sync(block, b'B')
 
         self.assertEqual([], self.storage.rm_many([block.uid for block in blocks]))
 
@@ -111,22 +110,22 @@ class DatabackendTestCase(DataBackendTestCase):
             self.skipTest('not applicable to this backend')
 
     def test_not_exists(self):
-        block = Mock(Block, uid=BlockUid(1, 2), size=15, checksum='CHECKSUM')
-        self.storage.save(block, b'test_not_exists', sync=True)
+        block = Block(uid=BlockUid(1, 2), size=15, checksum='00000000000000000000')
+        self.storage.save_sync(block, b'test_not_exists')
 
-        data = self.storage.read(block, sync=True)
+        data = self.storage.read_sync(block)
         self.assertTrue(len(data) > 0)
 
         self.storage.rm(block.uid)
 
         self.assertRaises(FileNotFoundError, lambda: self.storage.rm(block.uid))
-        self.assertRaises(FileNotFoundError, lambda: self.storage.read(block, sync=True))
+        self.assertRaises(FileNotFoundError, lambda: self.storage.read_sync(block))
 
     def test_block_uid_to_key(self):
         for i in range(100):
             block_uid = BlockUid(random.randint(1, pow(2, 32) - 1), random.randint(1, pow(2, 32) - 1))
-            key = self.storage._block_uid_to_key(block_uid)
-            block_uid_2 = self.storage._key_to_block_uid(key)
+            key = block_uid.storage_object_to_path()
+            block_uid_2 = BlockUid.storage_path_to_object(key)
             self.assertEqual(block_uid, block_uid_2)
             self.assertEqual(block_uid.left, block_uid_2.left)
             self.assertEqual(block_uid.right, block_uid_2.right)
@@ -134,8 +133,8 @@ class DatabackendTestCase(DataBackendTestCase):
     def test_version_uid_to_key(self):
         for i in range(100):
             version_uid = VersionUid(random.randint(1, pow(2, 32) - 1))
-            key = self.storage._version_uid_to_key(version_uid)
-            version_uid_2 = self.storage._key_to_version_uid(key)
+            key = version_uid.storage_object_to_path()
+            version_uid_2 = VersionUid.storage_path_to_object(key)
             self.assertEqual(version_uid, version_uid_2)
 
     def test_version(self):

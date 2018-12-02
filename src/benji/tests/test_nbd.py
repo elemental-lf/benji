@@ -1,9 +1,9 @@
-# This is an port and update of the original smoketest.py
 import os
 import random
 import re
 import subprocess
 import threading
+import time
 from unittest import TestCase
 
 from benji.benji import BenjiStore
@@ -94,6 +94,7 @@ class NbdTestCase:
                 self.fail('command {} failed: {}'.format(' '.join(args), completed.stdout.replace('\n', '|')))
 
     def nbd_client(self, version_uid):
+        time.sleep(5)
         self.subprocess_run(
             args=['sudo', 'nbd-client', '127.0.0.1', '-p',
                   str(self.SERVER_PORT), '-l'],
@@ -154,23 +155,42 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: BLAKE2b,digest_bits=256
             blockSize: 4096
-            io:
-              file:
-                simultaneousReads: 5
-            dataBackend:
-              type: file
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
+                simultaneousReads: 2
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: file
+              configuration:
                 path: {testpath}/data
-              simultaneousWrites: 5
-              simultaneousReads: 5
-              bandwidthRead: 0
-              bandwidthWrite: 0
-            metadataBackend:
-              engine: sqlite:///{testpath}/benji.sqlite
-            nbd:
-              cacheDirectory: {testpath}/nbd-cache
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5                    
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123     
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
+            metadataEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
@@ -184,16 +204,19 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            lockDirectory: {testpath}/lock
-            hashFunction: blake2b,digest_size=32
+            hashFunction: SHA512
             blockSize: 4096
-            exportMetadata: false
-            io:
-              file:
-                simultaneousReads: 5
-            dataBackend:
-              type: s3
-              s3:
+            ios:
+            - name: file
+              module: file
+              configuration:
+                simultaneousReads: 2
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: s3
+              configuration:
                 awsAccessKeyId: minio
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
@@ -201,26 +224,28 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                
-                compression:
-                  - name: zstd
-                    materials:
-                      level: 1
-                    active: true
-                      
-                encryption:
-                  - name: aws_s3_cse
-                    materials:
-                      masterKey: !!binary |
-                        e/i1X4NsuT9k+FIVe2kd3vtHVkzZsbeYv35XQJeV8nA=
-                    active: true
-                    
-              simultaneousWrites: 1
-              simultaneousReads: 1
-              bandwidthRead: 0
-              bandwidthWrite: 0   
-            metadataBackend:
-              engine: postgresql://benji:verysecret@localhost:15432/benji
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5                                   
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123    
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
             nbd:
               cacheDirectory: {testpath}/nbd-cache
             """

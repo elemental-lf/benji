@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import concurrent
-import hashlib
 import json
 import os
 import threading
@@ -9,17 +8,17 @@ import time
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
-from typing import Union, Optional, Dict, Tuple, List, Sequence, Set, overload, cast, Generator, Any, AbstractSet
+from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
 from diskcache import Cache
 from typing_extensions import Final
 
 from benji.config import Config, _ConfigDict
 from benji.storage.dicthmac import DictHMAC
-from benji.exception import InternalError, ConfigurationError, BenjiException
+from benji.exception import ConfigurationError, BenjiException
 from benji.factory import TransformFactory
 from benji.logging import logger
-from benji.metadata import BlockUid, VersionUid, DereferencedBlock, BlockUidBase, DereferencedBlockUid
+from benji.metadata import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
 
@@ -46,9 +45,6 @@ class StorageBase(metaclass=ABCMeta):
     _OBJECT_SIZE_KEY: Final[str] = 'object_size'
     _CHECKSUM_KEY: Final[str] = 'checksum'
     _HMAC_KEY: Final[str] = 'hmac'
-
-    _BLOCKS_PREFIX: Final[str] = 'blocks/'
-    _VERSIONS_PREFIX: Final[str] = 'versions/'
 
     _META_SUFFIX: Final[str] = '.meta'
 
@@ -166,7 +162,7 @@ class StorageBase(metaclass=ABCMeta):
         metadata, metadata_json = self._build_metadata(
             size=block.size, object_size=len(data), checksum=block.checksum, transforms_metadata=transforms_metadata)
 
-        key = self._block_uid_to_key(block.uid)
+        key = block.uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
 
         time.sleep(self.write_throttling.consume(len(data) + len(metadata_json)))
@@ -194,29 +190,32 @@ class StorageBase(metaclass=ABCMeta):
 
         return block
 
-    def save(self, block: DereferencedBlock, data: bytes, sync: bool = False) -> None:
-        if sync:
-            self._write(block, data)
-        else:
-            self._write_semaphore.acquire()
+    def save(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        self._write_semaphore.acquire()
 
-            def write_with_release():
-                try:
-                    return self._write(block, data)
-                except Exception:
-                    raise
-                finally:
-                    self._write_semaphore.release()
+        block_deref = block.deref() if isinstance(block, Block) else block
 
-            self._write_futures.append(self._write_executor.submit(write_with_release))
+        def write_with_release():
+            try:
+                return self._write(block_deref, data)
+            except Exception:
+                raise
+            finally:
+                self._write_semaphore.release()
 
-    def save_get_completed(self, timeout: int = None) -> Generator[Union[DereferencedBlock, BaseException], None, None]:
+        self._write_futures.append(self._write_executor.submit(write_with_release))
+
+    def save_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        self._write(block_deref, data)
+
+    def save_get_completed(self, timeout: int = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._write_futures, timeout=timeout)
 
     def _read(self, block: DereferencedBlock, metadata_only: bool) -> Tuple[DereferencedBlock, Optional[bytes], Dict]:
-        key = self._block_uid_to_key(block.uid)
+        key = block.uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         t1 = time.time()
         data: Optional[bytes] = None
@@ -248,20 +247,19 @@ class StorageBase(metaclass=ABCMeta):
 
         return block, data, metadata
 
-    def read(self, block: DereferencedBlock, sync: bool = False, metadata_only: bool = False) -> Optional[bytes]:
-        if sync:
-            return self._read(block, metadata_only)[1]
-        else:
+    def read(self, block: Block, metadata_only: bool = False) -> None:
 
-            def read_with_acquire():
-                self._read_semaphore.acquire()
-                return self._read(block, metadata_only)
+        def read_with_acquire():
+            self._read_semaphore.acquire()
+            return self._read(block.deref(), metadata_only)
 
-            self._read_futures.append(self._read_executor.submit(read_with_acquire))
-            return None
+        self._read_futures.append(self._read_executor.submit(read_with_acquire))
 
-    def read_get_completed(self, timeout: int = None
-                          ) -> Generator[Union[Tuple[DereferencedBlock, bytes, Dict], BaseException], Any, Any]:
+    def read_sync(self, block: Block, metadata_only: bool = False) -> Optional[bytes]:
+        return self._read(block.deref(), metadata_only)[1]
+
+    def read_get_completed(self,
+                           timeout: int = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes, Dict], BaseException]]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
@@ -284,8 +282,8 @@ class StorageBase(metaclass=ABCMeta):
                                  cast(str, block.checksum)[:16],  # We know that block.checksum is set
                                  metadata[self._CHECKSUM_KEY][:16]))
 
-    def rm(self, uid: Union[DereferencedBlockUid, BlockUid]) -> None:
-        key = self._block_uid_to_key(uid)
+    def rm(self, uid: BlockUid) -> None:
+        key = uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         try:
             self._rm_object(key)
@@ -296,41 +294,41 @@ class StorageBase(metaclass=ABCMeta):
                 pass
 
     def rm_many(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
-        keys = [self._block_uid_to_key(uid) for uid in uids]
+        keys = [uid.storage_object_to_path() for uid in uids]
         metadata_keys = [key + self._META_SUFFIX for key in keys]
 
         errors = self._rm_many_objects(keys)
         self._rm_many_objects(metadata_keys)
-        return [self._key_to_block_uid(error) for error in errors]
+        return [cast(BlockUid, BlockUid.storage_path_to_object(error)) for error in errors]
 
     def list_blocks(self) -> List[BlockUid]:
-        keys = self._list_objects(self._BLOCKS_PREFIX)
-        block_uids = []
+        keys = self._list_objects(BlockUid.storage_prefix())
+        block_uids: List[BlockUid] = []
         for key in keys:
             if key.endswith(self._META_SUFFIX):
                 continue
             try:
-                block_uids.append(self._key_to_block_uid(key))
+                block_uids.append(cast(BlockUid, BlockUid.storage_path_to_object(key)))
             except (RuntimeError, ValueError):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
         return block_uids
 
     def list_versions(self) -> List[VersionUid]:
-        keys = self._list_objects(self._VERSIONS_PREFIX)
-        version_uids = []
+        keys = self._list_objects(VersionUid.storage_prefix())
+        version_uids: List[VersionUid] = []
         for key in keys:
             if key.endswith(self._META_SUFFIX):
                 continue
             try:
-                version_uids.append(self._key_to_version_uid(key))
+                version_uids.append(cast(VersionUid, VersionUid.storage_path_to_object(key)))
             except (RuntimeError, ValueError):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
         return version_uids
 
     def read_version(self, version_uid: VersionUid) -> str:
-        key = self._version_uid_to_key(version_uid)
+        key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         data = self._read_object(key)
         metadata_json = self._read_object(metadata_key)
@@ -347,7 +345,7 @@ class StorageBase(metaclass=ABCMeta):
         return data.decode('utf-8')
 
     def save_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool] = False) -> None:
-        key = self._version_uid_to_key(version_uid)
+        key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
 
         if not overwrite:
@@ -380,7 +378,7 @@ class StorageBase(metaclass=ABCMeta):
             self._check_write(key=key, metadata_key=metadata_key, data_expected=data_bytes)
 
     def rm_version(self, version_uid: VersionUid) -> None:
-        key = self._version_uid_to_key(version_uid)
+        key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         try:
             self._rm_object(key)
@@ -452,39 +450,6 @@ class StorageBase(metaclass=ABCMeta):
         self._write_executor.shutdown()
         self._read_executor.shutdown()
 
-    def _to_key(self, prefix: str, object_key: str) -> str:
-        digest = hashlib.md5(object_key.encode('ascii')).hexdigest()
-        return '{}{}/{}/{}'.format(prefix, digest[0:2], digest[2:4], object_key)
-
-    def _from_key(self, prefix: str, key: str) -> str:
-        if not key.startswith(prefix):
-            raise RuntimeError('Invalid key name {}, it doesn\'t start with "{}".'.format(key, prefix))
-        pl = len(prefix)
-        if len(key) <= (pl + 6):
-            raise RuntimeError('Key {} has an invalid length, expected at least {} characters.'.format(key, pl + 6))
-        return key[pl + 6:]
-
-    def _block_uid_to_key(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> str:
-        return self._to_key(self._BLOCKS_PREFIX, '{:016x}-{:016x}'.format(block_uid.left, block_uid.right))
-
-    def _key_to_block_uid(self, key: str) -> BlockUid:
-        object_key = self._from_key(self._BLOCKS_PREFIX, key)
-        if len(object_key) != (16 + 1 + 16):
-            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
-                object_key, (16 + 1 + 16)))
-        return BlockUid(int(object_key[0:16], 16), int(object_key[17:17 + 16], 16))
-
-    def _version_uid_to_key(self, version_uid: VersionUid) -> str:
-        return self._to_key(self._VERSIONS_PREFIX, version_uid.readable)
-
-    def _key_to_version_uid(self, key: str) -> VersionUid:
-        object_key = self._from_key(self._VERSIONS_PREFIX, key)
-        vl = len(VersionUid(1).readable)
-        if len(object_key) != vl:
-            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
-                object_key, vl))
-        return VersionUid.create_from_readables(object_key)  # type: ignore
-
     @abstractmethod
     def _write_object(self, key: str, data: bytes):
         raise NotImplementedError
@@ -541,7 +506,7 @@ class ReadCacheStorageBase(StorageBase):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
     def _read(self, block: DereferencedBlock, metadata_only: bool) -> Tuple[DereferencedBlock, Optional[bytes], Dict]:
-        key = self._block_uid_to_key(block.uid)
+        key = block.uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         if self._read_cache is not None and self._use_read_cache:
             metadata = self._read_cache.get(metadata_key)

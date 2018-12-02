@@ -36,9 +36,12 @@ import math
 import signal
 import struct
 import traceback
+from asyncio import StreamReader, StreamWriter
+from typing import Generator, Optional, cast
 
+from benji.benji import BenjiStore
 from benji.exception import NbdServerAbortedNegotiationError
-from benji.metadata import VersionUid
+from benji.metadata import VersionUid, Version
 
 
 class NbdServer:
@@ -86,10 +89,10 @@ class NbdServer:
     # command flags (upper 16 bit of request type)
     NBD_CMD_FLAG_FUA = (1 << 16)
 
-    def __init__(self, addr, store, read_only=True):
+    def __init__(self, address: str, store: BenjiStore, read_only: bool=True) -> None:
         self.log = logging.getLogger(__package__)
 
-        self.address = addr
+        self.address = address
         self.store = store
         self.read_only = read_only
 
@@ -98,18 +101,19 @@ class NbdServer:
         self.loop = asyncio.get_event_loop()
 
     @asyncio.coroutine
-    def nbd_response(self, writer, handle, error=0, data=None):
+    def nbd_response(self, writer: StreamWriter, handle: int, error: int=0, data: bytes=None) -> Generator:
         writer.write(struct.pack('>LLQ', self.NBD_RESPONSE, error, handle))
         if data:
             writer.write(data)
         yield from writer.drain()
 
     @asyncio.coroutine
-    def handler(self, reader, writer):
-        """Handle the connection"""
+    def handler(self, reader: StreamReader, writer: StreamWriter) -> Generator:
+        data: Optional[bytes]
         try:
             host, port = writer.get_extra_info("peername")
-            version, cow_version = None, None
+            version: Optional[Version] = None
+            cow_version: Optional[Version] = None
             self.log.info("Incoming connection from %s:%s" % (host, port))
 
             # initial handshake
@@ -144,7 +148,7 @@ class NbdServer:
 
                 if length:
                     data = yield from reader.readexactly(length)
-                    if (len(data) != length):
+                    if len(data) != length:
                         raise IOError("Negotiation failed: %s bytes expected" % length)
                 else:
                     data = None
@@ -155,9 +159,8 @@ class NbdServer:
                     if not data:
                         raise IOError("Negotiation failed: no export name was provided")
 
-                    data = data.decode("ascii")
-                    data = VersionUid.create_from_readables(data)
-                    if data not in [v.uid for v in self.store.get_versions()]:
+                    version_uid = cast(VersionUid, VersionUid.create_from_readables(data.decode("ascii")))
+                    if version_uid not in [v.uid for v in self.store.get_versions()]:
                         if not fixed:
                             raise IOError("Negotiation failed: unknown export name")
 
@@ -165,23 +168,25 @@ class NbdServer:
                         yield from writer.drain()
                         continue
 
+                    self.log.info("[%s:%s] Negotiated export: %s" % (host, port, version_uid.readable))
+
                     # we have negotiated a version and it will be used
                     # until the client disconnects
-                    version = self.store.get_versions(version_uid=data)[0]
-                    self.store.open(version, self.read_only)
+                    version = self.store.get_versions(version_uid=version_uid)[0]
+                    self.store.open(version)
 
-                    self.log.info("[%s:%s] Negotiated export: %s" % (host, port, version.uid))
+                    self.log.info("[%s:%s] Version %s has been opened." % (host, port, cast(Version, version).uid))
 
                     export_flags = self.NBD_EXPORT_FLAGS
                     if self.read_only:
                         export_flags ^= self.NBD_FLAG_READ_ONLY
-                        self.log.info("nbd is read only.")
+                        self.log.info("[%s:%s] Export is read only." % (host, port))
                     else:
-                        self.log.info("nbd is read/write.")
+                        self.log.info("[%s:%s] Export is read/write." % (host, port))
 
                     # In case size is not a multiple of 4096 we extend it to the the maximum support block
                     # size of 4096
-                    size = math.ceil(version.size / 4096) * 4096
+                    size = math.ceil(cast(Version, version).size / 4096) * 4096
                     writer.write(struct.pack('>QH', size, export_flags))
                     writer.write(b"\x00" * 124)
                     yield from writer.drain()
@@ -235,7 +240,7 @@ class NbdServer:
 
                 elif cmd == self.NBD_CMD_WRITE:
                     data = yield from reader.readexactly(length)
-                    if (len(data) != length):
+                    if len(data) != length:
                         raise IOError("%s bytes expected, disconnecting" % length)
 
                     if self.read_only:
@@ -243,30 +248,30 @@ class NbdServer:
                         continue
 
                     if not cow_version:
-                        cow_version = self.store.get_cow_version(version)
+                        cow_version = self.store.get_cow_version(cast(Version, version))
                     try:
                         self.store.write(cow_version, offset, data)
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_WRITE: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO)
+                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle)
 
                 elif cmd == self.NBD_CMD_READ:
                     try:
-                        data = self.store.read(version, cow_version, offset, length)
+                        data = self.store.read(cast(Version, version), cast(Version, cow_version), offset, length)
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_READ: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO)
+                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle, data=data)
 
                 elif cmd == self.NBD_CMD_FLUSH:
-                    # Return success right away when we're read only or when we haven't written anythin yet.
+                    # Return success right away when we're read only or when we haven't written anything yet.
                     if self.read_only or not cow_version:
                         yield from self.nbd_response(writer, handle)
                         continue
@@ -276,7 +281,7 @@ class NbdServer:
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_FLUSH: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO)
+                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle)
@@ -297,8 +302,7 @@ class NbdServer:
             self.store.close(version)
             writer.close()
 
-    def serve_forever(self):
-        """Create and run the asyncio loop"""
+    def serve_forever(self) -> None:
         addr, port = self.address
 
         loop = self.loop
@@ -314,6 +318,6 @@ class NbdServer:
         loop.run_until_complete(server.wait_closed())
         loop.close()
 
-    def stop(self):
+    def stop(self) -> None:
         if not self.loop.is_closed():
             self.loop.call_soon_threadsafe(self.loop.stop)

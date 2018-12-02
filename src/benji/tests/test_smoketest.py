@@ -211,7 +211,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: BLAKE2b,digest_bits=256
             blockSize: 4096
             ios:
             - name: file
@@ -261,8 +261,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataBackend: 
-              engine: sqlite:///{testpath}/benji.sqlite
+            metadataEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
@@ -272,7 +271,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: SHA256
             blockSize: 4096
             ios:
             - name: file
@@ -322,8 +321,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataBackend:
-              engine: postgresql://benji:verysecret@localhost:15432/benji
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
 
@@ -333,7 +331,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: SHA512
             blockSize: 4096
             ios:
             - name: file
@@ -391,8 +389,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataBackend: 
-              engine: postgresql://benji:verysecret@localhost:15432/benji
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
 
@@ -402,7 +399,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCase, TestCas
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: SHA224
             blockSize: 4096
             ios:
             - name: file
@@ -466,8 +463,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCase, TestCas
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataBackend: 
-              engine: postgresql://benji:verysecret@localhost:15432/benji              
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji              
             """
 
 
@@ -477,39 +473,63 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase, BenjiTestCase, TestCase):
             configurationVersion: '1.0.0'
             processName: benji
             logFile: /dev/stderr
-            hashFunction: blake2b,digest_size=32
+            hashFunction: SHA512
             blockSize: 4096
-            io:
-              file:
+            ios:
+            - name: file
+              module: file
+              configuration:
                 simultaneousReads: 2
-            dataBackend:
-              type: b2
-              b2:
-                 accountId: ********
-                 applicationKey: ********
-                 bucketName: elemental-backy2-test
-                 accountInfoFile: {testpath}/b2_account_info
-                 writeObjectAttempts: 1
-                 readObjectAttempts: 1
-                 uploadAttempts: 5
-                 consistencyCheckWrites: True
-                 activeCompression: zstd
-                 activeEncyption: k1
-              compression:
-                - type: zstd
-                  materials:
-                    level: 1
-              encryption:
-                - identifier: k1
-                  type: aes_256_gcm
-                  materials:
-                    kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
-                    kdfIterations: 20000
-                    password: "this is a very secret password" 
-              simultaneousWrites: 5
-              simultaneousReads: 5
-              bandwidthRead: 0
-              bandwidthWrite: 0
-            metadataBackend: 
-              engine: postgresql://benji:verysecret@localhost:15432/benji
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 1
+              module: b2
+              configuration:
+                accountIdFile: ../../../.b2-account-id.txt
+                applicationKeyFile: ../../../.b2-application-key.txt
+                bucketName: elemental-backy2-test
+                accountInfoFile: {testpath}/b2_account_info
+                writeObjectAttempts: 1
+                readObjectAttempts: 1
+                uploadAttempts: 5
+                consistencyCheckWrites: True
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123
+            - name: s2
+              storageId: 2
+              module: b2
+              configuration:
+                accountIdFile: ../../../.b2-account-id.txt
+                applicationKeyFile: ../../../.b2-application-key.txt
+                bucketName: elemental-backy2-legolas
+                accountInfoFile: {testpath}/b2_account_info
+                writeObjectAttempts: 1
+                readObjectAttempts: 1
+                uploadAttempts: 5
+                consistencyCheckWrites: True              
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfIterations: 1000
+                  password: Hallo123        
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfIterations: 20000
+                password: "this is a very secret password"
+            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji              
             """

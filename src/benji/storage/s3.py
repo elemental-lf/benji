@@ -20,8 +20,16 @@ class Storage(ReadCacheStorageBase):
     READ_QUEUE_LENGTH = 20
 
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
-        aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', types=str)
-        aws_secret_access_key = Config.get_from_dict(module_configuration, 'awsSecretAccessKey', types=str)
+        aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', None, types=str)
+        if aws_access_key_id is None:
+            aws_access_key_id_file = Config.get_from_dict(module_configuration, 'awsAccessKeyIdFile', types=str)
+            with open(aws_access_key_id_file, 'r') as f:
+                aws_access_key_id = f.read().rstrip()
+        aws_secret_access_key = Config.get_from_dict(module_configuration, 'awsSecretAccessKey', None, types=str)
+        if aws_secret_access_key is None:
+            aws_secret_access_key_file = Config.get_from_dict(module_configuration, 'awsSecretAccessKeyFile', types=str)
+            with open(aws_secret_access_key_file, 'r') as f:
+                aws_secret_access_key = f.read().rstrip()
         region_name = Config.get_from_dict(module_configuration, 'regionName', None, types=str)
         endpoint_url = Config.get_from_dict(module_configuration, 'endpointUrl', None, types=str)
         use_ssl = Config.get_from_dict(module_configuration, 'useSsl', None, types=bool)

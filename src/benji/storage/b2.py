@@ -26,8 +26,17 @@ class Storage(ReadCacheStorageBase):
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
-        account_id = Config.get_from_dict(module_configuration, 'accountId', types=str)
-        application_key = Config.get_from_dict(module_configuration, 'applicationKey', types=str)
+        account_id = Config.get_from_dict(module_configuration, 'accountId', None, types=str)
+        if account_id is None:
+            account_id_file = Config.get_from_dict(module_configuration, 'accountIdFile', types=str)
+            with open(account_id_file, 'r') as f:
+                account_id = f.read().rstrip()
+        application_key = Config.get_from_dict(module_configuration, 'applicationKey', None, types=str)
+        if application_key is None:
+            application_key_file = Config.get_from_dict(module_configuration, 'applicationKeyFile', types=str)
+            with open(application_key_file, 'r') as f:
+                application_key = f.read().rstrip()
+
         bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
 
         account_info_file = Config.get_from_dict(module_configuration, 'accountInfoFile', None, types=str)

@@ -25,9 +25,10 @@ from sqlalchemy.types import TypeDecorator
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, NoChange, AlreadyLocked
 from benji.logging import logger
+from benji.storage.key import StorageKeyMixIn
 
 
-class VersionUid:
+class VersionUid(StorageKeyMixIn['VersionUid']):
 
     def __init__(self, value) -> None:
         self._value = value
@@ -88,6 +89,25 @@ class VersionUid:
     def __hash__(self) -> int:
         return self.to_int
 
+    # Start: Implements StorageKeyMixIn
+    _STORAGE_PREFIX = 'versions/'
+
+    @classmethod
+    def storage_prefix(cls) -> str:
+        return cls._STORAGE_PREFIX
+
+    def _storage_object_to_key(self) -> str:
+        return self.readable
+
+    @classmethod
+    def _storage_key_to_object(cls, key: str) -> 'VersionUid':
+        vl = len(VersionUid(1).readable)
+        if len(key) != vl:
+            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(key, vl))
+        return cast(Version, VersionUid.create_from_readables(key))
+
+    # End: Implements StorageKeyMixIn
+
 
 class VersionUidType(TypeDecorator):
 
@@ -142,16 +162,24 @@ class BlockUidComparator(CompositeProperty.Comparator):
             *[sqlalchemy.sql.and_(*[clauses[0] == element[0], clauses[1] == element[1]]) for element in other_tuples])
 
 
-class BlockUidBase:
+class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
 
-    left: Any
-    right: Any
+    def __init__(self, left: int, right: int) -> None:
+        self.left = left
+        self.right = right
+
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        self.changed()
+
+    def __composite_values__(self) -> Tuple[int, int]:
+        return self.left, self.right
 
     def __repr__(self) -> str:
         return "{:x}-{:x}".format(self.left if self.left is not None else 0, self.right if self.right is not None else 0)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, BlockUidBase) and \
+        return isinstance(other, BlockUid) and \
                other.left == self.left and \
                other.right == self.right
 
@@ -165,59 +193,34 @@ class BlockUidBase:
         return hash((self.left, self.right))
 
     # For sorting
-    def __lt__(self, other: 'BlockUidBase') -> bool:
+    def __lt__(self, other: 'BlockUid') -> bool:
         return self.left < other.left or self.left == other.left and self.right < other.right
-
-
-class DereferencedBlockUid(BlockUidBase):
-
-    def __init__(self, left: int, right: int) -> None:
-        self._left = left
-        self._right = right
-
-    @property
-    def left(self) -> int:
-        return self._left
-
-    @property
-    def right(self) -> int:
-        return self._right
-
-    @property
-    def __composite_values__(self) -> Tuple[int, int]:
-        return self.left, self.right
-
-
-class BlockUid(BlockUidBase, MutableComposite):
-
-    def __init__(self, left: int, right: int) -> None:
-        self.left = left
-        self.right = right
-
-    def __setattr__(self, key, value):
-        object.__setattr__(self, key, value)
-        self.changed()
-
-    def __composite_values__(self) -> Tuple[int, int]:
-        return self.left, self.right
 
     @classmethod
     def coerce(cls, key, value):
-        if isinstance(value, BlockUid):
+        if isinstance(value, cls):
             return value
-        elif isinstance(value, DereferencedBlockUid):
-            return BlockUid(value.left, value.right)
         else:
             return super().coerce(key, value)
 
-    # This object includes a dict to other SQLAlchemy objects in _parents. Use the same approach as with Blocks
-    # to get rid of them when passing information between threads.
-    # The named tuple doesn't have all the semantics of the original object.
-    def deref(self) -> DereferencedBlockUid:
-        return DereferencedBlockUid(
-            left=self.left,
-            right=self.right,
-        )
+    # Start: Implements StorageKeyMixIn
+    _STORAGE_PREFIX = 'blocks/'
+
+    @classmethod
+    def storage_prefix(cls) -> str:
+        return cls._STORAGE_PREFIX
+
+    def _storage_object_to_key(self) -> str:
+        return '{:016x}-{:016x}'.format(self.left, self.right)
+
+    @classmethod
+    def _storage_key_to_object(cls, key: str) -> 'BlockUid':
+        if len(key) != (16 + 1 + 16):
+            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
+                key, (16 + 1 + 16)))
+        return BlockUid(int(key[0:16], 16), int(key[17:17 + 16], 16))
+
+    # End: Implements StorageKeyMixIn
 
 
 Base: Any = declarative_base()
@@ -286,7 +289,7 @@ class Tag(Base):
 
 class DereferencedBlock:
 
-    def __init__(self, uid: DereferencedBlockUid, version_uid: VersionUid, id: int, date: datetime.datetime,
+    def __init__(self, uid: BlockUid, version_uid: VersionUid, id: int, date: datetime.datetime,
                  checksum: Optional[str], size: int, valid: bool) -> None:
         self.uid = uid
         self.version_uid = version_uid
@@ -299,17 +302,15 @@ class DereferencedBlock:
     # Getter and setter need to directly follow each other
     # See https://github.com/python/mypy/issues/1465
     @property
-    def uid(self) -> DereferencedBlockUid:
+    def uid(self) -> BlockUid:
         return self._uid
 
     @uid.setter
-    def uid(self, uid: Union[DereferencedBlockUid, BlockUid]) -> None:
-        if isinstance(uid, DereferencedBlockUid):
+    def uid(self, uid: BlockUid) -> None:
+        if isinstance(uid, BlockUid):
             self._uid = uid
-        elif isinstance(uid, BlockUid):
-            self._uid = uid.deref()
         else:
-            raise InternalError('Unexpected type {} for uid in DereferencedBlockUid.uid.setter'.format(type(uid)))
+            raise InternalError('Unexpected type {} for uid in BlockUid.uid.setter'.format(type(uid)))
 
     @property
     def uid_left(self) -> int:
@@ -320,7 +321,7 @@ class DereferencedBlock:
         return self._uid.right
 
     def __repr__(self) -> str:
-        return "<DereferencedBlockUid(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
+        return "<BlockUid(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
 
 
 class Block(Base):
@@ -353,7 +354,7 @@ class Block(Base):
         without any thread inconsistencies
         """
         return DereferencedBlock(
-            uid=self.uid.deref(),
+            uid=self.uid,
             version_uid=self.version_uid,
             id=self.id,
             date=self.date,
@@ -632,7 +633,7 @@ class MetadataBackend:
                   *,
                   id: int,
                   version_uid: VersionUid,
-                  block_uid: Optional[Union[BlockUid, DereferencedBlockUid]],
+                  block_uid: Optional[BlockUid],
                   checksum: Optional[str],
                   size: int,
                   valid: bool,
@@ -670,7 +671,7 @@ class MetadataBackend:
             self._session.rollback()
             raise
 
-    def set_block_invalid(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> List[VersionUid]:
+    def set_block_invalid(self, block_uid: BlockUid) -> List[VersionUid]:
         try:
             affected_version_uids = self._session.query(distinct(Block.version_uid)).filter_by(uid=block_uid).all()
             affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]
@@ -689,7 +690,7 @@ class MetadataBackend:
 
         return affected_version_uids
 
-    def get_block(self, block_uid: Union[DereferencedBlockUid, BlockUid]) -> Block:
+    def get_block(self, block_uid: BlockUid) -> Block:
         try:
             block = self._session.query(Block).filter_by(uid=block_uid).first()
         except:
@@ -740,7 +741,7 @@ class MetadataBackend:
 
         return num_blocks
 
-    def get_delete_candidates(self, dt: int = 3600) -> Generator[Dict[int, Set[BlockUid]], None, None]:
+    def get_delete_candidates(self, dt: int = 3600) -> Iterator[Dict[int, Set[BlockUid]]]:
         rounds = 0
         false_positives_count = 0
         hit_list_count = 0

@@ -42,3 +42,5 @@ dist
 .github-access-token
 debian/.debhelper
 *~
+.b2-application-key.txt
+.b2-account-id.txt

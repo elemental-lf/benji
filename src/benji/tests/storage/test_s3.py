@@ -7,9 +7,7 @@ class test_s3_boto3(DatabackendTestCase, unittest.TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        metadataBackend:
-          engine: sqlite://
-                  
+        metadataEngine: sqlite://        
         defaultStorage: s1
         
         storages:
@@ -48,8 +46,10 @@ class test_s3_boto3(DatabackendTestCase, unittest.TestCase):
             kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
             kdfIterations: 20000
             password: "this is a very secret password"
-                
-         
+            
+        ios:
+            - name: file
+              module: file                  
         """
 
 

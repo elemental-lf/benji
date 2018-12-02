@@ -10,7 +10,7 @@ from datetime import datetime
 from importlib import import_module
 from threading import Lock
 from time import time
-from typing import List, Tuple, Union, Generator, Any, Optional, Dict
+from typing import List, Tuple, Union, Any, Optional, Dict, Iterator
 
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
@@ -45,8 +45,7 @@ def notify(process_name: str, msg: str = '', old_msg: str = ''):
 
 # This is tricky to implement as we need to make sure that we don't hold a reference to the completed Future anymore.
 # Indeed it's so tricky that older Python versions had the same problem. See https://bugs.python.org/issue27144.
-def future_results_as_completed(futures: List[Future], semaphore=None,
-                                timeout: int = None) -> Generator[Any, None, None]:
+def future_results_as_completed(futures: List[Future], semaphore=None, timeout: int = None) -> Iterator[Any]:
     if sys.version_info < (3, 6, 4):
         logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' + 'Upgrade your Python to at least 3.6.4.')
 
@@ -81,11 +80,11 @@ class BlockHash:
             hash_name = hash_function_config
 
         try:
-            hash_module = import_module('{}.{}'.format(self._CRYPTO_PACKAGE, hash_name))
+            hash_module: Any = import_module('{}.{}'.format(self._CRYPTO_PACKAGE, hash_name))
         except ImportError as exception:
             raise ConfigurationError('Unsupported block hash {}.'.format(hash_name)) from exception
 
-        hash_kwargs = {}
+        hash_kwargs: Dict[str, Any] = {}
         if hash_args is not None:
             hash_kwargs = dict((k, literal_eval(v)) for k, v in (pair.split('=') for pair in hash_args.split(',')))
 

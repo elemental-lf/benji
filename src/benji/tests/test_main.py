@@ -47,8 +47,8 @@ class MiscTestCase(BenjiTestCase, TestCase):
     def test_FileBackend_save_read(self):
         backend = self.data_backend
         block = Mock('Block', uid=BlockUid(1, 2), size=4, checksum='CHECKSUM')
-        backend.save(block, b'test', sync=True)
-        self.assertEqual(backend.read(block, sync=True), b'test')
+        backend.save_sync(block, b'test')
+        self.assertEqual(backend.read_sync(block), b'test')
         backend.rm(block.uid)
 
     def test_metabackend_set_version(self):
