@@ -37,7 +37,7 @@ import signal
 import struct
 import traceback
 from asyncio import StreamReader, StreamWriter
-from typing import Generator, Optional, cast
+from typing import Generator, Optional, cast, Any
 
 from benji.benji import BenjiStore
 from benji.exception import NbdServerAbortedNegotiationError
@@ -101,14 +101,14 @@ class NbdServer:
         self.loop = asyncio.get_event_loop()
 
     @asyncio.coroutine
-    def nbd_response(self, writer: StreamWriter, handle: int, error: int=0, data: bytes=None) -> Generator:
+    def nbd_response(self, writer: StreamWriter, handle: int, error: int=0, data: bytes=None) -> Generator[Any, None, None]:
         writer.write(struct.pack('>LLQ', self.NBD_RESPONSE, error, handle))
         if data:
             writer.write(data)
         yield from writer.drain()
 
     @asyncio.coroutine
-    def handler(self, reader: StreamReader, writer: StreamWriter) -> Generator:
+    def handler(self, reader: StreamReader, writer: StreamWriter) -> Generator[Any, None, None]:
         data: Optional[bytes]
         try:
             host, port = writer.get_extra_info("peername")
