@@ -57,6 +57,8 @@ class StorageBase(metaclass=ABCMeta):
         if active_transforms is not None:
             for transform in active_transforms:
                 self._active_transforms.append(TransformFactory.get_by_name(transform))
+            logger.info('Active transforms for storage {}: {}.'.format(name,
+                        ', '.join(['{} ({})'.format(transform.name, transform.module) for transform in self._active_transforms])))
 
         simultaneous_writes = Config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
         simultaneous_reads = Config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
@@ -68,17 +70,10 @@ class StorageBase(metaclass=ABCMeta):
 
         hmac_key = Config.get_from_dict(module_configuration, 'hmac.key', None, types=bytes)
         if hmac_key is None:
-            hmac_kdf_salt = Config.get_from_dict(module_configuration, 'hmac.kdfSalt', None, types=bytes)
-            hmac_kdf_iterations = Config.get_from_dict(module_configuration, 'hmac.kdfIterations', None, types=int)
             hmac_password = Config.get_from_dict(module_configuration, 'hmac.password', None, types=str)
-
-            hmac_config_options_count = int(hmac_kdf_salt is not None) + int(hmac_kdf_iterations is not None) \
-                                      + int(hmac_password is not None)
-            if 0 < hmac_config_options_count < 3:
-                raise ConfigurationError(
-                    'Some but not all HMAC of the required configuration keys are set for storage {}, this is invalid.'.format(name))
-
-            if hmac_config_options_count == 3:
+            if hmac_password is not None:
+                hmac_kdf_salt = Config.get_from_dict(module_configuration, 'hmac.kdfSalt', types=bytes)
+                hmac_kdf_iterations = Config.get_from_dict(module_configuration, 'hmac.kdfIterations', types=int)
                 hmac_key = derive_key(
                     salt=hmac_kdf_salt, iterations=hmac_kdf_iterations, key_length=32, password=hmac_password)
         self._dict_hmac: Optional[DictHMAC] = None
