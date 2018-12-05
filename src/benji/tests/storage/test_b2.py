@@ -1,9 +1,9 @@
-import unittest
+from unittest import TestCase
 
 from . import StorageTestCase
 
 
-class StorageTestB2(StorageTestCase, unittest.TestCase):
+class StorageTestB2(StorageTestCase, TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr

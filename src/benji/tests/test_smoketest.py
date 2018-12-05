@@ -16,7 +16,7 @@ MB = kB * 1024
 GB = MB * 1024
 
 
-class SmokeTestCase:
+class SmokeTestCase(BenjiTestCaseBase):
 
     @staticmethod
     def patch(filename, offset, data=None):
@@ -51,7 +51,7 @@ class SmokeTestCase:
         base_version = None
         version_uids = []
         old_size = 0
-        initdb = True
+        init_database = True
         image_filename = os.path.join(testpath, 'image')
         block_size = random.sample({512, 1024, 2048, 4096}, 1)[0]
         scrub_history = BlockUidHistory()
@@ -99,8 +99,8 @@ class SmokeTestCase:
             with open(os.path.join(testpath, 'hints'), 'w') as f:
                 f.write(json.dumps(hints))
 
-            benji_obj = self.benjiOpen(initdb=initdb, block_size=block_size)
-            initdb = False
+            benji_obj = self.benjiOpen(init_database=init_database, block_size=block_size)
+            init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
                 version_uid = benji_obj.backup(
                     version_name='data-backup',
@@ -112,17 +112,17 @@ class SmokeTestCase:
             benji_obj.close()
             version_uids.append(version_uid)
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.rm(version_uid, force=True, keep_backend_metadata=True)
             benji_obj.close()
             print('  Removal of version successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.close()
             print('  Restore of version successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             blocks = benji_obj.ls_version(version_uid)
             self.assertEqual(list(range(len(blocks))), sorted([block.id for block in blocks]))
             self.assertTrue(len(blocks) > 0)
@@ -131,7 +131,7 @@ class SmokeTestCase:
             benji_obj.close()
             print('  Block list successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             versions = benji_obj.ls()
             self.assertEqual(set(), set([version.uid for version in versions]) ^ set(version_uids))
             self.assertTrue(reduce(and_, [version.name == 'data-backup' for version in versions]))
@@ -141,40 +141,40 @@ class SmokeTestCase:
             benji_obj.close()
             print('  Version list successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.scrub(version_uid)
             benji_obj.close()
             print('  Scrub successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid)
             benji_obj.close()
             print('  Deep scrub successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid, 'file://' + image_filename)
             benji_obj.close()
             print('  Deep scrub with source successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.scrub(version_uid, history=scrub_history)
             benji_obj.close()
             print('  Scrub with history successful')
 
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid, history=deep_scrub_history)
             benji_obj.close()
             print('  Deep scrub with history successful')
 
             restore_filename_1 = os.path.join(testpath, 'restore.{}'.format(i + 1))
             restore_filename_2 = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
-            benji_obj = self.benjiOpen(initdb=initdb)
+            benji_obj = self.benjiOpen()
             benji_obj.restore(version_uid, 'file://' + restore_filename_1, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_1))
             print('  Restore successful')
 
-            benji_obj = self.benjiOpen(in_memory=True)
+            benji_obj = self.benjiOpen(in_memory_database=True)
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.restore(version_uid, 'file://' + restore_filename_2, sparse=False, force=False)
             benji_obj.close()
@@ -184,14 +184,14 @@ class SmokeTestCase:
 
             # delete old versions
             if len(version_uids) > 10:
-                benji_obj = self.benjiOpen(initdb=initdb)
+                benji_obj = self.benjiOpen()
                 dismissed_version_uids = benji_obj.enforce_retention_policy('data-backup', 'latest10,hours24,days30')
                 for dismissed_version_uid in dismissed_version_uids:
                     version_uids.remove(dismissed_version_uid)
                 benji_obj.close()
 
             if (i % 7) == 0:
-                benji_obj = self.benjiOpen(initdb=initdb)
+                benji_obj = self.benjiOpen()
                 benji_obj.cleanup(dt=0)
                 benji_obj.close()
             if (i % 13) == 0:
@@ -205,7 +205,7 @@ class SmokeTestCase:
                     storage_name = 's1'
 
 
-class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
+class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -265,7 +265,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
             """
 
 
-class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
+class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -325,7 +325,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
             """
 
 
-class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCaseBase, TestCase):
+class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -393,7 +393,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCaseBase, TestCase):
             """
 
 
-class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCaseBase, TestCase):
+class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -467,7 +467,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCaseBase, Tes
             """
 
 
-class SmokeTestCasePostgreSQL_B2(SmokeTestCase, BenjiTestCaseBase, TestCase):
+class SmokeTestCasePostgreSQL_B2(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'

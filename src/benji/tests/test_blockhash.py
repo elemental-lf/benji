@@ -1,9 +1,9 @@
-import unittest
+from unittest import TestCase
 
 from benji.utils import BlockHash
 
 
-class BlockHashTestCase(unittest.TestCase):
+class BlockHashTestCase(TestCase):
 
     def test_sha512(self):
         bh = BlockHash('SHA512')

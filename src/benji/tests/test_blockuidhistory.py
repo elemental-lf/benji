@@ -1,11 +1,11 @@
 import random
-import unittest
+from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.database import BlockUid
 
 
-class BlockUidHistoryTestCase(unittest.TestCase):
+class BlockUidHistoryTestCase(TestCase):
 
     def test_seen(self):
         history = BlockUidHistory()

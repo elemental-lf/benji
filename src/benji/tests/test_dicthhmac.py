@@ -1,10 +1,10 @@
-import unittest
+from unittest import TestCase
 
 from benji.exception import InternalError
 from benji.storage.dicthmac import DictHMAC
 
 
-class DictHMACHashTestCase(unittest.TestCase):
+class DictHMACHashTestCase(TestCase):
 
     def setUp(self):
         self.data = {'a': 10, 'b': 'test', 'c': True, 'e': {'a': 1, 'b': 'test'}}

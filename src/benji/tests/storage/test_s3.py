@@ -1,9 +1,9 @@
-import unittest
+from unittest import TestCase
 
 from . import StorageTestCase
 
 
-class test_s3(StorageTestCase, unittest.TestCase):
+class test_s3(StorageTestCase, TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr

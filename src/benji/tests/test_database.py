@@ -1,11 +1,11 @@
 from unittest import TestCase
 
-from benji.exception import InternalError, NoChange
 from benji.database import BlockUid, VersionUid
-from benji.tests.testcase import DatabaseBackendTestCase
+from benji.exception import InternalError, NoChange
+from benji.tests.testcase import DatabaseBackendTestCaseBase
 
 
-class DatabaseBackendTestBase:
+class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version(self):
         version = self.database_backend.create_version(
@@ -205,7 +205,7 @@ class DatabaseBackendTestBase:
         self.assertEqual(VersionUid(3), uids[2])
 
 
-class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
+class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
@@ -224,7 +224,7 @@ class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, DatabaseBackendTestBas
         """
 
 
-class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
+class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
@@ -243,7 +243,7 @@ class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, DatabaseBacken
         """
 
 
-class DatabaseBackendTestPostgreSQL(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
+class DatabaseBackendTestPostgreSQL(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'

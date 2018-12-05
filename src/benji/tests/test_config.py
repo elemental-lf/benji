@@ -1,12 +1,12 @@
 import os
-import unittest
+from unittest import TestCase
 
 from benji.config import Config, _ConfigList
 from benji.exception import ConfigurationError
 from benji.tests.testcase import TestCaseBase
 
 
-class ConfigTestCase(TestCaseBase, unittest.TestCase):
+class ConfigTestCase(TestCaseBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
