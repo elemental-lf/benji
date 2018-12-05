@@ -52,7 +52,7 @@ class StorageFactory:
                     __package__, cls._MODULE, module))
             else:
                 try:
-                    configuration = config.validate(module.__name__, config=configuration)
+                    configuration = config.validate(module=module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
                 cls._modules[storage_id] = _StorageFactoryModule(
@@ -148,7 +148,7 @@ class TransformFactory:
                     __package__, cls._MODULE, module))
             else:
                 try:
-                    configuration = config.validate(module.__name__, config=configuration)
+                    configuration = config.validate(module=module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
                 cls._modules[name] = _StorageFactoryModule(
@@ -211,7 +211,7 @@ class IOFactory:
                     __package__, cls._MODULE, module))
             else:
                 try:
-                    configuration = config.validate(module.__name__, config=configuration)
+                    configuration = config.validate(module=module.__name__, config=configuration)
                 except ConfigurationError as exception:
                     raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
                 cls._modules[name] = _StorageFactoryModule(

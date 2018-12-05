@@ -92,7 +92,7 @@ class ConfigTestCase(TestCase, unittest.TestCase):
     def test_defaults(self):
         config = Config(ad_hoc_config=self.CONFIG)
         self.assertEqual('benji', config.get('processName'))
-        self.assertEqual('blake2b,digest_size=32', config.get('hashFunction'))
+        self.assertEqual('BLAKE2b,digest_bits=256', config.get('hashFunction'))
 
     def test_missing(self):
         config = Config(ad_hoc_config=self.CONFIG)
@@ -109,7 +109,8 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         self.assertEqual('/var/log/benji.log', config.get('logFile'))
 
     def test_validation(self):
-        configuration = {'path': '/var/tmp'}
+        config = Config(ad_hoc_config=self.CONFIG)
+        module_configuration = {'path': '/var/tmp'}
         self.assertEqual({
             'bandwidthRead': 0,
             'bandwidthWrite': 0,
@@ -117,12 +118,16 @@ class ConfigTestCase(TestCase, unittest.TestCase):
             'path': '/var/tmp',
             'simultaneousReads': 1,
             'simultaneousWrites': 1
-        }, Config.validate('benji.storage.file', configuration))
-        configuration = {'asdasdas': 'dasdasd'}
-        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
-        configuration = {}
-        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
-        configuration = {'path': '/var/tmp', 'bandwidthRead': -1}
-        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
-        configuration = {'path': [1, 2, 3]}
-        self.assertRaises(ConfigurationError, lambda: Config.validate('benji.storage.file', configuration))
+        }, config.validate(module='benji.storage.file', config=module_configuration))
+        module_configuration = {'asdasdas': 'dasdasd'}
+        self.assertRaises(ConfigurationError,
+                          lambda: config.validate(module='benji.storage.file', config=module_configuration))
+        module_configuration = {}
+        self.assertRaises(ConfigurationError,
+                          lambda: config.validate(module='benji.storage.file', config=module_configuration))
+        module_configuration = {'path': '/var/tmp', 'bandwidthRead': -1}
+        self.assertRaises(ConfigurationError,
+                          lambda: config.validate(module='benji.storage.file', config=module_configuration))
+        module_configuration = {'path': [1, 2, 3]}
+        self.assertRaises(ConfigurationError,
+                          lambda: config.validate(module='benji.storage.file', config=module_configuration))

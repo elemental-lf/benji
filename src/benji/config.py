@@ -2,11 +2,12 @@
 # -*- encoding: utf-8 -*-
 import operator
 import os
+import re
 from copy import deepcopy
 from functools import reduce
 from os.path import expanduser
 from pathlib import Path
-from typing import List, Callable, Tuple, Union, Dict, Any, Optional, Sequence
+from typing import List, Callable, Union, Dict, Any, Optional, Sequence
 
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
@@ -34,7 +35,7 @@ class Config:
     _CONFIG_DIRS = ['/etc', '/etc/benji']
     _CONFIG_FILE = 'benji.yaml'
 
-    _SCHEMA_VERSION = '1.0.0'
+    _SCHEMA_VERSIONS = ['1.0.0']
     _YAML_SUFFIX = '.yaml'
     _PARENTS_KEY = 'parents'
 
@@ -56,43 +57,40 @@ class Config:
         except SchemaError as exception:
             raise InternalError('Schema {} is invalid.'.format(file)) from exception
 
-    @classmethod
-    def _merge_dicts(cls, result, parent):
+    def _merge_dicts(self, result, parent):
         if isinstance(result, dict) and isinstance(parent, dict):
             for k, v in parent.items():
                 if k not in result:
                     result[k] = deepcopy(v)
                 else:
-                    result[k] = cls._merge_dicts(result[k], v)
+                    result[k] = self._merge_dicts(result[k], v)
         return result
 
-    @classmethod
-    def _resolve_schema(cls, *, name: str) -> Dict:
+    def _resolve_schema(self, *, name: str) -> Dict:
         try:
-            child = cls._schema_registry[name]
+            child = self._schema_registry[name]
         except KeyError:
             raise InternalError('Schema for module {} is missing.'.format(name))
         result: Dict = {}
-        if cls._PARENTS_KEY in child:
-            parent_names = child[cls._PARENTS_KEY]
+        if self._PARENTS_KEY in child:
+            parent_names = child[self._PARENTS_KEY]
             for parent_name in parent_names:
-                parent = cls._resolve_schema(name=parent_name)
-                cls._merge_dicts(result, parent)
-        result = cls._merge_dicts(result, child)
-        if cls._PARENTS_KEY in result:
-            del result[cls._PARENTS_KEY]
+                parent = self._resolve_schema(name=parent_name)
+                self._merge_dicts(result, parent)
+        result = self._merge_dicts(result, child)
+        if self._PARENTS_KEY in result:
+            del result[self._PARENTS_KEY]
         logger.debug('Resolved schema for {}: {}.'.format(name, result))
         return result
 
-    @classmethod
-    def _get_validator(cls, *, module: str, version: str) -> Validator:
-        name = cls._schema_name(module, version)
-        schema = cls._resolve_schema(name=name)
+    def _get_validator(self, *, module: str, version: str) -> Validator:
+        name = self._schema_name(module, version)
+        schema = self._resolve_schema(name=name)
         try:
             validator = Validator(schema)
         except SchemaError as exception:
             logger.error('Schema {} validation errors:'.format(name))
-            cls._output_validation_errors(exception.args[0])
+            self._output_validation_errors(exception.args[0])
             raise InternalError('Schema {} is invalid.'.format(name)) from exception
         return validator
 
@@ -112,12 +110,11 @@ class Config:
 
         traverse(errors)
 
-    @classmethod
-    def validate(cls, module: str, config: Union[Dict, _ConfigDict]) -> Dict:
-        validator = cls._get_validator(module=module, version=cls._SCHEMA_VERSION)
+    def validate(self, *, module: str, version: str = None, config: Union[Dict, _ConfigDict]) -> Dict:
+        validator = self._get_validator(module=module, version=self._config_version if version is None else version)
         if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')
-            cls._output_validation_errors(validator.errors)
+            self._output_validation_errors(validator.errors)
             raise ConfigurationError('Configuration for module {} is invalid.'.format(module))
 
         config_validated = validator.document['configuration']
@@ -150,6 +147,17 @@ class Config:
             if config is None:
                 raise ConfigurationError('Configuration string is empty.')
 
+        if 'configurationVersion' not in config:
+            raise ConfigurationError('Configuration is missing mandatory key "configurationVersion".')
+
+        version = config['configurationVersion']
+        if not re.fullmatch('\d+\.\d+\.\d+', version):
+            raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
+
+        if version not in self._SCHEMA_VERSIONS:
+            raise ConfigurationError('Configuration has unsupported version of "{}".'.format(version))
+
+        self._config_version = version
         self._config = _ConfigDict(self.validate(module=__name__, config=config))
         logger.debug('Loaded configuration: {}'.format(self._config))
 
@@ -219,11 +227,12 @@ class Config:
         return Config._get(dict_, name, *args, **kwargs)
 
 
-schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), Config._SCHEMA_VERSION)
-for filename in os.listdir(schema_base_path):
-    full_path = os.path.join(schema_base_path, filename)
-    if not os.path.isfile(full_path) or not full_path.endswith(Config._YAML_SUFFIX):
-        continue
-    module = filename[0:len(filename) - len(Config._YAML_SUFFIX)]
-    logger.debug('Loading  schema {} for module {}, version {}.'.format(full_path, module, Config._SCHEMA_VERSION))
-    Config.add_schema(module=module, version=Config._SCHEMA_VERSION, file=full_path)
+for version in Config._SCHEMA_VERSIONS:
+    schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), version)
+    for filename in os.listdir(schema_base_path):
+        full_path = os.path.join(schema_base_path, filename)
+        if not os.path.isfile(full_path) or not full_path.endswith(Config._YAML_SUFFIX):
+            continue
+        module = filename[0:len(filename) - len(Config._YAML_SUFFIX)]
+        logger.debug('Loading  schema {} for module {}, version {}.'.format(full_path, module, version))
+        Config.add_schema(module=module, version=version, file=full_path)
