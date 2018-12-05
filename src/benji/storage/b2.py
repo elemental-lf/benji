@@ -12,7 +12,7 @@ from b2.account_info.exception import MissingAccountData
 from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
 from b2.download_dest import DownloadDestBytes
-from b2.exception import B2Error, FileNotPresent
+from b2.exception import B2Error, FileNotPresent, B2ConnectionError
 from benji.config import Config, _ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
@@ -70,7 +70,7 @@ class Storage(ReadCacheStorageBase):
         for i in range(self._write_object_attempts):
             try:
                 self.bucket.upload_bytes(data, key)
-            except B2Error:
+            except (B2Error, B2ConnectionError):
                 if i + 1 < self._write_object_attempts:
                     sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
                     logger.warning(
@@ -87,7 +87,7 @@ class Storage(ReadCacheStorageBase):
             data_io = DownloadDestBytes()
             try:
                 self.bucket.download_file_by_name(key, data_io)
-            except B2Error as exception:
+            except (B2Error, B2ConnectionError) as exception:
                 if isinstance(exception, FileNotPresent):
                     raise FileNotFoundError('UID {} not found.'.format(key)) from None
                 else:
@@ -117,7 +117,7 @@ class Storage(ReadCacheStorageBase):
         for i in range(self._read_object_attempts):
             try:
                 file_version_info = self._file_info(key)
-            except B2Error as exception:
+            except (B2Error, B2ConnectionError) as exception:
                 if isinstance(exception, FileNotPresent):
                     raise FileNotFoundError('UID {} not found.'.format(key)) from None
                 else:
