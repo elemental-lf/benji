@@ -8,7 +8,7 @@ from typing import Optional, BinaryIO, Tuple
 from benji.config import _ConfigDict, Config
 from benji.io.base import IOBase
 from benji.logging import logger
-from benji.metadata import DereferencedBlock
+from benji.database import DereferencedBlock
 
 
 class IO(IOBase):

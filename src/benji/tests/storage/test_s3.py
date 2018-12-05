@@ -1,13 +1,13 @@
 import unittest
 
-from . import DatabackendTestCase
+from . import StorageTestCase
 
 
-class test_s3_boto3(DatabackendTestCase, unittest.TestCase):
+class test_s3(StorageTestCase, unittest.TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        metadataEngine: sqlite://        
+        databaseEngine: sqlite://        
         defaultStorage: s1
         
         storages:

@@ -1,23 +1,23 @@
 from unittest import TestCase
 
 from benji.exception import InternalError, NoChange
-from benji.metadata import BlockUid, VersionUid
-from benji.tests.testcase import MetadataTestCase as SQLTestCaseBase, MetadataTestCase
+from benji.database import BlockUid, VersionUid
+from benji.tests.testcase import DatabaseBackendTestCase
 
 
-class MetadataTestBase:
+class DatabaseBackendTestBase:
 
     def test_version(self):
-        version = self.metadata_backend.create_version(
+        version = self.database_backend.create_version(
             version_name='backup-name',
             snapshot_name='snapshot-name',
             size=16 * 1024 * 4096,
             storage_id=1,
             block_size=4 * 1024 * 4096,
             valid=False)
-        self.metadata_backend.commit()
+        self.database_backend.commit()
 
-        version = self.metadata_backend.get_version(version.uid)
+        version = self.database_backend.get_version(version.uid)
         self.assertEqual('backup-name', version.name)
         self.assertEqual('snapshot-name', version.snapshot_name)
         self.assertEqual(16 * 1024 * 4096, version.size)
@@ -25,57 +25,57 @@ class MetadataTestBase:
         self.assertFalse(version.valid)
         self.assertFalse(version.protected)
 
-        self.metadata_backend.set_version(version.uid, valid=True)
-        version = self.metadata_backend.get_version(version.uid)
+        self.database_backend.set_version(version.uid, valid=True)
+        version = self.database_backend.get_version(version.uid)
         self.assertTrue(version.valid)
 
-        self.metadata_backend.set_version(version.uid, valid=False)
-        version = self.metadata_backend.get_version(version.uid)
+        self.database_backend.set_version(version.uid, valid=False)
+        version = self.database_backend.get_version(version.uid)
         self.assertFalse(version.valid)
 
-        self.metadata_backend.set_version(version.uid, protected=True)
-        version = self.metadata_backend.get_version(version.uid)
+        self.database_backend.set_version(version.uid, protected=True)
+        version = self.database_backend.get_version(version.uid)
         self.assertTrue(version.protected)
 
-        self.metadata_backend.set_version(version.uid, protected=False)
-        version = self.metadata_backend.get_version(version.uid)
+        self.database_backend.set_version(version.uid, protected=False)
+        version = self.database_backend.get_version(version.uid)
         self.assertFalse(version.protected)
 
-        self.metadata_backend.add_tag(version.uid, 'tag-123')
-        self.assertRaises(NoChange, lambda: self.metadata_backend.add_tag(version.uid, 'tag-123'))
+        self.database_backend.add_tag(version.uid, 'tag-123')
+        self.assertRaises(NoChange, lambda: self.database_backend.add_tag(version.uid, 'tag-123'))
 
-        version = self.metadata_backend.get_version(version.uid)
+        version = self.database_backend.get_version(version.uid)
         self.assertEqual(1, len(version.tags))
         self.assertIn(version.uid, map(lambda tag: tag.version_uid, version.tags))
         self.assertIn('tag-123', map(lambda tag: tag.name, version.tags))
 
-        self.metadata_backend.rm_tag(version.uid, 'tag-123')
-        self.assertRaises(NoChange, lambda: self.metadata_backend.rm_tag(version.uid, 'tag-123'))
-        version = self.metadata_backend.get_version(version.uid)
+        self.database_backend.rm_tag(version.uid, 'tag-123')
+        self.assertRaises(NoChange, lambda: self.database_backend.rm_tag(version.uid, 'tag-123'))
+        version = self.database_backend.get_version(version.uid)
         self.assertEqual(0, len(version.tags))
 
         version_uids = {}
         for _ in range(256):
-            version = self.metadata_backend.create_version(
+            version = self.database_backend.create_version(
                 version_name='backup-name',
                 snapshot_name='snapshot-name',
                 size=16 * 1024 * 4096,
                 storage_id=1,
                 block_size=4 * 1024 * 4096,
                 valid=False)
-            version = self.metadata_backend.get_version(version.uid)
+            version = self.database_backend.get_version(version.uid)
             self.assertNotIn(version.uid, version_uids)
             version_uids[version.uid] = True
 
     def test_block(self):
-        version = self.metadata_backend.create_version(
+        version = self.database_backend.create_version(
             version_name='name-' + self.random_string(12),
             snapshot_name='snapshot-name-' + self.random_string(12),
             size=256 * 1024 * 4096,
             block_size=1024 * 4096,
             storage_id=1,
             valid=False)
-        self.metadata_backend.commit()
+        self.database_backend.commit()
 
         checksums = []
         uids = []
@@ -83,17 +83,17 @@ class MetadataTestBase:
         for id in range(num_blocks):
             checksums.append(self.random_hex(64))
             uids.append(BlockUid(1, id))
-            self.metadata_backend.set_block(
+            self.database_backend.set_block(
                 id=id,
                 version_uid=version.uid,
                 block_uid=uids[id],
                 checksum=checksums[id],
                 size=1024 * 4096,
                 valid=True)
-        self.metadata_backend.commit()
+        self.database_backend.commit()
 
         for id, checksum in enumerate(checksums):
-            block = self.metadata_backend.get_block_by_checksum(checksum, 1)
+            block = self.database_backend.get_block_by_checksum(checksum, 1)
             self.assertEqual(id, block.id)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uids[id], block.uid)
@@ -102,7 +102,7 @@ class MetadataTestBase:
             self.assertTrue(block.valid)
 
         for id, uid in enumerate(uids):
-            block = self.metadata_backend.get_block(uid)
+            block = self.database_backend.get_block(uid)
             self.assertEqual(id, block.id)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uid, block.uid)
@@ -110,7 +110,7 @@ class MetadataTestBase:
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        blocks = self.metadata_backend.get_blocks_by_version(version.uid)
+        blocks = self.database_backend.get_blocks_by_version(version.uid)
         self.assertEqual(num_blocks, len(blocks))
         for id, block in enumerate(blocks):
             self.assertEqual(id, block.id)
@@ -130,13 +130,13 @@ class MetadataTestBase:
             self.assertEqual(1024 * 4096, dereferenced_block.size)
             self.assertTrue(dereferenced_block.valid)
 
-        self.metadata_backend.rm_version(version.uid)
-        self.metadata_backend.commit()
-        blocks = self.metadata_backend.get_blocks_by_version(version.uid)
+        self.database_backend.rm_version(version.uid)
+        self.database_backend.commit()
+        blocks = self.database_backend.get_blocks_by_version(version.uid)
         self.assertEqual(0, len(blocks))
 
         count = 0
-        for uids_deleted in self.metadata_backend.get_delete_candidates(-1):
+        for uids_deleted in self.database_backend.get_delete_candidates(-1):
             for storage in uids_deleted.values():
                 for uid in storage:
                     self.assertIn(uid, uids)
@@ -144,38 +144,38 @@ class MetadataTestBase:
         self.assertEqual(num_blocks, count)
 
     def test_lock_version(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         locking.lock_version(VersionUid(1), reason='locking test')
         self.assertRaises(InternalError, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
         locking.unlock_version(VersionUid(1))
 
     def test_lock_global(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         locking.lock(reason='locking test')
         self.assertRaises(InternalError, lambda: locking.lock(reason='locking test'))
         locking.unlock()
 
     def test_lock_singleton(self):
-        locking = self.metadata_backend.locking()
-        locking2 = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
+        locking2 = self.database_backend.locking()
         self.assertEqual(locking, locking2)
 
     def test_is_locked(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         lock = locking.lock(reason='locking test')
         self.assertTrue(locking.is_locked())
         locking.unlock()
         self.assertFalse(locking.is_locked())
 
     def test_is_version_locked(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         lock = locking.lock_version(VersionUid(1), reason='locking test')
         self.assertTrue(locking.is_version_locked(VersionUid(1)))
         locking.unlock_version(VersionUid(1))
         self.assertFalse(locking.is_version_locked(VersionUid(1)))
 
     def test_lock_version_context_manager(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         with locking.with_version_lock(VersionUid(1), reason='locking test'):
             with self.assertRaises(InternalError):
                 locking.lock_version(VersionUid(1), reason='locking test')
@@ -183,7 +183,7 @@ class MetadataTestBase:
         locking.unlock_version(VersionUid(1))
 
     def test_lock_context_manager(self):
-        locking = self.metadata_backend.locking()
+        locking = self.database_backend.locking()
         with locking.with_lock(reason='locking test'):
             with self.assertRaises(InternalError):
                 locking.lock(reason='locking test')
@@ -205,7 +205,7 @@ class MetadataTestBase:
         self.assertEqual(VersionUid(3), uids[2])
 
 
-class MetadataTestCaseSQLLite(MetadataTestCase, MetadataTestBase, TestCase):
+class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
@@ -220,11 +220,11 @@ class MetadataTestCaseSQLLite(MetadataTestCase, MetadataTestBase, TestCase):
           module: file
           configuration:
             path: {testpath}/data
-        metadataEngine: sqlite:///{testpath}/benji.sqlite
+        databaseEngine: sqlite:///{testpath}/benji.sqlite
         """
 
 
-class MetadataTestCaseSQLLiteInMemory(MetadataTestCase, MetadataTestBase, TestCase):
+class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
@@ -239,11 +239,11 @@ class MetadataTestCaseSQLLiteInMemory(MetadataTestCase, MetadataTestBase, TestCa
           module: file
           configuration:
             path: {testpath}/data
-        metadataEngine: sqlite://       
+        databaseEngine: sqlite://       
         """
 
 
-class MetadataTestCasePostgreSQL(MetadataTestCase, MetadataTestBase, TestCase):
+class DatabaseBackendTestPostgreSQL(DatabaseBackendTestCase, DatabaseBackendTestBase, TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
@@ -258,5 +258,5 @@ class MetadataTestCasePostgreSQL(MetadataTestCase, MetadataTestBase, TestCase):
           module: file
           configuration:
             path: {testpath}/data
-        metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
+        databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
         """

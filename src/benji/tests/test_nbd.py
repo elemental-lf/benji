@@ -8,9 +8,9 @@ from unittest import TestCase
 
 from benji.benji import BenjiStore
 from benji.logging import logger
-from benji.metadata import VersionUid
+from benji.database import VersionUid
 from benji.nbdserver import NbdServer
-from benji.tests.testcase import BenjiTestCase
+from benji.tests.testcase import BenjiTestCaseBase
 
 kB = 1024
 MB = kB * 1024
@@ -145,7 +145,7 @@ class NbdTestCase:
         self.nbd_server.stop()
 
 
-class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCase, TestCase):
+class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
 
     SERVER_PORT = 1315
 
@@ -190,11 +190,11 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: sqlite:///{testpath}/benji.sqlite
+            databaseEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
-class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCase, TestCase):
+class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
 
     SERVER_PORT = 1315
 
@@ -245,7 +245,7 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
             nbd:
               cacheDirectory: {testpath}/nbd-cache
             """

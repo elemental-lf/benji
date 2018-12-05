@@ -18,7 +18,7 @@ from benji.storage.dicthmac import DictHMAC
 from benji.exception import ConfigurationError, BenjiException
 from benji.factory import TransformFactory
 from benji.logging import logger
-from benji.metadata import VersionUid, DereferencedBlock, BlockUid, Block
+from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
 
@@ -79,7 +79,7 @@ class StorageBase(metaclass=ABCMeta):
                     salt=hmac_kdf_salt, iterations=hmac_kdf_iterations, key_length=32, password=hmac_password)
         self._dict_hmac: Optional[DictHMAC] = None
         if hmac_key is not None:
-            logger.info('Enabling HMAC metadata integrity protection for storage {}.'.format(name))
+            logger.info('Enabling HMAC object metadata integrity protection for storage {}.'.format(name))
             self._dict_hmac = DictHMAC(hmac_key=self._HMAC_KEY, secret_key=hmac_key)
 
         self.read_throttling = TokenBucket()
@@ -133,7 +133,7 @@ class StorageBase(metaclass=ABCMeta):
 
         for required_key in [self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
             if required_key not in metadata:
-                raise KeyError('Required metadata key {} is missing for object {}.'.format(required_key, key))
+                raise KeyError('Required object metadata key {} is missing for object {}.'.format(required_key, key))
 
         if data_length != metadata[self._OBJECT_SIZE_KEY]:
             raise ValueError('Length mismatch for object {}. Expected: {}, got: {}.'.format(
@@ -227,12 +227,12 @@ class StorageBase(metaclass=ABCMeta):
         try:
             metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
         except (KeyError, ValueError) as exception:
-            raise InvalidBlockException('Metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid),
+            raise InvalidBlockException('Object metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid),
                                         block) from exception
 
         if self._CHECKSUM_KEY not in metadata:
             raise InvalidBlockException(
-                'Required metadata key {} is missing for block {} (UID {}).'.format(self._CHECKSUM_KEY, block.id,
+                'Required object metadata key {} is missing for block {} (UID {}).'.format(self._CHECKSUM_KEY, block.id,
                                                                                     block.uid), block)
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
@@ -263,7 +263,7 @@ class StorageBase(metaclass=ABCMeta):
     def check_block_metadata(self, *, block: DereferencedBlock, data_length: Optional[int], metadata: Dict) -> None:
         # Existence of keys has already been checked in _decode_metadata() and _read()
         if metadata[self._SIZE_KEY] != block.size:
-            raise ValueError('Mismatch between recorded block size and data length in metadata for block {} (UID {}). '
+            raise ValueError('Mismatch between recorded block size and data length in object metadata for block {} (UID {}). '
                              'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, metadata[self._SIZE_KEY]))
 
         if data_length and data_length != block.size:
@@ -271,7 +271,7 @@ class StorageBase(metaclass=ABCMeta):
                              'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, data_length))
 
         if block.checksum != metadata[self._CHECKSUM_KEY]:
-            raise ValueError('Mismatch between recorded block checksum and checksum in metadata for block {} (UID {}). '
+            raise ValueError('Mismatch between recorded block checksum and checksum in object metadata for block {} (UID {}). '
                              'Expected: {}, got: {}.'.format(
                                  block.id,
                                  block.uid,

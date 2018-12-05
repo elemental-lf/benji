@@ -9,7 +9,7 @@ from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.scripts.benji import hints_from_rbd_diff
-from benji.tests.testcase import BenjiTestCase
+from benji.tests.testcase import BenjiTestCaseBase
 
 kB = 1024
 MB = kB * 1024
@@ -120,7 +120,7 @@ class SmokeTestCase:
             benji_obj = self.benjiOpen(initdb=initdb)
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.close()
-            print('  Restore of version from data backend successful')
+            print('  Restore of version successful')
 
             benji_obj = self.benjiOpen(initdb=initdb)
             blocks = benji_obj.ls_version(version_uid)
@@ -205,7 +205,7 @@ class SmokeTestCase:
                     storage_name = 's1'
 
 
-class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
+class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -261,11 +261,11 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: sqlite:///{testpath}/benji.sqlite
+            databaseEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
-class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCase, TestCase):
+class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCaseBase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -321,11 +321,11 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
 
-class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
+class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCaseBase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -389,11 +389,11 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
             """
 
 
-class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCase, TestCase):
+class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCaseBase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -463,11 +463,11 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, BenjiTestCase, TestCas
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji              
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji              
             """
 
 
-class SmokeTestCasePostgreSQL_B2(SmokeTestCase, BenjiTestCase, TestCase):
+class SmokeTestCasePostgreSQL_B2(SmokeTestCase, BenjiTestCaseBase, TestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'
@@ -531,5 +531,5 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase, BenjiTestCase, TestCase):
                 kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
                 kdfIterations: 20000
                 password: "this is a very secret password"
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji              
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji              
             """

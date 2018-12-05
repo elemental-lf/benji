@@ -21,7 +21,7 @@ from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
-from benji.metadata import Version, VersionUid
+from benji.database import Version, VersionUid
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint
 
@@ -64,12 +64,12 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def restore(self, version_uid, destination, sparse, force, metadata_backend_less=False):
+    def restore(self, version_uid, destination, sparse, force, database_backend_less=False):
         version_uid = VersionUid.create_from_readables(version_uid)
         benji_obj = None
         try:
-            benji_obj = Benji(self.config, in_memory=metadata_backend_less)
-            if metadata_backend_less:
+            benji_obj = Benji(self.config, in_memory_database=database_backend_less)
+            if database_backend_less:
                 benji_obj.metadata_restore([version_uid])
             benji_obj.restore(version_uid, destination, sparse, force)
         finally:
@@ -447,8 +447,9 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def initdb(self):
-        Benji(self.config, initdb=True)
+    def init(self):
+        benji_obj = Benji(self.config, init_database=True)
+        benji_obj.close()
 
     def enforce_retention_policy(self, rules_spec, version_names, dry_run, keep_backend_metadata):
         benji_obj = None
@@ -532,7 +533,7 @@ def main():
         '-M',
         '--metadata-backend-less',
         action='store_true',
-        help='Restore directly from data backend without requiring the metadata backend')
+        help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
     p.add_argument('destination', help='Destination URL')\
         .completer=ChoicesCompleter(('file://', 'rbd://'))
@@ -570,7 +571,7 @@ def main():
     p = subparsers_root.add_parser('rm', help='Remove one or more versions')
     p.add_argument('-f', '--force', action='store_true', help='Force removal (overrides protection of recent versions)')
     p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup on the data backend')
+        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='rm')
 
@@ -578,13 +579,13 @@ def main():
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
     p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup on the data backend')
+        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
     p.add_argument('rules_spec', help='Retention rules specification')
     p.add_argument('version_names', metavar='version_name', nargs='+', help='One or more version names')
     p.set_defaults(func='enforce_retention_policy')
 
     # CLEANUP
-    p = subparsers_root.add_parser('cleanup', help='Cleanup no longer referenced blocks on the data backend')
+    p = subparsers_root.add_parser('cleanup', help='Cleanup no longer referenced blocks')
     p.set_defaults(func='cleanup')
 
     # PROTECT
@@ -710,21 +711,21 @@ def main():
 
     # METADATA BACKUP
     p = subparsers_root.add_parser(
-        'netadata-backup', help='Back up the metadata of one or more versions to the data backend')
+        'netadata-backup', help='Back up the metadata of one or more versions')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
-    p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata in the data backend')
+    p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata backups')
     p.set_defaults(func='metadata_backup')
 
     # METADATA RESTORE
     p = subparsers_root.add_parser(
-        'metadata-restore', help='Restore the metadata of one ore more versions from the data backend')
-    p.add_argument('-S', '--storage', help='Destination storage (if unspecified the default is used)')
+        'metadata-restore', help='Restore the metadata of one ore more versions')
+    p.add_argument('-S', '--storage', help='Source storage (if unspecified the default is used)')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
     p.set_defaults(func='metadata_restore')
 
     # METADATA LS
     p = subparsers_root.add_parser('metadata-ls', help='List the version metadata backup')
-    p.add_argument('-S', '--storage', help='Destination storage (if unspecified the default is used)')
+    p.add_argument('-S', '--storage', help='Source storage (if unspecified the default is used)')
     p.set_defaults(func='metadata_ls')
 
     # STATS
@@ -738,8 +739,8 @@ def main():
     p.set_defaults(func='version_info')
 
     # INITDB
-    p = subparsers_root.add_parser('initdb', help='Initialize the database (will not delete existing tables or data)')
-    p.set_defaults(func='initdb')
+    p = subparsers_root.add_parser('init', help='Initialize the database (will not delete existing tables or data)')
+    p.set_defaults(func='init')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

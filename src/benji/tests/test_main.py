@@ -5,13 +5,13 @@ from unittest import TestCase
 from unittest.mock import Mock
 
 import benji.benji
-from benji.metadata import BlockUid, VersionUid
-from benji.tests.testcase import BenjiTestCase
+from benji.database import BlockUid, VersionUid
+from benji.tests.testcase import BenjiTestCaseBase
 
 BLOCK_SIZE = 1024 * 4096
 
 
-class MiscTestCase(BenjiTestCase, TestCase):
+class MiscTestCase(BenjiTestCaseBase, TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
@@ -52,7 +52,7 @@ class MiscTestCase(BenjiTestCase, TestCase):
         backend.rm(block.uid)
 
     def test_metabackend_set_version(self):
-        backend = self.metadata_backend
+        backend = self.database_backend
         name = 'backup-mysystem1-20150110140015'
         snapshot_name = 'snapname'
         version = backend.create_version(name, snapshot_name, 50000, 5000, True)
@@ -66,11 +66,11 @@ class MiscTestCase(BenjiTestCase, TestCase):
         self.assertTrue(version.valid)
 
     def test_metabackend_version_not_found(self):
-        backend = self.metadata_backend
+        backend = self.database_backend
         self.assertRaises(KeyError, lambda: backend.get_version(VersionUid(123)))
 
     def test_metabackend_block(self):
-        backend = self.metadata_backend
+        backend = self.database_backend
         name = 'backup-mysystem1-20150110140015'
         snapshot_name = 'snapname'
         block_uid = BlockUid(1, 2)
@@ -91,7 +91,7 @@ class MiscTestCase(BenjiTestCase, TestCase):
 
     def test_metabackend_blocks_by_version(self):
         TESTLEN = 10
-        backend = self.metadata_backend
+        backend = self.database_backend
         version_name = 'backup-mysystem1-20150110140015'
         snapshot_name = 'snapname'
         version = backend.create_version(

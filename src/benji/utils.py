@@ -94,7 +94,7 @@ class BlockHash:
             raise ConfigurationError(
                 'Unsupported or invalid block hash arguments: {}.'.format(hash_kwargs)) from exception
 
-        from benji.metadata import Block
+        from benji.database import Block
         if len(hash.digest()) > Block.MAXIMUM_CHECKSUM_LENGTH:
             raise ConfigurationError('Specified block hash {} exceeds maximum digest length of {} bytes.'.format(
                 hash_name, Block.MAXIMUM_CHECKSUM_LENGTH))

@@ -2,7 +2,7 @@ import random
 import unittest
 
 from benji.blockuidhistory import BlockUidHistory
-from benji.metadata import BlockUid
+from benji.database import BlockUid
 
 
 class BlockUidHistoryTestCase(unittest.TestCase):

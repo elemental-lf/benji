@@ -32,7 +32,7 @@ configuration:
       empty: False
       min: 0
       default: 6
-    metadataEngine:
+    databaseEngine:
       type: string
       required: True
       empty: False

@@ -6,9 +6,9 @@ import random
 from io import StringIO
 from unittest import TestCase
 
-from benji.metadata import MetadataBackend, VersionUid
+from benji.database import DatabaseBackend, VersionUid
 from benji.scripts.benji import hints_from_rbd_diff
-from benji.tests.testcase import BenjiTestCase
+from benji.tests.testcase import BenjiTestCaseBase
 
 kB = 1024
 MB = kB * 1024
@@ -91,7 +91,7 @@ class ImportExportTestCase():
             print(f.getvalue())
             a = f.getvalue()
         benji_obj.close()
-        self.assertEqual(MetadataBackend._METADATA_VERSION, export['metadataVersion'])
+        self.assertEqual(DatabaseBackend._METADATA_VERSION, export['metadataVersion'])
         self.assertIsInstance(export['versions'], list)
         self.assertTrue(len(export['versions']) == 3)
         version = export['versions'][0]
@@ -1237,7 +1237,7 @@ class ImportExportTestCase():
             """
 
 
-class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCase, TestCase):
+class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCaseBase, TestCase):
 
     VERSIONS = 3
 
@@ -1256,13 +1256,13 @@ class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCase, TestCase
             ios:
               - name: file
                 module: file
-            metadataEngine: sqlite:///{testpath}/benji.sqlite
+            databaseEngine: sqlite:///{testpath}/benji.sqlite
             """
 
 
 class ImportExportTestCasePostgreSQL_File(
         ImportExportTestCase,
-        BenjiTestCase,
+        BenjiTestCaseBase,
 ):
 
     VERSIONS = 3
@@ -1282,5 +1282,5 @@ class ImportExportTestCasePostgreSQL_File(
             ios:
               - name: file
                 module: file                                 
-            metadataEngine: postgresql://benji:verysecret@localhost:15432/benji
+            databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
             """

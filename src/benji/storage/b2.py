@@ -145,8 +145,7 @@ class Storage(ReadCacheStorageBase):
                 raise
 
     def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
-        """ Deletes many keys from the data backend and returns a list
-        of keys that couldn't be deleted.
+        """ Deletes many keys from the storage and returns a list of keys that couldn't be deleted.
         """
         errors = []
         for key in keys:

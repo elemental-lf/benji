@@ -12,7 +12,7 @@ from benji.config import _ConfigDict, Config
 from benji.exception import UsageError, ConfigurationError
 from benji.io.base import IOBase
 from benji.logging import logger
-from benji.metadata import DereferencedBlock
+from benji.database import DereferencedBlock
 
 
 class IO(IOBase):

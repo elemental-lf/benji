@@ -1,7 +1,7 @@
 from sparsebitfield import SparseBitfield
 from typing import Dict
 
-from benji.metadata import BlockUid
+from benji.database import BlockUid
 
 
 class BlockUidHistory:

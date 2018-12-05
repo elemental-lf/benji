@@ -1,10 +1,10 @@
 import random
 
-from benji.metadata import Block, BlockUid, VersionUid
-from benji.tests.testcase import DataBackendTestCase
+from benji.database import Block, BlockUid, VersionUid
+from benji.tests.testcase import StorageTestCaseBase
 
 
-class DatabackendTestCase(DataBackendTestCase):
+class StorageTestCase(StorageTestCaseBase):
 
     def test_save_rm_sync(self):
         NUM_BLOBS = 15

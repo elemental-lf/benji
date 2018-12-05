@@ -53,8 +53,8 @@ Please see :ref:`configuration` for a full list of configuration options.
 
 1. Initialize the database::
 
-    $ benji initdb
-        INFO: $ benji initdb
+    $ benji init
+        INFO: $ benji init
 
    .. NOTE:: Initializing the database multiple times does **not** destroy any
        data. Instead it will fail because it finds already existing tables.

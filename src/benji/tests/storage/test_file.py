@@ -1,13 +1,13 @@
 import unittest
 
-from . import DatabackendTestCase
+from . import StorageTestCase
 
 
-class test_file(DatabackendTestCase, unittest.TestCase):
+class StorageTestFile(StorageTestCase, unittest.TestCase):
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /dev/stderr
-        metadataEngine: sqlite://
+        databaseEngine: sqlite://
         defaultStorage: storage-1
         
         storages:

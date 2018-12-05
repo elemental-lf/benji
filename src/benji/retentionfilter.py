@@ -32,7 +32,7 @@ from typing import List, Dict, Sequence
 
 from benji.exception import UsageError
 from benji.logging import logger
-from benji.metadata import Version
+from benji.database import Version
 
 
 class RetentionFilter:

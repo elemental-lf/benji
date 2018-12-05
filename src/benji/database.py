@@ -397,7 +397,7 @@ class Lock(Base):
         return "<Lock(host='%s' process_id='%s' lock_name='%s')>" % (self.host, self.process_id, self.lock_name)
 
 
-class MetadataBackend:
+class DatabaseBackend:
     _METADATA_VERSION = '1.0.0'
     _METADATA_VERSION_KEY = 'metadataVersion'
     _METADATA_VERSION_REGEX = '\d+\.\d+\.\d+'
@@ -407,17 +407,17 @@ class MetadataBackend:
 
     def __init__(self, config: Config, in_memory: bool = False) -> None:
         if not in_memory:
-            self._engine = sqlalchemy.create_engine(config.get('metadataEngine', types=str))
+            self._engine = sqlalchemy.create_engine(config.get('databaseEngine', types=str))
         else:
-            logger.info('Running in metadata-backend-less mode.')
+            logger.info('Running with ephemeral in-memory database.')
             self._engine = sqlalchemy.create_engine('sqlite://')
 
-    def open(self, _migratedb: bool = True) -> 'MetadataBackend':
-        if _migratedb:
+    def open(self, _migrate: bool = True) -> 'DatabaseBackend':
+        if _migrate:
             try:
-                self.migrate_db()
+                self.migrate()
             except Exception:
-                raise RuntimeError('Invalid database ({}). Maybe you need to run initdb first?'.format(self._engine.url))
+                raise RuntimeError('Invalid database ({}). Maybe you need to run init first?'.format(self._engine.url))
 
         # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
         # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
@@ -434,7 +434,7 @@ class MetadataBackend:
         self._commit_block_counter = 0
         return self
 
-    def migrate_db(self) -> None:
+    def migrate(self) -> None:
         # FIXME: fix to use supplied config
         # migrate the db to the lastest version
         from alembic.config import Config
@@ -445,9 +445,9 @@ class MetadataBackend:
             #command.upgrade(alembic_cfg, "head", sql=True)
             command.upgrade(alembic_cfg, "head")
 
-    def initdb(self, _destroydb: bool = False, _migratedb: bool = True) -> None:
+    def init(self, _destroy: bool = False, _migrate: bool = True) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
-        if _destroydb:
+        if _destroy:
             Base.metadata.drop_all(self._engine)
 
         # This will create all tables. It will NOT delete any tables or data.
@@ -457,7 +457,7 @@ class MetadataBackend:
             self._engine, checkfirst=False)  # checkfirst False will raise when it finds an existing table
 
         # FIXME: fix to use supplied config
-        if _migratedb:
+        if _migrate:
             from alembic.config import Config
             from alembic import command
             alembic_cfg = Config(

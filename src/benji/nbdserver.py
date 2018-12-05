@@ -41,7 +41,7 @@ from typing import Generator, Optional, cast, Any
 
 from benji.benji import BenjiStore
 from benji.exception import NbdServerAbortedNegotiationError
-from benji.metadata import VersionUid, Version
+from benji.database import VersionUid, Version
 
 
 class NbdServer:

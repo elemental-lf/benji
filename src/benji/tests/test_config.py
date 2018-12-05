@@ -3,17 +3,17 @@ import unittest
 
 from benji.config import Config, _ConfigList
 from benji.exception import ConfigurationError
-from benji.tests.testcase import TestCase
+from benji.tests.testcase import TestCaseBase
 
 
-class ConfigTestCase(TestCase, unittest.TestCase):
+class ConfigTestCase(TestCaseBase, unittest.TestCase):
 
     CONFIG = """
         configurationVersion: '1.0.0'
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1
-        metadataEngine: sqlite:////var/lib/benji/benji.sqlite
+        databaseEngine: sqlite:////var/lib/benji/benji.sqlite
         storages:
           - name: file
             module: file
@@ -40,7 +40,7 @@ class ConfigTestCase(TestCase, unittest.TestCase):
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1
-        metadataEngine: sqlite:////var/lib/benji/benji.sqlite
+        databaseEngine: sqlite:////var/lib/benji/benji.sqlite
         storages:
           - name: file
             module: file
