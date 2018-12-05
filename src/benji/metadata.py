@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import platform
+import re
 import sqlite3
 import time
 import uuid
@@ -397,10 +398,9 @@ class Lock(Base):
 
 
 class MetadataBackend:
-    """ Stores meta data in an sql database """
-
-    METADATA_VERSION = '1.0.0'
-
+    _METADATA_VERSION = '1.0.0'
+    _METADATA_VERSION_KEY = 'metadataVersion'
+    _METADATA_VERSION_REGEX = '\d+\.\d+\.\d+'
     _COMMIT_EVERY_N_BLOCKS = 1000
 
     _locking = None
@@ -860,7 +860,7 @@ class MetadataBackend:
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
 
         root_dict = root_dict.copy()
-        root_dict['metadataVersion'] = self.METADATA_VERSION
+        root_dict[self._METADATA_VERSION_KEY] = self._METADATA_VERSION
 
         json.dump(
             root_dict,
@@ -881,13 +881,19 @@ class MetadataBackend:
             raise InputDataError('Import file is invalid.') from exception
         if json_input is None:
             raise InputDataError('Import file is empty.')
-        if 'metadataVersion' not in json_input:
-            raise InputDataError('Wrong import format.')
-        if json_input['metadataVersion'] != '1.0.0':
-            raise InputDataError('Wrong import format version {}.'.format(json_input['metadataVersion']))
+
+        if self._METADATA_VERSION_KEY not in json_input:
+            raise InputDataError('Import file is missing required key "{}".'.format(self._METADATA_VERSION_KEY))
+        metadata_version = json_input[self._METADATA_VERSION_KEY]
+        if not re.fullmatch(self._METADATA_VERSION_REGEX, metadata_version):
+            raise InputDataError('Import file has an invalid vesion of "{}".'.format(metadata_version))
+        import_method_name = 'import_{}'.format(metadata_version.replace('.', '_'))
+        import_method = getattr(self, import_method_name, None)
+        if import_method is None or not callable(import_method):
+            raise InputDataError('Unsupported import format version "{}".'.format(metadata_version))
 
         try:
-            version_uids = self.import_1_0_0(json_input)
+            version_uids = import_method(json_input)
             self._session.commit()
         except:
             self._session.rollback()

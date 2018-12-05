@@ -91,7 +91,7 @@ class ImportExportTestCase():
             print(f.getvalue())
             a = f.getvalue()
         benji_obj.close()
-        self.assertEqual(MetadataBackend.METADATA_VERSION, export['metadataVersion'])
+        self.assertEqual(MetadataBackend._METADATA_VERSION, export['metadataVersion'])
         self.assertIsInstance(export['versions'], list)
         self.assertTrue(len(export['versions']) == 3)
         version = export['versions'][0]
