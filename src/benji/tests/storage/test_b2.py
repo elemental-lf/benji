@@ -19,8 +19,8 @@ class test_b2(DatabackendTestCase, unittest.TestCase):
             applicationKeyFile: ../../../.b2-application-key.txt
             bucketName: elemental-backy2-test
             accountInfoFile: {testpath}/b2_account_info
-            writeObjectAttempts: 1
-            readObjectAttempts: 1
+            writeObjectAttempts: 3
+            readObjectAttempts: 3
             uploadAttempts: 5
             consistencyCheckWrites: True
             simultaneousWrites: 5

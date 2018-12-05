@@ -42,10 +42,10 @@ configuration:
     writeObjectAttempts:
       type: integer
       empty: False
-      default: 1
+      default: 3
       min: 1
     readObjectAttempts:
       type: integer
       empty: False
-      default: 1
+      default: 3
       min: 1
