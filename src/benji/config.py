@@ -34,10 +34,11 @@ class _ConfigList(list):
 class Config:
     _CONFIG_DIRS = ['/etc', '/etc/benji']
     _CONFIG_FILE = 'benji.yaml'
-
+    _CONFIGURATION_VERSION_KEY = 'configurationVersion'
+    _CONFIGURATION_VERSION_REGEX = '\d+\.\d+\.\d+'
+    _PARENTS_KEY = 'parents'
     _SCHEMA_VERSIONS = ['1.0.0']
     _YAML_SUFFIX = '.yaml'
-    _PARENTS_KEY = 'parents'
 
     _schema_registry: Dict[str, Dict] = {}
 
@@ -147,11 +148,11 @@ class Config:
             if config is None:
                 raise ConfigurationError('Configuration string is empty.')
 
-        if 'configurationVersion' not in config:
-            raise ConfigurationError('Configuration is missing mandatory key "configurationVersion".')
+        if self._CONFIGURATION_VERSION_KEY not in config:
+            raise ConfigurationError('Configuration is missing required key "{}".'.format(self._CONFIGURATION_VERSION_KEY))
 
-        version = config['configurationVersion']
-        if not re.fullmatch('\d+\.\d+\.\d+', version):
+        version = config[self._CONFIGURATION_VERSION_KEY]
+        if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):
             raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
 
         if version not in self._SCHEMA_VERSIONS:
