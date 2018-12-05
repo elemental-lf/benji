@@ -89,7 +89,7 @@ class NbdServer:
     # command flags (upper 16 bit of request type)
     NBD_CMD_FLAG_FUA = (1 << 16)
 
-    def __init__(self, address: str, store: BenjiStore, read_only: bool=True) -> None:
+    def __init__(self, address: str, store: BenjiStore, read_only: bool = True) -> None:
         self.log = logging.getLogger(__package__)
 
         self.address = address
@@ -101,7 +101,8 @@ class NbdServer:
         self.loop = asyncio.get_event_loop()
 
     @asyncio.coroutine
-    def nbd_response(self, writer: StreamWriter, handle: int, error: int=0, data: bytes=None) -> Generator[Any, None, None]:
+    def nbd_response(self, writer: StreamWriter, handle: int, error: int = 0,
+                     data: bytes = None) -> Generator[Any, None, None]:
         writer.write(struct.pack('>LLQ', self.NBD_RESPONSE, error, handle))
         if data:
             writer.write(data)
@@ -254,7 +255,8 @@ class NbdServer:
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_WRITE: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
+                            writer, handle,
+                            error=exception.errno if hasattr(exception, 'errno') else errno.EIO)  # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle)
@@ -265,7 +267,8 @@ class NbdServer:
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_READ: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
+                            writer, handle,
+                            error=exception.errno if hasattr(exception, 'errno') else errno.EIO)  # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle, data=data)
@@ -281,7 +284,8 @@ class NbdServer:
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_FLUSH: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(
-                            writer, handle, error=exception.errno if hasattr(exception, 'errno') else errno.EIO) # type: ignore
+                            writer, handle,
+                            error=exception.errno if hasattr(exception, 'errno') else errno.EIO)  # type: ignore
                         continue
 
                     yield from self.nbd_response(writer, handle)

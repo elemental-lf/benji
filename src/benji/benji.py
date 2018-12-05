@@ -995,7 +995,8 @@ class BenjiStore:
     def close(self, version) -> None:
         self._benji_obj._locking.unlock_version(version.uid)
 
-    def get_versions(self, version_uid: VersionUid=None, version_name: str=None, version_snapshot_name: str=None) -> List[Version]:
+    def get_versions(self, version_uid: VersionUid = None, version_name: str = None,
+                     version_snapshot_name: str = None) -> List[Version]:
         return self._benji_obj._metadata_backend.get_versions(
             version_uid=version_uid, version_name=version_name, version_snapshot_name=version_snapshot_name)
 
@@ -1040,7 +1041,7 @@ class BenjiStore:
         digest = hashlib.md5(filename.encode('ascii')).hexdigest()
         return '{}/{}/{}-{}'.format(digest[0:2], digest[2:4], digest[:8], filename)
 
-    def _read(self, version: Version, block: Block, offset: int=0, length: int=None) -> bytes:
+    def _read(self, version: Version, block: Block, offset: int = 0, length: int = None) -> bytes:
         if block.uid not in self._block_cache:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             data = storage.read_sync(block)
