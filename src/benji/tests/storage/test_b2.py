@@ -45,7 +45,3 @@ class StorageTestB2(StorageTestCase, TestCase):
             - name: file
               module: file  
         """
-
-
-if __name__ == '__main__':
-    unittest.main()

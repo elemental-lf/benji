@@ -2,9 +2,10 @@ from sparsebitfield import SparseBitfield
 from typing import Dict
 
 from benji.database import BlockUid
+from benji.repr import ReprMixIn
 
 
-class BlockUidHistory:
+class BlockUidHistory(ReprMixIn):
 
     def __init__(self) -> None:
         self._history: Dict[int, Dict[int, SparseBitfield]] = {}

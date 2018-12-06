@@ -51,7 +51,3 @@ class test_s3(StorageTestCase, TestCase):
             - name: file
               module: file                  
         """
-
-
-if __name__ == '__main__':
-    unittest.main()

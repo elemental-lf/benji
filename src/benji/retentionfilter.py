@@ -33,11 +33,12 @@ from typing import List, Dict, Sequence
 from benji.exception import UsageError
 from benji.logging import logger
 from benji.database import Version
+from benji.repr import ReprMixIn
 
 
-class RetentionFilter:
+class RetentionFilter(ReprMixIn):
 
-    valid_categories = ('latest', 'hours', 'days', 'weeks', 'months', 'years')
+    _valid_categories = ('latest', 'hours', 'days', 'weeks', 'months', 'years')
 
     # This method is taken from timegaps/main.py, its original name is parse_rules_from_cmdline.
     @classmethod
@@ -51,7 +52,7 @@ class RetentionFilter:
             if match:
                 category = match.group(1)
                 timecount = int(match.group(2))
-                if category not in cls.valid_categories:
+                if category not in cls._valid_categories:
                     raise ValueError('Time category {} in retention policy is invalid.'.format(category))
                 if category in rules_dict:
                     raise ValueError('Time category {} listed more than once in retention policy.'.format(category))
@@ -62,7 +63,7 @@ class RetentionFilter:
             raise ValueError('Invalid retention policy element {}.'.format(token))
 
         rules: OrderedDict[str, int] = OrderedDict()
-        for category in cls.valid_categories:
+        for category in cls._valid_categories:
             if category in rules_dict:
                 rules[category] = rules_dict[category]
 
@@ -94,17 +95,17 @@ class RetentionFilter:
         dismissed_versions = []
         for version in versions:
             if version.protected:
-                logger.info('Not considering version {}, it is protected.'.format(version.uid.readable))
+                logger.info('Not considering version {}, it is protected.'.format(version.uid.v_string))
                 continue
 
             try:
                 td = _Timedelta(version.date.timestamp(), self.reference_time)
             except _TimedeltaError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)
-                logger.warning('Version {}: {}'.format(version.uid.readable, exception))
+                logger.warning('Version {}: {}'.format(version.uid.v_string, exception))
                 continue
 
-            logger.debug('Time and time delta for version {} are {} and {}.'.format(version.uid.readable, version.date,
+            logger.debug('Time and time delta for version {} are {} and {}.'.format(version.uid.v_string, version.date,
                                                                                     td))
 
             for category in categories:
@@ -132,7 +133,7 @@ class _TimedeltaError(RuntimeError):
     pass
 
 
-class _Timedelta:
+class _Timedelta(ReprMixIn):
     """
     Represent how many years, months, weeks, days, hours time `t` (float,
     seconds) is earlier than reference time `ref`. Represent these metrics
@@ -153,7 +154,3 @@ class _Timedelta:
         self.weeks = int(seconds_earlier // 604800)  # 60 * 60 * 24 * 7
         self.months = int(seconds_earlier // 2592000)  # 60 * 60 * 24 * 30
         self.years = int(seconds_earlier // 31536000)  # 60 * 60 * 24 * 365
-
-    def __repr__(self) -> str:
-        return '<_TimeDelta(hours={}, days={}, weeks={}, months={}, years={})>'\
-                    .format(self.hours, self.days, self.weeks, self.months, self.years)

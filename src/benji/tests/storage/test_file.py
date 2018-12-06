@@ -26,7 +26,3 @@ class StorageTestFile(StorageTestCase, TestCase):
             - name: file
               module: file              
         """
-
-
-if __name__ == '__main__':
-    unittest.main()

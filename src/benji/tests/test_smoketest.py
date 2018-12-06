@@ -467,7 +467,8 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             """
 
 
-class SmokeTestCasePostgreSQL_B2(SmokeTestCase, TestCase):
+class SmokeTestCasePostgreSQL_B2(
+        SmokeTestCase,):
 
     CONFIG = """
             configurationVersion: '1.0.0'

@@ -98,12 +98,12 @@ class NbdTestCase:
         self.subprocess_run(
             args=['sudo', 'nbd-client', '127.0.0.1', '-p',
                   str(self.SERVER_PORT), '-l'],
-            success_regexp='^Negotiation: ..\n{}\n$'.format(version_uid[0].readable))
+            success_regexp='^Negotiation: ..\n{}\n$'.format(version_uid[0].v_string))
 
         version_uid, size = version_uid
         self.subprocess_run(
             args=[
-                'sudo', 'nbd-client', '-N', version_uid.readable, '127.0.0.1', '-p',
+                'sudo', 'nbd-client', '-N', version_uid.v_string, '127.0.0.1', '-p',
                 str(self.SERVER_PORT), self.NBD_DEVICE
             ],
             success_regexp='^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$')

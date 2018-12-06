@@ -149,7 +149,8 @@ class Config:
                 raise ConfigurationError('Configuration string is empty.')
 
         if self._CONFIGURATION_VERSION_KEY not in config:
-            raise ConfigurationError('Configuration is missing required key "{}".'.format(self._CONFIGURATION_VERSION_KEY))
+            raise ConfigurationError('Configuration is missing required key "{}".'.format(
+                self._CONFIGURATION_VERSION_KEY))
 
         version = config[self._CONFIGURATION_VERSION_KEY]
         if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):

@@ -107,7 +107,7 @@ class StorageTestCase(StorageTestCaseBase):
             self.storage.multi_delete = False
             self._test_rm_many()
         else:
-            self.skipTest('not applicable to this backend')
+            self.skipTest('not applicable to this storage')
 
     def test_not_exists(self):
         block = Block(uid=BlockUid(1, 2), size=15, checksum='00000000000000000000')

@@ -1,3 +1,4 @@
+import reprlib
 from unittest import TestCase
 
 from benji.database import BlockUid, VersionUid

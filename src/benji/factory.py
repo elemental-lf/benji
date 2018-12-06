@@ -8,6 +8,7 @@ from benji.config import Config, _ConfigList
 
 from benji.exception import ConfigurationError, InternalError, UsageError
 from benji.io.base import IOBase
+from benji.repr import ReprMixIn
 
 
 class _StorageFactoryModule(NamedTuple):
@@ -15,7 +16,7 @@ class _StorageFactoryModule(NamedTuple):
     arguments: Dict[str, Any]
 
 
-class StorageFactory:
+class StorageFactory(ReprMixIn):
 
     _MODULE = 'storage'
 
@@ -118,7 +119,7 @@ class StorageFactory:
             raise ConfigurationError('Storage name {} is undefined.'.format(name))
 
 
-class TransformFactory:
+class TransformFactory(ReprMixIn):
 
     _MODULE = 'transform'
 
@@ -182,7 +183,7 @@ class TransformFactory:
         return cls._instances[name]
 
 
-class IOFactory:
+class IOFactory(ReprMixIn):
 
     _MODULE = 'io'
 

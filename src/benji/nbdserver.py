@@ -42,9 +42,10 @@ from typing import Generator, Optional, cast, Any
 from benji.benji import BenjiStore
 from benji.exception import NbdServerAbortedNegotiationError
 from benji.database import VersionUid, Version
+from benji.repr import ReprMixIn
 
 
-class NbdServer:
+class NbdServer(ReprMixIn):
     """
     Class implementing the server.
     """
@@ -169,7 +170,7 @@ class NbdServer:
                         yield from writer.drain()
                         continue
 
-                    self.log.info("[%s:%s] Negotiated export: %s" % (host, port, version_uid.readable))
+                    self.log.info("[%s:%s] Negotiated export: %s" % (host, port, version_uid.v_string))
 
                     # we have negotiated a version and it will be used
                     # until the client disconnects
@@ -197,7 +198,7 @@ class NbdServer:
 
                 elif opt == self.NBD_OPT_LIST:
                     for version in self.store.get_versions():
-                        version_encoded = version.uid.readable.encode("ascii")
+                        version_encoded = version.uid.v_string.encode("ascii")
                         writer.write(
                             struct.pack(">QLLL", self.NBD_REPLY, opt, self.NBD_REP_SERVER,
                                         len(version_encoded) + 4))

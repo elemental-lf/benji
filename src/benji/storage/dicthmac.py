@@ -5,9 +5,10 @@ from Crypto.Hash import HMAC, SHA256
 from typing_extensions import Final
 
 from benji.exception import InternalError
+from benji.repr import ReprMixIn
 
 
-class DictHMAC:
+class DictHMAC(ReprMixIn):
 
     _CHARSET = 'utf-8'
 

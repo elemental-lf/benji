@@ -22,6 +22,7 @@ from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
 from sqlalchemy.types import TypeDecorator
+from benji.repr import ReprMixIn
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, NoChange, AlreadyLocked
@@ -66,21 +67,24 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
         return version_uids if input_is_list else version_uids[0]
 
     @property
-    def to_int(self) -> int:
+    def integer(self) -> int:
         return self._value
 
     @property
-    def readable(self) -> str:
+    def v_string(self) -> str:
         return 'V' + str(self._value).zfill(10)
 
+    def __str__(self) -> str:
+        return self.v_string
+
     def __repr__(self) -> str:
-        return self.readable
+        return str(self.integer)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, VersionUid):
-            return self.to_int == other.to_int
+            return self.integer == other.integer
         elif isinstance(other, int):
-            return self.to_int == other
+            return self.integer == other
         else:
             return False
 
@@ -88,7 +92,7 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
         return not self.__eq__(other)
 
     def __hash__(self) -> int:
-        return self.to_int
+        return self.integer
 
     # Start: Implements StorageKeyMixIn
     _STORAGE_PREFIX = 'versions/'
@@ -98,11 +102,11 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
         return cls._STORAGE_PREFIX
 
     def _storage_object_to_key(self) -> str:
-        return self.readable
+        return self.v_string
 
     @classmethod
     def _storage_key_to_object(cls, key: str) -> 'VersionUid':
-        vl = len(VersionUid(1).readable)
+        vl = len(VersionUid(1).v_string)
         if len(key) != vl:
             raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(key, vl))
         return cast(Version, VersionUid.create_from_readables(key))
@@ -126,7 +130,7 @@ class VersionUidType(TypeDecorator):
                 raise InternalError(
                     'Supplied string value "{}" represents no integer VersionUidType.process_bind_param'.format(value)) from None
         elif isinstance(value, VersionUid):
-            return value.to_int
+            return value.integer
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
@@ -176,7 +180,7 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
     def __composite_values__(self) -> Tuple[int, int]:
         return self.left, self.right
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return "{:x}-{:x}".format(self.left if self.left is not None else 0, self.right if self.right is not None else 0)
 
     def __eq__(self, other: object) -> bool:
@@ -224,7 +228,7 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
     # End: Implements StorageKeyMixIn
 
 
-Base: Any = declarative_base()
+Base: Any = declarative_base(cls=ReprMixIn)
 
 
 class Stats(Base):
@@ -248,6 +252,9 @@ class Stats(Base):
 
 class Version(Base):
     __tablename__ = 'versions'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['uid', 'name', 'snapshot_name']
+
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
     uid = Column(VersionUidType, primary_key=True, nullable=False)
@@ -274,21 +281,18 @@ class Version(Base):
         passive_deletes=True,
     )
 
-    def __repr__(self) -> str:
-        return "<Version(uid='%s', name='%s', snapshot_name='%s', date='%s')>" % (self.uid, self.name, self.snapshot_name, self.date)
-
 
 class Tag(Base):
     __tablename__ = 'tags'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['version_uid']
+
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)
     name = Column(String, nullable=False, primary_key=True)
 
-    def __repr__(self) -> str:
-        return "<Tag(version_uid='%s', name='%s')>" % (self.version_uid, self.name)
 
-
-class DereferencedBlock:
+class DereferencedBlock(ReprMixIn):
 
     def __init__(self, uid: BlockUid, version_uid: VersionUid, id: int, date: datetime.datetime,
                  checksum: Optional[str], size: int, valid: bool) -> None:
@@ -321,14 +325,12 @@ class DereferencedBlock:
     def uid_right(self) -> int:
         return self._uid.right
 
-    def __repr__(self) -> str:
-        return "<BlockUid(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
-
 
 class Block(Base):
     __tablename__ = 'blocks'
 
     MAXIMUM_CHECKSUM_LENGTH = 64
+    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'id']
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
     # id and uid_right are first because they are most likely to go to BigInteger in the future
@@ -364,12 +366,12 @@ class Block(Base):
             valid=self.valid,
         )
 
-    def __repr__(self) -> str:
-        return "<Block(id='%s', uid='%s', version_uid='%s')>" % (self.id, self.uid, self.version_uid.readable)
-
 
 class DeletedBlock(Base):
     __tablename__ = 'deleted_blocks'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['id']
+
     date = Column("date", DateTime, nullable=False)
     # BigInteger as the id could get large over time
     # Use INTEGER with SQLLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
@@ -381,23 +383,20 @@ class DeletedBlock(Base):
     uid = composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
     __table_args__ = (Index('ix_blocks_uid_left_uid_right_2', 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
 
-    def __repr__(self) -> str:
-        return "<DeletedBlock(id='%s', uid='%s')>" % (self.id, self.uid)
-
 
 class Lock(Base):
     __tablename__ = 'locks'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['host', 'process_id', 'date']
+
     host = Column(String, nullable=False, primary_key=True)
     process_id = Column(String, nullable=False, primary_key=True)
     lock_name = Column(String, nullable=False, primary_key=True)
     reason = Column(String, nullable=False)
     date = Column("date", DateTime, nullable=False)
 
-    def __repr__(self) -> str:
-        return "<Lock(host='%s' process_id='%s' lock_name='%s')>" % (self.host, self.process_id, self.lock_name)
 
-
-class DatabaseBackend:
+class DatabaseBackend(ReprMixIn):
     _METADATA_VERSION = '1.0.0'
     _METADATA_VERSION_KEY = 'metadataVersion'
     _METADATA_VERSION_REGEX = '\d+\.\d+\.\d+'
@@ -407,17 +406,17 @@ class DatabaseBackend:
 
     def __init__(self, config: Config, in_memory: bool = False) -> None:
         if not in_memory:
-            self._engine = sqlalchemy.create_engine(config.get('databaseEngine', types=str))
+            self.engine = sqlalchemy.create_engine(config.get('databaseEngine', types=str))
         else:
             logger.info('Running with ephemeral in-memory database.')
-            self._engine = sqlalchemy.create_engine('sqlite://')
+            self.engine = sqlalchemy.create_engine('sqlite://')
 
     def open(self, _migrate: bool = True) -> 'DatabaseBackend':
         if _migrate:
             try:
                 self.migrate()
             except Exception:
-                raise RuntimeError('Invalid database ({}). Maybe you need to run init first?'.format(self._engine.url))
+                raise RuntimeError('Invalid database ({}). Maybe you need to run init first?'.format(self.engine.url))
 
         # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
         # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
@@ -428,9 +427,9 @@ class DatabaseBackend:
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
 
-        Session = sessionmaker(bind=self._engine)
+        Session = sessionmaker(bind=self.engine)
         self._session = Session()
-        self._locking = MetaBackendLocking(self._session)
+        self._locking = DatabaseBackendLocking(self._session)
         self._commit_block_counter = 0
         return self
 
@@ -440,7 +439,7 @@ class DatabaseBackend:
         from alembic.config import Config
         from alembic import command
         alembic_cfg = Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
-        with self._engine.begin() as connection:
+        with self.engine.begin() as connection:
             alembic_cfg.attributes['connection'] = connection
             #command.upgrade(alembic_cfg, "head", sql=True)
             command.upgrade(alembic_cfg, "head")
@@ -448,13 +447,13 @@ class DatabaseBackend:
     def init(self, _destroy: bool = False, _migrate: bool = True) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
         if _destroy:
-            Base.metadata.drop_all(self._engine)
+            Base.metadata.drop_all(self.engine)
 
         # This will create all tables. It will NOT delete any tables or data.
         # Instead, it will raise when something can't be created.
         # TODO: explicitly check if the database is empty
         Base.metadata.create_all(
-            self._engine, checkfirst=False)  # checkfirst False will raise when it finds an existing table
+            self.engine, checkfirst=False)  # checkfirst False will raise when it finds an existing table
 
         # FIXME: fix to use supplied config
         if _migrate:
@@ -462,7 +461,7 @@ class DatabaseBackend:
             from alembic import command
             alembic_cfg = Config(
                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
-            with self._engine.begin() as connection:
+            with self.engine.begin() as connection:
                 alembic_cfg.attributes['connection'] = connection
                 # mark the version table, "stamping" it with the most recent rev:
                 command.stamp(alembic_cfg, "head")
@@ -534,7 +533,7 @@ class DatabaseBackend:
                 raise
 
             if stats is None:
-                raise KeyError('Statistics for version {} not found.'.format(version_uid.readable))
+                raise KeyError('Statistics for version {} not found.'.format(version_uid.v_string))
 
             return stats
         else:
@@ -559,9 +558,9 @@ class DatabaseBackend:
             self._session.commit()
             if valid is not None:
                 logger_func = logger.info if valid else logger.error
-                logger_func('Marked version {} as {}.'.format(version_uid.readable, 'valid' if valid else 'invalid'))
+                logger_func('Marked version {} as {}.'.format(version_uid.v_string, 'valid' if valid else 'invalid'))
             if protected is not None:
-                logger.info('Marked version {} as {}.'.format(version_uid.readable,
+                logger.info('Marked version {} as {}.'.format(version_uid.v_string,
                                                               'protected' if protected else 'unprotected'))
         except:
             self._session.rollback()
@@ -613,7 +612,7 @@ class DatabaseBackend:
             self._session.commit()
         except IntegrityError:
             self._session.rollback()
-            raise NoChange('Version {} already has tag {}.'.format(version_uid.readable, name)) from None
+            raise NoChange('Version {} already has tag {}.'.format(version_uid.v_string, name)) from None
         except:
             self._session.rollback()
             raise
@@ -627,7 +626,7 @@ class DatabaseBackend:
             raise
 
         if deleted != 1:
-            raise NoChange('Version {} has not tag {}.'.format(version_uid.readable, name))
+            raise NoChange('Version {} has not tag {}.'.format(version_uid.v_string, name))
 
     def set_block(self,
                   *,
@@ -679,7 +678,7 @@ class DatabaseBackend:
             self._session.commit()
 
             logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join([version_uid.readable for version_uid in affected_version_uids])))
+                block_uid, ', '.join([version_uid.v_string for version_uid in affected_version_uids])))
 
             for version_uid in affected_version_uids:
                 self.set_version(version_uid, valid=False)
@@ -840,7 +839,7 @@ class DatabaseBackend:
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat(timespec='seconds')
                 elif isinstance(obj, VersionUid):
-                    return obj.to_int
+                    return obj.integer
                 elif isinstance(obj, BlockUid):
                     return {'left': obj.left, 'right': obj.right}
 
@@ -912,11 +911,11 @@ class DatabaseBackend:
 
             if not isinstance(version_dict['tags'], list):
                 raise InputDataError('Version {} contains invalid data (hint: tags).'.format(
-                    VersionUid(version_dict['uid']).readable))
+                    VersionUid(version_dict['uid']).v_string))
 
             if not isinstance(version_dict['blocks'], list):
                 raise InputDataError('Version {} contains invalid data (hint blocks).'.format(
-                    VersionUid(version_dict['uid']).readable))
+                    VersionUid(version_dict['uid']).v_string))
 
             try:
                 self.get_version(version_dict['uid'])
@@ -942,7 +941,7 @@ class DatabaseBackend:
             for block_dict in version_dict['blocks']:
                 if not isinstance(block_dict, dict):
                     raise InputDataError('Version {} contains invalid data (hint blocks).'.format(
-                        VersionUid(version_dict['uid']).readable))
+                        VersionUid(version_dict['uid']).v_string))
                 block_dict['version_uid'] = version.uid
                 block_dict['date'] = datetime.datetime.strptime(block_dict['date'], '%Y-%m-%dT%H:%M:%S')
                 block_dict['uid_left'] = int(block_dict['uid']['left']) if block_dict['uid']['left'] is not None else None
@@ -953,7 +952,7 @@ class DatabaseBackend:
             for tag_dict in version_dict['tags']:
                 if not isinstance(tag_dict, dict):
                     raise InputDataError('Version {} contains invalid data (hint: tags).'.format(
-                        VersionUid(version_dict['uid']).readable))
+                        VersionUid(version_dict['uid']).v_string))
                 tag_dict['version_uid'] = version.uid
             self._session.bulk_insert_mappings(Tag, version_dict['tags'])
 
@@ -971,7 +970,7 @@ class DatabaseBackend:
         self._session.close()
 
 
-class MetaBackendLocking:
+class DatabaseBackendLocking:
 
     GLOBAL_LOCK = 'global'
 
@@ -1055,18 +1054,18 @@ class MetaBackendLocking:
 
     def lock_version(self, version_uid: VersionUid, reason: str = None) -> None:
         self.lock(
-            lock_name=version_uid.readable,
+            lock_name=version_uid.v_string,
             reason=reason,
-            locked_msg='Version {} is already locked.'.format(version_uid.readable))
+            locked_msg='Version {} is already locked.'.format(version_uid.v_string))
 
     def is_version_locked(self, version_uid: VersionUid) -> bool:
-        return self.is_locked(lock_name=version_uid.readable)
+        return self.is_locked(lock_name=version_uid.v_string)
 
     def update_version_lock(self, version_uid: VersionUid, reason: str = None) -> None:
-        self.update_lock(lock_name=version_uid.readable, reason=reason)
+        self.update_lock(lock_name=version_uid.v_string, reason=reason)
 
     def unlock_version(self, version_uid: VersionUid) -> None:
-        self.unlock(lock_name=version_uid.readable)
+        self.unlock(lock_name=version_uid.v_string)
 
     @contextmanager
     def with_lock(self,

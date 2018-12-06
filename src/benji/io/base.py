@@ -8,10 +8,11 @@ from typing import Tuple, Union, Optional, List, cast, Iterator
 from benji.config import _ConfigDict, Config
 from benji.logging import logger
 from benji.database import Block, DereferencedBlock
+from benji.repr import ReprMixIn
 from benji.utils import future_results_as_completed
 
 
-class IOBase(metaclass=ABCMeta):
+class IOBase(ReprMixIn, metaclass=ABCMeta):
 
     READ_QUEUE_LENGTH = 5
 

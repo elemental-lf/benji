@@ -99,5 +99,10 @@ class BenjiTestCaseBase(TestCaseBase):
 
     def benjiOpen(self, init_database=False, block_size=None, in_memory_database=False):
         self.benji = Benji(
-            self.config, init_database=init_database, _destroy_database=init_database, _migrate_database=False, block_size=block_size, in_memory_database=in_memory_database)
+            self.config,
+            init_database=init_database,
+            _destroy_database=init_database,
+            _migrate_database=False,
+            block_size=block_size,
+            in_memory_database=in_memory_database)
         return self.benji

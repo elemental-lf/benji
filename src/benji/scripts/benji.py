@@ -201,7 +201,7 @@ class Commands:
                 logger.info('No matching versions found.')
             for version in versions:
                 try:
-                    logging.info('Scrubbing version {} with name {}.'.format(version.uid.readable, version.name))
+                    logging.info('Scrubbing version {} with name {}.'.format(version.uid.v_string, version.name))
                     getattr(benji_obj, method)(version.uid, block_percentage=block_percentage, history=history)
                 except benji.exception.ScrubbingError as exception:
                     logger.error(exception)
@@ -217,7 +217,7 @@ class Commands:
                                          sys.stdout,
                                          ignore_relationships=[((Version,), ('blocks',))])
                 raise benji.exception.ScrubbingError('One or more version had scrubbing errors: {}.'.format(', '.join(
-                    [version.uid.readable for version in errors])))
+                    [version.uid.v_string for version in errors])))
             else:
                 if self.machine_output:
                     benji_obj.export_any({
@@ -251,7 +251,7 @@ class Commands:
         for version in versions:
             tbl.add_row([
                 PrettyPrint.local_time(version.date),
-                version.uid.readable,
+                version.uid.v_string,
                 version.name,
                 version.snapshot_name,
                 PrettyPrint.bytes(version.size),
@@ -283,8 +283,8 @@ class Commands:
         tbl.align['duration (s)'] = 'r'
         for stat in stats:
             augmented_version_uid = '{}{}{}'.format(
-                stat.version_uid.readable,
-                ',\nbase {}'.format(stat.base_version_uid.readable) if stat.base_version_uid else '',
+                stat.version_uid.v_string,
+                ',\nbase {}'.format(stat.base_version_uid.v_string) if stat.base_version_uid else '',
                 ', hints' if stat.hints_supplied else '')
             tbl.add_row([
                 PrettyPrint.local_time(stat.version_date),
@@ -414,7 +414,7 @@ class Commands:
             benji_obj = Benji(self.config)
             version_uids = benji_obj.metadata_ls(storage)
             for version_uid in version_uids:
-                print(version_uid.readable)
+                print(version_uid.v_string)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -530,10 +530,7 @@ def main():
     p.add_argument('-s', '--sparse', action='store_true', help='Restore only existing blocks')
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing file, device or image')
     p.add_argument(
-        '-M',
-        '--metadata-backend-less',
-        action='store_true',
-        help='Restore without requiring the database backend')
+        '-M', '--metadata-backend-less', action='store_true', help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
     p.add_argument('destination', help='Destination URL')\
         .completer=ChoicesCompleter(('file://', 'rbd://'))
@@ -570,16 +567,14 @@ def main():
     # RM
     p = subparsers_root.add_parser('rm', help='Remove one or more versions')
     p.add_argument('-f', '--force', action='store_true', help='Force removal (overrides protection of recent versions)')
-    p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
+    p.add_argument('-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='rm')
 
     # ENFORCE
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
-    p.add_argument(
-        '-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
+    p.add_argument('-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
     p.add_argument('rules_spec', help='Retention rules specification')
     p.add_argument('version_names', metavar='version_name', nargs='+', help='One or more version names')
     p.set_defaults(func='enforce_retention_policy')
@@ -710,15 +705,13 @@ def main():
     p.set_defaults(func='metadata_import')
 
     # METADATA BACKUP
-    p = subparsers_root.add_parser(
-        'netadata-backup', help='Back up the metadata of one or more versions')
+    p = subparsers_root.add_parser('netadata-backup', help='Back up the metadata of one or more versions')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
     p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata backups')
     p.set_defaults(func='metadata_backup')
 
     # METADATA RESTORE
-    p = subparsers_root.add_parser(
-        'metadata-restore', help='Restore the metadata of one ore more versions')
+    p = subparsers_root.add_parser('metadata-restore', help='Restore the metadata of one ore more versions')
     p.add_argument('-S', '--storage', help='Source storage (if unspecified the default is used)')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
     p.set_defaults(func='metadata_restore')

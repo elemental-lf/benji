@@ -47,6 +47,16 @@ License: MIT
 Files: docs/source/_static/asciinema/asciinema-player.css, docs/source/_static/asciinema/asciinema-player.js
 License: Apache 2.0
 
+Files: src/benji/repr.py
+Copyright:
+    2016 Ryosuke Ito <rito.0305@gmail.com>
+License: MIT
+
+Files: src/benji/repr.py
+Copyright:
+    2015-2017 Alex Prengère
+License: Apache-2.0
+
 Files: *
 Copyright:
     2015-2017: Daniel Kraft

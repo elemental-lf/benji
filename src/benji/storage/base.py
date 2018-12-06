@@ -14,6 +14,7 @@ from diskcache import Cache
 from typing_extensions import Final
 
 from benji.config import Config, _ConfigDict
+from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.exception import ConfigurationError, BenjiException
 from benji.factory import TransformFactory
@@ -35,7 +36,7 @@ class InvalidBlockException(BenjiException, IOError):
         return self._block
 
 
-class StorageBase(metaclass=ABCMeta):
+class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
     READ_QUEUE_LENGTH = 1
     WRITE_QUEUE_LENGTH = 1
@@ -232,8 +233,8 @@ class StorageBase(metaclass=ABCMeta):
 
         if self._CHECKSUM_KEY not in metadata:
             raise InvalidBlockException(
-                'Required object metadata key {} is missing for block {} (UID {}).'.format(self._CHECKSUM_KEY, block.id,
-                                                                                    block.uid), block)
+                'Required object metadata key {} is missing for block {} (UID {}).'.format(
+                    self._CHECKSUM_KEY, block.id, block.uid), block)
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
             data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore
@@ -263,20 +264,22 @@ class StorageBase(metaclass=ABCMeta):
     def check_block_metadata(self, *, block: DereferencedBlock, data_length: Optional[int], metadata: Dict) -> None:
         # Existence of keys has already been checked in _decode_metadata() and _read()
         if metadata[self._SIZE_KEY] != block.size:
-            raise ValueError('Mismatch between recorded block size and data length in object metadata for block {} (UID {}). '
-                             'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, metadata[self._SIZE_KEY]))
+            raise ValueError(
+                'Mismatch between recorded block size and data length in object metadata for block {} (UID {}). '
+                'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, metadata[self._SIZE_KEY]))
 
         if data_length and data_length != block.size:
             raise ValueError('Mismatch between recorded block size and actual data length for block {} (UID {}). '
                              'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, data_length))
 
         if block.checksum != metadata[self._CHECKSUM_KEY]:
-            raise ValueError('Mismatch between recorded block checksum and checksum in object metadata for block {} (UID {}). '
-                             'Expected: {}, got: {}.'.format(
-                                 block.id,
-                                 block.uid,
-                                 cast(str, block.checksum)[:16],  # We know that block.checksum is set
-                                 metadata[self._CHECKSUM_KEY][:16]))
+            raise ValueError(
+                'Mismatch between recorded block checksum and checksum in object metadata for block {} (UID {}). '
+                'Expected: {}, got: {}.'.format(
+                    block.id,
+                    block.uid,
+                    cast(str, block.checksum)[:16],  # We know that block.checksum is set
+                    metadata[self._CHECKSUM_KEY][:16]))
 
     def rm(self, uid: BlockUid) -> None:
         key = uid.storage_object_to_path()
@@ -350,7 +353,7 @@ class StorageBase(metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
             else:
-                raise FileExistsError('Version {} already exists in storage.'.format(version_uid.readable))
+                raise FileExistsError('Version {} already exists in storage.'.format(version_uid.v_string))
 
         data_bytes = data.encode('utf-8')
         size = len(data_bytes)
