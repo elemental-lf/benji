@@ -65,15 +65,11 @@ Topic :: System :: Archiving :: Backup
     extras_require={
         's3': ['boto3>=1.7.28'],
         'b2': ['b2>=1.3.2'],
-        'encryption': ['aes-keywrap>17.12.1'],
         'compression': ['zstandard>=0.9.0'],
         'readcache': ['diskcache>=3.0.6'],
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
         # possible packages names include: python-rados, python-rbd or python3-rados, python3-rbd
         #'RBD support': ['rados', 'rbd'],
-    },
-    dependency_links={
-        'git+https://github.com/kurtbrose/aes_keywrap@master#egg=aes-keywrap-17.12.2',
     },
     python_requires='~=3.6',
     entry_points="""

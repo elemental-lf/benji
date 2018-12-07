@@ -57,6 +57,11 @@ License: MIT and Apache-2.0
 Files: src/benji/_version.py
 License: Public domain under a CC0 license
 
+Files: src/benji/aes_keywrap.py:
+Copyright:
+    2017 Kurt Rose
+License: MIT
+
 Files: *
 Copyright:
     2015-2017: Daniel Kraft

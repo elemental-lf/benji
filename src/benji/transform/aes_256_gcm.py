@@ -1,7 +1,7 @@
 import base64
 from typing import Dict, Tuple, Optional
 
-from aes_keywrap import aes_wrap_key, aes_unwrap_key
+from benji.aes_keywrap import aes_wrap_key, aes_unwrap_key
 
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
