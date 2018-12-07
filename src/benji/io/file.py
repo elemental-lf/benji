@@ -5,7 +5,7 @@ import threading
 import time
 from typing import Optional, BinaryIO, Tuple
 
-from benji.config import _ConfigDict, Config
+from benji.config import ConfigDict, Config
 from benji.io.base import IOBase
 from benji.logging import logger
 from benji.database import DereferencedBlock
@@ -13,7 +13,7 @@ from benji.database import DereferencedBlock
 
 class IO(IOBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str,
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, path: str,
                  block_size: int) -> None:
         super().__init__(
             config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)

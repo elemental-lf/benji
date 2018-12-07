@@ -7,7 +7,7 @@
 import io
 
 from inspect import getmro
-from typing import List
+from typing import List, Set, Any
 
 from sqlalchemy import inspect
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -19,7 +19,7 @@ class Repr(_Repr):
     def repr1(self, obj, level: int) -> str:
         if level <= 0:
             return '<...>'
-        if isinstance(obj.__class__, DeclarativeMeta):
+        elif isinstance(obj.__class__, DeclarativeMeta):
             return self.repr_Base(obj, level)
         # Test if this is an object from one of our own modules
         elif hasattr(obj, '__module__') and obj.__module__.startswith(self.__module__.split('.')[0] + '.'):
@@ -53,9 +53,9 @@ class Repr(_Repr):
 
     def repr_object(self, obj, level: int) -> str:
         return '{0}({1})'.format(
-            obj.__class__.__name__, ', '.join(
-                '{0}={1}'.format(attr, self.repr1(getattr(obj, attr), level - 1)) for attr in self._find_attrs(obj)
-                    if not attr.startswith('__')))
+            obj.__class__.__name__, ', '.join('{0}={1}'.format(attr, self.repr1(getattr(obj, attr), level - 1))
+                                              for attr in self._find_attrs(obj)
+                                              if not attr.startswith('__')))
 
     @staticmethod
     def _iter_attrs(obj, sort_first: List[str] = []):
@@ -70,7 +70,7 @@ class Repr(_Repr):
     @staticmethod
     def _find_attrs(obj):
         """Iterate over all attributes of objects."""
-        visited = set()
+        visited: Set[Any] = set()
 
         if hasattr(obj, '__dict__'):
             for attr in sorted(obj.__dict__):

@@ -4,7 +4,7 @@ import importlib
 from typing import Dict, NamedTuple, Any
 from urllib import parse
 
-from benji.config import Config, _ConfigList
+from benji.config import Config, ConfigList
 
 from benji.exception import ConfigurationError, InternalError, UsageError
 from benji.io.base import IOBase
@@ -29,7 +29,7 @@ class StorageFactory(ReprMixIn):
         raise InternalError('StorageFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
+    def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -70,7 +70,7 @@ class StorageFactory(ReprMixIn):
     @classmethod
     def initialize(cls, config: Config) -> None:
         TransformFactory.initialize(config)
-        storages: _ConfigList = config.get('storages', types=list)
+        storages: ConfigList = config.get('storages', types=list)
         cls._import_modules(config, storages)
 
     @classmethod
@@ -130,7 +130,7 @@ class TransformFactory(ReprMixIn):
         raise InternalError('TransformFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
+    def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -161,7 +161,7 @@ class TransformFactory(ReprMixIn):
 
     @classmethod
     def initialize(cls, config: Config) -> None:
-        transforms: _ConfigList = config.get('transforms', None, types=list)
+        transforms: ConfigList = config.get('transforms', None, types=list)
         if transforms is not None:
             cls._import_modules(config, transforms)
 
@@ -193,7 +193,7 @@ class IOFactory(ReprMixIn):
         raise InternalError('IOFactory constructor called.')
 
     @classmethod
-    def _import_modules(cls, config: Config, modules: _ConfigList) -> None:
+    def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
             module = Config.get_from_dict(
                 module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
@@ -224,7 +224,7 @@ class IOFactory(ReprMixIn):
 
     @classmethod
     def initialize(cls, config: Config) -> None:
-        ios: _ConfigList = config.get('ios', None, types=list)
+        ios: ConfigList = config.get('ios', None, types=list)
         cls._import_modules(config, ios)
 
     @classmethod

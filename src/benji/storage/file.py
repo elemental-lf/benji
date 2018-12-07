@@ -4,7 +4,7 @@
 import os
 from typing import List, Sequence
 
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.storage.base import StorageBase
 
 
@@ -13,7 +13,7 @@ class Storage(StorageBase):
     WRITE_QUEUE_LENGTH = 10
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
         if os.sep != '/':

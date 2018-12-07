@@ -3,13 +3,13 @@ from typing import Dict, Tuple, Optional
 
 import zstandard
 
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.transform.base import TransformBase
 
 
 class Transform(TransformBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
 
         self.level: str = Config.get_from_dict(

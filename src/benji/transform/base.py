@@ -3,13 +3,13 @@
 from abc import abstractmethod, ABCMeta
 from typing import Dict, Tuple, Optional
 
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.repr import ReprMixIn
 
 
 class TransformBase(ReprMixIn, metaclass=ABCMeta):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         self._name = name
 
     @property

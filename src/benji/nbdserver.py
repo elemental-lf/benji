@@ -37,7 +37,7 @@ import signal
 import struct
 import traceback
 from asyncio import StreamReader, StreamWriter
-from typing import Generator, Optional, cast, Any
+from typing import Generator, Optional, cast, Any, Tuple
 
 from benji.benji import BenjiStore
 from benji.exception import NbdServerAbortedNegotiationError
@@ -90,7 +90,7 @@ class NbdServer(ReprMixIn):
     # command flags (upper 16 bit of request type)
     NBD_CMD_FLAG_FUA = (1 << 16)
 
-    def __init__(self, address: str, store: BenjiStore, read_only: bool = True) -> None:
+    def __init__(self, address: Tuple[str, str], store: BenjiStore, read_only: bool = True) -> None:
         self.log = logging.getLogger(__package__)
 
         self.address = address
@@ -161,7 +161,7 @@ class NbdServer(ReprMixIn):
                     if not data:
                         raise IOError("Negotiation failed: no export name was provided")
 
-                    version_uid = cast(VersionUid, VersionUid.create_from_readables(data.decode("ascii")))
+                    version_uid = VersionUid(data.decode("ascii"))
                     if version_uid not in [v.uid for v in self.store.get_versions()]:
                         if not fixed:
                             raise IOError("Negotiation failed: unknown export name")
@@ -177,7 +177,7 @@ class NbdServer(ReprMixIn):
                     version = self.store.get_versions(version_uid=version_uid)[0]
                     self.store.open(version)
 
-                    self.log.info("[%s:%s] Version %s has been opened." % (host, port, cast(Version, version).uid))
+                    self.log.info("[%s:%s] Version %s has been opened." % (host, port, version.uid))
 
                     export_flags = self.NBD_EXPORT_FLAGS
                     if self.read_only:
@@ -188,7 +188,7 @@ class NbdServer(ReprMixIn):
 
                     # In case size is not a multiple of 4096 we extend it to the the maximum support block
                     # size of 4096
-                    size = math.ceil(cast(Version, version).size / 4096) * 4096
+                    size = math.ceil(version.size / 4096) * 4096
                     writer.write(struct.pack('>QH', size, export_flags))
                     writer.write(b"\x00" * 124)
                     yield from writer.drain()
@@ -250,7 +250,7 @@ class NbdServer(ReprMixIn):
                         continue
 
                     if not cow_version:
-                        cow_version = self.store.get_cow_version(cast(Version, version))
+                        cow_version = self.store.get_cow_version(version)
                     try:
                         self.store.write(cow_version, offset, data)
                     except Exception as exception:
@@ -264,7 +264,7 @@ class NbdServer(ReprMixIn):
 
                 elif cmd == self.NBD_CMD_READ:
                     try:
-                        data = self.store.read(cast(Version, version), cast(Version, cow_version), offset, length)
+                        data = self.store.read(version, cow_version, offset, length)
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_READ: %s\n%s" % (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(

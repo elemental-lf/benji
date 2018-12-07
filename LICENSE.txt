@@ -50,12 +50,12 @@ License: Apache 2.0
 Files: src/benji/repr.py
 Copyright:
     2016 Ryosuke Ito <rito.0305@gmail.com>
-License: MIT
-
-Files: src/benji/repr.py
-Copyright:
     2015-2017 Alex Prengère
-License: Apache-2.0
+    Modified work: 2018 Lars Fenneberg
+License: MIT and Apache-2.0
+
+Files: src/benji/_version.py
+License: Public domain under a CC0 license
 
 Files: *
 Copyright:
@@ -63,8 +63,6 @@ Copyright:
     2018: Lars Fenneberg
 License: LGPLv3
 
-Files: src/benji/_version.py
-License: Public domain under a CC0 license
 
 Following: License texts as found in the packages and on the internet.
 

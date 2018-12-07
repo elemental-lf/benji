@@ -50,7 +50,7 @@ def future_results_as_completed(futures: List[Future], semaphore=None, timeout: 
     if sys.version_info < (3, 6, 4):
         logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' + 'Upgrade your Python to at least 3.6.4.')
 
-    for future in concurrent.futures.as_completed(futures, timeout=timeout):  # type: ignore
+    for future in concurrent.futures.as_completed(futures, timeout=timeout):
         futures.remove(future)
         if semaphore and not future.cancelled():
             semaphore.release()

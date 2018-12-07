@@ -191,19 +191,8 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         locking.lock(reason='locking test')
         locking.unlock()
 
-    def test_version_uid_create_from_readable(self):
-        self.assertEqual(VersionUid(1), VersionUid.create_from_readables(1))
-        self.assertEqual(VersionUid(1), VersionUid.create_from_readables('V1'))
-        uids = VersionUid.create_from_readables(['V1'])
-        self.assertTrue(isinstance(uids, list))
-        self.assertTrue(len(uids) == 1)
-        self.assertEqual(VersionUid(1), uids[0])
-        uids = VersionUid.create_from_readables(['V1', 'V2', 3])
-        self.assertTrue(isinstance(uids, list))
-        self.assertTrue(len(uids) == 3)
-        self.assertEqual(VersionUid(1), uids[0])
-        self.assertEqual(VersionUid(2), uids[1])
-        self.assertEqual(VersionUid(3), uids[2])
+    def test_version_uid_string(self):
+        self.assertEqual(VersionUid(1), VersionUid('V1'))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

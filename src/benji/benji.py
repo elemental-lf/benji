@@ -254,7 +254,7 @@ class Benji(ReprMixIn):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
                         logger.error('Storage backend read failed: {}'.format(entry))
-                        self._database_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
+                        self._database_backend.set_block_invalid(entry.block.uid)
                         valid = False
                         continue
                     else:
@@ -332,7 +332,7 @@ class Benji(ReprMixIn):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
                         logger.error('Storage backend read failed: {}'.format(entry))
-                        self._database_backend.set_block_invalid(cast(InvalidBlockException, entry).block.uid)
+                        self._database_backend.set_block_invalid(entry.block.uid)
                         valid = False
                         continue
                     else:
@@ -1062,7 +1062,7 @@ class BenjiStore(ReprMixIn):
             else:
                 return f.read(length)
 
-    def read(self, version: Version, cow_version: Version, offset: int, length: int) -> bytes:
+    def read(self, version: Version, cow_version: Optional[Version], offset: int, length: int) -> bytes:
         if cow_version:
             cow: Optional[Dict[int, Block]] = self._cow[cow_version.uid.integer]
         else:

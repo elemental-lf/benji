@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
 from typing import Tuple, Union, Optional, List, cast, Iterator
 
-from benji.config import _ConfigDict, Config
+from benji.config import ConfigDict, Config
 from benji.logging import logger
 from benji.database import Block, DereferencedBlock
 from benji.repr import ReprMixIn
@@ -16,7 +16,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
 
     READ_QUEUE_LENGTH = 5
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict, path: str,
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, path: str,
                  block_size: int) -> None:
         self._name = name
         self._path = path

@@ -13,7 +13,7 @@ from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
 from b2.download_dest import DownloadDestBytes
 from b2.exception import B2Error, FileNotPresent, B2ConnectionError
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
 
@@ -23,7 +23,7 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
         super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
 
         account_id = Config.get_from_dict(module_configuration, 'accountId', None, types=str)

@@ -8,12 +8,12 @@ from Crypto.Random import get_random_bytes
 
 from benji.transform.base import TransformBase
 from benji.utils import derive_key
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 
 
 class Transform(TransformBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
 
         master_key: Optional[bytes] = Config.get_from_dict(module_configuration, 'masterKey', None, types=bytes)

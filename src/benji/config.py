@@ -17,14 +17,14 @@ from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
 
 
-class _ConfigDict(dict):
+class ConfigDict(dict):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.full_name: Optional[str] = None
 
 
-class _ConfigList(list):
+class ConfigList(list):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -111,7 +111,7 @@ class Config:
 
         traverse(errors)
 
-    def validate(self, *, module: str, version: str = None, config: Union[Dict, _ConfigDict]) -> Dict:
+    def validate(self, *, module: str, version: str = None, config: Union[Dict, ConfigDict]) -> Dict:
         validator = self._get_validator(module=module, version=self._config_version if version is None else version)
         if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')
@@ -122,7 +122,7 @@ class Config:
         logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
         return config_validated
 
-    def __init__(self, ad_hoc_config: Dict = None, sources: Sequence[str] = None) -> None:
+    def __init__(self, ad_hoc_config: str = None, sources: Sequence[str] = None) -> None:
         yaml = YAML(typ='safe', pure=True)
 
         if ad_hoc_config is None:
@@ -160,7 +160,7 @@ class Config:
             raise ConfigurationError('Configuration has unsupported version of "{}".'.format(version))
 
         self._config_version = version
-        self._config = _ConfigDict(self.validate(module=__name__, config=config))
+        self._config = ConfigDict(self.validate(module=__name__, config=config))
         logger.debug('Loaded configuration: {}'.format(self._config))
 
     def _get_sources(self) -> List[str]:
@@ -206,10 +206,10 @@ class Config:
                 else:
                     raise ConfigurationError('Config option {} is invalid: {}.'.format(full_name, check_message))
             if isinstance(value, dict):
-                value = _ConfigDict(value)
+                value = ConfigDict(value)
                 value.full_name = full_name
             elif isinstance(value, list):
-                value = _ConfigList(value)
+                value = ConfigList(value)
                 value.full_name = full_name
             return value
         except KeyError:
@@ -225,7 +225,7 @@ class Config:
         return Config._get(self._config, name, *args, **kwargs)
 
     @staticmethod
-    def get_from_dict(dict_: _ConfigDict, name: str, *args, **kwargs) -> Any:
+    def get_from_dict(dict_: ConfigDict, name: str, *args, **kwargs) -> Any:
         return Config._get(dict_, name, *args, **kwargs)
 
 

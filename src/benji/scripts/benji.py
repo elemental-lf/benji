@@ -9,6 +9,7 @@ import os
 import random
 import sys
 from functools import partial
+from typing import Dict, List, NamedTuple, Type
 
 import argcomplete
 import pkg_resources
@@ -21,11 +22,17 @@ from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
-from benji.database import Version, VersionUid
+from benji.database import Version, VersionUid, Stats
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint
 
 __version__ = pkg_resources.get_distribution('benji').version
+
+
+class _ExceptionMapping(NamedTuple):
+    exception: Type[BaseException]
+    message: str
+    exit_code: int
 
 
 class Commands:
@@ -36,15 +43,15 @@ class Commands:
         self.config = config
 
     def backup(self,
-               version_name,
-               snapshot_name,
-               source,
-               rbd_hints,
-               base_version_uid,
-               block_size=None,
-               tags=None,
-               storage=None):
-        base_version_uid = VersionUid.create_from_readables(base_version_uid)
+               version_name: str,
+               snapshot_name: str,
+               source: str,
+               rbd_hints: str,
+               base_version_uid: str,
+               block_size: int = None,
+               tags: List[str] = None,
+               storage=None) -> None:
+        base_version_uid_obj = VersionUid(base_version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config, block_size=block_size)
@@ -52,8 +59,8 @@ class Commands:
             if rbd_hints:
                 data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
                 hints = hints_from_rbd_diff(data)
-            backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid, tags,
-                                                  storage)
+            backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
+                                                  tags, storage)
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': benji_obj.ls(version_uid=backup_version_uid)
@@ -64,24 +71,29 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def restore(self, version_uid, destination, sparse, force, database_backend_less=False):
-        version_uid = VersionUid.create_from_readables(version_uid)
+    def restore(self,
+                version_uid: str,
+                destination: str,
+                sparse: bool,
+                force: bool,
+                database_backend_less: bool = False) -> None:
+        version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config, in_memory_database=database_backend_less)
             if database_backend_less:
-                benji_obj.metadata_restore([version_uid])
-            benji_obj.restore(version_uid, destination, sparse, force)
+                benji_obj.metadata_restore([version_uid_obj])
+            benji_obj.restore(version_uid_obj, destination, sparse, force)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def protect(self, version_uids):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def protect(self, version_uids: List[str]) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for version_uid in version_uids:
+            for version_uid in version_uid_objs:
                 try:
                     benji_obj.protect(version_uid)
                 except benji.exception.NoChange:
@@ -90,12 +102,12 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def unprotect(self, version_uids):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def unprotect(self, version_uids: List[str]) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for version_uid in version_uids:
+            for version_uid in version_uid_objs:
                 try:
                     benji_obj.unprotect(version_uid)
                 except benji.exception.NoChange:
@@ -104,13 +116,13 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def rm(self, version_uids, force, keep_backend_metadata):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def rm(self, version_uids: List[str], force: bool, keep_backend_metadata: bool) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         disallow_rm_when_younger_than_days = self.config.get('disallowRemoveWhenYounger', types=int)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for version_uid in version_uids:
+            for version_uid in version_uid_objs:
                 benji_obj.rm(
                     version_uid,
                     force=force,
@@ -120,19 +132,18 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def scrub(self, version_uid, block_percentage):
-        version_uid = VersionUid.create_from_readables(version_uid)
-        if block_percentage:
-            block_percentage = int(block_percentage)
+    def scrub(self, version_uid: str, block_percentage: int) -> None:
+        version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.scrub(version_uid, block_percentage=block_percentage)
+            benji_obj.scrub(version_uid_obj, block_percentage=block_percentage)
         except benji.exception.ScrubbingError:
+            assert benji_obj is not None
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid),
-                    'errors': benji_obj.ls(version_uid=version_uid)
+                    'versions': benji_obj.ls(version_uid=version_uid_obj),
+                    'errors': benji_obj.ls(version_uid=version_uid_obj)
                 },
                                      sys.stdout,
                                      ignore_relationships=[((Version,), ('blocks',))])
@@ -140,7 +151,7 @@ class Commands:
         else:
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'versions': benji_obj.ls(version_uid=version_uid_obj),
                     'errors': []
                 },
                                      sys.stdout,
@@ -149,19 +160,18 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def deep_scrub(self, version_uid, source, block_percentage):
-        version_uid = VersionUid.create_from_readables(version_uid)
-        if block_percentage:
-            block_percentage = int(block_percentage)
+    def deep_scrub(self, version_uid: str, source: str, block_percentage: int) -> None:
+        version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.deep_scrub(version_uid, source=source, block_percentage=block_percentage)
+            benji_obj.deep_scrub(version_uid_obj, source=source, block_percentage=block_percentage)
         except benji.exception.ScrubbingError:
+            assert benji_obj is not None
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid),
-                    'errors': benji_obj.ls(version_uid=version_uid)
+                    'versions': benji_obj.ls(version_uid=version_uid_obj),
+                    'errors': benji_obj.ls(version_uid=version_uid_obj)
                 },
                                      sys.stdout,
                                      ignore_relationships=[((Version,), ('blocks',))])
@@ -169,7 +179,7 @@ class Commands:
         else:
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid),
+                    'versions': benji_obj.ls(version_uid=version_uid_obj),
                     'errors': []
                 },
                                      sys.stdout,
@@ -178,11 +188,8 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def _bulk_scrub(self, method, names, tags, version_percentage, block_percentage):
-        if version_percentage:
-            version_percentage = int(version_percentage)
-        if block_percentage:
-            block_percentage = int(block_percentage)
+    def _bulk_scrub(self, method: str, names: List[str], tags: List[str], version_percentage: int,
+                    block_percentage: int) -> None:
         history = BlockUidHistory()
         benji_obj = None
         try:
@@ -230,14 +237,14 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def bulk_scrub(self, names, tags, version_percentage, block_percentage):
+    def bulk_scrub(self, names: List[str], tags: List[str], version_percentage: int, block_percentage: int) -> None:
         self._bulk_scrub('scrub', names, tags, version_percentage, block_percentage)
 
-    def bulk_deep_scrub(self, names, tags, version_percentage, block_percentage):
+    def bulk_deep_scrub(self, names: List[str], tags: List[str], version_percentage: int, block_percentage: int) -> None:
         self._bulk_scrub('deep_scrub', names, tags, version_percentage, block_percentage)
 
     @classmethod
-    def _ls_versions_tbl_output(cls, versions):
+    def _ls_versions_tbl_output(cls, versions: List[Version]) -> None:
         tbl = PrettyTable()
         tbl.field_names = [
             'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'valid', 'protected', 'storage', 'tags'
@@ -264,7 +271,7 @@ class Commands:
         print(tbl)
 
     @classmethod
-    def _stats_tbl_output(cls, stats):
+    def _stats_tbl_output(cls, stats: List[Stats]) -> None:
         tbl = PrettyTable()
         tbl.field_names = [
             'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',
@@ -293,7 +300,7 @@ class Commands:
                 stat.version_snapshot_name,
                 PrettyPrint.bytes(stat.version_size),
                 PrettyPrint.bytes(stat.version_block_size),
-                StorageFactory.storage_id_to_name(stats.version_storage_id),
+                StorageFactory.storage_id_to_name(stat.version_storage_id),
                 PrettyPrint.bytes(stat.bytes_read),
                 PrettyPrint.bytes(stat.bytes_written),
                 PrettyPrint.bytes(stat.bytes_dedup),
@@ -302,7 +309,7 @@ class Commands:
             ])
         print(tbl)
 
-    def ls(self, name, snapshot_name=None, tags=None, include_blocks=False):
+    def ls(self, name: str, snapshot_name: str = None, tags: List[str] = None, include_blocks: bool = False) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -322,18 +329,12 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def stats(self, version_uid, limit=None):
-        version_uid = VersionUid.create_from_readables(version_uid)
-
-        if limit:
-            limit = int(limit)
-            if limit <= 0:
-                raise benji.exception.UsageError('Limit has to be a positive integer.')
-
+    def stats(self, version_uid: str = None, limit: int = None) -> None:
+        version_uid_obj = VersionUid(version_uid) if version_uid else None
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            stats = benji_obj.stats(version_uid, limit)
+            stats = benji_obj.stats(version_uid_obj, limit)
 
             if self.machine_output:
                 stats = list(stats)  # resolve iterator, otherwise it's not serializable
@@ -349,7 +350,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -358,34 +359,34 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_export(self, version_uids, output_file=None, force=False):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def metadata_export(self, version_uids: List[str], output_file: str = None, force: bool = False) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             if output_file is None:
-                benji_obj.metadata_export(version_uids, sys.stdout)
+                benji_obj.metadata_export(version_uid_objs, sys.stdout)
             else:
                 if os.path.exists(output_file) and not force:
                     raise FileExistsError('The output file already exists.')
 
                 with open(output_file, 'w') as f:
-                    benji_obj.export(version_uids, f)
+                    benji_obj.metadata_export(version_uid_objs, f)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_backup(self, version_uids, force=False):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def metadata_backup(self, version_uids: List[str], force: bool = False) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.metadata_backup(version_uids, overwrite=force)
+            benji_obj.metadata_backup(version_uid_objs, overwrite=force)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_import(self, input_file=None):
+    def metadata_import(self, input_file: str = None) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -398,17 +399,17 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_restore(self, version_uids, storage=None):
-        version_uids = VersionUid.create_from_readables(version_uids)
+    def metadata_restore(self, version_uids: List[str], storage: str = None) -> None:
+        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.metadata_restore(version_uids, storage)
+            benji_obj.metadata_restore(version_uid_objs, storage)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_ls(self, storage=None):
+    def metadata_ls(self, storage: str = None) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -419,35 +420,35 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def add_tag(self, version_uid, names):
-        version_uid = VersionUid.create_from_readables(version_uid)
+    def add_tag(self, version_uid: str, names: List[str]) -> None:
+        version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             for name in names:
                 try:
-                    benji_obj.add_tag(version_uid, name)
+                    benji_obj.add_tag(version_uid_obj, name)
                 except benji.exception.NoChange:
-                    logger.warning('Version {} already tagged with {}.'.format(version_uid, name))
+                    logger.warning('Version {} already tagged with {}.'.format(version_uid_obj, name))
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def rm_tag(self, version_uid, names):
-        version_uid = VersionUid.create_from_readables(version_uid)
+    def rm_tag(self, version_uid: str, names: List[str]) -> None:
+        version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             for name in names:
                 try:
-                    benji_obj.rm_tag(version_uid, name)
+                    benji_obj.rm_tag(version_uid_obj, name)
                 except benji.exception.NoChange:
-                    logger.warning('Version {} has no tag {}.'.format(version_uid, name))
+                    logger.warning('Version {} has no tag {}.'.format(version_uid_obj, name))
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def init(self):
+    def init(self) -> None:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
@@ -473,7 +474,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def nbd(self, bind_address, bind_port, read_only):
+    def nbd(self, bind_address: str, bind_port: str, read_only: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -487,13 +488,13 @@ class Commands:
                 benji_obj.close()
 
 
-def check_range(minimum, maximum, arg):
+def integer_range(minimum: int, maximum: int, arg: str) -> int:
     try:
         value = int(arg)
     except ValueError as err:
         raise argparse.ArgumentTypeError(str(err))
 
-    if value < minimum or value > maximum:
+    if value < minimum or (maximum is not None and value > maximum):
         raise argparse.ArgumentTypeError('Expected a value between {} and {}, got {}.'.format(minimum, maximum, value))
 
     return value
@@ -520,8 +521,7 @@ def main():
         '-t', '--tag', action='append', dest='tags', metavar='TAG', default=None, help='Tag version (may be repeated)')
     p.add_argument('-b', '--block-size', type=int, help='Block size in bytes')
     p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
-    p.add_argument('source', help='Source URL') \
-        .completer=ChoicesCompleter(('file://', 'rbd://'))
+    p.add_argument('source', help='Source URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
     p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
     p.set_defaults(func='backup')
 
@@ -532,8 +532,8 @@ def main():
     p.add_argument(
         '-M', '--metadata-backend-less', action='store_true', help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
-    p.add_argument('destination', help='Destination URL')\
-        .completer=ChoicesCompleter(('file://', 'rbd://'))
+    p.add_argument(
+        'destination', help='Destination URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
 
     p.set_defaults(func='restore')
 
@@ -613,7 +613,7 @@ def main():
     p.add_argument(
         '-p',
         '--block-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument('version_uid', help='Version UID')
@@ -628,7 +628,7 @@ def main():
     p.add_argument(
         '-p',
         '--block-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument('version_uid', help='Version UID')
@@ -642,13 +642,13 @@ def main():
     p.add_argument(
         '-p',
         '--block-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument(
         '-P',
         '--version-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument(
@@ -670,13 +670,13 @@ def main():
     p.add_argument(
         '-p',
         '--block-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument(
         '-P',
         '--version-percentage',
-        type=partial(check_range, 1, 100),
+        type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
     p.add_argument(
@@ -724,7 +724,12 @@ def main():
     # STATS
     p = subparsers_root.add_parser('stats', help='Show backup statistics')
     p.add_argument('version_uid', nargs='?', default=None, help='Limit output to the specified version')
-    p.add_argument('-l', '--limit', default=None, help='Limit output to this number of entries')
+    p.add_argument(
+        '-l',
+        '--limit',
+        default=None,
+        type=partial(integer_range, 1, None),
+        help='Limit output to this number of entries')
     p.set_defaults(func='stats')
 
     # VERSION-INFO
@@ -779,82 +784,25 @@ def main():
     del func_args['no_color']
 
     # From most specific to least specific
-    exit_code_list = [
-        {
-            'exception': benji.exception.UsageError,
-            'msg': 'Usage error',
-            'exit_code': os.EX_USAGE
-        },
-        {
-            'exception': benji.exception.AlreadyLocked,
-            'msg': 'Already locked error',
-            'exit_code': os.EX_NOPERM
-        },
-        {
-            'exception': benji.exception.InternalError,
-            'msg': 'Internal error',
-            'exit_code': os.EX_SOFTWARE
-        },
-        {
-            'exception': benji.exception.ConfigurationError,
-            'msg': 'Configuration error',
-            'exit_code': os.EX_CONFIG
-        },
-        {
-            'exception': benji.exception.InputDataError,
-            'msg': 'Input data error',
-            'exit_code': os.EX_DATAERR
-        },
-        {
-            'exception': benji.exception.ScrubbingError,
-            'msg': 'Scrubbing error',
-            'exit_code': os.EX_DATAERR
-        },
-        {
-            'exception': PermissionError,
-            'msg': 'Already locked error',
-            'exit_code': os.EX_NOPERM
-        },
-        {
-            'exception': FileExistsError,
-            'msg': 'Already exists',
-            'exit_code': os.EX_CANTCREAT
-        },
-        {
-            'exception': FileNotFoundError,
-            'msg': 'Not found',
-            'exit_code': os.EX_NOINPUT
-        },
-        {
-            'exception': EOFError,
-            'msg': 'I/O error',
-            'exit_code': os.EX_IOERR
-        },
-        {
-            'exception': IOError,
-            'msg': 'I/O error',
-            'exit_code': os.EX_IOERR
-        },
-        {
-            'exception': OSError,
-            'msg': 'Not found',
-            'exit_code': os.EX_OSERR
-        },
-        {
-            'exception': ConnectionError,
-            'msg': 'I/O error',
-            'exit_code': os.EX_IOERR
-        },
-        {
-            'exception': LookupError,
-            'msg': 'Not found',
-            'exit_code': os.EX_NOINPUT
-        },
-        {
-            'exception': BaseException,
-            'msg': 'Other exception',
-            'exit_code': os.EX_SOFTWARE
-        },
+    exception_mappings = [
+        _ExceptionMapping(exception=benji.exception.UsageError, message='Usage error', exit_code=os.EX_USAGE),
+        _ExceptionMapping(
+            exception=benji.exception.AlreadyLocked, message='Already locked error', exit_code=os.EX_NOPERM),
+        _ExceptionMapping(exception=benji.exception.InternalError, message='Internal error', exit_code=os.EX_SOFTWARE),
+        _ExceptionMapping(
+            exception=benji.exception.ConfigurationError, message='Configuration error', exit_code=os.EX_CONFIG),
+        _ExceptionMapping(
+            exception=benji.exception.InputDataError, message='Input data error', exit_code=os.EX_DATAERR),
+        _ExceptionMapping(exception=benji.exception.ScrubbingError, message='Scrubbing error', exit_code=os.EX_DATAERR),
+        _ExceptionMapping(exception=PermissionError, message='Already locked error', exit_code=os.EX_NOPERM),
+        _ExceptionMapping(exception=FileExistsError, message='Already exists', exit_code=os.EX_CANTCREAT),
+        _ExceptionMapping(exception=FileNotFoundError, message='Not found', exit_code=os.EX_NOINPUT),
+        _ExceptionMapping(exception=EOFError, message='I/O error', exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=IOError, message='I/O error', exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=OSError, message='Not found', exit_code=os.EX_OSERR),
+        _ExceptionMapping(exception=ConnectionError, message='I/O error', exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=LookupError, message='Not found', exit_code=os.EX_NOINPUT),
+        _ExceptionMapping(exception=BaseException, message='Other exception', exit_code=os.EX_SOFTWARE),
     ]
 
     try:
@@ -864,11 +812,11 @@ def main():
     except SystemExit:
         raise
     except BaseException as exception:
-        for case in exit_code_list:
-            if isinstance(exception, case['exception']):
-                logger.debug(case['msg'], exc_info=True)
+        for case in exception_mappings:
+            if isinstance(exception, case.exception):
+                logger.debug(case.message, exc_info=True)
                 logger.error(str(exception))
-                exit(case['exit_code'])
+                exit(case.exit_code)
 
 
 if __name__ == '__main__':

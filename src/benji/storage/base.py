@@ -13,7 +13,7 @@ from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractS
 from diskcache import Cache
 from typing_extensions import Final
 
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.exception import ConfigurationError, BenjiException
@@ -49,7 +49,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
     _META_SUFFIX: Final[str] = '.meta'
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         self._name = name
         self._storage_id = storage_id
         self._active_transforms: List[TransformBase] = []
@@ -476,7 +476,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
 class ReadCacheStorageBase(StorageBase):
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         read_cache_directory = Config.get_from_dict(module_configuration, 'readCache.directory', None, types=str)
         read_cache_maximum_size = Config.get_from_dict(module_configuration, 'readCache.maximumSize', None, types=int)
 

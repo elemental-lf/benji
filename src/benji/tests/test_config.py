@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 
-from benji.config import Config, _ConfigList
+from benji.config import Config, ConfigList
 from benji.exception import ConfigurationError
 from benji.tests.testcase import TestCaseBase
 
@@ -75,7 +75,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
     def test_lists(self):
         config = Config(ad_hoc_config=self.CONFIG)
         ios = config.get('ios', types=list)
-        self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'), _ConfigList))
+        self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'), ConfigList))
         self.assertRaises(TypeError, lambda: Config.get_from_dict(ios[0], 'configuration.newImageFeatures', types=int))
         self.assertEqual('RBD_FEATURE_EXCLUSIVE_LOCK',
                          Config.get_from_dict(ios[0], 'configuration.newImageFeatures')[1])

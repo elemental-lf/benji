@@ -32,39 +32,25 @@ from benji.storage.key import StorageKeyMixIn
 
 class VersionUid(StorageKeyMixIn['VersionUid']):
 
-    def __init__(self, value) -> None:
-        self._value = value
-
-    @staticmethod
-    def create_from_readables(
-            readables: Union[None, List, Tuple, str, int]) -> Union[None, List['VersionUid'], 'VersionUid']:
-        if readables is None:
-            return None
-        input_is_list = isinstance(readables, (list, tuple))
-        if not input_is_list:
-            readables_list = cast(Union[List, Tuple], [readables])
-        else:
-            readables_list = cast(Union[List, Tuple], readables)
-        version_uids = []
-        for readable in readables_list:
-            if isinstance(readable, int):
-                pass
-            elif isinstance(readable, str):
+    def __init__(self, value: Union[str, int]) -> None:
+        value_int: int
+        if isinstance(value, int):
+            value_int = value
+        elif isinstance(value, str):
+            try:
+                value_int = int(value)
+            except ValueError:
+                if len(value) < 2:
+                    raise ValueError('Version UID {} is too short.'.format(value))
+                if value[0].lower() != 'v':
+                    raise ValueError('Version UID {} doesn\'t start with the letter V.'.format(value))
                 try:
-                    readable = int(readable)
+                    value_int = int(value[1:])
                 except ValueError:
-                    if len(readable) < 2:
-                        raise ValueError('Version UID {} is too short.'.format(readable))
-                    if readable[0].lower() != 'v':
-                        raise ValueError('Version UID {} doesn\'t start with the letter V.'.format(readable))
-                    try:
-                        readable = int(readable[1:])
-                    except ValueError:
-                        raise ValueError('Version UID {} is invalid.'.format(readable)) from None
-            else:
-                raise ValueError('Version UID {} has unsupported type {}.'.format(str(readable), type(readable)))
-            version_uids.append(VersionUid(readable))
-        return version_uids if input_is_list else version_uids[0]
+                    raise ValueError('Version UID {} is invalid.'.format(value)) from None
+        else:
+            raise ValueError('Version UID {} has unsupported type {}.'.format(str(value), type(value)))
+        self._value = value_int
 
     @property
     def integer(self) -> int:
@@ -109,7 +95,7 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
         vl = len(VersionUid(1).v_string)
         if len(key) != vl:
             raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(key, vl))
-        return cast(Version, VersionUid.create_from_readables(key))
+        return VersionUid(key)
 
     # End: Implements StorageKeyMixIn
 
@@ -956,7 +942,7 @@ class DatabaseBackend(ReprMixIn):
                 tag_dict['version_uid'] = version.uid
             self._session.bulk_insert_mappings(Tag, version_dict['tags'])
 
-            version_uids.append(cast(VersionUid, VersionUid.create_from_readables(version_dict['uid'])))
+            version_uids.append(VersionUid(version_dict['uid']))
 
         return version_uids
 

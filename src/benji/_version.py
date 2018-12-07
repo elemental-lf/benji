@@ -6,7 +6,7 @@ import os
 import subprocess
 
 from distutils.command.build_py import build_py as build_py_orig
-from typing import List
+from typing import List, Dict, Union, Optional
 
 from setuptools.command.sdist import sdist as sdist_orig
 
@@ -22,12 +22,11 @@ distr_root = os.path.normpath(os.path.join(package_root, '..', '..'))
 STATIC_VERSION_FILE = '_static_version.py'
 
 
-def get_version(version_file=STATIC_VERSION_FILE):
-    version_info = {}
+def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
+    version_info: Dict[str, str] = {}
     with open(os.path.join(package_root, version_file), 'rb') as f:
         exec(f.read(), {}, version_info)
-    version = version_info['version']
-    if version == "__use_git__":
+    if version_info['version'] == "__use_git__":
         version = get_version_from_git()
         if not version:
             version = get_version_from_git_archive(version_info)
@@ -35,10 +34,10 @@ def get_version(version_file=STATIC_VERSION_FILE):
             version = Version("unknown", None, None)
         return pep440_format(version)
     else:
-        return version
+        return version_info['version']
 
 
-def pep440_format(version_info):
+def pep440_format(version_info: Version) -> str:
     release, dev, labels = version_info
 
     version_parts = [release]
@@ -55,26 +54,27 @@ def pep440_format(version_info):
     return "".join(version_parts)
 
 
-def get_version_from_git():
+def get_version_from_git() -> Optional[Version]:
     try:
         p = subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
                              cwd=distr_root,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
     except OSError:
-        return
+        return None
     if p.wait() != 0:
-        return
+        return None
     if not os.path.samefile(p.communicate()[0].decode().rstrip('\n'), distr_root):
         # The top-level directory of the current Git repository is not the same
         # as the root directory of the distribution: do not extract the
         # version from Git.
-        return
+        return None
 
     # git describe --first-parent does not take into account tags from branches
     # that were merged-in. The '--long' flag gets us the 'dev' version and
     # git hash, '--always' returns the git hash even if there are no tags.
-    for opts in [['--first-parent'], []]:
+    opts_list: List[List[str]] = [['--first-parent'], []]
+    for opts in opts_list:
         try:
             p = subprocess.Popen(
                 ['git', 'describe', '--long', '--always'] + opts,
@@ -82,11 +82,11 @@ def get_version_from_git():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
         except OSError:
-            return
+            return None
         if p.wait() == 0:
             break
     else:
-        return
+        return None
 
     description = (
         p.communicate()[0].decode().strip('v')  # Tags can have a leading 'v', but the version should not
@@ -122,7 +122,7 @@ def get_version_from_git():
 #       Currently we can only tell the tag the current commit is
 #       pointing to, or its hash (with no version info)
 #       if it is not tagged.
-def get_version_from_git_archive(version_info):
+def get_version_from_git_archive(version_info: Dict[str, str]) -> Optional[Version]:
     try:
         refnames = version_info['refnames']
         git_hash = version_info['git_hash']
@@ -152,7 +152,7 @@ __version__ = get_version()
 # '__version__' module globals are used (but not modified).
 
 
-def _write_version(fname):
+def _write_version(fname: str) -> None:
     # This could be a hard link, so try to delete it first.  Is there any way
     # to do this atomically together with opening?
     try:
@@ -165,14 +165,14 @@ def _write_version(fname):
 
 class _build_py(build_py_orig):
 
-    def run(self):
+    def run(self) -> None:
         super().run()
-        _write_version(os.path.join(self.build_lib, package_name, STATIC_VERSION_FILE))
+        _write_version(os.path.join(self.build_lib, package_name, STATIC_VERSION_FILE))  # type: ignore
 
 
 class _sdist(sdist_orig):
 
-    def make_release_tree(self, base_dir, files):
+    def make_release_tree(self, base_dir, files) -> None:
         super().make_release_tree(base_dir, files)
         _write_version(os.path.join(base_dir, 'src', package_name, STATIC_VERSION_FILE))
 

@@ -9,7 +9,7 @@ from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
 
-from benji.config import Config, _ConfigDict
+from benji.config import Config, ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
 
@@ -19,7 +19,7 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: _ConfigDict):
+    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
         aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', None, types=str)
         if aws_access_key_id is None:
             aws_access_key_id_file = Config.get_from_dict(module_configuration, 'awsAccessKeyIdFile', types=str)
