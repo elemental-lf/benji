@@ -9,7 +9,7 @@ import os
 import random
 import sys
 from functools import partial
-from typing import Dict, List, NamedTuple, Type
+from typing import Dict, List, NamedTuple, Type, Optional
 
 import argcomplete
 import pkg_resources
@@ -488,7 +488,10 @@ class Commands:
                 benji_obj.close()
 
 
-def integer_range(minimum: int, maximum: int, arg: str) -> int:
+def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
+    if arg is None:
+        return None
+
     try:
         value = int(arg)
     except ValueError as err:
