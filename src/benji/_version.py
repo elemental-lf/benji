@@ -23,9 +23,7 @@ STATIC_VERSION_FILE = '_static_version.py'
 
 
 def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
-    version_info: Dict[str, str] = {}
-    with open(os.path.join(package_root, version_file), 'rb') as f:
-        exec(f.read(), {}, version_info)
+    version_info = get_static_version_info(version_file)
     if version_info['version'] == "__use_git__":
         version = get_version_from_git()
         if not version:
@@ -37,6 +35,17 @@ def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
         return version_info['version']
 
 
+def get_static_version_info(version_file: str = STATIC_VERSION_FILE) -> Dict[str, str]:
+    version_info: Dict[str, str] = {}
+    with open(os.path.join(package_root, version_file), 'rb') as f:
+        exec(f.read(), {}, version_info)
+    return version_info
+
+
+def version_is_from_git(version_file: str = STATIC_VERSION_FILE) -> bool:
+    return get_static_version_info(version_file)['version'] == '__use_git__'
+
+
 def pep440_format(version_info: Version) -> str:
     release, dev, labels = version_info
 
@@ -44,7 +53,7 @@ def pep440_format(version_info: Version) -> str:
     if dev:
         if release.endswith('-dev') or release.endswith('.dev'):
             version_parts.append(dev)
-        else:  # prefer PEP440 over stric adhesion to semver
+        else:  # prefer PEP440 over strict adhesion to semver
             version_parts.append('.dev{}'.format(dev))
 
     if labels:
