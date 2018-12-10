@@ -11,6 +11,7 @@ class BlockUidHistory(ReprMixIn):
         self._history: Dict[int, Dict[int, SparseBitfield]] = {}
 
     def add(self, storage_id: int, block_uid: BlockUid) -> None:
+        assert block_uid.left is not None and block_uid.right is not None
         history = self._history
         if storage_id not in history:
             history[storage_id] = {}

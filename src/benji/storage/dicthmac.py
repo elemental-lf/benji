@@ -2,7 +2,6 @@
 # -*- encoding: utf-8 -*-
 
 from Crypto.Hash import HMAC, SHA256
-from typing_extensions import Final
 
 from benji.exception import InternalError
 from benji.repr import ReprMixIn
@@ -12,11 +11,11 @@ class DictHMAC(ReprMixIn):
 
     _CHARSET = 'utf-8'
 
-    _HASH_NAME: Final = 'sha256'
-    _HASH_MODULE: Final = SHA256
+    _HASH_NAME = 'sha256'
+    _HASH_MODULE = SHA256
 
-    _ALGORITHM_KEY: Final = 'algorithm'
-    _DIGEST_KEY: Final = 'digest'
+    _ALGORITHM_KEY = 'algorithm'
+    _DIGEST_KEY = 'digest'
 
     def __init__(self, *, hmac_key, secret_key):
         self._hmac_key = hmac_key

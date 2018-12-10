@@ -155,7 +155,7 @@ class BlockUidComparator(CompositeProperty.Comparator):
 
 class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
 
-    def __init__(self, left: int, right: int) -> None:
+    def __init__(self, left: Optional[int], right: Optional[int]) -> None:
         self.left = left
         self.right = right
 
@@ -163,7 +163,7 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
         object.__setattr__(self, key, value)
         self.changed()
 
-    def __composite_values__(self) -> Tuple[int, int]:
+    def __composite_values__(self) -> Tuple[Optional[int], Optional[int]]:
         return self.left, self.right
 
     def __str__(self) -> str:
@@ -185,7 +185,12 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
 
     # For sorting
     def __lt__(self, other: 'BlockUid') -> bool:
-        return self.left < other.left or self.left == other.left and self.right < other.right
+        # Map None to zero
+        self_left = self.left if self.left is not None else 0
+        self_right = self.right if self.right is not None else 0
+        other_left = other.left if other.left is not None else 0
+        other_right = other.right if other.right is not None else 0
+        return self_left < other_left or self_left == other_left and self_right < other_right
 
     @classmethod
     def coerce(cls, key, value):
@@ -280,9 +285,9 @@ class Tag(Base):
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: BlockUid, version_uid: VersionUid, id: int, date: datetime.datetime,
+    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int, date: datetime.datetime,
                  checksum: Optional[str], size: int, valid: bool) -> None:
-        self.uid = uid
+        self.uid = uid if uid is not None else BlockUid(None, None)
         self.version_uid = version_uid
         self.id = id
         self.date = date
@@ -297,18 +302,20 @@ class DereferencedBlock(ReprMixIn):
         return self._uid
 
     @uid.setter
-    def uid(self, uid: BlockUid) -> None:
-        if isinstance(uid, BlockUid):
+    def uid(self, uid: Optional[BlockUid]) -> None:
+        if uid is None:
+            self._uid = BlockUid(None, None)
+        elif isinstance(uid, BlockUid):
             self._uid = uid
         else:
-            raise InternalError('Unexpected type {} for uid in BlockUid.uid.setter'.format(type(uid)))
+            raise InternalError('Unexpected type {} for uid.'.format(type(uid)))
 
     @property
-    def uid_left(self) -> int:
+    def uid_left(self) -> Optional[int]:
         return self._uid.left
 
     @property
-    def uid_right(self) -> int:
+    def uid_right(self) -> Optional[int]:
         return self._uid.right
 
 

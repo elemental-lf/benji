@@ -45,7 +45,7 @@ class NbdTestCase:
             offset = random.randint(0, size - 1 - patch_size)
             self.patch(image_filename, offset, data)
 
-        benji_obj = self.benjiOpen(initdb=True)
+        benji_obj = self.benjiOpen(init_database=True)
         version_uid = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename, None, None)
         benji_obj.close()
         return version_uid, size
@@ -59,7 +59,7 @@ class NbdTestCase:
         super().tearDown()
 
     def test(self):
-        benji_obj = self.benjiOpen(initdb=False)
+        benji_obj = self.benjiOpen()
         store = BenjiStore(benji_obj)
         addr = ('127.0.0.1', self.SERVER_PORT)
         read_only = False
@@ -94,7 +94,6 @@ class NbdTestCase:
                 self.fail('command {} failed: {}'.format(' '.join(args), completed.stdout.replace('\n', '|')))
 
     def nbd_client(self, version_uid):
-        time.sleep(5)
         self.subprocess_run(
             args=['sudo', 'nbd-client', '127.0.0.1', '-p',
                   str(self.SERVER_PORT), '-l'],
@@ -106,7 +105,7 @@ class NbdTestCase:
                 'sudo', 'nbd-client', '-N', version_uid.v_string, '127.0.0.1', '-p',
                 str(self.SERVER_PORT), self.NBD_DEVICE
             ],
-            success_regexp='^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$')
+            success_regexp='^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$|^Negotiation: ..size = \d+MB|Connected /dev/nbd\d+$')
 
         count = 0
         nbd_data = bytearray()
@@ -191,6 +190,8 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: sqlite:///{testpath}/benji.sqlite
+            nbd:
+              cacheDirectory: {testpath}/nbd-cache
             """
 
 

@@ -11,7 +11,6 @@ from threading import BoundedSemaphore
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
 from diskcache import Cache
-from typing_extensions import Final
 
 from benji.config import Config, ConfigDict
 from benji.repr import ReprMixIn
@@ -41,13 +40,13 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     READ_QUEUE_LENGTH = 1
     WRITE_QUEUE_LENGTH = 1
 
-    _TRANSFORMS_KEY: Final[str] = 'transforms'
-    _SIZE_KEY: Final[str] = 'size'
-    _OBJECT_SIZE_KEY: Final[str] = 'object_size'
-    _CHECKSUM_KEY: Final[str] = 'checksum'
-    _HMAC_KEY: Final[str] = 'hmac'
+    _TRANSFORMS_KEY = 'transforms'
+    _SIZE_KEY = 'size'
+    _OBJECT_SIZE_KEY = 'object_size'
+    _CHECKSUM_KEY = 'checksum'
+    _HMAC_KEY = 'hmac'
 
-    _META_SUFFIX: Final[str] = '.meta'
+    _META_SUFFIX = '.meta'
 
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         self._name = name

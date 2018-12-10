@@ -535,8 +535,9 @@ def main():
     p.add_argument(
         '-M', '--metadata-backend-less', action='store_true', help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
-    p.add_argument(
-        'destination', help='Destination URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
+    # yapf: disable (otherwise YAPF would break this line and mypy won't apply the type: ignore properly)
+    p.add_argument('destination', help='Destination URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
+    # yapf: enable
 
     p.set_defaults(func='restore')
 

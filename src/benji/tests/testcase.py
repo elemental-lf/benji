@@ -95,6 +95,7 @@ class BenjiTestCaseBase(TestCaseBase):
         super().setUp()
 
     def tearDown(self):
+        StorageFactory.close()
         super().tearDown()
 
     def benjiOpen(self, init_database=False, block_size=None, in_memory_database=False):
