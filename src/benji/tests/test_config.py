@@ -36,7 +36,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
         """
 
     CONFIG_INVALID_VERSION = """
-        configurationVersion: '112345.0.0'
+        configurationVersion: '1-2-3'
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1

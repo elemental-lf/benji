@@ -9,18 +9,15 @@ import random
 import time
 from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
-from typing import List, Tuple, TextIO, Optional, Set, Collection, NamedTuple, Dict, Any, cast, Iterator, Union, \
+from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence
-
-from diskcache import Cache
-from mypy_extensions import TypedDict
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
-from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, NoChange, ScrubbingError
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError
 from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
-from benji.database import BlockUid, DatabaseBackend, VersionUid, Version, Block, Block, \
+from benji.database import DatabaseBackend, VersionUid, Version, Block, \
     BlockUid, DereferencedBlock
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
@@ -183,12 +180,12 @@ class Benji(ReprMixIn):
            version_uid: VersionUid = None,
            version_name: str = None,
            version_snapshot_name: str = None,
-           version_tags: List[str] = None) -> List[Version]:
+           version_labels: List[Tuple[str, str]] = None) -> List[Version]:
         return self._database_backend.get_versions(
             version_uid=version_uid,
             version_name=version_name,
             version_snapshot_name=version_snapshot_name,
-            version_tags=version_tags)
+            version_labels=version_labels)
 
     def ls_version(self, version_uid: VersionUid) -> List[Block]:
         # don't lock here, this is not really error-prone.
@@ -516,15 +513,9 @@ class Benji(ReprMixIn):
                     read_jobs, done_read_jobs))
 
     def protect(self, version_uid: VersionUid) -> None:
-        version = self._database_backend.get_version(version_uid)
-        if version.protected:
-            raise NoChange('Version {} is already protected.'.format(version_uid.v_string))
         self._database_backend.set_version(version_uid, protected=True)
 
     def unprotect(self, version_uid: VersionUid) -> None:
-        version = self._database_backend.get_version(version_uid)
-        if not version.protected:
-            raise NoChange('Version {} is not protected.'.format(version_uid.v_string))
         self._database_backend.set_version(version_uid, protected=False)
 
     def rm(self,
@@ -583,21 +574,12 @@ class Benji(ReprMixIn):
 
         return sparse_blocks, read_blocks
 
-    _BackupStats = TypedDict('_BackupStats', {
-        'bytes_read': int,
-        'bytes_written': int,
-        'bytes_dedup': int,
-        'bytes_sparse': int,
-        'start_time': float
-    })
-
     def backup(self,
                version_name: str,
                version_snapshot_name: str,
                source: str,
                hints: List[Tuple[int, int, bool]] = None,
                base_version_uid: VersionUid = None,
-               tags: List[str] = None,
                storage_name: str = None) -> VersionUid:
         """ Create a backup from source.
         If hints are given, they must be tuples of (offset, length, exists) where offset and length are integers and
@@ -606,7 +588,7 @@ class Benji(ReprMixIn):
         """
         block: Union[DereferencedBlock, Block]
 
-        stats: Benji._BackupStats = {
+        stats: Dict[str, int] = {
             'bytes_read': 0,
             'bytes_written': 0,
             'bytes_dedup': 0,
@@ -830,10 +812,6 @@ class Benji(ReprMixIn):
 
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
-        if tags:
-            for tag in tags:
-                self._database_backend.add_tag(version.uid, tag)
-
         logger.debug('Stats: {}'.format(stats))
         self._database_backend.set_stats(
             version_uid=version.uid,
@@ -852,8 +830,8 @@ class Benji(ReprMixIn):
             duration_seconds=int(time.time() - stats['start_time']),
         )
 
-        logger.info('New version: {} (Tags: [{}])'.format(version.uid, ','.join(tags if tags else [])))
         self._locking.unlock_version(version.uid)
+        logger.info('New version {} created, backup successful.'.format(version.uid.v_string))
         # It might be tempting to return a Version object here but this will only lead to SQLAlchemy errors
         return version.uid
 
@@ -868,11 +846,11 @@ class Benji(ReprMixIn):
                 if no_del_uids:
                     logger.info('Unable to delete these UIDs from storage {}: {}'.format(storage.name, no_del_uids))
 
-    def add_tag(self, version_uid: VersionUid, name: str) -> None:
-        self._database_backend.add_tag(version_uid, name)
+    def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
+        self._database_backend.add_label(version_uid, key, value)
 
-    def rm_tag(self, version_uid: VersionUid, name: str) -> None:
-        self._database_backend.rm_tag(version_uid, name)
+    def rm_label(self, version_uid: VersionUid, key: str) -> None:
+        self._database_backend.rm_label(version_uid, key)
 
     def close(self) -> None:
         StorageFactory.close()
@@ -1055,10 +1033,8 @@ class BenjiStore(ReprMixIn):
     def close(self, version) -> None:
         self._benji_obj._locking.unlock_version(version.uid)
 
-    def get_versions(self, version_uid: VersionUid = None, version_name: str = None,
-                     version_snapshot_name: str = None) -> List[Version]:
-        return self._benji_obj._database_backend.get_versions(
-            version_uid=version_uid, version_name=version_name, version_snapshot_name=version_snapshot_name)
+    def get_versions(self, version_uid: VersionUid = None) -> List[Version]:
+        return self._benji_obj._database_backend.get_versions(version_uid=version_uid)
 
     def _block_list(self, version: Version, offset: int, length: int) -> List[Tuple[Optional[Block], int, int]]:
         # Get version's blocks if they aren't in the cache already

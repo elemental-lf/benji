@@ -3,7 +3,6 @@ import random
 import re
 import subprocess
 import threading
-import time
 from unittest import TestCase
 
 from benji.benji import BenjiStore

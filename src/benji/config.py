@@ -35,7 +35,7 @@ class Config:
     _CONFIG_DIRS = ['/etc', '/etc/benji']
     _CONFIG_FILE = 'benji.yaml'
     _CONFIGURATION_VERSION_KEY = 'configurationVersion'
-    _CONFIGURATION_VERSION_REGEX = '\d+\.\d+\.\d+'
+    _CONFIGURATION_VERSION_REGEX = r'\d+\.\d+\.\d+'
     _PARENTS_KEY = 'parents'
     _SCHEMA_VERSIONS = ['1.0.0']
     _YAML_SUFFIX = '.yaml'

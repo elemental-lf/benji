@@ -7,9 +7,10 @@ import fileinput
 import logging
 import os
 import random
+import re
 import sys
 from functools import partial
-from typing import Dict, List, NamedTuple, Type, Optional
+from typing import Dict, List, NamedTuple, Type, Optional, Tuple
 
 import argcomplete
 import pkg_resources
@@ -24,7 +25,7 @@ from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.database import Version, VersionUid, Stats
 from benji.nbdserver import NbdServer
-from benji.utils import hints_from_rbd_diff, PrettyPrint
+from benji.utils import hints_from_rbd_diff, PrettyPrint, LabelHelpers
 
 __version__ = pkg_resources.get_distribution('benji').version
 
@@ -49,7 +50,6 @@ class Commands:
                rbd_hints: str,
                base_version_uid: str,
                block_size: int = None,
-               tags: List[str] = None,
                storage=None) -> None:
         base_version_uid_obj = VersionUid(base_version_uid)
         benji_obj = None
@@ -60,7 +60,7 @@ class Commands:
                 data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
                 hints = hints_from_rbd_diff(data)
             backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
-                                                  tags, storage)
+                                                  storage)
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': benji_obj.ls(version_uid=backup_version_uid)
@@ -94,10 +94,7 @@ class Commands:
         try:
             benji_obj = Benji(self.config)
             for version_uid in version_uid_objs:
-                try:
-                    benji_obj.protect(version_uid)
-                except benji.exception.NoChange:
-                    logger.warning('Version {} already was protected.'.format(version_uid))
+                benji_obj.protect(version_uid)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -108,10 +105,7 @@ class Commands:
         try:
             benji_obj = Benji(self.config)
             for version_uid in version_uid_objs:
-                try:
-                    benji_obj.unprotect(version_uid)
-                except benji.exception.NoChange:
-                    logger.warning('Version {} already was unprotected.'.format(version_uid))
+                benji_obj.unprotect(version_uid)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -188,7 +182,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def _bulk_scrub(self, method: str, names: List[str], tags: List[str], version_percentage: int,
+    def _bulk_scrub(self, method: str, names: List[str], labels: List[str], version_percentage: int,
                     block_percentage: int) -> None:
         history = BlockUidHistory()
         benji_obj = None
@@ -197,7 +191,7 @@ class Commands:
             versions = []
             if names:
                 for name in names:
-                    versions.extend(benji_obj.ls(version_name=name, version_tags=tags))
+                    versions.extend(benji_obj.ls(version_name=name, version_labels=labels))
             else:
                 versions.extend(benji_obj.ls(version_tags=tags))
             errors = []
@@ -309,7 +303,14 @@ class Commands:
             ])
         print(tbl)
 
-    def ls(self, name: str, snapshot_name: str = None, tags: List[str] = None, include_blocks: bool = False) -> None:
+    def ls(self, name: str, snapshot_name: str = None, labels: List[str] = None, include_blocks: bool = False) -> None:
+
+        version_labels_kv = []
+        for label in labels:
+            key, value = label.split('==')
+            version_labels_kv.append((key, value))
+
+
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -420,30 +421,39 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def add_tag(self, version_uid: str, names: List[str]) -> None:
-        version_uid_obj = VersionUid(version_uid)
-        benji_obj = None
-        try:
-            benji_obj = Benji(self.config)
-            for name in names:
-                try:
-                    benji_obj.add_tag(version_uid_obj, name)
-                except benji.exception.NoChange:
-                    logger.warning('Version {} already tagged with {}.'.format(version_uid_obj, name))
-        finally:
-            if benji_obj:
-                benji_obj.close()
+    def label(self, version_uid: str, labels: List[str]) -> None:
+        remove_list: List[str] = []
+        add_list: List[Tuple[str, str]] = []
+        for label in labels:
+            if label.endswith('-'):
+                key = label[:-1]
 
-    def rm_tag(self, version_uid: str, names: List[str]) -> None:
+                if not LabelHelpers.is_qualified_name(key):
+                    raise benji.UsageError('Label key {} is not a valid qualified name.'.format(key))
+
+                remove_list.append(key)
+            elif label.find('=') > -1:
+                key, value = label.split('=')
+
+                if len(key) == 0:
+                    raise benji.UsageError('Missing label key in label {}.'.format(label))
+                if LabelHelpers.is_qualified_name(key):
+                    raise benji.UsageError('Label key {} is not a valid qualified name.'.format(key))
+                if LabelHelpers.is_label_value(value):
+                    raise benji.UsageError('Label value {} is not a valid.'.format(value))
+
+                add_list.append((key, value))
+            else:
+                raise benji.UsageError('Label {} has an invalid format.'.format(label))
+
         version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for name in names:
-                try:
-                    benji_obj.rm_tag(version_uid_obj, name)
-                except benji.exception.NoChange:
-                    logger.warning('Version {} has no tag {}.'.format(version_uid_obj, name))
+            for key, value in add_list:
+                benji_obj.add_label(version_uid_obj, key, value)
+            for key in remove_list:
+                benji_obj.rm_label(version_uid_obj, key)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -520,8 +530,6 @@ def main():
     p.add_argument('-s', '--snapshot-name', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
     p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
     p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
-    p.add_argument(
-        '-t', '--tag', action='append', dest='tags', metavar='TAG', default=None, help='Tag version (may be repeated)')
     p.add_argument('-b', '--block-size', type=int, help='Block size in bytes')
     p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
     p.add_argument('source', help='Source URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
@@ -549,8 +557,14 @@ def main():
     p.add_argument('-r', '--read-only', action='store_true', default=False, help='NBD device is read-only')
     p.set_defaults(func='nbd')
 
+    # LABEL
+    p = subparsers_root.add_parser('label', help='Add labels to a version')
+    p.add_argument('version_uid')
+    p.add_argument('labels', nargs='+')
+    p.set_defaults(func='label')
+
     # LS
-    p = subparsers_root.add_parser('ls', help='List existing versions')
+    p = subparsers_root.add_parser('ls', help='List versions')
     p.add_argument('name', nargs='?', default=None, help='Limit output to the specified version name')
     p.add_argument('-s', '--snapshot-name', default=None, help='Limit output to the specified version snapshot name')
     p.add_argument(
@@ -596,18 +610,6 @@ def main():
     p = subparsers_root.add_parser('unprotect', help='Unprotect one or more versions')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='unprotect')
-
-    # ADD TAG
-    p = subparsers_root.add_parser('add-tag', help='Add a tag to a version')
-    p.add_argument('version_uid')
-    p.add_argument('names', metavar='NAME', nargs='+')
-    p.set_defaults(func='add_tag')
-
-    # REMOVE TAG
-    p = subparsers_root.add_parser('rm-tag', help='Remove a tag from a version')
-    p.add_argument('version_uid')
-    p.add_argument('names', metavar='NAME', nargs='+')
-    p.set_defaults(func='rm_tag')
 
     # SCRUB
     p = subparsers_root.add_parser(
@@ -740,7 +742,7 @@ def main():
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
 
-    # INITDB
+    # INIT
     p = subparsers_root.add_parser('init', help='Initialize the database (will not delete existing tables or data)')
     p.set_defaults(func='init')
 

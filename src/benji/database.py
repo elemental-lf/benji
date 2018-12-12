@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 import datetime
 import json
+import operator
 import os
 import platform
 import re
@@ -10,23 +11,24 @@ import time
 import uuid
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
-from typing import Union, List, Tuple, TextIO, Dict, cast, Generator, Iterator, Set, Any, Optional, Sequence
+from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence
 
+import boolean
 import sqlalchemy
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
-    DateTime
+    DateTime, UniqueConstraint, and_, or_
 from sqlalchemy import distinct, desc
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
 from sqlalchemy.types import TypeDecorator
-from benji.repr import ReprMixIn
 
 from benji.config import Config
-from benji.exception import InputDataError, InternalError, NoChange, AlreadyLocked
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
 from benji.logging import logger
+from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 
 
@@ -258,10 +260,10 @@ class Version(Base):
     valid = Column(Boolean, nullable=False)
     protected = Column(Boolean, nullable=False)
 
-    tags = sqlalchemy.orm.relationship(
-        'Tag',
+    labels = sqlalchemy.orm.relationship(
+        'Label',
         backref='version',
-        order_by='asc(Tag.name)',
+        order_by='asc(Label.key)',
         passive_deletes=True,
     )
 
@@ -273,14 +275,17 @@ class Version(Base):
     )
 
 
-class Tag(Base):
-    __tablename__ = 'tags'
+class Label(Base):
+    __tablename__ = 'labels'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['version_uid']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'key', 'value']
 
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)
-    name = Column(String, nullable=False, primary_key=True)
+    key = Column(String, nullable=False, primary_key=True)
+    value = Column(String, nullable=False, index=True)
+
+    __table_args__ = (UniqueConstraint('version_uid', 'key'),)
 
 
 class DereferencedBlock(ReprMixIn):
@@ -392,7 +397,7 @@ class Lock(Base):
 class DatabaseBackend(ReprMixIn):
     _METADATA_VERSION = '1.0.0'
     _METADATA_VERSION_KEY = 'metadataVersion'
-    _METADATA_VERSION_REGEX = '\d+\.\d+\.\d+'
+    _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
     _COMMIT_EVERY_N_BLOCKS = 1000
 
     _locking = None
@@ -575,7 +580,7 @@ class DatabaseBackend(ReprMixIn):
                      version_uid: VersionUid = None,
                      version_name: str = None,
                      version_snapshot_name: str = None,
-                     version_tags: List[str] = None) -> List[Version]:
+                     version_labels: List[Tuple[str, str]] = None) -> List[Version]:
         try:
             query = self._session.query(Version)
             if version_uid:
@@ -584,8 +589,10 @@ class DatabaseBackend(ReprMixIn):
                 query = query.filter_by(name=version_name)
             if version_snapshot_name:
                 query = query.filter_by(snapshot_name=version_snapshot_name)
-            if version_tags:
-                query = query.join(Version.tags).filter(Tag.name.in_(version_tags))
+            if version_labels:
+                query = query.join(Version.labels)
+                for version_label in version_labels:
+                    query.filter(Label.key == version_label[0], Label.value == version_label[1])
             versions = query.order_by(Version.name, Version.date).all()
         except:
             self._session.rollback()
@@ -593,33 +600,37 @@ class DatabaseBackend(ReprMixIn):
 
         return versions
 
-    def add_tag(self, version_uid: VersionUid, name: str) -> None:
-        """ Add a tag to a version_uid, do nothing if the tag already exists.
-        """
-        tag = Tag(
-            version_uid=version_uid,
-            name=name,
-        )
+    def get_versions_new(self, filter_expression: str = None):
+        generator = _VersionQueryBuilder(self._session)
         try:
-            self._session.add(tag)
-            self._session.commit()
-        except IntegrityError:
-            self._session.rollback()
-            raise NoChange('Version {} already has tag {}.'.format(version_uid.v_string, name)) from None
+            versions = generator.build(filter_expression).all()
         except:
             self._session.rollback()
             raise
 
-    def rm_tag(self, version_uid: VersionUid, name: str) -> None:
+        return versions
+
+    def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
         try:
-            deleted = self._session.query(Tag).filter_by(version_uid=version_uid, name=name).delete()
+            label = self._session.query(Label).filter_by(version_uid=version_uid, key=key).first()
+            if label:
+                label.value = value
+            else:
+                label = Label(version_uid=version_uid, key=key, value=value)
+                self._session.add(label)
+
             self._session.commit()
         except:
             self._session.rollback()
             raise
 
-        if deleted != 1:
-            raise NoChange('Version {} has not tag {}.'.format(version_uid.v_string, name))
+    def rm_label(self, version_uid: VersionUid, key: str) -> None:
+        try:
+            deleted = self._session.query(Label).filter_by(version_uid=version_uid, key=key).delete()
+            self._session.commit()
+        except:
+            self._session.rollback()
+            raise
 
     def set_block(self,
                   *,
@@ -1088,3 +1099,102 @@ class DatabaseBackendLocking:
         else:
             if unlock:
                 self.unlock_version(version_uid)
+
+
+class _VersionFilterAlgebra(boolean.BooleanAlgebra):
+    LABEL_PREFIX = 'label_'
+
+    _OPS = {
+        'or': boolean.TOKEN_OR,
+        'and': boolean.TOKEN_AND,
+        '(': boolean.TOKEN_LPAR,
+        ')': boolean.TOKEN_RPAR,
+    }
+
+    _KEYS = {
+        'uid': lambda v: VersionUid(v),
+        'name': lambda v: v,
+        'snapshot_name': lambda v: v,
+    }
+
+    _COMPARISON_OPS = {
+        '==': operator.eq,
+        '!=': operator.ne,
+    }
+
+    _SYMBOL_START = 0
+    _SYMBOL_OP = 1
+    _SYMBOL_VALUE = 2
+
+    def tokenize(self, s):
+        symbol_state = self._SYMBOL_START
+        for row, line in enumerate(s.splitlines(False)):
+            tok_list = [
+                tok for tok in re.split(r'(\s+|[\(\)]|{})'.format('|'.join(self._COMPARISON_OPS.keys())), line)
+                if not re.fullmatch(r'\s*', tok)
+            ]
+            for col, tok in enumerate(tok_list):
+                if symbol_state == self._SYMBOL_START and tok in self._OPS:
+                    yield self._OPS[tok], tok, (row, col)
+                elif symbol_state == self._SYMBOL_START:
+                    symbol_state = self._SYMBOL_OP
+                    symbol_tokens = tok
+
+                    if tok in self._KEYS or tok.startswith(self.LABEL_PREFIX):
+                        key = tok
+                    else:
+                        raise UsageError('Invalid key {} in filter expression.'.format(tok))
+                elif symbol_state == self._SYMBOL_OP:
+                    symbol_state = self._SYMBOL_VALUE
+                    symbol_tokens += tok
+
+                    if tok not in self._COMPARISON_OPS:
+                        raise UsageError('Invalid operator {} in filter expression.'.format(tok))
+                    op = self._COMPARISON_OPS[tok]
+                elif symbol_state == self._SYMBOL_VALUE:
+                    symbol_state = self._SYMBOL_START
+                    symbol_tokens += tok
+
+                    match = re.fullmatch('"([^"]*)"', tok)
+                    if not match:
+                        match = re.fullmatch('\'([^\']*)\'', tok)
+                    if not match:
+                        raise UsageError('Invalid value {} in filter expression.'.format(tok))
+                    if key.startswith(self.LABEL_PREFIX):
+                        value = match.group(1)
+                    else:
+                        value = self._KEYS[key](match.group(1))
+                    yield self.Symbol((key, op, value)), symbol_tokens, (row, col)
+
+
+class _VersionQueryBuilder:
+
+    def __init__(self, session) -> None:
+        self._session = session
+        self._algebra = _VersionFilterAlgebra()
+
+    def build(self, filter_expression: str = None) -> sqlalchemy.orm.query.Query:
+
+        def build_expression(current):
+            if isinstance(current, boolean.AND):
+                return and_(*[build_expression(arg) for arg in current.args])
+            elif isinstance(current, boolean.OR):
+                return or_(*[build_expression(arg) for arg in current.args])
+            elif isinstance(current, boolean.Symbol):
+                key, op, value = current.obj
+                if key.startswith(self._algebra.LABEL_PREFIX):
+                    label = key[len(self._algebra.LABEL_PREFIX):]
+                    label_query = self._session.query(
+                        Version.uid).join(Label).filter((Label.key == label) & op(Label.value, value))
+                    return Version.uid.in_(label_query)
+                else:
+                    return op(getattr(Version, key), value)
+
+        query = self._session.query(Version)
+        if filter_expression:
+            try:
+                parsed_filter_expression = self._algebra.parse(filter_expression)
+            except Exception as exception:
+                raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
+            query = query.filter(build_expression(parsed_filter_expression))
+        return query.order_by(Version.name, Version.date)

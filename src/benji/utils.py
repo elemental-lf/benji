@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 import concurrent
 import json
+import re
 import setproctitle
 import sys
 from ast import literal_eval
@@ -170,3 +171,36 @@ class TokenBucket:
                 return 0
             else:
                 return -self.tokens / self.rate
+
+
+class LabelHelpers:
+
+    QUALIFIED_NAME_REGEXP = '(?!-)[a-zA-Z0-9-_.]{1,63}(?<!-)'
+    LABEL_VALUE_REGEXP = '(' + QUALIFIED_NAME_REGEXP + ')?'
+    DNS1123_LABEL_REGEXP = '(?!-)[a-zA-Z0-9-]{1,63}(?<!-)'
+    DNS1123_SUBDOMAIN_REGEXP = DNS1123_LABEL_REGEXP + '(\\.' + DNS1123_LABEL_REGEXP +')*'
+    DNS1123_SUBDOMAIN_MAX_LENGTH = 253
+
+    @classmethod
+    def is_dns1123_subdomain(cls, subdomain: str) -> bool:
+        if len(subdomain) > cls.DNS1123_SUBDOMAIN_MAX_LENGTH:
+            return False
+        return re.fullmatch(cls.DNS1123_SUBDOMAIN_REGEXP, subdomain) is not None
+
+    @classmethod
+    def is_label_value(cls, value: str) -> bool:
+        return re.fullmatch(cls.LABEL_VALUE_REGEXP, value) is not None
+
+    @classmethod
+    def is_qualified_name(cls, name: str) -> bool:
+        if name.find('/') > -1:
+            prefix, name = name.split('/')
+            if len(prefix) == 0 or len(name) == 0:
+                return False
+            if not cls.is_dns1123_subdomain(prefix):
+                return False
+            if not re.fullmatch(cls.QUALIFIED_NAME_REGEXP, name):
+                return False
+            return True
+        else:
+            return re.fullmatch(cls.QUALIFIED_NAME_REGEXP, name) is not None

@@ -26,10 +26,6 @@ class ConfigurationError(BenjiException, RuntimeError):
     pass
 
 
-class NoChange(BenjiException, RuntimeError):
-    pass
-
-
 class NbdServerAbortedNegotiationError(BenjiException, IOError):
     pass
 

@@ -2,7 +2,7 @@ import reprlib
 from unittest import TestCase
 
 from benji.database import BlockUid, VersionUid
-from benji.exception import InternalError, NoChange
+from benji.exception import InternalError
 from benji.tests.testcase import DatabaseBackendTestCaseBase
 
 
@@ -42,20 +42,36 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         version = self.database_backend.get_version(version.uid)
         self.assertFalse(version.protected)
 
-        self.database_backend.add_tag(version.uid, 'tag-123')
-        self.assertRaises(NoChange, lambda: self.database_backend.add_tag(version.uid, 'tag-123'))
-
+        self.database_backend.add_label(version.uid, 'label-1')
+        self.database_backend.add_label(version.uid, 'label-2')
         version = self.database_backend.get_version(version.uid)
-        self.assertEqual(1, len(version.tags))
-        self.assertIn(version.uid, map(lambda tag: tag.version_uid, version.tags))
-        self.assertIn('tag-123', map(lambda tag: tag.name, version.tags))
+        self.assertEqual(2, len(version.labels))
+        self.assertEqual(version.uid, version.labels[0].version_uid)
+        self.assertEqual('label-1', version.labels[0].key)
+        self.assertEqual('bla', version.labels[0].value)
+        self.assertEqual(version.uid, version.labels[1].version_uid)
+        self.assertEqual('label-2', version.labels[1].key)
+        self.assertEqual('', version.labels[1].value)
 
-        self.database_backend.rm_tag(version.uid, 'tag-123')
-        self.assertRaises(NoChange, lambda: self.database_backend.rm_tag(version.uid, 'tag-123'))
+        self.database_backend.add_label(version.uid, 'label-2')
         version = self.database_backend.get_version(version.uid)
-        self.assertEqual(0, len(version.tags))
+        self.assertEqual(version.uid, version.labels[1].version_uid)
+        self.assertEqual('label-2', version.labels[1].key)
+        self.assertEqual('test123', version.labels[1].value)
 
-        version_uids = {}
+        self.database_backend.rm_label(version.uid, 'label-1')
+        version = self.database_backend.get_version(version.uid)
+        self.assertEqual(1, len(version.labels))
+
+        self.database_backend.rm_label(version.uid, 'label-2')
+        version = self.database_backend.get_version(version.uid)
+        self.assertEqual(0, len(version.labels))
+
+        self.database_backend.rm_label(version.uid, 'label-3')
+        version = self.database_backend.get_version(version.uid)
+        self.assertEqual(0, len(version.labels))
+
+        version_uids = set()
         for _ in range(256):
             version = self.database_backend.create_version(
                 version_name='backup-name',
@@ -66,7 +82,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 valid=False)
             version = self.database_backend.get_version(version.uid)
             self.assertNotIn(version.uid, version_uids)
-            version_uids[version.uid] = True
+            version_uids.add(version.uid)
 
     def test_block(self):
         version = self.database_backend.create_version(
@@ -193,6 +209,78 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version_uid_string(self):
         self.assertEqual(VersionUid(1), VersionUid('V1'))
+
+    def test_version_filter(self):
+        version_uids = set()
+        for i in range(256):
+            version = self.database_backend.create_version(
+                version_name='backup-name',
+                snapshot_name='snapshot-name.{}'.format(i),
+                size=16 * 1024 * 4096,
+                storage_id=1,
+                block_size=4 * 1024 * 4096,
+                valid=False)
+            version = self.database_backend.get_version(version.uid)
+            self.assertEqual(0, len(version.labels))
+            self.database_backend.add_label(version.uid, 'label-key', 'label-value')
+            self.database_backend.add_label(version.uid, 'label-key-2', str(i))
+            self.database_backend.add_label(version.uid, 'label-key-3', '')
+            self.assertEqual(3, len(version.labels))
+            self.assertNotIn(version.uid, version_uids)
+            version_uids.add(version.uid)
+
+        versions = self.database_backend.get_versions_new()
+        self.assertEqual(256, len(versions))
+
+        versions = self.database_backend.get_versions_new('label_label-key=="label-value"')
+        self.assertEqual(256, len(versions))
+
+        versions = self.database_backend.get_versions_new('label_label-key-3==""')
+        self.assertEqual(256, len(versions))
+
+        versions = self.database_backend.get_versions_new('label_label-key!="label-value"')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_new('label_label-key-2=="9"')
+        self.assertEqual(1, len(versions))
+
+        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1"')
+        self.assertEqual(1, len(versions))
+        self.assertEqual(VersionUid(2), versions[0].uid)
+
+        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" and label_label-key-2=="1"')
+        self.assertEqual(1, len(versions))
+        self.assertEqual(VersionUid(2), versions[0].uid)
+
+        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" and label_label-key-2=="2"')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" or label_label-key-2=="2"')
+        self.assertEqual(2, len(versions))
+        self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
+
+        versions = self.database_backend.get_versions_new('name=="backup-name" and snapshot_name=="snapshot-name.1"')
+        self.assertEqual(1, len(versions))
+        self.assertEqual(VersionUid(2), versions[0].uid)
+
+        versions = self.database_backend.get_versions_new('name=="backup-name" and (snapshot_name=="snapshot-name.1" or snapshot_name=="snapshot-name.2")')
+        self.assertEqual(2, len(versions))
+        self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
+
+        versions = self.database_backend.get_versions_new('name == "backup-name" and (snapshot_name == "snapshot-name.1" or snapshot_name == "snapshot-name.2")')
+        self.assertEqual(2, len(versions))
+        self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
+
+        versions = self.database_backend.get_versions_new("name == 'backup-name' and (snapshot_name == 'snapshot-name.1' or snapshot_name == 'snapshot-name.2')")
+        self.assertEqual(2, len(versions))
+        self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
+
+        versions = self.database_backend.get_versions_new('uid=="V1" or uid=="V12"')
+        self.assertEqual(2, len(versions))
+        self.assertSetEqual(set([VersionUid(1), VersionUid(12)]), set([version.uid for version in versions]))
+
+        versions = self.database_backend.get_versions_new('uid=="V1" and uid=="V12"')
+        self.assertEqual(0, len(versions))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
