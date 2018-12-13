@@ -177,9 +177,13 @@ class LabelHelpers:
 
     QUALIFIED_NAME_REGEXP = '(?!-)[a-zA-Z0-9-_.]{1,63}(?<!-)'
     LABEL_VALUE_REGEXP = '(' + QUALIFIED_NAME_REGEXP + ')?'
-    DNS1123_LABEL_REGEXP = '(?!-)[a-zA-Z0-9-]{1,63}(?<!-)'
-    DNS1123_SUBDOMAIN_REGEXP = DNS1123_LABEL_REGEXP + '(\\.' + DNS1123_LABEL_REGEXP +')*'
+    DNS1123_LABEL_REGEXP = '(?!-)[a-z0-9-]{1,63}(?<!-)'
+    DNS1123_SUBDOMAIN_REGEXP = DNS1123_LABEL_REGEXP + '(\\.' + DNS1123_LABEL_REGEXP + ')*'
     DNS1123_SUBDOMAIN_MAX_LENGTH = 253
+
+    @classmethod
+    def is_dns1123_label(cls, label):
+        return re.fullmatch(cls.DNS1123_LABEL_REGEXP, label) is not None
 
     @classmethod
     def is_dns1123_subdomain(cls, subdomain: str) -> bool:
