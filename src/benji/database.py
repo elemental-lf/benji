@@ -432,14 +432,12 @@ class DatabaseBackend(ReprMixIn):
         return self
 
     def migrate(self) -> None:
-        # FIXME: fix to use supplied config
         # migrate the db to the lastest version
         from alembic.config import Config
         from alembic import command
         alembic_cfg = Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
         with self.engine.begin() as connection:
             alembic_cfg.attributes['connection'] = connection
-            #command.upgrade(alembic_cfg, "head", sql=True)
             command.upgrade(alembic_cfg, "head")
 
     def init(self, _destroy: bool = False, _migrate: bool = True) -> None:
@@ -451,9 +449,8 @@ class DatabaseBackend(ReprMixIn):
         # Instead, it will raise when something can't be created.
         # TODO: explicitly check if the database is empty
         Base.metadata.create_all(
-            self.engine, checkfirst=False)  # checkfirst False will raise when it finds an existing table
+            self.engine, checkfirst=False)  # checkfirst==False will raise when it finds an existing table
 
-        # FIXME: fix to use supplied config
         if _migrate:
             from alembic.config import Config
             from alembic import command
@@ -461,7 +458,7 @@ class DatabaseBackend(ReprMixIn):
                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
             with self.engine.begin() as connection:
                 alembic_cfg.attributes['connection'] = connection
-                # mark the version table, "stamping" it with the most recent rev:
+                # create the version table, "stamping" it with the most recent rev:
                 command.stamp(alembic_cfg, "head")
 
     def commit(self) -> None:
