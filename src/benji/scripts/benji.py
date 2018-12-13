@@ -43,15 +43,20 @@ class Commands:
         self.machine_output = machine_output
         self.config = config
 
-    def backup(self,
-               version_name: str,
-               snapshot_name: str,
-               source: str,
-               rbd_hints: str,
-               base_version_uid: str,
-               block_size: int = None,
-               storage=None) -> None:
-        base_version_uid_obj = VersionUid(base_version_uid)
+    def backup(self, version_name: str, snapshot_name: str, source: str, rbd_hints: str, base_version_uid: str,
+               block_size: int, labels: List[str], storage) -> None:
+        # Validate version_name and snapshot_name
+        if not LabelHelpers.is_dns1123_label(version_name):
+            raise benji.exception.UsageError(
+                'Version name {} is invalid. It must be a lowercase DNS-1123 label.'.format(version_name))
+        if snapshot_name != '' and not LabelHelpers.is_dns1123_label(snapshot_name):
+            raise benji.exception.UsageError(
+                'Snapshot name {} is invalid. It must be a lowercase DNS-1123 label.'.format(snapshot_name))
+        base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
+        if labels:
+            label_add, label_remove = self._parse_labels(labels)
+            if label_remove:
+                raise benji.exception.UsageError('Wanting to delete labels on a new version is senseless.')
         benji_obj = None
         try:
             benji_obj = Benji(self.config, block_size=block_size)
@@ -61,6 +66,17 @@ class Commands:
                 hints = hints_from_rbd_diff(data)
             backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
                                                   storage)
+
+            if labels:
+                for key, value in label_add:
+                    benji_obj.add_label(backup_version_uid, key, value)
+                for key in label_remove:
+                    benji_obj.rm_label(backup_version_uid, key)
+                if label_add:
+                    logger.info('Added label(s) to version {}: {}.'.format(backup_version_uid.v_string, ', '.join(['{}={}'.format(key, value) for key, value in label_add])))
+                if label_remove:
+                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version_uid.v_string, ', '.join(label_remove)))
+
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': benji_obj.ls(version_uid=backup_version_uid)
@@ -71,12 +87,8 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def restore(self,
-                version_uid: str,
-                destination: str,
-                sparse: bool,
-                force: bool,
-                database_backend_less: bool = False) -> None:
+    def restore(self, version_uid: str, destination: str, sparse: bool, force: bool,
+                database_backend_less: bool) -> None:
         version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
@@ -182,18 +194,13 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def _bulk_scrub(self, method: str, names: List[str], labels: List[str], version_percentage: int,
+    def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                     block_percentage: int) -> None:
         history = BlockUidHistory()
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions = []
-            if names:
-                for name in names:
-                    versions.extend(benji_obj.ls(version_name=name, version_labels=labels))
-            else:
-                versions.extend(benji_obj.ls(version_tags=tags))
+            versions = benji_obj.ls_by_filter(filter_expression)
             errors = []
             if version_percentage and versions:
                 # Will always scrub at least one matching version
@@ -231,26 +238,36 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def bulk_scrub(self, names: List[str], tags: List[str], version_percentage: int, block_percentage: int) -> None:
-        self._bulk_scrub('scrub', names, tags, version_percentage, block_percentage)
+    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int) -> None:
+        self._bulk_scrub('scrub', filter_expression, version_percentage, block_percentage)
 
-    def bulk_deep_scrub(self, names: List[str], tags: List[str], version_percentage: int, block_percentage: int) -> None:
-        self._bulk_scrub('deep_scrub', names, tags, version_percentage, block_percentage)
+    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int) -> None:
+        self._bulk_scrub('deep_scrub', filter_expression, version_percentage, block_percentage)
 
     @classmethod
-    def _ls_versions_tbl_output(cls, versions: List[Version]) -> None:
+    def _ls_versions_table_output(cls, versions: List[Version], include_labels: bool) -> None:
         tbl = PrettyTable()
         tbl.field_names = [
-            'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'valid', 'protected', 'storage', 'tags'
+            'date',
+            'uid',
+            'name',
+            'snapshot_name',
+            'size',
+            'block_size',
+            'valid',
+            'protected',
+            'storage',
         ]
         tbl.align['name'] = 'l'
         tbl.align['snapshot_name'] = 'l'
-        tbl.align['tags'] = 'l'
         tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
+        if include_labels:
+            tbl.field_names.append('labels')
+            tbl.align['labels'] = 'l'
         for version in versions:
-            tbl.add_row([
+            row = [
                 PrettyPrint.local_time(version.date),
                 version.uid.v_string,
                 version.name,
@@ -260,12 +277,14 @@ class Commands:
                 version.valid,
                 version.protected,
                 StorageFactory.storage_id_to_name(version.storage_id),
-                ",".join(sorted([t.name for t in version.tags])),
-            ])
+            ]
+            if include_labels:
+                row.append('\n'.join(sorted(['{}={}'.format(label.key, label.value) for label in version.labels])))
+            tbl.add_row(row)
         print(tbl)
 
     @classmethod
-    def _stats_tbl_output(cls, stats: List[Stats]) -> None:
+    def _stats_table_output(cls, stats: List[Stats]) -> None:
         tbl = PrettyTable()
         tbl.field_names = [
             'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',
@@ -303,18 +322,11 @@ class Commands:
             ])
         print(tbl)
 
-    def ls(self, name: str, snapshot_name: str = None, labels: List[str] = None, include_blocks: bool = False) -> None:
-
-        version_labels_kv = []
-        for label in labels:
-            key, value = label.split('==')
-            version_labels_kv.append((key, value))
-
-
+    def ls(self, filter_expression: Optional[str], include_labels: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions = benji_obj.ls(version_name=name, version_snapshot_name=snapshot_name, version_tags=tags)
+            versions = benji_obj.ls_by_filter(filter_expression)
 
             if self.machine_output:
                 benji_obj.export_any(
@@ -322,20 +334,19 @@ class Commands:
                         'versions': versions
                     },
                     sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))] if not include_blocks else [],
+                    ignore_relationships=[((Version,), ('blocks',))],
                 )
             else:
-                self._ls_versions_tbl_output(versions)
+                self._ls_versions_table_output(versions, include_labels)
         finally:
             if benji_obj:
                 benji_obj.close()
 
-    def stats(self, version_uid: str = None, limit: int = None) -> None:
-        version_uid_obj = VersionUid(version_uid) if version_uid else None
+    def stats(self, filter_expression: Optional[str], limit: Optional[int]) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            stats = benji_obj.stats(version_uid_obj, limit)
+            stats = benji_obj.stats(filter_expression, limit)
 
             if self.machine_output:
                 stats = list(stats)  # resolve iterator, otherwise it's not serializable
@@ -346,7 +357,7 @@ class Commands:
                     sys.stdout,
                 )
             else:
-                self._stats_tbl_output(stats)
+                self._stats_table_output(stats)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -360,11 +371,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_export(self, version_uids: List[str], output_file: str = None, force: bool = False) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
+    def metadata_export(self, filter_expression: Optional[str], output_file: Optional[str], force: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
+            version_uid_objs = [version.uid for version in benji_obj.ls_by_filter(filter_expression)]
             if output_file is None:
                 benji_obj.metadata_export(version_uid_objs, sys.stdout)
             else:
@@ -377,11 +388,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def metadata_backup(self, version_uids: List[str], force: bool = False) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
+    def metadata_backup(self, filter_expression: str, force: bool = False) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
+            version_uid_objs = [version.uid for version in benji_obj.ls_by_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
         finally:
             if benji_obj:
@@ -421,39 +432,48 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def label(self, version_uid: str, labels: List[str]) -> None:
-        remove_list: List[str] = []
+    @staticmethod
+    def _parse_labels(labels: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
         add_list: List[Tuple[str, str]] = []
+        remove_list: List[str] = []
         for label in labels:
             if label.endswith('-'):
                 key = label[:-1]
 
                 if not LabelHelpers.is_qualified_name(key):
-                    raise benji.UsageError('Label key {} is not a valid qualified name.'.format(key))
+                    raise benji.exception.UsageError('Label key {} is not a valid qualified name.'.format(key))
 
                 remove_list.append(key)
             elif label.find('=') > -1:
                 key, value = label.split('=')
 
                 if len(key) == 0:
-                    raise benji.UsageError('Missing label key in label {}.'.format(label))
-                if LabelHelpers.is_qualified_name(key):
-                    raise benji.UsageError('Label key {} is not a valid qualified name.'.format(key))
-                if LabelHelpers.is_label_value(value):
-                    raise benji.UsageError('Label value {} is not a valid.'.format(value))
+                    raise benji.exception.UsageError('Missing label key in label {}.'.format(label))
+                if not LabelHelpers.is_qualified_name(key):
+                    raise benji.exception.UsageError('Label key {} is not a valid qualified name.'.format(key))
+                if not LabelHelpers.is_label_value(value):
+                    raise benji.exception.UsageError('Label value {} is not a valid.'.format(value))
 
                 add_list.append((key, value))
             else:
-                raise benji.UsageError('Label {} has an invalid format.'.format(label))
+                raise benji.exception.UsageError('Label {} has an invalid format.'.format(label))
 
+        return add_list, remove_list
+
+    def label(self, version_uid: str, labels: List[str]) -> None:
         version_uid_obj = VersionUid(version_uid)
+        label_add, label_remove = self._parse_labels(labels)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for key, value in add_list:
+            for key, value in label_add:
                 benji_obj.add_label(version_uid_obj, key, value)
-            for key in remove_list:
+            for key in label_remove:
                 benji_obj.rm_label(version_uid_obj, key)
+            if label_add:
+                logger.info('Added label(s) to version {}: {}.'.format(version_uid_obj.v_string, ', '.join(['{}={}'.format(key, value) for key, value in label_add])))
+            if label_remove:
+                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj.v_string, ', '.join(label_remove)))
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -462,18 +482,15 @@ class Commands:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
-    def enforce_retention_policy(self, rules_spec, version_names, dry_run, keep_backend_metadata):
+    def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool, keep_backend_metadata: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            dismissed_version_uids = []
-            for version_name in version_names:
-                dismissed_version_uids.extend(
-                    benji_obj.enforce_retention_policy(
-                        version_name=version_name,
+            dismissed_version_uids = benji_obj.enforce_retention_policy(
+                        filter_expression=filter_expression,
                         rules_spec=rules_spec,
                         dry_run=dry_run,
-                        keep_backend_metadata=keep_backend_metadata))
+                        keep_backend_metadata=keep_backend_metadata)
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': [benji_obj.ls(version_uid=version_uid)[0] for version_uid in dismissed_version_uids]
@@ -491,7 +508,7 @@ class Commands:
             store = BenjiStore(benji_obj)
             addr = (bind_address, bind_port)
             server = NbdServer(addr, store, read_only)
-            logger.info("Starting to serve nbd on %s:%s" % (addr[0], addr[1]))
+            logger.info("Starting to serve NBD on %s:%s" % (addr[0], addr[1]))
             server.serve_forever()
         finally:
             if benji_obj:
@@ -512,7 +529,6 @@ def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
 
     return value
 
-
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -520,8 +536,9 @@ def main():
     parser.add_argument(
         '-m', '--machine-output', action='store_true', default=False, help='Enable machine-readable JSON output')
     parser.add_argument(
+        '--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO', help='Only log messages of this level or above on the console')
+    parser.add_argument(
         '--no-color', action='store_true', default=False, help='Disable colorization of console logging')
-    parser.add_argument('-v', '--verbose', action='store_true', default=False, help='Enable verbose output')
 
     subparsers_root = parser.add_subparsers(title='commands')
 
@@ -530,7 +547,16 @@ def main():
     p.add_argument('-s', '--snapshot-name', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
     p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
     p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
-    p.add_argument('-b', '--block-size', type=int, help='Block size in bytes')
+    p.add_argument('-b', '--block-size', type=int, default=None, help='Block size in bytes')
+    p.add_argument(
+        '-l',
+        '--label',
+        action='append',
+        dest='labels',
+        metavar='label',
+        default=None,
+        help='Labels for this version (can be repeated)')
+
     p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
     p.add_argument('source', help='Source URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
     p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
@@ -541,7 +567,7 @@ def main():
     p.add_argument('-s', '--sparse', action='store_true', help='Restore only existing blocks')
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing file, device or image')
     p.add_argument(
-        '-M', '--metadata-backend-less', action='store_true', help='Restore without requiring the database backend')
+        '-d', '--database-backend-less', action='store_true', help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
     # yapf: disable (otherwise YAPF would break this line and mypy won't apply the type: ignore properly)
     p.add_argument('destination', help='Destination URL').completer = ChoicesCompleter(('file://', 'rbd://'))  # type: ignore
@@ -565,36 +591,23 @@ def main():
 
     # LS
     p = subparsers_root.add_parser('ls', help='List versions')
-    p.add_argument('name', nargs='?', default=None, help='Limit output to the specified version name')
-    p.add_argument('-s', '--snapshot-name', default=None, help='Limit output to the specified version snapshot name')
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Limit output to versions matching tag (multiple use of this option constitutes a logical or operation)')
-    p.add_argument(
-        '--include-blocks',
-        default=False,
-        action='store_true',
-        help='Include blocks in output (machine readable output only)')
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
+    p.add_argument('--include-labels', action='store_true', help='Include labels in output')
     p.set_defaults(func='ls')
 
     # RM
     p = subparsers_root.add_parser('rm', help='Remove one or more versions')
     p.add_argument('-f', '--force', action='store_true', help='Force removal (overrides protection of recent versions)')
-    p.add_argument('-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
+    p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='rm')
 
     # ENFORCE
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
-    p.add_argument('-k', '--keep-backend-metadata', action='store_true', help='Keep version metadata backup')
+    p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
+    p.add_argument('filter_expression', help='Version filter expression')
     p.add_argument('rules_spec', help='Retention rules specification')
-    p.add_argument('version_names', metavar='version_name', nargs='+', help='One or more version names')
     p.set_defaults(func='enforce_retention_policy')
 
     # CLEANUP
@@ -657,15 +670,7 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Limit scrubbed versions based on tag (multiple use of this option constitutes a logical or operation)')
-    p.add_argument('names', metavar='name', nargs='*', help="Version name")
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='bulk_scrub')
 
     # BULK-DEEP-SCRUB
@@ -685,51 +690,43 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-t',
-        '--tag',
-        action='append',
-        dest='tags',
-        metavar='TAG',
-        default=None,
-        help='Limit scrubbed versions based on tag (multiple use of this option constitutes a logical or operation)')
-    p.add_argument('names', metavar='name', nargs='*', help='Version name')
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='bulk_deep_scrub')
 
     # METADATA EXPORT
     p = subparsers_root.add_parser(
         'metadata-export', help='Export the metadata of one or more versions to a file or standard output')
-    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
+    p.add_argument('filter_expression', nargs='?', default=None, help="Version filter expression")
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing output file')
-    p.add_argument('-o', '--output-file', help='Output file (standard output if missing)')
+    p.add_argument('-o', '--output-file', default=None, help='Output file (standard output if missing)')
     p.set_defaults(func='metadata_export')
 
-    # METADATA IMPORT
+    # METADATA-IMPORT
     p = subparsers_root.add_parser(
         'metadata-import', help='Import the metadata of one or more versions from a file or standard input')
-    p.add_argument('-i', '--input-file', help='Input file (standard input if missing)')
+    p.add_argument('-i', '--input-file', default=None, help='Input file (standard input if missing)')
     p.set_defaults(func='metadata_import')
 
-    # METADATA BACKUP
+    # METADATA-BACKUP
     p = subparsers_root.add_parser('netadata-backup', help='Back up the metadata of one or more versions')
-    p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
+    p.add_argument('filter_expression', help="Version filter expression")
     p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata backups')
     p.set_defaults(func='metadata_backup')
 
-    # METADATA RESTORE
+    # METADATA-RESTORE
     p = subparsers_root.add_parser('metadata-restore', help='Restore the metadata of one ore more versions')
-    p.add_argument('-S', '--storage', help='Source storage (if unspecified the default is used)')
+    p.add_argument('-S', '--storage', default=None, help='Source storage (if unspecified the default is used)')
     p.add_argument('version_uids', metavar='VERSION_UID', nargs='+', help="Version UID")
     p.set_defaults(func='metadata_restore')
 
-    # METADATA LS
+    # METADATA-LS
     p = subparsers_root.add_parser('metadata-ls', help='List the version metadata backup')
-    p.add_argument('-S', '--storage', help='Source storage (if unspecified the default is used)')
+    p.add_argument('-S', '--storage', default=None, help='Source storage (if unspecified the default is used)')
     p.set_defaults(func='metadata_ls')
 
     # STATS
     p = subparsers_root.add_parser('stats', help='Show backup statistics')
-    p.add_argument('version_uid', nargs='?', default=None, help='Limit output to the specified version')
+    p.add_argument('filter_expression', nargs='?', help='Statistics filter expression')
     p.add_argument(
         '-l',
         '--limit',
@@ -757,11 +754,6 @@ def main():
         print(__version__)
         exit(os.EX_OK)
 
-    if args.verbose:
-        console_level = logging.DEBUG
-    else:
-        console_level = logging.INFO
-
     if args.config_file is not None and args.config_file != '':
         try:
             cfg = open(args.config_file, 'r', encoding='utf-8').read()
@@ -772,11 +764,13 @@ def main():
     else:
         config = Config()
 
-    # logging ERROR only when machine output is selected
     if args.machine_output:
-        init_logging(config.get('logFile', types=(str, type(None))), logging.ERROR, no_color=args.no_color)
+        console_level = logging.ERROR
+        no_color = True
     else:
-        init_logging(config.get('logFile', types=(str, type(None))), console_level, no_color=args.no_color)
+        console_level = logging.getLevelName(args.log_level)
+        no_color = args.no_color
+    init_logging(config.get('logFile', types=(str, type(None))), console_level, no_color=no_color)
 
     commands = Commands(args.machine_output, config)
     func = getattr(commands, args.func)
@@ -785,7 +779,7 @@ def main():
     func_args = dict(args._get_kwargs())
     del func_args['config_file']
     del func_args['func']
-    del func_args['verbose']
+    del func_args['log_level']
     del func_args['machine_output']
     del func_args['no_color']
 

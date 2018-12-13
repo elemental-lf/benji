@@ -10,7 +10,7 @@ import time
 from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
-    Sequence
+    Sequence, Any
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
@@ -187,12 +187,11 @@ class Benji(ReprMixIn):
             version_snapshot_name=version_snapshot_name,
             version_labels=version_labels)
 
-    def ls_version(self, version_uid: VersionUid) -> List[Block]:
-        # don't lock here, this is not really error-prone.
-        return self._database_backend.get_blocks_by_version(version_uid)
+    def ls_by_filter(self, filter_expression: str = None) -> List[Version]:
+        return self._database_backend.get_versions_by_filter(filter_expression)
 
-    def stats(self, version_uid: VersionUid = None, limit: int = None):
-        return self._database_backend.get_stats(version_uid, limit)
+    def stats(self, filter_expression: str = None, limit: int = None):
+        return self._database_backend.get_stats_by_filter(filter_expression, limit)
 
     def _scrub_prepare(self,
                        *,
@@ -247,6 +246,7 @@ class Benji(ReprMixIn):
             raise
 
         valid = True
+        affected_version_uids = []
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = self._scrub_prepare(
@@ -258,8 +258,8 @@ class Benji(ReprMixIn):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Storage backend read failed: {}'.format(entry))
-                        self._database_backend.set_block_invalid(entry.block.uid)
+                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.id, entry.block.uid, entry))
+                        affected_version_uids.extend(self._database_backend.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
                     else:
@@ -270,8 +270,9 @@ class Benji(ReprMixIn):
                 try:
                     storage.check_block_metadata(block=block, data_length=None, metadata=metadata)
                 except (KeyError, ValueError) as exception:
-                    logger.error('Metadata check failed, block is invalid: {}'.format(exception))
-                    self._database_backend.set_block_invalid(block.uid)
+                    logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
+                        block.id, block.uid, exception))
+                    affected_version_uids.extend(self._database_backend.set_block_invalid(block.uid))
                     valid = False
                     continue
                 except:
@@ -299,9 +300,13 @@ class Benji(ReprMixIn):
 
         # A scrub (in contrast to a deep-scrub) can only ever mark a version as invalid. To mark it as valid
         # there is not enough information.
-        if not valid:
-            # version is set invalid by set_block_invalid.
+        if valid:
+            logger.info('Scrub of version {} successful.'.format(version.uid.v_string))
+        else:
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+            if affected_version_uids:
+                logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
+                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids) if affected_version != version_uid])))
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid.v_string))
 
     def deep_scrub(self,
@@ -324,6 +329,8 @@ class Benji(ReprMixIn):
             raise
 
         valid = True
+        source_mismatch = False
+        affected_version_uids = []
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             old_use_read_cache = storage.use_read_cache(False)
@@ -336,8 +343,8 @@ class Benji(ReprMixIn):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Storage backend read failed: {}'.format(entry))
-                        self._database_backend.set_block_invalid(entry.block.uid)
+                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.id, entry.block.uid, entry))
+                        affected_version_uids.extend(self._database_backend.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
                     else:
@@ -348,7 +355,8 @@ class Benji(ReprMixIn):
                 try:
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
-                    logger.error('Metadata check failed, block is invalid: {}'.format(exception))
+                    logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
+                        block.id, block.uid, exception))
                     self._database_backend.set_block_invalid(block.uid)
                     valid = False
                     continue
@@ -361,7 +369,7 @@ class Benji(ReprMixIn):
                         'Checksum mismatch during deep scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.id, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
-                    self._database_backend.set_block_invalid(block.uid)
+                    affected_version_uids.extend(self._database_backend.set_block_invalid(block.uid))
                     valid = False
                     continue
 
@@ -376,6 +384,7 @@ class Benji(ReprMixIn):
                         # We are not setting the block invalid here because
                         # when the block is there AND the checksum is good,
                         # then the source is probably invalid.
+                        source_mismatch = True
 
                 if history:
                     history.add(version.storage_id, block.uid)
@@ -407,11 +416,14 @@ class Benji(ReprMixIn):
             except:
                 self._locking.unlock_version(version_uid)
                 raise
+            logger.info('Deep scrub of version {} successful.'.format(version.uid.v_string))
         else:
-            # version is set invalid by set_block_invalid.
-            # FIXME: This message might be misleading in the case where a source mismatch occurs where
-            # FIXME: we set state to False but don't mark any blocks as invalid.
-            logger.error('Marked version {} invalid because it has errors.'.format(version_uid.v_string))
+            if source_mismatch:
+                logger.error('Version {} had source mismatches.'.format(version_uid.v_string))
+            logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+            if affected_version_uids:
+                logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
+                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids) if affected_version != version_uid])))
 
         self._locking.unlock_version(version_uid)
 
@@ -512,6 +524,8 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed read jobs inconsistent (submitted: {}, completed {}).'.format(
                     read_jobs, done_read_jobs))
 
+        logger.info('Restore of version {} successful.'.format(version.uid.v_string))
+
     def protect(self, version_uid: VersionUid) -> None:
         self._database_backend.set_version(version_uid, protected=True)
 
@@ -588,7 +602,7 @@ class Benji(ReprMixIn):
         """
         block: Union[DereferencedBlock, Block]
 
-        stats: Dict[str, int] = {
+        stats: Dict[str, Any] = {
             'bytes_read': 0,
             'bytes_written': 0,
             'bytes_dedup': 0,
@@ -929,11 +943,11 @@ class Benji(ReprMixIn):
         return storage.list_versions()
 
     def enforce_retention_policy(self,
-                                 version_name: str,
-                                 rules_spec,
+                                 filter_expression: str,
+                                 rules_spec: str,
                                  dry_run: bool = False,
                                  keep_backend_metadata: bool = False) -> List[VersionUid]:
-        versions = self._database_backend.get_versions(version_name=version_name)
+        versions = self._database_backend.get_versions_by_filter(filter_expression)
 
         dismissed_versions = RetentionFilter(rules_spec).filter(versions)
 

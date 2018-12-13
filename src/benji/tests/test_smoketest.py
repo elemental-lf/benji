@@ -111,6 +111,13 @@ class SmokeTestCase(BenjiTestCaseBase):
                     storage_name=storage_name)
             benji_obj.close()
             version_uids.append(version_uid)
+            print('  Backup successful')
+
+            benji_obj = self.benjiOpen()
+            benji_obj.add_label(version_uid, 'label-1', 'value-1')
+            benji_obj.add_label(version_uid, 'label-2', 'value-2')
+            benji_obj.close()
+            print('  Labeling of version successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.rm(version_uid, force=True, keep_backend_metadata=True)
@@ -123,7 +130,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             print('  Restore of version successful')
 
             benji_obj = self.benjiOpen()
-            blocks = benji_obj.ls_version(version_uid)
+            blocks = benji_obj._database_backend.get_blocks_by_version(version_uid)
             self.assertEqual(list(range(len(blocks))), sorted([block.id for block in blocks]))
             self.assertTrue(len(blocks) > 0)
             if len(blocks) > 1:
@@ -185,7 +192,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             # delete old versions
             if len(version_uids) > 10:
                 benji_obj = self.benjiOpen()
-                dismissed_version_uids = benji_obj.enforce_retention_policy('data-backup', 'latest10,hours24,days30')
+                dismissed_version_uids = benji_obj.enforce_retention_policy('name==data-backup', 'latest10,hours24,days30')
                 for dismissed_version_uid in dismissed_version_uids:
                     version_uids.remove(dismissed_version_uid)
                 benji_obj.close()
@@ -467,7 +474,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             """
 
 
-class SmokeTestCasePostgreSQL_B2(SmokeTestCase, TestCase):
+class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
 
     CONFIG = """
             configurationVersion: '1.0.0'

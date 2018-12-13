@@ -11,7 +11,8 @@ import time
 import uuid
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
-from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence
+from functools import partial
+from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
 import boolean
 import sqlalchemy
@@ -43,9 +44,9 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
                 value_int = int(value)
             except ValueError:
                 if len(value) < 2:
-                    raise ValueError('Version UID {} is too short.'.format(value))
+                    raise ValueError('Version UID {} is too short.'.format(value)) from None
                 if value[0].lower() != 'v':
-                    raise ValueError('Version UID {} doesn\'t start with the letter V.'.format(value))
+                    raise ValueError('Version UID {} doesn\'t start with the letter V.'.format(value)) from None
                 try:
                     value_int = int(value[1:])
                 except ValueError:
@@ -81,6 +82,10 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
 
     def __hash__(self) -> int:
         return self.integer
+
+    # For sorting
+    def __lt__(self, other: 'VersionUid') -> bool:
+        return self.integer < other.integer
 
     # Start: Implements StorageKeyMixIn
     _STORAGE_PREFIX = 'versions/'
@@ -413,8 +418,8 @@ class DatabaseBackend(ReprMixIn):
         if _migrate:
             try:
                 self.migrate()
-            except Exception:
-                raise RuntimeError('Invalid database ({}). Maybe you need to run init first?'.format(self.engine.url))
+            except Exception as exception:
+                raise RuntimeError('Database migration attempt failed.') from exception
 
         # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
         # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
@@ -518,30 +523,18 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def get_stats(self, version_uid: VersionUid = None, limit: int = None) -> Iterator[Stats]:
-        """ gets the <limit> newest entries """
-        if version_uid:
-            try:
-                stats = self._session.query(Stats).filter_by(version_uid=version_uid).all()
-            except:
-                self._session.rollback()
-                raise
+    def get_stats_by_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[Stats]:
+        builder = _StatsQueryBuilder(self._session)
+        try:
+            stats = builder.build(filter_expression)
+            if limit:
+                stats = stats.limit(limit)
+            stats_result = stats.all()
+        except:
+            self._session.rollback()
+            raise
 
-            if stats is None:
-                raise KeyError('Statistics for version {} not found.'.format(version_uid.v_string))
-
-            return stats
-        else:
-            try:
-                stats = self._session.query(Stats).order_by(desc(Stats.version_date))
-                if limit:
-                    stats = stats.limit(limit)
-                stats = stats.all()
-            except:
-                self._session.rollback()
-                raise
-
-            return reversed(stats)
+        return reversed(stats_result)
 
     def set_version(self, version_uid: VersionUid, *, valid: bool = None, protected: bool = None):
         try:
@@ -587,9 +580,10 @@ class DatabaseBackend(ReprMixIn):
             if version_snapshot_name:
                 query = query.filter_by(snapshot_name=version_snapshot_name)
             if version_labels:
-                query = query.join(Version.labels)
                 for version_label in version_labels:
-                    query.filter(Label.key == version_label[0], Label.value == version_label[1])
+                    label_query = self._session.query(
+                        Version.uid).join(Label).filter((Label.key == version_label[0]) & Label.value == version_label[1])
+                    query = query.filter(Version.uid.in_(label_query))
             versions = query.order_by(Version.name, Version.date).all()
         except:
             self._session.rollback()
@@ -597,10 +591,10 @@ class DatabaseBackend(ReprMixIn):
 
         return versions
 
-    def get_versions_new(self, filter_expression: str = None):
-        generator = _VersionQueryBuilder(self._session)
+    def get_versions_by_filter(self, filter_expression: str = None):
+        builder = _VersionQueryBuilder(self._session)
         try:
-            versions = generator.build(filter_expression).all()
+            versions = builder.build(filter_expression).all()
         except:
             self._session.rollback()
             raise
@@ -854,8 +848,8 @@ class DatabaseBackend(ReprMixIn):
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
         # These are always ignored because they'd lead to a circle
-        ignore_fields.append(((Tag, Block), ('version_uid',)))
-        ignore_relationships.append(((Tag, Block), ('version',)))
+        ignore_fields.append(((Label, Block), ('version_uid',)))
+        ignore_relationships.append(((Label, Block), ('version',)))
         # Ignore these as we favor the composite attribute
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
 
@@ -875,7 +869,6 @@ class DatabaseBackend(ReprMixIn):
 
     def import_(self, f: TextIO) -> List[VersionUid]:
         try:
-            f.seek(0)
             json_input = json.load(f)
         except Exception as exception:
             raise InputDataError('Import file is invalid.') from exception
@@ -910,8 +903,8 @@ class DatabaseBackend(ReprMixIn):
             if 'uid' not in version_dict:
                 raise InputDataError('Import file is invalid (hint: uid).')
 
-            if not isinstance(version_dict['tags'], list):
-                raise InputDataError('Version {} contains invalid data (hint: tags).'.format(
+            if not isinstance(version_dict['labels'], list):
+                raise InputDataError('Version {} contains invalid data (hint: labels).'.format(
                     VersionUid(version_dict['uid']).v_string))
 
             if not isinstance(version_dict['blocks'], list):
@@ -950,12 +943,12 @@ class DatabaseBackend(ReprMixIn):
                 del block_dict['uid']
             self._session.bulk_insert_mappings(Block, version_dict['blocks'])
 
-            for tag_dict in version_dict['tags']:
-                if not isinstance(tag_dict, dict):
-                    raise InputDataError('Version {} contains invalid data (hint: tags).'.format(
+            for label_dict in version_dict['labels']:
+                if not isinstance(label_dict, dict):
+                    raise InputDataError('Version {} contains invalid data (hint: labels).'.format(
                         VersionUid(version_dict['uid']).v_string))
-                tag_dict['version_uid'] = version.uid
-            self._session.bulk_insert_mappings(Tag, version_dict['tags'])
+                label_dict['version_uid'] = version.uid
+            self._session.bulk_insert_mappings(Label, version_dict['labels'])
 
             version_uids.append(VersionUid(version_dict['uid']))
 
@@ -1098,7 +1091,7 @@ class DatabaseBackendLocking:
                 self.unlock_version(version_uid)
 
 
-class _VersionFilterAlgebra(boolean.BooleanAlgebra):
+class _FilterAlgebra(boolean.BooleanAlgebra):
     LABEL_PREFIX = 'label_'
 
     _OPS = {
@@ -1106,12 +1099,6 @@ class _VersionFilterAlgebra(boolean.BooleanAlgebra):
         'and': boolean.TOKEN_AND,
         '(': boolean.TOKEN_LPAR,
         ')': boolean.TOKEN_RPAR,
-    }
-
-    _KEYS = {
-        'uid': lambda v: VersionUid(v),
-        'name': lambda v: v,
-        'snapshot_name': lambda v: v,
     }
 
     _COMPARISON_OPS = {
@@ -1122,6 +1109,13 @@ class _VersionFilterAlgebra(boolean.BooleanAlgebra):
     _SYMBOL_START = 0
     _SYMBOL_OP = 1
     _SYMBOL_VALUE = 2
+
+    _EMPTY_TOKEN = 'Empty'
+
+    def __init__(self, keys: Dict[str, Callable[[Any], Any]], allow_labels: bool):
+        super().__init__()
+        self._allow_labels = allow_labels
+        self._keys = keys
 
     def tokenize(self, s):
         symbol_state = self._SYMBOL_START
@@ -1137,7 +1131,7 @@ class _VersionFilterAlgebra(boolean.BooleanAlgebra):
                     symbol_state = self._SYMBOL_OP
                     symbol_tokens = tok
 
-                    if tok in self._KEYS or tok.startswith(self.LABEL_PREFIX):
+                    if tok in self._keys or (self._allow_labels and tok.startswith(self.LABEL_PREFIX)):
                         key = tok
                     else:
                         raise UsageError('Invalid key {} in filter expression.'.format(tok))
@@ -1152,23 +1146,42 @@ class _VersionFilterAlgebra(boolean.BooleanAlgebra):
                     symbol_state = self._SYMBOL_START
                     symbol_tokens += tok
 
-                    match = re.fullmatch('"([^"]*)"', tok)
-                    if not match:
-                        match = re.fullmatch('\'([^\']*)\'', tok)
-                    if not match:
-                        raise UsageError('Invalid value {} in filter expression.'.format(tok))
-                    if key.startswith(self.LABEL_PREFIX):
-                        value = match.group(1)
+                    if tok == self._EMPTY_TOKEN:
+                        # Convert empty token to an empty string
+                        value = ''
+                    elif key in self._keys:
+                        value = self._keys[key](tok)
                     else:
-                        value = self._KEYS[key](match.group(1))
+                        # This branch is reached for labels when they're allowed
+                        value = tok
+
                     yield self.Symbol((key, op, value)), symbol_tokens, (row, col)
 
 
+def _convert_boolean(key: str, value: str):
+    if value == 'True':
+        return True
+    elif value == 'False':
+        return False
+    else:
+        raise UsageError('Key {} in filter expression expects a boolean constant for comparison.'.format(key))
+
+
 class _VersionQueryBuilder:
+    _KEYS: Dict[str, Callable[[Any], Any]] = {
+        'uid': lambda v: VersionUid(v),
+        'name': lambda v: v,
+        'snapshot_name': lambda v: v,
+        'protected': partial(_convert_boolean, 'protected'),
+        'valid': partial(_convert_boolean, 'valid'),
+        'size': lambda v: int(v),
+        'block_size': lambda v: int(v),
+        'storage_id': lambda v: int(v),
+    }
 
     def __init__(self, session) -> None:
         self._session = session
-        self._algebra = _VersionFilterAlgebra()
+        self._algebra = _FilterAlgebra(keys=self._KEYS, allow_labels=True)
 
     def build(self, filter_expression: str = None) -> sqlalchemy.orm.query.Query:
 
@@ -1195,3 +1208,41 @@ class _VersionQueryBuilder:
                 raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
             query = query.filter(build_expression(parsed_filter_expression))
         return query.order_by(Version.name, Version.date)
+
+
+class _StatsQueryBuilder:
+    _KEYS: Dict[str, Callable[[Any], Any]] = {
+        'version_uid': lambda v: VersionUid(v),
+        'base_version_uid': lambda v: VersionUid(v),
+        'version_name': lambda v: v,
+        'version_snapshot_name': lambda v: v,
+        'hints_supplied': partial(_convert_boolean, 'hints_supplied'),
+        'version_size': lambda v: int(v),
+        'version_block_size': lambda v: int(v),
+        'version_storage_id': lambda v: int(v),
+        'duration_seconds': lambda v: int(v),
+    }
+
+    def __init__(self, session) -> None:
+        self._session = session
+        self._algebra = _FilterAlgebra(keys=self._KEYS, allow_labels=True)
+
+    def build(self, filter_expression: str = None) -> sqlalchemy.orm.query.Query:
+
+        def build_expression(current):
+            if isinstance(current, boolean.AND):
+                return and_(*[build_expression(arg) for arg in current.args])
+            elif isinstance(current, boolean.OR):
+                return or_(*[build_expression(arg) for arg in current.args])
+            elif isinstance(current, boolean.Symbol):
+                key, op, value = current.obj
+                return op(getattr(Stats, key), value)
+
+        query = self._session.query(Stats)
+        if filter_expression:
+            try:
+                parsed_filter_expression = self._algebra.parse(filter_expression)
+            except Exception as exception:
+                raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
+            query = query.filter(build_expression(parsed_filter_expression))
+        return query.order_by(Stats.version_date, Stats.version_name)

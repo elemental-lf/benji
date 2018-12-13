@@ -61,6 +61,7 @@ Topic :: System :: Archiving :: Backup
         'colorlog>=3.1.4',
         'cerberus>=1.2',
         'pycryptodome>=3.6.1',
+        'boolean.py>=3.6',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],

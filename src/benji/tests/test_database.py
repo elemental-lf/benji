@@ -2,7 +2,7 @@ import reprlib
 from unittest import TestCase
 
 from benji.database import BlockUid, VersionUid
-from benji.exception import InternalError
+from benji.exception import InternalError, UsageError
 from benji.tests.testcase import DatabaseBackendTestCaseBase
 
 
@@ -42,8 +42,8 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         version = self.database_backend.get_version(version.uid)
         self.assertFalse(version.protected)
 
-        self.database_backend.add_label(version.uid, 'label-1')
-        self.database_backend.add_label(version.uid, 'label-2')
+        self.database_backend.add_label(version.uid, 'label-1', 'bla')
+        self.database_backend.add_label(version.uid, 'label-2', '')
         version = self.database_backend.get_version(version.uid)
         self.assertEqual(2, len(version.labels))
         self.assertEqual(version.uid, version.labels[0].version_uid)
@@ -53,7 +53,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertEqual('label-2', version.labels[1].key)
         self.assertEqual('', version.labels[1].value)
 
-        self.database_backend.add_label(version.uid, 'label-2')
+        self.database_backend.add_label(version.uid, 'label-2', 'test123')
         version = self.database_backend.get_version(version.uid)
         self.assertEqual(version.uid, version.labels[1].version_uid)
         self.assertEqual('label-2', version.labels[1].key)
@@ -229,57 +229,58 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
-        versions = self.database_backend.get_versions_new()
+        versions = self.database_backend.get_versions_by_filter()
         self.assertEqual(256, len(versions))
 
-        versions = self.database_backend.get_versions_new('label_label-key=="label-value"')
+        versions = self.database_backend.get_versions_by_filter('label_label-key==label-value')
         self.assertEqual(256, len(versions))
 
-        versions = self.database_backend.get_versions_new('label_label-key-3==""')
+        versions = self.database_backend.get_versions_by_filter('valid == False')
         self.assertEqual(256, len(versions))
 
-        versions = self.database_backend.get_versions_new('label_label-key!="label-value"')
+        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_by_filter('valid == wrong'))
+
+        versions = self.database_backend.get_versions_by_filter('label_label-key-3==Empty')
+        self.assertEqual(256, len(versions))
+
+        versions = self.database_backend.get_versions_by_filter('label_label-key!=label-value')
         self.assertEqual(0, len(versions))
 
-        versions = self.database_backend.get_versions_new('label_label-key-2=="9"')
+        versions = self.database_backend.get_versions_by_filter('label_label-key-2==9')
         self.assertEqual(1, len(versions))
 
-        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1"')
-        self.assertEqual(1, len(versions))
-        self.assertEqual(VersionUid(2), versions[0].uid)
-
-        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" and label_label-key-2=="1"')
+        versions = self.database_backend.get_versions_by_filter('snapshot_name==snapshot-name.1')
         self.assertEqual(1, len(versions))
         self.assertEqual(VersionUid(2), versions[0].uid)
 
-        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" and label_label-key-2=="2"')
+        versions = self.database_backend.get_versions_by_filter('snapshot_name==snapshot-name.1 and label_label-key-2==1')
+        self.assertEqual(1, len(versions))
+        self.assertEqual(VersionUid(2), versions[0].uid)
+
+        versions = self.database_backend.get_versions_by_filter('snapshot_name==snapshot-name.1 and label_label-key-2==2')
         self.assertEqual(0, len(versions))
 
-        versions = self.database_backend.get_versions_new('snapshot_name=="snapshot-name.1" or label_label-key-2=="2"')
+        versions = self.database_backend.get_versions_by_filter('snapshot_name==snapshot-name.1 or label_label-key-2==2')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
 
-        versions = self.database_backend.get_versions_new('name=="backup-name" and snapshot_name=="snapshot-name.1"')
+        versions = self.database_backend.get_versions_by_filter('name==backup-name and snapshot_name==snapshot-name.1')
         self.assertEqual(1, len(versions))
         self.assertEqual(VersionUid(2), versions[0].uid)
 
-        versions = self.database_backend.get_versions_new('name=="backup-name" and (snapshot_name=="snapshot-name.1" or snapshot_name=="snapshot-name.2")')
+        versions = self.database_backend.get_versions_by_filter('name==backup-name and (snapshot_name==snapshot-name.1 or snapshot_name==snapshot-name.2)')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
 
-        versions = self.database_backend.get_versions_new('name == "backup-name" and (snapshot_name == "snapshot-name.1" or snapshot_name == "snapshot-name.2")')
+        versions = self.database_backend.get_versions_by_filter('name == backup-name and (snapshot_name == snapshot-name.1 or snapshot_name == snapshot-name.2)')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
 
-        versions = self.database_backend.get_versions_new("name == 'backup-name' and (snapshot_name == 'snapshot-name.1' or snapshot_name == 'snapshot-name.2')")
-        self.assertEqual(2, len(versions))
-        self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
-
-        versions = self.database_backend.get_versions_new('uid=="V1" or uid=="V12"')
+        versions = self.database_backend.get_versions_by_filter('uid==V1 or uid==V12')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(1), VersionUid(12)]), set([version.uid for version in versions]))
 
-        versions = self.database_backend.get_versions_new('uid=="V1" and uid=="V12"')
+        versions = self.database_backend.get_versions_by_filter('uid==V1 and uid==V12')
         self.assertEqual(0, len(versions))
 
 

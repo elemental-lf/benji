@@ -63,7 +63,7 @@ class NbdTestCase:
         addr = ('127.0.0.1', self.SERVER_PORT)
         read_only = False
         self.nbd_server = NbdServer(addr, store, read_only)
-        logger.info("Starting to serve nbd on %s:%s" % (addr[0], addr[1]))
+        logger.info("Starting to serve NBD on %s:%s" % (addr[0], addr[1]))
 
         self.subprocess_run(args=['sudo', 'modprobe', 'nbd'])
 

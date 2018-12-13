@@ -76,8 +76,8 @@ class DatabaseBackendTestCaseBase(TestCaseBase):
         super().setUp()
 
         database_backend = DatabaseBackend(self.config)
-        database_backend.init(_migrate=False, _destroy=True)
-        self.database_backend = database_backend.open(_migrate=False)
+        database_backend.init(_destroy=True)
+        self.database_backend = database_backend.open()
 
     def tearDown(self):
         if hasattr(self, 'data_backend'):
@@ -103,7 +103,6 @@ class BenjiTestCaseBase(TestCaseBase):
             self.config,
             init_database=init_database,
             _destroy_database=init_database,
-            _migrate_database=False,
             block_size=block_size,
             in_memory_database=in_memory_database)
         return self.benji
