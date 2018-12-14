@@ -11,19 +11,22 @@ import time
 import uuid
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
-from functools import partial
+from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
-import boolean
 import sqlalchemy
+from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
+    Regex, ParseException, ParseFatalException, Literal, NoMatch
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
     DateTime, UniqueConstraint, and_, or_
-from sqlalchemy import distinct, desc
+from sqlalchemy import distinct
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
+from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.types import TypeDecorator
 
 from benji.config import Config
@@ -34,6 +37,7 @@ from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 
 
+@total_ordering
 class VersionUid(StorageKeyMixIn['VersionUid']):
 
     def __init__(self, value: Union[str, int]) -> None:
@@ -70,23 +74,24 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
     def __repr__(self) -> str:
         return str(self.integer)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, VersionUid):
             return self.integer == other.integer
         elif isinstance(other, int):
             return self.integer == other
         else:
-            return False
+            return NotImplemented
 
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(operator, VersionUid):
+            return self.integer < other.integer
+        elif isinstance(other, int):
+            return self.integer < other
+        else:
+            return NotImplemented
 
     def __hash__(self) -> int:
         return self.integer
-
-    # For sorting
-    def __lt__(self, other: 'VersionUid') -> bool:
-        return self.integer < other.integer
 
     # Start: Implements StorageKeyMixIn
     _STORAGE_PREFIX = 'versions/'
@@ -118,11 +123,7 @@ class VersionUidType(TypeDecorator):
         elif isinstance(value, int):
             return value
         elif isinstance(value, str):
-            try:
-                return int(value)
-            except ValueError:
-                raise InternalError(
-                    'Supplied string value "{}" represents no integer VersionUidType.process_bind_param'.format(value)) from None
+            return VersionUid(value).integer
         elif isinstance(value, VersionUid):
             return value.integer
         else:
@@ -161,6 +162,7 @@ class BlockUidComparator(CompositeProperty.Comparator):
             *[sqlalchemy.sql.and_(*[clauses[0] == element[0], clauses[1] == element[1]]) for element in other_tuples])
 
 
+@total_ordering
 class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
 
     def __init__(self, left: Optional[int], right: Optional[int]) -> None:
@@ -177,28 +179,27 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
     def __str__(self) -> str:
         return "{:x}-{:x}".format(self.left if self.left is not None else 0, self.right if self.right is not None else 0)
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, BlockUid) and \
-               other.left == self.left and \
-               other.right == self.right
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, BlockUid):
+            return self.left == other.left and self.right == other.right
+        else:
+            return NotImplemented
 
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, BlockUid):
+            self_left = self.left if self.left is not None else 0
+            self_right = self.right if self.right is not None else 0
+            other_left = other.left if other.left is not None else 0
+            other_right = other.right if other.right is not None else 0
+            return self_left < other_left or self_left == other_left and self_right < other_right
+        else:
+            return NotImplemented
 
     def __bool__(self) -> bool:
         return self.left is not None and self.right is not None
 
     def __hash__(self) -> int:
         return hash((self.left, self.right))
-
-    # For sorting
-    def __lt__(self, other: 'BlockUid') -> bool:
-        # Map None to zero
-        self_left = self.left if self.left is not None else 0
-        self_right = self.right if self.right is not None else 0
-        other_left = other.left if other.left is not None else 0
-        other_right = other.right if other.right is not None else 0
-        return self_left < other_left or self_left == other_left and self_right < other_right
 
     @classmethod
     def coerce(cls, key, value):
@@ -499,9 +500,8 @@ class DatabaseBackend(ReprMixIn):
         return version
 
     def set_stats(self, *, uid: VersionUid, base_uid: Optional[VersionUid], hints_supplied: bool,
-                  date: datetime.datetime, name: str, snapshot_name: str, size: int,
-                  storage_id: int, block_size: int, bytes_read: int, bytes_written: int,
-                  bytes_dedup: int, bytes_sparse: int, duration: int) -> None:
+                  date: datetime.datetime, name: str, snapshot_name: str, size: int, storage_id: int, block_size: int,
+                  bytes_read: int, bytes_written: int, bytes_dedup: int, bytes_sparse: int, duration: int) -> None:
         stats = Stats(
             uid=uid,
             base_uid=base_uid,
@@ -526,7 +526,7 @@ class DatabaseBackend(ReprMixIn):
             raise
 
     def get_stats_by_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[Stats]:
-        builder = _StatsQueryBuilder(self._session)
+        builder = _QueryBuilder(self._session, Stats)
         try:
             stats = builder.build(filter_expression)
             if limit:
@@ -594,9 +594,9 @@ class DatabaseBackend(ReprMixIn):
         return versions
 
     def get_versions_by_filter(self, filter_expression: str = None):
-        builder = _VersionQueryBuilder(self._session)
+        builder = _QueryBuilder(self._session, Version)
         try:
-            versions = builder.build(filter_expression).all()
+            versions = builder.build(filter_expression).order_by(Version.name, Version.date).all()
         except:
             self._session.rollback()
             raise
@@ -908,15 +908,19 @@ class DatabaseBackend(ReprMixIn):
             # Will raise ValueError when invalid
             version_uid = VersionUid(version_dict['uid'])
 
-            for attribute in ['date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected']:
+            for attribute in [
+                    'date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected'
+            ]:
                 if attribute not in version_dict:
                     raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
 
             if not InputValidation.is_backup_name(version_dict['name']):
-                raise InputDataError('Backup name {} in version {} is invalid.'.format(version_dict['name'], version_uid.v_string))
+                raise InputDataError('Backup name {} in version {} is invalid.'.format(
+                    version_dict['name'], version_uid.v_string))
 
             if not InputValidation.is_snapshot_name(version_dict['snapshot_name']):
-                raise InputDataError('Snapshot name {} in version {} is invalid.'.format(version_dict['snapshot_name'], version_uid.v_string))
+                raise InputDataError('Snapshot name {} in version {} is invalid.'.format(
+                    version_dict['snapshot_name'], version_uid.v_string))
 
             if not isinstance(version_dict['labels'], list):
                 raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
@@ -926,21 +930,27 @@ class DatabaseBackend(ReprMixIn):
 
             for label_dict in version_dict['labels']:
                 if not isinstance(label_dict, dict):
-                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(version_uid.v_string))
+                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(
+                        version_uid.v_string))
                 for attribute in ['name', 'value']:
                     if attribute not in label_dict:
-                        raise InputDataError('Missing attribute {} in labels list in version {}.'.format(attribute, version_uid.v_string))
+                        raise InputDataError('Missing attribute {} in labels list in version {}.'.format(
+                            attribute, version_uid.v_string))
                 if not InputValidation.is_label_name(label_dict['name']):
-                    raise InputDataError('Label name {} in labels list in version {} is invalid.'.format(label_dict['name'], version_uid.v_string))
+                    raise InputDataError('Label name {} in labels list in version {} is invalid.'.format(
+                        label_dict['name'], version_uid.v_string))
                 if not InputValidation.is_label_value(label_dict['value']):
-                    raise InputDataError('Label value {} in labels list in version {} is invalid.'.format(label_dict['value'], version_uid.v_string))
+                    raise InputDataError('Label value {} in labels list in version {} is invalid.'.format(
+                        label_dict['value'], version_uid.v_string))
 
             for block_dict in version_dict['blocks']:
                 if not isinstance(block_dict, dict):
-                    raise InputDataError('Wrong data type for blocks list element in version {}.'.format(version_uid.v_string))
+                    raise InputDataError('Wrong data type for blocks list element in version {}.'.format(
+                        version_uid.v_string))
                 for attribute in ['date', 'uid']:
                     if attribute not in block_dict:
-                        raise InputDataError('Missing attribute {} in blocks list in version {}.'.format(attribute, version_uid.v_string))
+                        raise InputDataError('Missing attribute {} in blocks list in version {}.'.format(
+                            attribute, version_uid.v_string))
 
             try:
                 self.get_version(version_dict['uid'])
@@ -1118,158 +1128,144 @@ class DatabaseBackendLocking:
                 self.unlock_version(version_uid)
 
 
-class _FilterAlgebra(boolean.BooleanAlgebra):
-    LABEL_PREFIX = 'label_'
+class _QueryBuilder:
 
-    _OPS = {
-        'or': boolean.TOKEN_OR,
-        'and': boolean.TOKEN_AND,
-        '(': boolean.TOKEN_LPAR,
-        ')': boolean.TOKEN_RPAR,
-    }
-
-    _COMPARISON_OPS = {
-        '==': operator.eq,
-        '!=': operator.ne,
-    }
-
-    _SYMBOL_START = 0
-    _SYMBOL_OP = 1
-    _SYMBOL_VALUE = 2
-
-    _EMPTY_STRING_TOKEN = "''"
-
-    def __init__(self, keys: Dict[str, Callable[[Any], Any]], allow_labels: bool):
-        super().__init__()
-        self._allow_labels = allow_labels
-        self._keys = keys
-
-    def tokenize(self, s):
-        symbol_state = self._SYMBOL_START
-        for row, line in enumerate(s.splitlines(False)):
-            tok_list = [
-                tok for tok in re.split(r'(\s+|[\(\)]|{})'.format('|'.join(self._COMPARISON_OPS.keys())), line)
-                if not re.fullmatch(r'\s*', tok)
-            ]
-            for col, tok in enumerate(tok_list):
-                if symbol_state == self._SYMBOL_START and tok in self._OPS:
-                    yield self._OPS[tok], tok, (row, col)
-                elif symbol_state == self._SYMBOL_START:
-                    symbol_state = self._SYMBOL_OP
-                    symbol_tokens = tok
-
-                    if tok in self._keys or (self._allow_labels and tok.startswith(self.LABEL_PREFIX)):
-                        key = tok
-                    else:
-                        raise UsageError('Invalid key {} in filter expression.'.format(tok))
-                elif symbol_state == self._SYMBOL_OP:
-                    symbol_state = self._SYMBOL_VALUE
-                    symbol_tokens += tok
-
-                    if tok not in self._COMPARISON_OPS:
-                        raise UsageError('Invalid operator {} in filter expression.'.format(tok))
-                    op = self._COMPARISON_OPS[tok]
-                elif symbol_state == self._SYMBOL_VALUE:
-                    symbol_state = self._SYMBOL_START
-                    symbol_tokens += tok
-
-                    if tok == self._EMPTY_STRING_TOKEN:
-                        # Convert empty token to an empty string
-                        value = ''
-                    elif key in self._keys:
-                        value = self._keys[key](tok)
-                    else:
-                        # This branch is reached for labels when they're allowed
-                        value = tok
-
-                    yield self.Symbol((key, op, value)), symbol_tokens, (row, col)
-
-
-def _convert_boolean(key: str, value: str):
-    if value == 'True':
-        return True
-    elif value == 'False':
-        return False
-    else:
-        raise UsageError('Key {} in filter expression expects a boolean constant for comparison.'.format(key))
-
-
-class _VersionQueryBuilder:
-    _KEYS: Dict[str, Callable[[Any], Any]] = {
-        'uid': lambda v: VersionUid(v),
-        'name': lambda v: v,
-        'snapshot_name': lambda v: v,
-        'protected': partial(_convert_boolean, 'protected'),
-        'valid': partial(_convert_boolean, 'valid'),
-        'size': lambda v: int(v),
-        'block_size': lambda v: int(v),
-        'storage_id': lambda v: int(v),
-    }
-
-    def __init__(self, session) -> None:
+    def __init__(self, session, orm_class: Base) -> None:
         self._session = session
-        self._algebra = _FilterAlgebra(keys=self._KEYS, allow_labels=True)
+        self._parser = self._define_parser(session, orm_class)
 
-    def build(self, filter_expression: str = None) -> sqlalchemy.orm.query.Query:
+    @staticmethod
+    def _define_parser(session, orm_class: Base) -> Any:
 
-        def build_expression(current):
-            if isinstance(current, boolean.AND):
-                return and_(*[build_expression(arg) for arg in current.args])
-            elif isinstance(current, boolean.OR):
-                return or_(*[build_expression(arg) for arg in current.args])
-            elif isinstance(current, boolean.Symbol):
-                key, op, value = current.obj
-                if key.startswith(self._algebra.LABEL_PREFIX):
-                    label = key[len(self._algebra.LABEL_PREFIX):]
-                    label_query = self._session.query(
-                        Version.uid).join(Label).filter((Label.name == label) & op(Label.value, value))
-                    return Version.uid.in_(label_query)
+        @total_ordering
+        class IdentifierToken:
+
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def __eq__(self, other: Any) -> bool:
+                if isinstance(other, IdentifierToken):
+                    return self.name == other.name
                 else:
-                    return op(getattr(Version, key), value)
+                    return getattr(orm_class, self.name) == other
 
+            def __lt__(self, other: Any) -> bool:
+                if isinstance(other, IdentifierToken):
+                    return getattr(orm_class, self.name) < getattr(orm_class, other.name)
+                else:
+                    return getattr(orm_class, self.name) < other
+
+        class LabelToken:
+
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def op(self, op, other: Any) -> bool:
+                if isinstance(other, LabelToken):
+                    return self.name == other.name
+                else:
+                    label_query = session.query(
+                        Label.version_uid).filter((Label.name == self.name) & op(Label.value, str(other)))
+                    return Version.uid.in_(label_query)
+
+            def __eq__(self, other: Any) -> bool:
+                return self.op(operator.eq, other)
+
+            def __ne__(self, other: Any) -> bool:
+                return self.op(operator.ne, other)
+
+        attributes = []
+        for attribute in inspect(orm_class).mapper.composites:
+            attributes.append(attribute.key)
+
+        for attribute in inspect(orm_class).mapper.column_attrs:
+            attributes.append(attribute.key)
+
+        identifier = Regex('|'.join(attributes)).setParseAction(lambda s, l, t: IdentifierToken(t[0]))
+        integer = pyparsing_common.signed_integer
+        string = quotedString().setParseAction(removeQuotes)
+        bool_true = Keyword("True").setParseAction(replaceWith(True))
+        bool_false = Keyword('False').setParseAction(replaceWith(False))
+
+        if 'labels' in inspect(orm_class).mapper.relationships:
+            label = (Literal('labels') + Literal('[') + string + Literal(']')).setParseAction(lambda s, l, t: LabelToken(t[2]))
+        else:
+            label = NoMatch()
+
+        atom = identifier | integer | string | bool_true | bool_false | label
+
+        class BinaryOp:
+
+            evalop: Optional[Callable[[Any, Any], bool]] = None
+
+            def __init__(self, t) -> None:
+                self.args = t[0][0::2]
+
+            def build(self) -> Any:
+                assert self.evalop is not None
+                return self.evalop(*self.args)
+
+            def __and__(self, other: Any) -> BooleanClauseList:
+                if isinstance(other, BinaryOp):
+                    return and_(self.build(), other.build())
+                else:
+                    return and_(self.build(), other)
+
+            def __or__(self, other: Any) -> BooleanClauseList:
+                if isinstance(other, BinaryOp):
+                    return or_(self.build(), other.build())
+                else:
+                    return or_(self.build(), other)
+
+        class AndOp(BinaryOp):
+            evalop = operator.and_
+
+        class OrOp(BinaryOp):
+            evalop = operator.or_
+
+        class EqOp(BinaryOp):
+            evalop = operator.eq
+
+        class NeOp(BinaryOp):
+            evalop = operator.ne
+
+        class LtOp(BinaryOp):
+            evalop = operator.lt
+
+        class GtOp(BinaryOp):
+            evalop = operator.gt
+
+        class LeOp(BinaryOp):
+            evalop = operator.le
+
+        class GeOp(BinaryOp):
+            evalop = operator.ge
+
+        return infixNotation(atom, [
+            ("==", 2, opAssoc.LEFT, EqOp),
+            ("!=", 2, opAssoc.LEFT, NeOp),
+            ("<=", 2, opAssoc.LEFT, LeOp),
+            (">=", 2, opAssoc.LEFT, GeOp),
+            ("<", 2, opAssoc.LEFT, LtOp),
+            (">", 2, opAssoc.LEFT, GtOp),
+            ("and", 2, opAssoc.LEFT, AndOp),
+            ("or", 2, opAssoc.LEFT, OrOp),
+        ])
+
+    def build(self, filter_expression: Optional[str]):
         query = self._session.query(Version)
         if filter_expression:
             try:
-                parsed_filter_expression = self._algebra.parse(filter_expression)
-            except Exception as exception:
+                parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]
+            except (ParseException, ParseFatalException) as exception:
                 raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
-            query = query.filter(build_expression(parsed_filter_expression))
-        return query.order_by(Version.name, Version.date)
-
-
-class _StatsQueryBuilder:
-    _KEYS: Dict[str, Callable[[Any], Any]] = {
-        'uid': lambda v: VersionUid(v),
-        'base_uid': lambda v: VersionUid(v),
-        'name': lambda v: v,
-        'snapshot_name': lambda v: v,
-        'hints_supplied': partial(_convert_boolean, 'hints_supplied'),
-        'size': lambda v: int(v),
-        'block_size': lambda v: int(v),
-        'storage_id': lambda v: int(v),
-        'duration': lambda v: int(v),
-    }
-
-    def __init__(self, session) -> None:
-        self._session = session
-        self._algebra = _FilterAlgebra(keys=self._KEYS, allow_labels=True)
-
-    def build(self, filter_expression: str = None) -> sqlalchemy.orm.query.Query:
-
-        def build_expression(current):
-            if isinstance(current, boolean.AND):
-                return and_(*[build_expression(arg) for arg in current.args])
-            elif isinstance(current, boolean.OR):
-                return or_(*[build_expression(arg) for arg in current.args])
-            elif isinstance(current, boolean.Symbol):
-                key, op, value = current.obj
-                return op(getattr(Stats, key), value)
-
-        query = self._session.query(Stats)
-        if filter_expression:
             try:
-                parsed_filter_expression = self._algebra.parse(filter_expression)
-            except boolean.ParseError as exception:
-                raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
-            query = query.filter(build_expression(parsed_filter_expression))
-        return query.order_by(Stats.date, Stats.name)
+                filter_result = parsed_filter_expression.build()
+            except (AttributeError, TypeError):
+                # User supplied only a constant or is trying to compare apples to oranges
+                raise UsageError('Invalid filter expression {} (2).'.format(filter_expression)) from None
+            if not isinstance(filter_result, ColumnElement):
+                # Expression doesn't contain at least one expression with references to a SQL column
+                raise UsageError('Invalid filter expression {} (3).'.format(filter_expression))
+            query = query.filter(filter_result)
+        return query

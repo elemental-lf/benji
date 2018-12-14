@@ -192,7 +192,8 @@ class SmokeTestCase(BenjiTestCaseBase):
             # delete old versions
             if len(version_uids) > 10:
                 benji_obj = self.benjiOpen()
-                dismissed_version_uids = benji_obj.enforce_retention_policy('name==data-backup', 'latest10,hours24,days30')
+                dismissed_version_uids = benji_obj.enforce_retention_policy('name==data-backup',
+                                                                            'latest10,hours24,days30')
                 for dismissed_version_uid in dismissed_version_uids:
                     version_uids.remove(dismissed_version_uid)
                 benji_obj.close()

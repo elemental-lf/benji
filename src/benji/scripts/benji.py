@@ -47,11 +47,9 @@ class Commands:
                block_size: int, labels: List[str], storage) -> None:
         # Validate version_name and snapshot_name
         if not InputValidation.is_backup_name(version_name):
-            raise benji.exception.UsageError(
-                'Version name {} is invalid.'.format(version_name))
+            raise benji.exception.UsageError('Version name {} is invalid.'.format(version_name))
         if not InputValidation.is_snapshot_name(snapshot_name):
-            raise benji.exception.UsageError(
-                'Snapshot name {} is invalid.'.format(snapshot_name))
+            raise benji.exception.UsageError('Snapshot name {} is invalid.'.format(snapshot_name))
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
         if labels:
             label_add, label_remove = self._parse_labels(labels)
@@ -73,9 +71,12 @@ class Commands:
                 for key in label_remove:
                     benji_obj.rm_label(backup_version_uid, key)
                 if label_add:
-                    logger.info('Added label(s) to version {}: {}.'.format(backup_version_uid.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                    logger.info('Added label(s) to version {}: {}.'.format(
+                        backup_version_uid.v_string,
+                        ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
                 if label_remove:
-                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version_uid.v_string, ', '.join(label_remove)))
+                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version_uid.v_string,
+                                                                               ', '.join(label_remove)))
 
             if self.machine_output:
                 benji_obj.export_any({
@@ -122,7 +123,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def rm(self, version_uids: List[str], force: bool, keep_backend_metadata: bool) -> None:
+    def rm(self, version_uids: List[str], force: bool, keep_metadata_backup: bool) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         disallow_rm_when_younger_than_days = self.config.get('disallowRemoveWhenYounger', types=int)
         benji_obj = None
@@ -133,7 +134,7 @@ class Commands:
                     version_uid,
                     force=force,
                     disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
-                    keep_backend_metadata=keep_backend_metadata)
+                    keep_metadata_backup=keep_metadata_backup)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -316,8 +317,7 @@ class Commands:
         tbl.align['duration (s)'] = 'r'
         for stat in stats:
             augmented_version_uid = '{}{}{}'.format(
-                stat.uid.v_string,
-                ',\nbase {}'.format(stat.base_uid.v_string) if stat.base_uid else '',
+                stat.uid.v_string, ',\nbase {}'.format(stat.base_uid.v_string) if stat.base_uid else '',
                 ', hints' if stat.hints_supplied else '')
             tbl.add_row([
                 PrettyPrint.local_time(stat.date),
@@ -492,9 +492,11 @@ class Commands:
             for name in label_remove:
                 benji_obj.rm_label(version_uid_obj, name)
             if label_add:
-                logger.info('Added label(s) to version {}: {}.'.format(version_uid_obj.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                logger.info('Added label(s) to version {}: {}.'.format(
+                    version_uid_obj.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
             if label_remove:
-                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj.v_string, ', '.join(label_remove)))
+                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj.v_string,
+                                                                           ', '.join(label_remove)))
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -503,14 +505,15 @@ class Commands:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
-    def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool, keep_metadata_backup: bool) -> None:
+    def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool,
+                                 keep_metadata_backup: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             dismissed_version_uids = benji_obj.enforce_retention_policy(
-                        filter_expression=filter_expression,
-                        rules_spec=rules_spec,
-                        dry_run=dry_run,
+                filter_expression=filter_expression,
+                rules_spec=rules_spec,
+                dry_run=dry_run,
                 keep_metadata_backup=keep_metadata_backup)
             if self.machine_output:
                 benji_obj.export_any({
@@ -550,6 +553,7 @@ def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
 
     return value
 
+
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -557,7 +561,10 @@ def main():
     parser.add_argument(
         '-m', '--machine-output', action='store_true', default=False, help='Enable machine-readable JSON output')
     parser.add_argument(
-        '--log-level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], default='INFO', help='Only log messages of this level or above on the console')
+        '--log-level',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+        default='INFO',
+        help='Only log messages of this level or above on the console')
     parser.add_argument(
         '--no-color', action='store_true', default=False, help='Disable colorization of console logging')
 
