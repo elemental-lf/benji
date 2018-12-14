@@ -120,7 +120,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             print('  Labeling of version successful')
 
             benji_obj = self.benjiOpen()
-            benji_obj.rm(version_uid, force=True, keep_backend_metadata=True)
+            benji_obj.rm(version_uid, force=True, keep_metadata_backup=True)
             benji_obj.close()
             print('  Removal of version successful')
 

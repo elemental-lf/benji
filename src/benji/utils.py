@@ -173,17 +173,26 @@ class TokenBucket:
                 return -self.tokens / self.rate
 
 
-class LabelHelpers:
+class InputValidation:
 
-    QUALIFIED_NAME_REGEXP = '(?!-)[a-zA-Z0-9-_.]{1,63}(?<!-)'
-    LABEL_VALUE_REGEXP = '(' + QUALIFIED_NAME_REGEXP + ')?'
-    DNS1123_LABEL_REGEXP = '(?!-)[a-z0-9-]{1,63}(?<!-)'
+    QUALIFIED_NAME_REGEXP = '(?!-)[-a-zA-Z0-9_.]{1,63}(?<!-)'
+    VALUE_REGEXP = '(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)'
+    OPTIONAL_VALUE_REGEXP = '(' + VALUE_REGEXP + ')?'
+    DNS1123_LABEL_REGEXP = '(?!-)[-a-z0-9]{1,63}(?<!-)'
     DNS1123_SUBDOMAIN_REGEXP = DNS1123_LABEL_REGEXP + '(\\.' + DNS1123_LABEL_REGEXP + ')*'
     DNS1123_SUBDOMAIN_MAX_LENGTH = 253
 
     @classmethod
-    def is_dns1123_label(cls, label):
-        return re.fullmatch(cls.DNS1123_LABEL_REGEXP, label) is not None
+    def is_backup_name(cls, label):
+        return re.fullmatch(cls.VALUE_REGEXP, label) is not None
+
+    @classmethod
+    def is_snapshot_name(cls, label):
+        return re.fullmatch(cls.OPTIONAL_VALUE_REGEXP, label) is not None
+
+    @classmethod
+    def is_label_value(cls, value: str) -> bool:
+        return re.fullmatch(cls.OPTIONAL_VALUE_REGEXP, value) is not None
 
     @classmethod
     def is_dns1123_subdomain(cls, subdomain: str) -> bool:
@@ -191,12 +200,10 @@ class LabelHelpers:
             return False
         return re.fullmatch(cls.DNS1123_SUBDOMAIN_REGEXP, subdomain) is not None
 
+    # This matches Kubernetes "qualified name"
+    # See: https://github.com/errm/kubernetes/blob/master/pkg/util/validation/validation.go
     @classmethod
-    def is_label_value(cls, value: str) -> bool:
-        return re.fullmatch(cls.LABEL_VALUE_REGEXP, value) is not None
-
-    @classmethod
-    def is_qualified_name(cls, name: str) -> bool:
+    def is_label_name(cls, name: str) -> bool:
         if name.find('/') > -1:
             prefix, name = name.split('/')
             if len(prefix) == 0 or len(name) == 0:

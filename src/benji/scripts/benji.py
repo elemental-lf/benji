@@ -25,7 +25,7 @@ from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.database import Version, VersionUid, Stats
 from benji.nbdserver import NbdServer
-from benji.utils import hints_from_rbd_diff, PrettyPrint, LabelHelpers
+from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 
 __version__ = pkg_resources.get_distribution('benji').version
 
@@ -46,12 +46,12 @@ class Commands:
     def backup(self, version_name: str, snapshot_name: str, source: str, rbd_hints: str, base_version_uid: str,
                block_size: int, labels: List[str], storage) -> None:
         # Validate version_name and snapshot_name
-        if not LabelHelpers.is_dns1123_label(version_name):
+        if not InputValidation.is_backup_name(version_name):
             raise benji.exception.UsageError(
-                'Version name {} is invalid. It must be a lowercase DNS-1123 label.'.format(version_name))
-        if snapshot_name != '' and not LabelHelpers.is_dns1123_label(snapshot_name):
+                'Version name {} is invalid.'.format(version_name))
+        if not InputValidation.is_snapshot_name(snapshot_name):
             raise benji.exception.UsageError(
-                'Snapshot name {} is invalid. It must be a lowercase DNS-1123 label.'.format(snapshot_name))
+                'Snapshot name {} is invalid.'.format(snapshot_name))
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
         if labels:
             label_add, label_remove = self._parse_labels(labels)
@@ -73,7 +73,7 @@ class Commands:
                 for key in label_remove:
                     benji_obj.rm_label(backup_version_uid, key)
                 if label_add:
-                    logger.info('Added label(s) to version {}: {}.'.format(backup_version_uid.v_string, ', '.join(['{}={}'.format(key, value) for key, value in label_add])))
+                    logger.info('Added label(s) to version {}: {}.'.format(backup_version_uid.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
                 if label_remove:
                     logger.info('Removed label(s) from version {}: {}.'.format(backup_version_uid.v_string, ', '.join(label_remove)))
 
@@ -247,25 +247,38 @@ class Commands:
     @classmethod
     def _ls_versions_table_output(cls, versions: List[Version], include_labels: bool) -> None:
         tbl = PrettyTable()
-        tbl.field_names = [
-            'date',
-            'uid',
-            'name',
-            'snapshot_name',
-            'size',
-            'block_size',
-            'valid',
-            'protected',
-            'storage',
-        ]
+        # tbls.field_names.append won't work due to magic inside of PrettyTable
+        if include_labels:
+            tbl.field_names = [
+                'date',
+                'uid',
+                'name',
+                'snapshot_name',
+                'size',
+                'block_size',
+                'valid',
+                'protected',
+                'storage',
+                'labels',
+            ]
+        else:
+            tbl.field_names = [
+                'date',
+                'uid',
+                'name',
+                'snapshot_name',
+                'size',
+                'block_size',
+                'valid',
+                'protected',
+                'storage',
+            ]
         tbl.align['name'] = 'l'
         tbl.align['snapshot_name'] = 'l'
         tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
-        if include_labels:
-            tbl.field_names.append('labels')
-            tbl.align['labels'] = 'l'
+        tbl.align['labels'] = 'l'
         for version in versions:
             row = [
                 PrettyPrint.local_time(version.date),
@@ -279,7 +292,7 @@ class Commands:
                 StorageFactory.storage_id_to_name(version.storage_id),
             ]
             if include_labels:
-                row.append('\n'.join(sorted(['{}={}'.format(label.key, label.value) for label in version.labels])))
+                row.append('\n'.join(sorted(['{}={}'.format(label.name, label.value) for label in version.labels])))
             tbl.add_row(row)
         print(tbl)
 
@@ -303,22 +316,22 @@ class Commands:
         tbl.align['duration (s)'] = 'r'
         for stat in stats:
             augmented_version_uid = '{}{}{}'.format(
-                stat.version_uid.v_string,
-                ',\nbase {}'.format(stat.base_version_uid.v_string) if stat.base_version_uid else '',
+                stat.uid.v_string,
+                ',\nbase {}'.format(stat.base_uid.v_string) if stat.base_uid else '',
                 ', hints' if stat.hints_supplied else '')
             tbl.add_row([
-                PrettyPrint.local_time(stat.version_date),
+                PrettyPrint.local_time(stat.date),
                 augmented_version_uid,
-                stat.version_name,
-                stat.version_snapshot_name,
-                PrettyPrint.bytes(stat.version_size),
-                PrettyPrint.bytes(stat.version_block_size),
-                StorageFactory.storage_id_to_name(stat.version_storage_id),
+                stat.name,
+                stat.snapshot_name,
+                PrettyPrint.bytes(stat.size),
+                PrettyPrint.bytes(stat.block_size),
+                StorageFactory.storage_id_to_name(stat.storage_id),
                 PrettyPrint.bytes(stat.bytes_read),
                 PrettyPrint.bytes(stat.bytes_written),
                 PrettyPrint.bytes(stat.bytes_dedup),
                 PrettyPrint.bytes(stat.bytes_sparse),
-                PrettyPrint.duration(stat.duration_seconds),
+                PrettyPrint.duration(stat.duration),
             ])
         print(tbl)
 
@@ -437,26 +450,34 @@ class Commands:
         add_list: List[Tuple[str, str]] = []
         remove_list: List[str] = []
         for label in labels:
+            if len(label) == 0:
+                raise benji.exception.UsageError('A zero-length label is invalid.')
+
             if label.endswith('-'):
-                key = label[:-1]
+                name = label[:-1]
 
-                if not LabelHelpers.is_qualified_name(key):
-                    raise benji.exception.UsageError('Label key {} is not a valid qualified name.'.format(key))
+                if not InputValidation.is_label_name(name):
+                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
 
-                remove_list.append(key)
+                remove_list.append(name)
             elif label.find('=') > -1:
-                key, value = label.split('=')
+                name, value = label.split('=')
 
-                if len(key) == 0:
+                if len(name) == 0:
                     raise benji.exception.UsageError('Missing label key in label {}.'.format(label))
-                if not LabelHelpers.is_qualified_name(key):
-                    raise benji.exception.UsageError('Label key {} is not a valid qualified name.'.format(key))
-                if not LabelHelpers.is_label_value(value):
+                if not InputValidation.is_label_name(name):
+                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
+                if not InputValidation.is_label_value(value):
                     raise benji.exception.UsageError('Label value {} is not a valid.'.format(value))
 
-                add_list.append((key, value))
+                add_list.append((name, value))
             else:
-                raise benji.exception.UsageError('Label {} has an invalid format.'.format(label))
+                name = label
+
+                if not InputValidation.is_label_name(name):
+                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
+
+                add_list.append((name, ''))
 
         return add_list, remove_list
 
@@ -466,12 +487,12 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            for key, value in label_add:
-                benji_obj.add_label(version_uid_obj, key, value)
-            for key in label_remove:
-                benji_obj.rm_label(version_uid_obj, key)
+            for name, value in label_add:
+                benji_obj.add_label(version_uid_obj, name, value)
+            for name in label_remove:
+                benji_obj.rm_label(version_uid_obj, name)
             if label_add:
-                logger.info('Added label(s) to version {}: {}.'.format(version_uid_obj.v_string, ', '.join(['{}={}'.format(key, value) for key, value in label_add])))
+                logger.info('Added label(s) to version {}: {}.'.format(version_uid_obj.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
             if label_remove:
                 logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj.v_string, ', '.join(label_remove)))
         finally:
@@ -482,7 +503,7 @@ class Commands:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
-    def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool, keep_backend_metadata: bool) -> None:
+    def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool, keep_metadata_backup: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -490,7 +511,7 @@ class Commands:
                         filter_expression=filter_expression,
                         rules_spec=rules_spec,
                         dry_run=dry_run,
-                        keep_backend_metadata=keep_backend_metadata)
+                keep_metadata_backup=keep_metadata_backup)
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': [benji_obj.ls(version_uid=version_uid)[0] for version_uid in dismissed_version_uids]
@@ -592,7 +613,7 @@ def main():
     # LS
     p = subparsers_root.add_parser('ls', help='List versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
-    p.add_argument('--include-labels', action='store_true', help='Include labels in output')
+    p.add_argument('-l', '--include-labels', action='store_true', help='Include labels in output')
     p.set_defaults(func='ls')
 
     # RM
@@ -606,8 +627,8 @@ def main():
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
     p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
-    p.add_argument('filter_expression', help='Version filter expression')
     p.add_argument('rules_spec', help='Retention rules specification')
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='enforce_retention_policy')
 
     # CLEANUP
@@ -765,10 +786,10 @@ def main():
         config = Config()
 
     if args.machine_output:
-        console_level = logging.ERROR
+        console_level = 'ERROR'
         no_color = True
     else:
-        console_level = logging.getLevelName(args.log_level)
+        console_level = args.log_level
         no_color = args.no_color
     init_logging(config.get('logFile', types=(str, type(None))), console_level, no_color=no_color)
 

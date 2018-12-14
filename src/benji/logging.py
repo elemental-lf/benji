@@ -11,7 +11,7 @@ import colorlog
 logger = logging.getLogger(__name__)
 
 
-def init_logging(logfile: Optional[str], console_level: int, no_color: bool = False):
+def init_logging(logfile: Optional[str], console_level: str, no_color: bool = False):
     handlers = []
 
     if no_color:

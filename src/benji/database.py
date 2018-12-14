@@ -31,6 +31,7 @@ from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageE
 from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
+from benji.utils import InputValidation
 
 
 class VersionUid(StorageKeyMixIn['VersionUid']):
@@ -229,23 +230,24 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
 Base: Any = declarative_base(cls=ReprMixIn)
 
 
+# This mirrors Version with some extra fields
 class Stats(Base):
     __tablename__ = 'stats'
     # No foreign key references here, so that we can keep the stats around even when the version is deleted
-    version_uid = Column(VersionUidType, primary_key=True)
-    base_version_uid = Column(VersionUidType, nullable=True)
+    uid = Column(VersionUidType, primary_key=True)
+    base_uid = Column(VersionUidType, nullable=True)
     hints_supplied = Column(Boolean, nullable=False)
-    version_name = Column(String, nullable=False)
-    version_date = Column("date", DateTime, nullable=False)
-    version_snapshot_name = Column(String, nullable=False)
-    version_size = Column(BigInteger, nullable=False)
-    version_storage_id = Column(Integer, nullable=False)
-    version_block_size = Column(BigInteger, nullable=False)
+    name = Column(String, nullable=False)
+    date = Column("date", DateTime, nullable=False)
+    snapshot_name = Column(String, nullable=False)
+    size = Column(BigInteger, nullable=False)
+    storage_id = Column(Integer, nullable=False)
+    block_size = Column(BigInteger, nullable=False)
     bytes_read = Column(BigInteger, nullable=False)
     bytes_written = Column(BigInteger, nullable=False)
     bytes_dedup = Column(BigInteger, nullable=False)
     bytes_sparse = Column(BigInteger, nullable=False)
-    duration_seconds = Column(BigInteger, nullable=False)
+    duration = Column(BigInteger, nullable=False)
 
 
 class Version(Base):
@@ -268,7 +270,7 @@ class Version(Base):
     labels = sqlalchemy.orm.relationship(
         'Label',
         backref='version',
-        order_by='asc(Label.key)',
+        order_by='asc(Label.name)',
         passive_deletes=True,
     )
 
@@ -283,14 +285,14 @@ class Version(Base):
 class Label(Base):
     __tablename__ = 'labels'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'key', 'value']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'name', 'value']
 
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)
-    key = Column(String, nullable=False, primary_key=True)
+    name = Column(String, nullable=False, primary_key=True)
     value = Column(String, nullable=False, index=True)
 
-    __table_args__ = (UniqueConstraint('version_uid', 'key'),)
+    __table_args__ = (UniqueConstraint('version_uid', 'name'),)
 
 
 class DereferencedBlock(ReprMixIn):
@@ -496,25 +498,25 @@ class DatabaseBackend(ReprMixIn):
 
         return version
 
-    def set_stats(self, *, version_uid: VersionUid, base_version_uid: Optional[VersionUid], hints_supplied: bool,
-                  version_date: datetime.datetime, version_name: str, version_snapshot_name: str, version_size: int,
-                  version_storage_id: int, version_block_size: int, bytes_read: int, bytes_written: int,
-                  bytes_dedup: int, bytes_sparse: int, duration_seconds: int) -> None:
+    def set_stats(self, *, uid: VersionUid, base_uid: Optional[VersionUid], hints_supplied: bool,
+                  date: datetime.datetime, name: str, snapshot_name: str, size: int,
+                  storage_id: int, block_size: int, bytes_read: int, bytes_written: int,
+                  bytes_dedup: int, bytes_sparse: int, duration: int) -> None:
         stats = Stats(
-            version_uid=version_uid,
-            base_version_uid=base_version_uid,
+            uid=uid,
+            base_uid=base_uid,
             hints_supplied=hints_supplied,
-            version_date=version_date,
-            version_name=version_name,
-            version_snapshot_name=version_snapshot_name,
-            version_size=version_size,
-            version_storage_id=version_storage_id,
-            version_block_size=version_block_size,
+            date=date,
+            name=name,
+            snapshot_name=snapshot_name,
+            size=size,
+            storage_id=storage_id,
+            block_size=block_size,
             bytes_read=bytes_read,
             bytes_written=bytes_written,
             bytes_dedup=bytes_dedup,
             bytes_sparse=bytes_sparse,
-            duration_seconds=duration_seconds,
+            duration=duration,
         )
         try:
             self._session.add(stats)
@@ -582,7 +584,7 @@ class DatabaseBackend(ReprMixIn):
             if version_labels:
                 for version_label in version_labels:
                     label_query = self._session.query(
-                        Version.uid).join(Label).filter((Label.key == version_label[0]) & Label.value == version_label[1])
+                        Version.uid).join(Label).filter((Label.name == version_label[0]) & Label.value == version_label[1])
                     query = query.filter(Version.uid.in_(label_query))
             versions = query.order_by(Version.name, Version.date).all()
         except:
@@ -601,13 +603,13 @@ class DatabaseBackend(ReprMixIn):
 
         return versions
 
-    def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
+    def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
         try:
-            label = self._session.query(Label).filter_by(version_uid=version_uid, key=key).first()
+            label = self._session.query(Label).filter_by(version_uid=version_uid, name=name).first()
             if label:
                 label.value = value
             else:
-                label = Label(version_uid=version_uid, key=key, value=value)
+                label = Label(version_uid=version_uid, name=name, value=value)
                 self._session.add(label)
 
             self._session.commit()
@@ -615,9 +617,9 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def rm_label(self, version_uid: VersionUid, key: str) -> None:
+    def rm_label(self, version_uid: VersionUid, name: str) -> None:
         try:
-            deleted = self._session.query(Label).filter_by(version_uid=version_uid, key=key).delete()
+            deleted = self._session.query(Label).filter_by(version_uid=version_uid, name=name).delete()
             self._session.commit()
         except:
             self._session.rollback()
@@ -898,18 +900,47 @@ class DatabaseBackend(ReprMixIn):
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
-                raise InputDataError('Import file is invalid.')
+                raise InputDataError('Wrong data type for versions list element.')
 
             if 'uid' not in version_dict:
-                raise InputDataError('Import file is invalid (hint: uid).')
+                raise InputDataError('Missing attribute uid in version.')
+
+            # Will raise ValueError when invalid
+            version_uid = VersionUid(version_dict['uid'])
+
+            for attribute in ['date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected']:
+                if attribute not in version_dict:
+                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
+
+            if not InputValidation.is_backup_name(version_dict['name']):
+                raise InputDataError('Backup name {} in version {} is invalid.'.format(version_dict['name'], version_uid.v_string))
+
+            if not InputValidation.is_snapshot_name(version_dict['snapshot_name']):
+                raise InputDataError('Snapshot name {} in version {} is invalid.'.format(version_dict['snapshot_name'], version_uid.v_string))
 
             if not isinstance(version_dict['labels'], list):
-                raise InputDataError('Version {} contains invalid data (hint: labels).'.format(
-                    VersionUid(version_dict['uid']).v_string))
+                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
 
             if not isinstance(version_dict['blocks'], list):
-                raise InputDataError('Version {} contains invalid data (hint blocks).'.format(
-                    VersionUid(version_dict['uid']).v_string))
+                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid.v_string))
+
+            for label_dict in version_dict['labels']:
+                if not isinstance(label_dict, dict):
+                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(version_uid.v_string))
+                for attribute in ['name', 'value']:
+                    if attribute not in label_dict:
+                        raise InputDataError('Missing attribute {} in labels list in version {}.'.format(attribute, version_uid.v_string))
+                if not InputValidation.is_label_name(label_dict['name']):
+                    raise InputDataError('Label name {} in labels list in version {} is invalid.'.format(label_dict['name'], version_uid.v_string))
+                if not InputValidation.is_label_value(label_dict['value']):
+                    raise InputDataError('Label value {} in labels list in version {} is invalid.'.format(label_dict['value'], version_uid.v_string))
+
+            for block_dict in version_dict['blocks']:
+                if not isinstance(block_dict, dict):
+                    raise InputDataError('Wrong data type for blocks list element in version {}.'.format(version_uid.v_string))
+                for attribute in ['date', 'uid']:
+                    if attribute not in block_dict:
+                        raise InputDataError('Missing attribute {} in blocks list in version {}.'.format(attribute, version_uid.v_string))
 
             try:
                 self.get_version(version_dict['uid'])
@@ -919,7 +950,7 @@ class DatabaseBackend(ReprMixIn):
                 raise FileExistsError('Version {} already exists and cannot be imported.'.format(version_dict['uid']))
 
             version = Version(
-                uid=version_dict['uid'],
+                uid=version_uid,
                 date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S'),
                 name=version_dict['name'],
                 snapshot_name=version_dict['snapshot_name'],
@@ -933,24 +964,20 @@ class DatabaseBackend(ReprMixIn):
             self._session.flush()
 
             for block_dict in version_dict['blocks']:
-                if not isinstance(block_dict, dict):
-                    raise InputDataError('Version {} contains invalid data (hint blocks).'.format(
-                        VersionUid(version_dict['uid']).v_string))
-                block_dict['version_uid'] = version.uid
+                block_dict['version_uid'] = version_uid
                 block_dict['date'] = datetime.datetime.strptime(block_dict['date'], '%Y-%m-%dT%H:%M:%S')
-                block_dict['uid_left'] = int(block_dict['uid']['left']) if block_dict['uid']['left'] is not None else None
-                block_dict['uid_right'] = int(block_dict['uid']['right']) if block_dict['uid']['right'] is not None else None
+                block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
+                block_dict['uid_left'] = block_uid.left
+                block_dict['uid_right'] = block_uid.right
                 del block_dict['uid']
+
             self._session.bulk_insert_mappings(Block, version_dict['blocks'])
 
             for label_dict in version_dict['labels']:
-                if not isinstance(label_dict, dict):
-                    raise InputDataError('Version {} contains invalid data (hint: labels).'.format(
-                        VersionUid(version_dict['uid']).v_string))
-                label_dict['version_uid'] = version.uid
+                label_dict['version_uid'] = version_uid
             self._session.bulk_insert_mappings(Label, version_dict['labels'])
 
-            version_uids.append(VersionUid(version_dict['uid']))
+            version_uids.append(version_uid)
 
         return version_uids
 
@@ -1110,7 +1137,7 @@ class _FilterAlgebra(boolean.BooleanAlgebra):
     _SYMBOL_OP = 1
     _SYMBOL_VALUE = 2
 
-    _EMPTY_TOKEN = 'Empty'
+    _EMPTY_STRING_TOKEN = "''"
 
     def __init__(self, keys: Dict[str, Callable[[Any], Any]], allow_labels: bool):
         super().__init__()
@@ -1146,7 +1173,7 @@ class _FilterAlgebra(boolean.BooleanAlgebra):
                     symbol_state = self._SYMBOL_START
                     symbol_tokens += tok
 
-                    if tok == self._EMPTY_TOKEN:
+                    if tok == self._EMPTY_STRING_TOKEN:
                         # Convert empty token to an empty string
                         value = ''
                     elif key in self._keys:
@@ -1195,7 +1222,7 @@ class _VersionQueryBuilder:
                 if key.startswith(self._algebra.LABEL_PREFIX):
                     label = key[len(self._algebra.LABEL_PREFIX):]
                     label_query = self._session.query(
-                        Version.uid).join(Label).filter((Label.key == label) & op(Label.value, value))
+                        Version.uid).join(Label).filter((Label.name == label) & op(Label.value, value))
                     return Version.uid.in_(label_query)
                 else:
                     return op(getattr(Version, key), value)
@@ -1212,15 +1239,15 @@ class _VersionQueryBuilder:
 
 class _StatsQueryBuilder:
     _KEYS: Dict[str, Callable[[Any], Any]] = {
-        'version_uid': lambda v: VersionUid(v),
-        'base_version_uid': lambda v: VersionUid(v),
-        'version_name': lambda v: v,
-        'version_snapshot_name': lambda v: v,
+        'uid': lambda v: VersionUid(v),
+        'base_uid': lambda v: VersionUid(v),
+        'name': lambda v: v,
+        'snapshot_name': lambda v: v,
         'hints_supplied': partial(_convert_boolean, 'hints_supplied'),
-        'version_size': lambda v: int(v),
-        'version_block_size': lambda v: int(v),
-        'version_storage_id': lambda v: int(v),
-        'duration_seconds': lambda v: int(v),
+        'size': lambda v: int(v),
+        'block_size': lambda v: int(v),
+        'storage_id': lambda v: int(v),
+        'duration': lambda v: int(v),
     }
 
     def __init__(self, session) -> None:
@@ -1242,7 +1269,7 @@ class _StatsQueryBuilder:
         if filter_expression:
             try:
                 parsed_filter_expression = self._algebra.parse(filter_expression)
-            except Exception as exception:
+            except boolean.ParseError as exception:
                 raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
             query = query.filter(build_expression(parsed_filter_expression))
-        return query.order_by(Stats.version_date, Stats.version_name)
+        return query.order_by(Stats.date, Stats.name)

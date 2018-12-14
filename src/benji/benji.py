@@ -536,7 +536,7 @@ class Benji(ReprMixIn):
            version_uid: VersionUid,
            force: bool = True,
            disallow_rm_when_younger_than_days: int = 0,
-           keep_backend_metadata: bool = False) -> None:
+           keep_metadata_backup: bool = False) -> None:
         with self._locking.with_version_lock(version_uid, reason='Removing version'):
             version = self._database_backend.get_version(version_uid)
 
@@ -551,7 +551,7 @@ class Benji(ReprMixIn):
 
             num_blocks = self._database_backend.rm_version(version_uid)
 
-            if not keep_backend_metadata:
+            if not keep_metadata_backup:
                 try:
                     storage = StorageFactory.get_by_storage_id(version.storage_id)
                     storage.rm_version(version_uid)
@@ -828,20 +828,20 @@ class Benji(ReprMixIn):
 
         logger.debug('Stats: {}'.format(stats))
         self._database_backend.set_stats(
-            version_uid=version.uid,
-            base_version_uid=base_version_uid,
+            uid=version.uid,
+            base_uid=base_version_uid,
             hints_supplied=hints is not None,
-            version_date=version.date,
-            version_name=version_name,
-            version_snapshot_name=version_snapshot_name,
-            version_size=source_size,
-            version_storage_id=version.storage_id,
-            version_block_size=self._block_size,
+            date=version.date,
+            name=version_name,
+            snapshot_name=version_snapshot_name,
+            size=source_size,
+            storage_id=version.storage_id,
+            block_size=self._block_size,
             bytes_read=stats['bytes_read'],
             bytes_written=stats['bytes_written'],
             bytes_dedup=stats['bytes_dedup'],
             bytes_sparse=stats['bytes_sparse'],
-            duration_seconds=int(time.time() - stats['start_time']),
+            duration=int(time.time() - stats['start_time']),
         )
 
         self._locking.unlock_version(version.uid)
@@ -946,7 +946,7 @@ class Benji(ReprMixIn):
                                  filter_expression: str,
                                  rules_spec: str,
                                  dry_run: bool = False,
-                                 keep_backend_metadata: bool = False) -> List[VersionUid]:
+                                 keep_metadata_backup: bool = False) -> List[VersionUid]:
         versions = self._database_backend.get_versions_by_filter(filter_expression)
 
         dismissed_versions = RetentionFilter(rules_spec).filter(versions)
@@ -963,7 +963,7 @@ class Benji(ReprMixIn):
 
         for version in dismissed_versions:
             try:
-                self.rm(version.uid, force=True, keep_backend_metadata=keep_backend_metadata)
+                self.rm(version.uid, force=True, keep_metadata_backup=keep_metadata_backup)
             except AlreadyLocked:
                 logger.warning('Version {} couldn\'t be deleted, it\'s currently locked.')
 
