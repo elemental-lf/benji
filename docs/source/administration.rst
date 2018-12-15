@@ -3,12 +3,10 @@
 Administration
 ==============
 
-Benji is an important tool when it's responsible for company-wide backups.
-Backups, scrubs, restores and cleanups must run smoothly and need to be
-monitored closely.
-
-Also, as Benji has two parts (*metadata backend and *data backend*), both have to
-be checked regularly and be as highly-available as possible.
+Benji is an important tool when it's responsible for keeping backups of your
+important data. Backups, scrubs, restores and cleanups must run smoothly and
+need to be monitored closely. Also, the database backend and the collection
+of data storages need to meet your availability requirements.
 
 .. _administration-meta-backend:
 
@@ -40,7 +38,7 @@ You can import these exports again with:
 
 .. command-output::benji import --help
 
-If the imported *version* already exists in the *metadata backend* Benji
+If the imported *version* already exists in the database backend Benji
 terminates with an error and doesn't proceed with the import.
 
 So now, even if your backup database server crashes, you'll still be able

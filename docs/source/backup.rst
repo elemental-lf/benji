@@ -72,7 +72,7 @@ Differential Backup
 Benji only backups changed blocks. It can do this in two different ways:
 
 1. **It can read the whole image**: Checksum each block and look the checksum up
-   in the *metadata backend*. If it is found, only a reference to the existing
+   in the database backend. If it is found, only a reference to the existing
    block will be stored, thus there's no write action on the *data backend*.
 
 2. **It can receive a hints file**: The hints file is a JSON formatted list of
@@ -81,7 +81,7 @@ Benji only backups changed blocks. It can do this in two different ways:
    Fortunately the format matches exactly the output of
    ``rbd diff … --format=json``.  In this case it will only read blocks hinted
    at by the *hints file*, checksum each block and look the checksum up in the
-   *metadata backend*. If it is found (which may rarely happen for file copies
+   database backend. If it is found (which may rarely happen for file copies
    or when blocks are all zeros), only a reference to the existing block will
    be stored. Otherwise the block is written to the *data backend*.
    The hints file is passed via the  ``-r`` or ``--rbd`` option to
@@ -243,9 +243,9 @@ the blocks are of no use without the corresponding metadata. Benji
 will need this information to get the blocks back in the correct order and
 restore your image.
 
-This information is stored in the *metadata backend*. Additionally Benji will
+This information is stored in the database backend. Additionally Benji will
 save the metadata on the *data backend* automatically. Should you lose your
-*metadata backend*, you can restore these metadata backups by using
+database backend, you can restore these metadata backups by using
 ``benji import-from-backend``.
 
 .. command-output:: benji import-from-backend --help
@@ -299,7 +299,7 @@ You can import such a dump of a version's metadata with ``benji import``.
 
 .. command-output:: benji import --help
 
-You can't import versions that already exist in the *metadata backend*.
+You can't import versions that already exist in the database backend.
 
 .. _hints_file:
 

@@ -62,7 +62,7 @@ With Unavailable Metadata Backend
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``benji restore`` also supports a mode (``-M`` or ``--metadata-backend-less``)
-where it doesn't require its *metadata backend* to be up und running. In this mode
+where it doesn't require its database backend to be up und running. In this mode
 Benji will import the backup of the *version's* metadata from the *data backend*
 into an ad-hoc in-memory database and then restore the image normally. This is
 for failure scenarios where the database is unavailable and you still need to
@@ -216,7 +216,7 @@ Restore of Invalid Versions
 ---------------------------
 
 During a restore Benji will compare each restored block's checksum to the
-stored checksum in the *metadata backend* **no matter if the block has been
+stored checksum in the database backend **no matter if the block has been
 marked as invalid previously**. If it encounters a difference, the block
 and all versions containing this block will be marked as invalid and a
 warning will be given::

@@ -7,24 +7,21 @@ Scrub
 
 Scrubbing backups is needed to ensure data consistency over time.
 
-
-
-
-
 Reasons for Scrubbing
 ---------------------
 
-Benji backs up data in blocks. These blocks are referenced from the metadata
-store. When restoring images, these blocks are read and restored in the order
-the metadata store says. As Benji also does deduplication, an invalid block
-could potentially create invalid restore data in multiple places.
+Benji divides the data you backup into blocks. These blocks are referenced
+by the metadata stored in the database backend. When restoring images, these
+blocks are read and restored to form the original image. As Benji also does
+deduplication, an invalid block can potentially affect multiple versions and
+so image backups.
 
-Invalid blocks can happen in these cases (probably incomplete):
+Invalid blocks can occur for the following reasons (probably incomplete):
 
-- Bit rot / Data degradation (https://en.wikipedia.org/wiki/Data_degradation)
+- Bit rot / data degradation (https://en.wikipedia.org/wiki/Data_degradation)
 - Software failure when writing the block for the first time
 - OS errors and bugs
-- Human error: deleting or modifying blocks by accident
+- Human error: Deleting or modifying blocks by accident
 - Software errors in Benji and other used tools
 
 Scrubbing Methods
@@ -44,9 +41,13 @@ Consistency and Checksum
 
 .. command-output:: benji deep-scrub --help
 
-Benji reads block-metadata (UID and checksum) from the metadata store, reads
-the block by its UID from the *data backend*, calculates its checksum and
-compares the checksums.
+For each block in a version Benji reads the block's metadata (UID and
+checksum) from the database backend, reads the actual block by its UID
+from the storage, calculates its checksum and compares it to the
+originally recorded checksum. If the checksums are not the same the
+block is marked as invalid and won't be used for deduplication anymore.
+All other versions which reference this block are also marked as invalid
+as is the scrubbed version itself.
 
 Using the Backup Source
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,39 +56,28 @@ Using the Backup Source
 
     benji deep-scrub --source <snapshot> <version_uid>
 
-Benji also reads the backup source for this version. This means that
-Benji reads the block metadata (UID, position and checksum), reads the
-corresponding source data block, the target block, calculates the checksum
-of both, compares these checksums to the stored one and compares the source- and
-data-block byte for byte.
 
-This is not necessarily slower, but it will of course create some load on the
-source storage, whereas target-only scrub only creates load on the target
-storage.
+In addition to the consistency and checksum checks Benji can also compare
+the backup data to the original backup source by specifying the ``--source``
+option. The comparison is done byte by byte. Although this is an additional
+safeguard against data corruption it requires that the backup source is still
+present and it produces additional load on the backup source.
 
 Consistency Only
 ~~~~~~~~~~~~~~~~
 
 .. command-output:: benji scrub --help
 
-Benji only checks the metadata consistency between the metadata saved in the
-database and the metadata accompanying each block. It also checks if the
-block exists and has the right length. The actual data is **not** checked.
+With this command Benji only checks the metadata consistency between the
+metadata saved in the database and the metadata accompanying each block
+on the storage. It also checks if the block exists and has the right length
+as reported by the storage provider. The actual data is **not** checked in
+this case.
 
 This mode of operation can be a useful in addition to deep-scrubs if
-you pay for data downloads or bandwidth is limited. It is not a replacement
-for doing deep-scrubs but you can reduce their frequency.
-
-What Scrubbing Does Not
------------------------
-
-- Scrubbing doesn't modify any block data on the *data backend*
-
-This means it
-
-- doesn't fix filesystem errors on backed up images
-- doesn't check for any structure within blocks
-- and doesn't replay database journals or execute similar repair operations.
+you pay for data downloads from the storage provider or your bandwidth
+is limited. It is not a replacement for deep-scrubs but you can reduce
+their frequency.
 
 Bulk scrubbing
 --------------

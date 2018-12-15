@@ -31,7 +31,7 @@ than this value, Benji exists with an error::
 You can force the removal of a version by using ``--force``.
 
 ``benji rm`` removes the version metadata and corresponding blocks from the
-*metadata backend*. It also adds the removed block entries into a deletion
+database backend. It also adds the removed block entries into a deletion
 candidate list. By default it also removes the backup of the metadata on
 the *data backend*. If you want to keep this data, you can use the ``-k``
 or ``--keep-backend-metadata`` option.
@@ -74,7 +74,7 @@ database based on export/import) when Benji does not know if the blocks in the
 
 Then the ``-full`` option of cleanup comes into play. With this option, Benji will
 read all block UIDs from the backend storage (which can take *very* long) and
-compare it to the list of known block UIDs in the *metadata backend*
+compare it to the list of known block UIDs in the database backend
 
-Blocks unknown to the *metadata backend* are then deleted from the *data backend*.
+Blocks unknown to the database backend are then deleted from the *data backend*.
 

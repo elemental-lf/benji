@@ -21,8 +21,8 @@ Backup target
 
 Backup Metadata
     A SQL database containing information on how to reassemble the stored blocks
-    to get the original data back. Also referred to as the *metadata backend*.
-    For restores the *metadata backend* is not compulsory. See :ref:`metadata_backend_less`.
+    to get the original data back. Also referred to as the database backend.
+    For restores the database backend is not compulsory. See :ref:`metadata_backend_less`.
 
 Version
     A *version* is a backup of a specific backup source at a specific point in time.
@@ -127,7 +127,7 @@ Deep Scrub and Scrub
 
 Deep scrubbing reads all the blocks of a particular *version* from the *data backend*
 (or some of them if you use the ``-p`` option) and compares the checksums of these
-blocks to the checksums recorded in the *metadata backend*. If you pass the
+blocks to the checksums recorded in the database backend. If you pass the
 source option (``-s``) the blocks will also be compared to the original source data.
 ::
 
