@@ -196,32 +196,16 @@ class Commands:
                 benji_obj.close()
 
     def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
-                    block_percentage: int) -> None:
-        history = BlockUidHistory()
+                    block_percentage: int, group_label: Optional[str]) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions = benji_obj.ls_by_filter(filter_expression)
-            errors = []
-            if version_percentage and versions:
-                # Will always scrub at least one matching version
-                versions = random.sample(versions, max(1, int(len(versions) * version_percentage / 100)))
-            if not versions:
-                logger.info('No matching versions found.')
-            for version in versions:
-                try:
-                    logging.info('Scrubbing version {} with name {}.'.format(version.uid.v_string, version.name))
-                    getattr(benji_obj, method)(version.uid, block_percentage=block_percentage, history=history)
-                except benji.exception.ScrubbingError as exception:
-                    logger.error(exception)
-                    errors.append(version)
-                except:
-                    raise
+            versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage, group_label)
             if errors:
                 if self.machine_output:
                     benji_obj.export_any({
-                        'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
-                        'errors': [benji_obj.ls(version_uid=version.uid)[0] for version in errors]
+                        'versions': versions,
+                        'errors': errors,
                     },
                                          sys.stdout,
                                          ignore_relationships=[((Version,), ('blocks',))])
@@ -230,7 +214,7 @@ class Commands:
             else:
                 if self.machine_output:
                     benji_obj.export_any({
-                        'versions': [benji_obj.ls(version_uid=version.uid)[0] for version in versions],
+                        'versions': versions,
                         'errors': []
                     },
                                          sys.stdout,
@@ -239,11 +223,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int) -> None:
-        self._bulk_scrub('scrub', filter_expression, version_percentage, block_percentage)
+    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+        self._bulk_scrub('bulk_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int) -> None:
-        self._bulk_scrub('deep_scrub', filter_expression, version_percentage, block_percentage)
+    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+        self._bulk_scrub('bulk_deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @classmethod
     def _ls_versions_table_output(cls, versions: List[Version], include_labels: bool) -> None:
@@ -339,7 +323,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions = benji_obj.ls_by_filter(filter_expression)
+            versions = benji_obj.ls_with_filter(filter_expression)
 
             if self.machine_output:
                 benji_obj.export_any(
@@ -388,7 +372,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            version_uid_objs = [version.uid for version in benji_obj.ls_by_filter(filter_expression)]
+            version_uid_objs = [version.uid for version in benji_obj.ls_with_filter(filter_expression)]
             if output_file is None:
                 benji_obj.metadata_export(version_uid_objs, sys.stdout)
             else:
@@ -405,7 +389,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            version_uid_objs = [version.uid for version in benji_obj.ls_by_filter(filter_expression)]
+            version_uid_objs = [version.uid for version in benji_obj.ls_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
         finally:
             if benji_obj:
@@ -506,18 +490,19 @@ class Commands:
         benji_obj.close()
 
     def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool,
-                                 keep_metadata_backup: bool) -> None:
+                                 keep_metadata_backup: bool, group_label: Optional[str]) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            dismissed_version_uids = benji_obj.enforce_retention_policy(
+            dismissed_versions = benji_obj.enforce_retention_policy(
                 filter_expression=filter_expression,
                 rules_spec=rules_spec,
                 dry_run=dry_run,
-                keep_metadata_backup=keep_metadata_backup)
+                keep_metadata_backup=keep_metadata_backup,
+                group_label=group_label)
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': [benji_obj.ls(version_uid=version_uid)[0] for version_uid in dismissed_version_uids]
+                    'versions': dismissed_versions,
                 },
                                      sys.stdout,
                                      ignore_relationships=[((Version,), ('blocks',))])
@@ -634,6 +619,11 @@ def main():
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
     p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
+    p.add_argument(
+        '-g',
+        '--group_label',
+        default=None,
+        help='Label to find related versions to remove')
     p.add_argument('rules_spec', help='Retention rules specification')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='enforce_retention_policy')
@@ -698,6 +688,11 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-g',
+        '--group_label',
+        default=None,
+        help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='bulk_scrub')
 
@@ -718,6 +713,11 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
+    p.add_argument(
+        '-g',
+        '--group_label',
+        default=None,
+        help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='bulk_deep_scrub')
 

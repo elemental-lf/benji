@@ -584,7 +584,7 @@ class DatabaseBackend(ReprMixIn):
             if version_labels:
                 for version_label in version_labels:
                     label_query = self._session.query(
-                        Version.uid).join(Label).filter((Label.name == version_label[0]) & Label.value == version_label[1])
+                        Label.version_uid).filter((Label.name == version_label[0]) & Label.value == version_label[1])
                     query = query.filter(Version.uid.in_(label_query))
             versions = query.order_by(Version.name, Version.date).all()
         except:
@@ -593,7 +593,7 @@ class DatabaseBackend(ReprMixIn):
 
         return versions
 
-    def get_versions_by_filter(self, filter_expression: str = None):
+    def get_versions_with_filter(self, filter_expression: str = None):
         builder = _QueryBuilder(self._session, Version)
         try:
             versions = builder.build(filter_expression).order_by(Version.name, Version.date).all()

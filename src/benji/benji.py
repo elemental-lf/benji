@@ -187,8 +187,8 @@ class Benji(ReprMixIn):
             version_snapshot_name=version_snapshot_name,
             version_labels=version_labels)
 
-    def ls_by_filter(self, filter_expression: str = None) -> List[Version]:
-        return self._database_backend.get_versions_by_filter(filter_expression)
+    def ls_with_filter(self, filter_expression: str = None) -> List[Version]:
+        return self._database_backend.get_versions_with_filter(filter_expression)
 
     def stats(self, filter_expression: str = None, limit: int = None):
         return self._database_backend.get_stats_by_filter(filter_expression, limit)
@@ -429,6 +429,43 @@ class Benji(ReprMixIn):
 
         if not valid:
             raise ScrubbingError('Deep scrub of version {} failed.'.format(version_uid.v_string))
+
+    def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
+                    block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+        history = BlockUidHistory()
+        versions = self._database_backend.get_versions_with_filter(filter_expression)
+        errors = []
+        if version_percentage and versions:
+            # Will always scrub at least one matching version
+            versions = random.sample(versions, max(1, int(len(versions) * version_percentage / 100)))
+        if not versions:
+            logger.info('No matching versions found.')
+
+        if group_label is not None:
+            additional_versions: List[Version] = []
+            for version in versions:
+                if group_label not in version.labels:
+                    continue
+                additional_versions.extend(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label])]))
+            versions.extend(additional_versions)
+
+        for version in versions:
+            try:
+                logger.info('Scrubbing version {} with name {}.'.format(version.uid.v_string, version.name))
+                getattr(self, method)(version.uid, block_percentage=block_percentage, history=history)
+            except ScrubbingError as exception:
+                logger.error(exception)
+                errors.append(version)
+            except:
+                raise
+
+        return versions, errors
+
+    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+        return self._bulk_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
+
+    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+        return self._bulk_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     def restore(self, version_uid: VersionUid, target: str, sparse: bool = False, force: bool = False) -> None:
         block: Union[DereferencedBlock, Block]
@@ -946,10 +983,19 @@ class Benji(ReprMixIn):
                                  filter_expression: str,
                                  rules_spec: str,
                                  dry_run: bool = False,
-                                 keep_metadata_backup: bool = False) -> List[VersionUid]:
-        versions = self._database_backend.get_versions_by_filter(filter_expression)
+                                 keep_metadata_backup: bool = False,
+                                 group_label: str = None) -> List[Version]:
+        versions = self._database_backend.get_versions_with_filter(filter_expression)
 
         dismissed_versions = RetentionFilter(rules_spec).filter(versions)
+
+        if group_label is not None:
+            additional_versions: List[Version] = []
+            for version in dismissed_versions:
+                if group_label not in version.labels:
+                    continue
+                additional_versions.extend(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label])]))
+            dismissed_versions.extend(additional_versions)
 
         if dismissed_versions:
             logger.info('Removing versions: {}.'.format(', '.join(
@@ -967,7 +1013,7 @@ class Benji(ReprMixIn):
             except AlreadyLocked:
                 logger.warning('Version {} couldn\'t be deleted, it\'s currently locked.')
 
-        return list(map(lambda version: version.uid, dismissed_versions))
+        return dismissed_versions
 
 
 class _BlockCache:
