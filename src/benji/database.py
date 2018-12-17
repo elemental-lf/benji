@@ -25,6 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.types import TypeDecorator
@@ -51,7 +52,7 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
                 if len(value) < 2:
                     raise ValueError('Version UID {} is too short.'.format(value)) from None
                 if value[0].lower() != 'v':
-                    raise ValueError('Version UID {} doesn\'t start with the letter V.'.format(value)) from None
+                    raise ValueError('Version UID {} has to start with the letter V.'.format(value)) from None
                 try:
                     value_int = int(value[1:])
                 except ValueError:
