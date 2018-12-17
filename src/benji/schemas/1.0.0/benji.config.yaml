@@ -62,6 +62,8 @@ configuration:
             type: string
             required: True
             empty: False
+            # Same as InputValidation.VALUE_REGEXP in utils.py
+            regex: '^(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)$'
           storageId:
             type: integer
             required: True
@@ -86,6 +88,8 @@ configuration:
             type: string
             required: True
             empty: False
+            # Same as InputValidation.VALUE_REGEXP in utils.py
+            regex: '^(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)$'
           module:
             type: string
             required: True
@@ -106,6 +110,8 @@ configuration:
             type: string
             required: True
             empty: False
+            # Same as InputValidation.VALUE_REGEXP in utils.py
+            regex: '^(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)$'
           module:
             type: string
             required: True
