@@ -14,11 +14,11 @@ from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
+from benji.database import DatabaseBackend, VersionUid, Version, Block, \
+    BlockUid, DereferencedBlock
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError
 from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
-from benji.database import DatabaseBackend, VersionUid, Version, Block, \
-    BlockUid, DereferencedBlock
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException
@@ -239,7 +239,7 @@ class Benji(ReprMixIn):
         try:
             version = self._database_backend.get_version(version_uid)
             if not version.valid:
-                raise ScrubbingError('Version {} is already marked as invalid.'.format(version_uid.v_string))
+                logger.warn('Version {} is already marked as invalid.'.format(version_uid.v_string))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
         except:
             self._locking.unlock_version(version_uid)
@@ -317,8 +317,8 @@ class Benji(ReprMixIn):
         self._locking.lock_version(version_uid, reason='Deep scrubbing')
         try:
             version = self._database_backend.get_version(version_uid)
-            if not version.valid and block_percentage < 100:
-                raise ScrubbingError('Version {} is already marked as invalid.'.format(version_uid.v_string))
+            if not version.valid:
+                logger.warn('Version {} is already marked as invalid.'.format(version_uid.v_string))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
 
             if source:
@@ -410,7 +410,7 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed read jobs inconsistent (submitted: {}, completed {}).'.format(
                     read_jobs, done_read_jobs))
 
-        if valid:
+        if valid and block_percentage == 100:
             try:
                 self._database_backend.set_version(version_uid, valid=True)
             except:
@@ -987,19 +987,19 @@ class Benji(ReprMixIn):
                                  group_label: str = None) -> List[Version]:
         versions = self._database_backend.get_versions_with_filter(filter_expression)
 
-        dismissed_versions = RetentionFilter(rules_spec).filter(versions)
+        dismissed_versions = set(RetentionFilter(rules_spec).filter(versions))
 
         if group_label is not None:
-            additional_versions: List[Version] = []
+            additional_versions: Set[Version] = set()
             for version in dismissed_versions:
                 if group_label not in version.labels:
                     continue
-                additional_versions.extend(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label])]))
-            dismissed_versions.extend(additional_versions)
+                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label].value)]))
+            dismissed_versions |= additional_versions
 
         if dismissed_versions:
             logger.info('Removing versions: {}.'.format(', '.join(
-                map(lambda version: version.uid.v_string, dismissed_versions))))
+                map(lambda version: version.uid.v_string, sorted(dismissed_versions)))))
         else:
             logger.info('All versions are conforming to the retention policy.')
 
@@ -1013,7 +1013,7 @@ class Benji(ReprMixIn):
             except AlreadyLocked:
                 logger.warning('Version {} couldn\'t be deleted, it\'s currently locked.')
 
-        return dismissed_versions
+        return sorted(dismissed_versions)
 
 
 class _BlockCache:
