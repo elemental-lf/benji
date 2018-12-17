@@ -84,7 +84,7 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
-        if isinstance(operator, VersionUid):
+        if isinstance(other, VersionUid):
             return self.integer < other.integer
         elif isinstance(other, int):
             return self.integer < other
