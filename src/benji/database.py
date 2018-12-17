@@ -252,6 +252,7 @@ class Stats(Base):
     duration = Column(BigInteger, nullable=False)
 
 
+@total_ordering
 class Version(Base):
     __tablename__ = 'versions'
 
@@ -283,6 +284,20 @@ class Version(Base):
         passive_deletes=True,
     )
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Version):
+            return self.uid == other.uid
+        else:
+            return NotImplemented
+
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, Version):
+            return self.uid < other.uid
+        else:
+            return NotImplemented
+
+    def __hash__(self) -> int:
+        return self.uid.integer
 
 class Label(Base):
     __tablename__ = 'labels'
