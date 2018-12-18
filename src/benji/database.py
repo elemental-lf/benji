@@ -52,7 +52,8 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
                 if len(value) < 2:
                     raise ValueError('Version UID {} is too short.'.format(value)) from None
                 if value[0].lower() != 'v':
-                    raise ValueError('Version UID {} is invalid. A Version UID string has to start with the letter V.'.format(value)) from None
+                    raise ValueError(
+                        'Version UID {} is invalid. A Version UID string has to start with the letter V.'.format(value)) from None
                 try:
                     value_int = int(value[1:])
                 except ValueError:
@@ -298,6 +299,7 @@ class Version(Base):
 
     def __hash__(self) -> int:
         return self.uid.integer
+
 
 class Label(Base):
     __tablename__ = 'labels'
@@ -1188,10 +1190,10 @@ class _QueryBuilder:
                     return op(getattr(orm_class, self.name), other)
 
             # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
-            def __eq__(self, other: Any) -> BinaryExpression: # type: ignore
+            def __eq__(self, other: Any) -> BinaryExpression:  # type: ignore
                 return self.op(operator.eq, other)
 
-            def __ne__(self, other: Any) -> BinaryExpression: # type: ignore
+            def __ne__(self, other: Any) -> BinaryExpression:  # type: ignore
                 return self.op(operator.ne, other)
 
             def __lt__(self, other: Any) -> BinaryExpression:
@@ -1223,16 +1225,15 @@ class _QueryBuilder:
                 return Version.uid.in_(label_query)
 
             # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
-            def __eq__(self, other: Any) -> BinaryExpression: # type: ignore
+            def __eq__(self, other: Any) -> BinaryExpression:  # type: ignore
                 return self.op(operator.eq, other)
 
-            def __ne__(self, other: Any) -> BinaryExpression: # type: ignore
+            def __ne__(self, other: Any) -> BinaryExpression:  # type: ignore
                 return self.op(operator.ne, other)
 
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> BinaryExpression:
-                label_query = session.query(
-                    Label.version_uid).filter(Label.name == self.name)
+                label_query = session.query(Label.version_uid).filter(Label.name == self.name)
                 return Version.uid.in_(label_query)
 
         attributes = []

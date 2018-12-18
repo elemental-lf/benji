@@ -192,11 +192,12 @@ class Commands:
                 benji_obj.close()
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
-                    block_percentage: int, group_label: Optional[str]) -> None:
+                     block_percentage: int, group_label: Optional[str]) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage, group_label)
+            versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage,
+                                                          group_label)
             if errors:
                 if self.machine_output:
                     benji_obj.export_any({
@@ -219,10 +220,12 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
+                    group_label: Optional[str]) -> None:
         self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
+                         group_label: Optional[str]) -> None:
         self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @classmethod
@@ -615,11 +618,7 @@ def main():
     p = subparsers_root.add_parser('enforce', help="Enforce a retention policy ")
     p.add_argument('--dry-run', action='store_true', help='Only show which versions would be removed')
     p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
-    p.add_argument(
-        '-g',
-        '--group_label',
-        default=None,
-        help='Label to find related versions to remove')
+    p.add_argument('-g', '--group_label', default=None, help='Label to find related versions to remove')
     p.add_argument('rules_spec', help='Retention rules specification')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='enforce_retention_policy')
@@ -684,11 +683,7 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-g',
-        '--group_label',
-        default=None,
-        help='Label to find related versions')
+    p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_scrub')
 
@@ -709,11 +704,7 @@ def main():
         type=partial(integer_range, 1, 100),
         default=100,
         help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-g',
-        '--group_label',
-        default=None,
-        help='Label to find related versions')
+    p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_deep_scrub')
 

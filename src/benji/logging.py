@@ -19,7 +19,8 @@ def init_logging(logfile: Optional[str], console_level: str, no_color: bool = Fa
         console.setFormatter(logging.Formatter('%(levelname)8s: %(message)s'))
     else:
         console = colorlog.StreamHandler(stream=sys.stderr)
-        console.setFormatter(colorlog.TTYColoredFormatter('%(log_color)s%(levelname)8s: %(message)s', stream=sys.stderr))
+        console.setFormatter(
+            colorlog.TTYColoredFormatter('%(log_color)s%(levelname)8s: %(message)s', stream=sys.stderr))
     console.setLevel(console_level)
     handlers.append(console)
 

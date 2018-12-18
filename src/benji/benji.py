@@ -445,7 +445,8 @@ class Benji(ReprMixIn):
                 if not label_match:
                     continue
                 assert len(label_match) == 1
-                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
+                additional_versions |= set(
+                    self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
             versions |= additional_versions
 
         if version_percentage and versions:
@@ -467,10 +468,12 @@ class Benji(ReprMixIn):
 
         return sorted(versions), sorted(errors)
 
-    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
+                    group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
         return self._batch_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
+                         group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
         return self._batch_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     def restore(self, version_uid: VersionUid, target: str, sparse: bool = False, force: bool = False) -> None:
@@ -924,7 +927,8 @@ class Benji(ReprMixIn):
                 locked_version_uids.append(version_uid)
 
             self._database_backend.export(version_uids, f)
-            logger.info('Exported metadata of version(s): {}.'.format(', '.join([version_uid.v_string for version_uid in version_uids])))
+            logger.info('Exported metadata of version(s): {}.'.format(', '.join(
+                [version_uid.v_string for version_uid in version_uids])))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1002,7 +1006,8 @@ class Benji(ReprMixIn):
                 if not label_match:
                     continue
                 assert len(label_match) == 1
-                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
+                additional_versions |= set(
+                    self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
             dismissed_versions |= additional_versions
 
         if dismissed_versions:

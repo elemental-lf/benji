@@ -238,12 +238,16 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value"')
         self.assertEqual(256, len(versions))
 
-        self.assertRaises(UsageError,
-                          lambda: self.database_backend.get_versions_with_filter('labels["label-key"] and "label-value"'))
+        self.assertRaises(
+            UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] and "label-value"'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('True'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('10'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and True'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and False'))
+        self.assertRaises(
+            UsageError,
+            lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and True'))
+        self.assertRaises(
+            UsageError,
+            lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and False'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('"hallo" == "hey"'))
 
         # name is always true because it is never empty
