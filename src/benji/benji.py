@@ -584,7 +584,7 @@ class Benji(ReprMixIn):
             version = self._database_backend.get_version(version_uid)
 
             if version.protected:
-                raise RuntimeError('Version {} is protected. Will not delete.'.format(version_uid.v_string))
+                raise RuntimeError('Version {} is protected, will not delete it.'.format(version_uid.v_string))
 
             if not force:
                 # check if disallow_rm_when_younger_than_days allows deletion
