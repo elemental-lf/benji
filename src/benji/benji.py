@@ -441,9 +441,11 @@ class Benji(ReprMixIn):
         if versions and group_label is not None:
             additional_versions: Set[Version] = set()
             for version in versions:
-                if group_label not in version.labels:
+                label_match = list(filter(lambda label: label.name == group_label, version.labels))
+                if not label_match:
                     continue
-                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label].value)]))
+                assert len(label_match) == 1
+                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
             versions |= additional_versions
 
         if version_percentage and versions:
@@ -993,12 +995,14 @@ class Benji(ReprMixIn):
 
         dismissed_versions = set(RetentionFilter(rules_spec).filter(versions))
 
-        if group_label is not None:
+        if dismissed_versions and group_label is not None:
             additional_versions: Set[Version] = set()
             for version in dismissed_versions:
-                if group_label not in version.labels:
+                label_match = list(filter(lambda label: label.name == group_label, version.labels))
+                if not label_match:
                     continue
-                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label].value)]))
+                assert len(label_match) == 1
+                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
             dismissed_versions |= additional_versions
 
         if dismissed_versions:
