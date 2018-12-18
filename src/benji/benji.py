@@ -433,21 +433,23 @@ class Benji(ReprMixIn):
     def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                     block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
         history = BlockUidHistory()
-        versions = self._database_backend.get_versions_with_filter(filter_expression)
+        versions = set(self._database_backend.get_versions_with_filter(filter_expression))
         errors = []
-        if version_percentage and versions:
-            # Will always scrub at least one matching version
-            versions = random.sample(versions, max(1, int(len(versions) * version_percentage / 100)))
-        if not versions:
-            logger.info('No matching versions found.')
 
-        if group_label is not None:
-            additional_versions: List[Version] = []
+        if versions and group_label is not None:
+            additional_versions: Set[Version] = set()
             for version in versions:
                 if group_label not in version.labels:
                     continue
-                additional_versions.extend(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label])]))
-            versions.extend(additional_versions)
+                additional_versions |= set(self._database_backend.get_versions(version_labels=[(group_label, version.labels[group_label].value)]))
+            versions |= additional_versions
+
+        if version_percentage and versions:
+            # Will always scrub at least one matching version
+            versions = set(random.sample(versions, max(1, int(len(versions) * version_percentage / 100))))
+        if not versions:
+            logger.info('No matching versions found.')
+            return [], []
 
         for version in versions:
             try:
@@ -459,7 +461,7 @@ class Benji(ReprMixIn):
             except:
                 raise
 
-        return versions, errors
+        return sorted(versions), sorted(errors)
 
     def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
         return self._bulk_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
@@ -918,7 +920,7 @@ class Benji(ReprMixIn):
                 locked_version_uids.append(version_uid)
 
             self._database_backend.export(version_uids, f)
-            logger.info('Exported version {} metadata.'.format(version_uid.v_string))
+            logger.info('Exported metadata of version(s): {}.'.format(', '.join([version_uid.v_string for version_uid in version_uids])))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
