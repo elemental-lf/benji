@@ -79,14 +79,14 @@ you pay for data downloads from the storage provider or your bandwidth
 is limited. It is not a replacement for deep-scrubs but you can reduce
 their frequency.
 
-Bulk scrubbing
+Batch scrubbing
 --------------
 
-Benji also supports two commands to facilitate bulk scrubbing of versions:
-``benji bulk-scrub`` and ``benji bulk-deep-scrub``:
+Benji also supports two commands to facilitate batch scrubbing of versions:
+``benji batch-scrub`` and ``benji batch-deep-scrub``:
 
-.. command-output:: benji bulk-scrub --help
-.. command-output:: benji bulk-deep-scrub --help
+.. command-output:: benji batch-scrub --help
+.. command-output:: benji batch-deep-scrub --help
 
 Both can take a list of *version* names. All *versions* matching these
 names will be scrubbed. If you don't specify any names all *versions*
@@ -101,10 +101,10 @@ randomly select a certain sample of these *versions* with ``--version-percentage
 (short form``-P``). A *version's* size isn't taken into account when selecting the
 sample, every *version* is equally eligible.
 
-The bulk scrubbing commands also accepts the ``--block-percentage`` (short
+The batch scrubbing commands also accepts the ``--block-percentage`` (short
 form ``-p``) option.
 
-``benji bulk-deep-scrub`` doesn't support the ``--source`` option like
+``benji batch-deep-scrub`` doesn't support the ``--source`` option like
 ``benji deep-scrub``.
 
 This is a good use cause for tags: You could mark your *versions* with a list of
@@ -112,20 +112,20 @@ different tags denoting the importance of the backed up data. Then you could scr
 each class of *versions* differently::
 
     # 14% of the versions are deep scrubbed for data of high importance
-    $ benji bulk-deep-scrub --tag high --version-percentage 14
+    $ benji batch-deep-scrub --version-percentage 14 'labels["priority"] == "high"'
 
     # 7% of the versions are deep scrubbed for data of medium importance
-    $ benji bulk-deep-scrub --tag medium --version-percentage 7
+    $ benji batch-deep-scrub --version-percentage 7 'labels["priority"] == "medium"'
 
     # 3% of the versions are deep scrubbed for data of low importance
-    $ benji bulk-deep-scrub --tag low --version-percentage 3
+    $ benji batch-deep-scrub --version-percentage 3 'labels["priority"] == "low"'
 
-    # 3% of the versions are scrubbed when they contain reproducible bulk data
-    $ benji bulk-scrub --tag bulk --version-percentage 3
+    # 3% of the versions are scrubbed when they contain reproducible scratch data or don't have a priority label
+    $ benji batch-scrub --version-percentage 3 'labels["priority"] == "scratch" or not labels["priority"]'
 
 If you'd call this schedule every day, you'd scrub the important data completely
 about every seven days (statistically), data of medium importance completely every
-fourteen days and low priority data completely every month. Bulk data would also
+fourteen days and low priority data completely every month. Scratch data would also
 be scrubbed completely every month, but only metadata consistency and block
 existence is checked.
 

@@ -4,13 +4,10 @@
 
 import argparse
 import fileinput
-import logging
 import os
-import random
-import re
 import sys
 from functools import partial
-from typing import Dict, List, NamedTuple, Type, Optional, Tuple
+from typing import List, NamedTuple, Type, Optional, Tuple
 
 import argcomplete
 import pkg_resources
@@ -19,11 +16,10 @@ from prettytable import PrettyTable
 
 import benji.exception
 from benji.benji import Benji, BenjiStore
-from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
+from benji.database import Version, VersionUid, Stats
 from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
-from benji.database import Version, VersionUid, Stats
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 
@@ -195,7 +191,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
+    def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                     block_percentage: int, group_label: Optional[str]) -> None:
         benji_obj = None
         try:
@@ -223,11 +219,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
-        self._bulk_scrub('bulk_scrub', filter_expression, version_percentage, block_percentage, group_label)
+    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+        self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
-        self._bulk_scrub('bulk_deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
+    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> None:
+        self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @classmethod
     def _ls_versions_table_output(cls, versions: List[Version], include_labels: bool) -> None:
@@ -673,7 +669,7 @@ def main():
 
     # BULK-SCRUB
     p = subparsers_root.add_parser(
-        'bulk-scrub',
+        'batch-scrub',
         help='Check block existence and metadata consistency of multiple versions',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument(
@@ -694,11 +690,11 @@ def main():
         default=None,
         help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
-    p.set_defaults(func='bulk_scrub')
+    p.set_defaults(func='batch_scrub')
 
     # BULK-DEEP-SCRUB
     p = subparsers_root.add_parser(
-        'bulk-deep-scrub',
+        'batch-deep-scrub',
         help='Check version data integrity of multiple versions',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument(
@@ -719,7 +715,7 @@ def main():
         default=None,
         help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
-    p.set_defaults(func='bulk_deep_scrub')
+    p.set_defaults(func='batch_deep_scrub')
 
     # METADATA EXPORT
     p = subparsers_root.add_parser(
@@ -834,7 +830,7 @@ def main():
     ]
 
     try:
-        logger.debug('backup.{0}(**{1!r})'.format(args.func, func_args))
+        logger.debug('commands.{0}(**{1!r})'.format(args.func, func_args))
         func(**func_args)
         exit(0)
     except SystemExit:

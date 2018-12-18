@@ -430,8 +430,8 @@ class Benji(ReprMixIn):
         if not valid:
             raise ScrubbingError('Deep scrub of version {} failed.'.format(version_uid.v_string))
 
-    def _bulk_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
-                    block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+    def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
+                     block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
         history = BlockUidHistory()
         versions = set(self._database_backend.get_versions_with_filter(filter_expression))
         errors = []
@@ -463,11 +463,11 @@ class Benji(ReprMixIn):
 
         return sorted(versions), sorted(errors)
 
-    def bulk_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
-        return self._bulk_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
+    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+        return self._batch_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def bulk_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
-        return self._bulk_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
+    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+        return self._batch_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     def restore(self, version_uid: VersionUid, target: str, sparse: bool = False, force: bool = False) -> None:
         block: Union[DereferencedBlock, Block]

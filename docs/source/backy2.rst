@@ -31,7 +31,7 @@ from backy²:
 - Database based locking to make it possible to have multiple instances
   on different hosts or in different containers
 - New scrubbing mode based on metadata, object existence and length
-- Randomly sampled bulk scrubbing of *versions*
+- Randomly sampled batch scrubbing of *versions*
 - Simple yet flexible retention policy enforcement
 - Migration from boto to boto3 with better compatibility for other
   S3 implementations (Google Storage for example)

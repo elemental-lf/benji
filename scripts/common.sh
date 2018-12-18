@@ -31,37 +31,37 @@ function benji::cleanup {
     benji_job_runtime_seconds -action=cleanup -type= -version_name= set $[$(date +'%s') - $START_TIME]
 }
 
-function benji::bulk_deep_scrub {
+function benji::batch_deep_scrub {
     local VERSIONS_PERCENTAGE="$1"
     local BLOCKS_PERCENTAGE="$2"
     
     START_TIME=$(date +'%s')
-    benji_job_start_time -action=bulk-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
+    benji_job_start_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
     try {
-        benji bulk-deep-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
+        benji batch-deep-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
     } catch {
-        benji_job_status_failed -action=bulk-deep-scrub -type= -version_name= set 1
+        benji_job_status_failed -action=batch-deep-scrub -type= -version_name= set 1
     } onsuccess {
-        benji_job_status_succeeded -action=bulk-deep-scrub -type= -version_name= set 1
+        benji_job_status_succeeded -action=batch-deep-scrub -type= -version_name= set 1
     }
-    benji_job_completion_time -action=bulk-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=bulk-deep-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
+    benji_job_completion_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
+    benji_job_runtime_seconds -action=batch-deep-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
 }
 
-function benji::bulk_scrub {
+function benji::batch_scrub {
     local VERSIONS_PERCENTAGE="$1"
     local BLOCKS_PERCENTAGE="$2"
     
     START_TIME=$(date +'%s')
-    benji_job_start_time -action=bulk-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
+    benji_job_start_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
     try {
-        benji bulk-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
+        benji batch-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
     } catch {
-        benji_job_status_failed -action=bulk-scrub -type= -version_name= set 1
+        benji_job_status_failed -action=batch-scrub -type= -version_name= set 1
     } onsuccess {
-        benji_job_status_succeeded -action=bulk-scrub -type= -version_name= set 1
+        benji_job_status_succeeded -action=batch-scrub -type= -version_name= set 1
     }
     
-    benji_job_completion_time -action=bulk-scrub -type= -version_name= set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=bulk-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
+    benji_job_completion_time -action=batch-scrub -type= -version_name= set "$(date +'%s.%N')"
+    benji_job_runtime_seconds -action=batch-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
 }

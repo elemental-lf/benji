@@ -159,25 +159,25 @@ the whole output.
 Here's a table of commands supporting machine readable output and their
 output:
 
-+-----------------+-----------------------------------------------------------+
-| Command         | Description of output                                     |
-+=================+===========================================================+
-| ls              | List of matching *versions*                               |
-+-----------------+-----------------------------------------------------------+
-| stats           | List of matching statistics                               |
-+-----------------+-----------------------------------------------------------+
-| backup          | List of newly create *version*                            |
-+-----------------+-----------------------------------------------------------+
-| enforce         | List of removed *versions*                                |
-+-----------------+-----------------------------------------------------------+
-| scrub           | List of scrubbed *versions* and of *versions* with errors |
-+-----------------+-----------------------------------------------------------+
-| deep-scrub      | List of scrubbed *versions* and of *versions* with errors |
-+-----------------+-----------------------------------------------------------+
-| bulk-scrub      | List of scrubbed *versions* and of *versions* with errors |
-+-----------------+-----------------------------------------------------------+
-| bulk-deep-scrub | List of scrubbed *versions* and of *versions* with errors |
-+-----------------+-----------------------------------------------------------+
++------------------+-----------------------------------------------------------+
+| Command          | Description of output                                     |
++==================+===========================================================+
+| ls               | List of matching *versions*                               |
++------------------+-----------------------------------------------------------+
+| stats            | List of matching statistics                               |
++------------------+-----------------------------------------------------------+
+| backup           | List of newly create *version*                            |
++------------------+-----------------------------------------------------------+
+| enforce          | List of removed *versions*                                |
++------------------+-----------------------------------------------------------+
+| scrub            | List of scrubbed *versions* and of *versions* with errors |
++------------------+-----------------------------------------------------------+
+| deep-scrub       | List of scrubbed *versions* and of *versions* with errors |
++------------------+-----------------------------------------------------------+
+| batch-scrub      | List of scrubbed *versions* and of *versions* with errors |
++------------------+-----------------------------------------------------------+
+| batch-deep-scrub | List of scrubbed *versions* and of *versions* with errors |
++------------------+-----------------------------------------------------------+
 
 All other commands also accept the ``-m`` switch. But for them only the logging
 level is turned down.
