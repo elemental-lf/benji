@@ -411,12 +411,13 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed read jobs inconsistent (submitted: {}, completed {}).'.format(
                     read_jobs, done_read_jobs))
 
-        if valid and block_percentage == 100:
-            try:
-                self._database_backend.set_version(version_uid, valid=True)
-            except:
-                self._locking.unlock_version(version_uid)
-                raise
+        if valid:
+            if block_percentage == 100:
+                try:
+                    self._database_backend.set_version(version_uid, valid=True)
+                except:
+                    self._locking.unlock_version(version_uid)
+                    raise
             logger.info('Deep scrub of version {} successful.'.format(version.uid.v_string))
         else:
             if source_mismatch:
