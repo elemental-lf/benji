@@ -214,7 +214,8 @@ class Benji(ReprMixIn):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
                     'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid))
                 continue
-            if block_percentage < 100 and random.randint(1, 100) > block_percentage:
+            # i != 0 makes sure that we always scrub at least one block (the first in this case)
+            if i != 0 and block_percentage < 100 and random.randint(1, 100) > block_percentage:
                 logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
                     'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
             else:
