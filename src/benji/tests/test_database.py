@@ -1,4 +1,3 @@
-import reprlib
 from unittest import TestCase
 
 from benji.database import BlockUid, VersionUid
@@ -225,7 +224,11 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.database_backend.add_label(version.uid, 'label-key', 'label-value')
             self.database_backend.add_label(version.uid, 'label-key-2', str(i))
             self.database_backend.add_label(version.uid, 'label-key-3', '')
-            self.assertEqual(3, len(version.labels))
+            if i > 127:
+                self.database_backend.add_label(version.uid, 'label-key-4', '')
+                self.assertEqual(4, len(version.labels))
+            else:
+                self.assertEqual(3, len(version.labels))
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
@@ -237,16 +240,15 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         self.assertRaises(UsageError,
                           lambda: self.database_backend.get_versions_with_filter('labels["label-key"] and "label-value"'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"]'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('True'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('10'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('name'))
+        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and True'))
+        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and False'))
+        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('"hallo" == "hey"'))
 
-        versions = self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and True')
+        # name is always true because it is never empty
+        versions = self.database_backend.get_versions_with_filter('name')
         self.assertEqual(256, len(versions))
-
-        versions = self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value" and False')
-        self.assertEqual(0, len(versions))
 
         versions = self.database_backend.get_versions_with_filter('valid == False')
         self.assertEqual(256, len(versions))
@@ -295,6 +297,15 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         versions = self.database_backend.get_versions_with_filter('uid == "V1" and uid == "V12"')
         self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('not labels["not-exists"]')
+        self.assertEqual(256, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('labels["label-key-4"]')
+        self.assertEqual(128, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('labels["label-key-4"] and name')
+        self.assertEqual(128, len(versions))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

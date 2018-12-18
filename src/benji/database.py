@@ -9,6 +9,7 @@ import re
 import sqlite3
 import time
 import uuid
+from abc import abstractmethod
 from binascii import hexlify, unhexlify
 from contextlib import contextmanager
 from functools import total_ordering
@@ -18,7 +19,7 @@ import sqlalchemy
 from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
     Regex, ParseException, ParseFatalException, Literal, NoMatch
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
-    DateTime, UniqueConstraint, and_, or_
+    DateTime, UniqueConstraint, and_, or_, not_
 from sqlalchemy import distinct
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,7 +27,7 @@ from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
 from sqlalchemy.sql import ColumnElement
-from sqlalchemy.sql.elements import BooleanClauseList
+from sqlalchemy.sql.elements import BooleanClauseList, BinaryExpression
 from sqlalchemy.types import TypeDecorator
 
 from benji.config import Config
@@ -1152,42 +1153,87 @@ class _QueryBuilder:
     @staticmethod
     def _define_parser(session, orm_class: Base) -> Any:
 
-        @total_ordering
-        class IdentifierToken:
+        class Buildable:
+
+            @abstractmethod
+            def build(self) -> ColumnElement:
+                raise NotImplementedError()
+
+            def __and__(self, other: Any) -> BooleanClauseList:
+                if isinstance(other, Buildable):
+                    return and_(self.build(), other.build())
+                else:
+                    raise TypeError('Operands of boolean and must be expressions, identifier or label references.')
+
+            def __or__(self, other: Any) -> BooleanClauseList:
+                if isinstance(other, Buildable):
+                    return or_(self.build(), other.build())
+                else:
+                    raise TypeError('Operands of boolean or must be expressions, identifier or label references.')
+
+        class Token(Buildable):
+            pass
+
+        class IdentifierToken(Token):
 
             def __init__(self, name: str) -> None:
                 self.name = name
 
-            def __eq__(self, other: Any) -> bool:
+            def op(self, op: Callable[[Any, Any], BinaryExpression], other: Any) -> BinaryExpression:
                 if isinstance(other, IdentifierToken):
-                    return self.name == other.name
+                    return op(getattr(orm_class, self.name), getattr(orm_class, other.name))
+                elif isinstance(other, Token):
+                    raise TypeError('Comparing identifiers to labels is not supported.')
                 else:
-                    return getattr(orm_class, self.name) == other
+                    return op(getattr(orm_class, self.name), other)
 
-            def __lt__(self, other: Any) -> bool:
-                if isinstance(other, IdentifierToken):
-                    return getattr(orm_class, self.name) < getattr(orm_class, other.name)
-                else:
-                    return getattr(orm_class, self.name) < other
-
-        class LabelToken:
-
-            def __init__(self, name: str) -> None:
-                self.name = name
-
-            def op(self, op, other: Any) -> bool:
-                if isinstance(other, LabelToken):
-                    return self.name == other.name
-                else:
-                    label_query = session.query(
-                        Label.version_uid).filter((Label.name == self.name) & op(Label.value, str(other)))
-                    return Version.uid.in_(label_query)
-
-            def __eq__(self, other: Any) -> bool:
+            # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
+            def __eq__(self, other: Any) -> BinaryExpression: # type: ignore
                 return self.op(operator.eq, other)
 
-            def __ne__(self, other: Any) -> bool:
+            def __ne__(self, other: Any) -> BinaryExpression: # type: ignore
                 return self.op(operator.ne, other)
+
+            def __lt__(self, other: Any) -> BinaryExpression:
+                return self.op(operator.ne, other)
+
+            def __le__(self, other: Any) -> BinaryExpression:
+                return self.op(operator.le, other)
+
+            def __gt__(self, other: Any) -> BinaryExpression:
+                return self.op(operator.gt, other)
+
+            def __ge__(self, other: Any) -> BinaryExpression:
+                return self.op(operator.ge, other)
+
+            # This is called when the token is not part of a comparison and tests for a non-empty identifier
+            def build(self) -> BinaryExpression:
+                return getattr(orm_class, self.name) != ''
+
+        class LabelToken(Token):
+
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def op(self, op, other: Any) -> BinaryExpression:
+                if isinstance(other, Token):
+                    raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
+                label_query = session.query(
+                    Label.version_uid).filter((Label.name == self.name) & op(Label.value, str(other)))
+                return Version.uid.in_(label_query)
+
+            # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
+            def __eq__(self, other: Any) -> BinaryExpression: # type: ignore
+                return self.op(operator.eq, other)
+
+            def __ne__(self, other: Any) -> BinaryExpression: # type: ignore
+                return self.op(operator.ne, other)
+
+            # This is called when the token is not part of a comparison and test for label existence
+            def build(self) -> BinaryExpression:
+                label_query = session.query(
+                    Label.version_uid).filter(Label.name == self.name)
+                return Version.uid.in_(label_query)
 
         attributes = []
         for attribute in inspect(orm_class).mapper.composites:
@@ -1199,7 +1245,7 @@ class _QueryBuilder:
         identifier = Regex('|'.join(attributes)).setParseAction(lambda s, l, t: IdentifierToken(t[0]))
         integer = pyparsing_common.signed_integer
         string = quotedString().setParseAction(removeQuotes)
-        bool_true = Keyword("True").setParseAction(replaceWith(True))
+        bool_true = Keyword('True').setParseAction(replaceWith(True))
         bool_false = Keyword('False').setParseAction(replaceWith(False))
 
         if 'labels' in inspect(orm_class).mapper.relationships:
@@ -1209,52 +1255,48 @@ class _QueryBuilder:
 
         atom = identifier | integer | string | bool_true | bool_false | label
 
-        class BinaryOp:
+        class BinaryOp(Buildable):
 
-            evalop: Optional[Callable[[Any, Any], bool]] = None
+            op: Optional[Union[Callable[[Any, Any], BooleanClauseList], Callable[[Any], BooleanClauseList]]] = None
 
             def __init__(self, t) -> None:
                 self.args = t[0][0::2]
 
-            def build(self) -> Any:
-                assert self.evalop is not None
-                return self.evalop(*self.args)
-
-            def __and__(self, other: Any) -> BooleanClauseList:
-                if isinstance(other, BinaryOp):
-                    return and_(self.build(), other.build())
-                else:
-                    return and_(self.build(), other)
-
-            def __or__(self, other: Any) -> BooleanClauseList:
-                if isinstance(other, BinaryOp):
-                    return or_(self.build(), other.build())
-                else:
-                    return or_(self.build(), other)
-
-        class AndOp(BinaryOp):
-            evalop = operator.and_
-
-        class OrOp(BinaryOp):
-            evalop = operator.or_
+            def build(self) -> BooleanClauseList:
+                assert self.op is not None
+                return self.op(*self.args)
 
         class EqOp(BinaryOp):
-            evalop = operator.eq
+            op = operator.eq
 
         class NeOp(BinaryOp):
-            evalop = operator.ne
-
-        class LtOp(BinaryOp):
-            evalop = operator.lt
-
-        class GtOp(BinaryOp):
-            evalop = operator.gt
+            op = operator.ne
 
         class LeOp(BinaryOp):
-            evalop = operator.le
+            op = operator.le
 
         class GeOp(BinaryOp):
-            evalop = operator.ge
+            op = operator.ge
+
+        class LtOp(BinaryOp):
+            op = operator.lt
+
+        class GtOp(BinaryOp):
+            op = operator.gt
+
+        class AndOp(BinaryOp):
+            op = operator.and_
+
+        class OrOp(BinaryOp):
+            op = operator.or_
+
+        class NotOp(Buildable):
+
+            def __init__(self, t) -> None:
+                self.args = [t[0][1]]
+
+            def build(self) -> BooleanClauseList:
+                return not_(self.args[0].build())
 
         return infixNotation(atom, [
             ("==", 2, opAssoc.LEFT, EqOp),
@@ -1263,6 +1305,7 @@ class _QueryBuilder:
             (">=", 2, opAssoc.LEFT, GeOp),
             ("<", 2, opAssoc.LEFT, LtOp),
             (">", 2, opAssoc.LEFT, GtOp),
+            ("not", 1, opAssoc.RIGHT, NotOp),
             ("and", 2, opAssoc.LEFT, AndOp),
             ("or", 2, opAssoc.LEFT, OrOp),
         ])
@@ -1276,9 +1319,9 @@ class _QueryBuilder:
                 raise UsageError('Invalid filter expression {}.'.format(filter_expression)) from exception
             try:
                 filter_result = parsed_filter_expression.build()
-            except (AttributeError, TypeError):
+            except (AttributeError, TypeError) as exception:
                 # User supplied only a constant or is trying to compare apples to oranges
-                raise UsageError('Invalid filter expression {} (2).'.format(filter_expression)) from None
+                raise UsageError('Invalid filter expression {} (2).'.format(filter_expression)) from exception
             if not isinstance(filter_result, ColumnElement):
                 # Expression doesn't contain at least one expression with references to a SQL column
                 raise UsageError('Invalid filter expression {} (3).'.format(filter_expression))
