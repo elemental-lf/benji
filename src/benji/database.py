@@ -25,7 +25,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
-from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.types import TypeDecorator
@@ -600,7 +599,7 @@ class DatabaseBackend(ReprMixIn):
             if version_labels:
                 for version_label in version_labels:
                     label_query = self._session.query(
-                        Label.version_uid).filter((Label.name == version_label[0]) & Label.value == version_label[1])
+                        Label.version_uid).filter((Label.name == version_label[0]) & (Label.value == version_label[1]))
                     query = query.filter(Version.uid.in_(label_query))
             versions = query.order_by(Version.name, Version.date).all()
         except:
