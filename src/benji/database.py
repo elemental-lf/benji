@@ -52,7 +52,7 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
                 if len(value) < 2:
                     raise ValueError('Version UID {} is too short.'.format(value)) from None
                 if value[0].lower() != 'v':
-                    raise ValueError('Version UID {} has to start with the letter V.'.format(value)) from None
+                    raise ValueError('Version UID {} is invalid. A Version UID string has to start with the letter V.'.format(value)) from None
                 try:
                     value_int = int(value[1:])
                 except ValueError:
