@@ -58,18 +58,18 @@ Main Features
     the repaired copy afterwards.
 
 **Small bandwidth requirements**
-    As only changed blocks are written to the backup target, a small connection
+    As only changed blocks are written to the backup storage, a small connection
     is sufficient even for larger backups. Even with newly created block devices
     the traffic to the backup target is small, because these block devices usually
     contain mostly zeros and are deduplicated before reaching the target storage.
 
     In addition to this Benji supports fast state-of-the-art compression based on
-    `zstandard <https://github.com/facebook/zstd>`_. This will further reduce the
-    required bandwidth and also reduce the storage space requirements.
+    `zstandard <https://github.com/facebook/zstd>`_. This further reduces the
+    required bandwidth and also reduces the storage space requirements.
 
 **Support for a variety of backup storage targets**
     Benji supports AWS S3 as a data backend but also has options to enable
-    compatibility with other S3 implementations like Google Storage, Ceph
+    compatibility with other S3 implementations like Google Storage, Ceph's
     RADOS Gateway or `Minio <https://www.minio.io/>`_.
 
     Benji also supports `Backblaze's <https://www.backblaze.com/>`_ B2 Cloud
@@ -80,19 +80,18 @@ Main Features
 
 **Confidentiality**
     Benji supports AES-256 in GCM mode to encrypt all your data on the backup
-    storage target. By using envelope encryption every block is encrypted
-    with its own unique random key which makes plaintext attacks even more
-    difficult.
+    storage. By using envelope encryption every block is encrypted with its
+    own unique random key which makes plaintext attacks even more difficult.
 
 **Integrity**
-    Every backed up block keeps a checksum with it. When Benji scrubs the backup,
-    it reads the block from the backup target storage, calculates its
+    Every backed up block keeps a checksum with it. When Benji scrubs the
+    backup, it reads the block from the backup storage, calculates its
     checksum and compares it to the stored checksum. If the checksum differs,
     it's most likely that there was an error while storing or reading
     the block, or because of bit rot on the backup target storage.
 
     Benji also supports a faster light-weight scrubbing mode which only checks
-    the meta data consistency and object existence on the target storage.
+    the metadata's consistency and object existence on the backup storage.
 
     If a scrubbing failure occurs, the defective block and the backups it belongs
     to are marked as 'invalid' and the block will be re-read for the next backup
@@ -119,21 +118,22 @@ Main Features
     Benji instructs Linux and Ceph to immediately forget the data once it's processed.
 
 **Simplicity: As simple as cp, but as clever as a backup solution needs to be**
-    With a very small set of commands, good ``--help`` and intuitive usage,
+    With a small set of commands, good ``--help`` and intuitive usage,
     Benji feels mostly like ``cp``. And that's intentional, because we think,
-    a restore must be fool-proof and succeed even if you're woken up at 3am.
+    a restore must be fool-proof and succeed even if you're woken up at 3am in the
+    morning.
 
 **Prevents you from doing something stupid**
     By providing a configuration value for how old backups need to be in order to
-    be able to delete them, you can't accidentally delete very young backups. An
+    be able to remove them, you can't accidentally remove very young backups. An
     exception to this is the enforcement of retention policies which will also
-    delete young backups if configured.
+    remove young backups if configured.
 
-    With ``benji protect`` you can protect versions from being deleted.
-    This is very important when you need to restore a version which according to the
-    retention policy may be deleted soon. During restore a lock will also prevent
-    deletion, however, by protecting it, it cannot be deleted until you decide
-    that it's not needed anymore.
+    With ``benji protect`` you can protect versions from being removed.
+    This is important when you plan to restore a version which according to the
+    retention policy may be removed soon. During restore a lock will also prevent
+    removal, however, by protecting it, it cannot be removed until you decide
+    that it is no longer needed.
 
     Also, you'll need to use ``--force`` to overwrite existing files or volumes.
 
@@ -141,7 +141,3 @@ Main Features
     Anyone can review the source code and audit security and functionality.
     Benji is licensed under the LGPLv3 license. Please see the documentation
     for a full list of licenses.
-
-
-
-
