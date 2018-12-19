@@ -1254,13 +1254,12 @@ class BenjiStore(ReprMixIn):
             logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid.v_string, block.id, block.uid))
             data = self._block_cache.read(block.uid)
 
-            block_checksum = self._benji_obj._block_hash.data_hexdigest(data)
-            block_uid: Optional[BlockUid] = block.uid
-            if block_checksum == sparse_block_checksum:
+            block.checksum = self._benji_obj._block_hash.data_hexdigest(data)
+            if block.checksum == sparse_block_checksum:
                 logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid.v_string, block.id))
                 self._block_cache.rm(block.uid)
                 block.checksum = None
-                block_uid = None
+                block.uid = None
             else:
                 storage.save_sync(block, data)
                 self._block_cache.rm(block.uid)
@@ -1269,8 +1268,8 @@ class BenjiStore(ReprMixIn):
                 self._benji_obj._database_backend.set_block(
                     id=block.id,
                     version_uid=cow_version.uid,
-                    block_uid=block_uid,
-                    checksum=block_checksum,
+                    block_uid=block.uid,
+                    checksum=block.checksum,
                     size=len(data),
                     valid=True)
             except:
