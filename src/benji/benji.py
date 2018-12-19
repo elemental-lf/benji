@@ -1073,6 +1073,11 @@ class _BlockCache:
             f.write(data)
 
     def rm(self, block_uid: BlockUid) -> None:
+        try:
+            # Do this first, so that nobody tries to access this block anymore while we're trying to delete it
+            self._block_cache.remove(block_uid)
+        except KeyError:
+            pass
         filename = self._cache_filename(block_uid)
         try:
             os.unlink(filename)
