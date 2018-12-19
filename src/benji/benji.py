@@ -1022,11 +1022,13 @@ class Benji(ReprMixIn):
             logger.info('Dry run, won\'t remove anything.')
             return []
 
-        for version in dismissed_versions:
+        # Iterate through copy of dismissed_versions
+        for version in list(dismissed_versions):
             try:
                 self.rm(version.uid, force=True, keep_metadata_backup=keep_metadata_backup)
             except AlreadyLocked:
                 logger.warning('Version {} couldn\'t be deleted, it\'s currently locked.')
+                dismissed_versions.remove(version)
 
         return sorted(dismissed_versions)
 
