@@ -927,7 +927,7 @@ class DatabaseBackend(ReprMixIn):
             version_uid = VersionUid(version_dict['uid'])
 
             for attribute in [
-                    'date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected'
+                    'date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected', 'blocks', 'labels',
             ]:
                 if attribute not in version_dict:
                     raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
