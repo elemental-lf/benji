@@ -18,7 +18,7 @@ from prettytable import PrettyTable
 import benji.exception
 from benji.benji import Benji, BenjiStore
 from benji.config import Config
-from benji.database import Version, VersionUid, Stats
+from benji.database import Version, VersionUid, VersionStatistic
 from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.nbdserver import NbdServer
@@ -282,7 +282,7 @@ class Commands:
         print(tbl)
 
     @classmethod
-    def _stats_table_output(cls, stats: List[Stats]) -> None:
+    def _stats_table_output(cls, stats: List[VersionStatistic]) -> None:
         tbl = PrettyTable()
         tbl.field_names = [
             'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',

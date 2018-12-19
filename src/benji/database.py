@@ -234,8 +234,8 @@ Base: Any = declarative_base(cls=ReprMixIn)
 
 
 # This mirrors Version with some extra fields
-class Stats(Base):
-    __tablename__ = 'stats'
+class VersionStatistic(Base):
+    __tablename__ = 'version_statistics'
     # No foreign key references here, so that we can keep the stats around even when the version is deleted
     uid = Column(VersionUidType, primary_key=True)
     base_uid = Column(VersionUidType, nullable=True)
@@ -520,7 +520,7 @@ class DatabaseBackend(ReprMixIn):
     def set_stats(self, *, uid: VersionUid, base_uid: Optional[VersionUid], hints_supplied: bool,
                   date: datetime.datetime, name: str, snapshot_name: str, size: int, storage_id: int, block_size: int,
                   bytes_read: int, bytes_written: int, bytes_dedup: int, bytes_sparse: int, duration: int) -> None:
-        stats = Stats(
+        stats = VersionStatistic(
             uid=uid,
             base_uid=base_uid,
             hints_supplied=hints_supplied,
@@ -543,8 +543,8 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[Stats]:
-        builder = _QueryBuilder(self._session, Stats)
+    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[VersionStatistic]:
+        builder = _QueryBuilder(self._session, VersionStatistic)
         try:
             stats = builder.build(filter_expression)
             if limit:

@@ -312,7 +312,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('labels["label-key-4"] and name')
         self.assertEqual(128, len(versions))
 
-    def test_stat_filter(self):
+    def test_version_statistic_filter(self):
         for i in range(16):
             self.database_backend.set_stats(uid=VersionUid(i),
                 base_uid=None,
