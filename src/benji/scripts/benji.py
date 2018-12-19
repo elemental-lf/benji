@@ -286,7 +286,7 @@ class Commands:
         tbl = PrettyTable()
         tbl.field_names = [
             'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',
-            'sparse', 'duration (s)'
+            'sparse', 'duration'
         ]
         tbl.align['uid'] = 'l'
         tbl.align['name'] = 'l'
@@ -298,7 +298,7 @@ class Commands:
         tbl.align['written'] = 'r'
         tbl.align['dedup'] = 'r'
         tbl.align['sparse'] = 'r'
-        tbl.align['duration (s)'] = 'r'
+        tbl.align['duration'] = 'r'
         for stat in stats:
             augmented_version_uid = '{}{}{}'.format(
                 stat.uid.v_string, ',\nbase {}'.format(stat.base_uid.v_string) if stat.base_uid else '',
