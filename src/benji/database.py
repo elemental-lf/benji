@@ -1150,6 +1150,7 @@ class _QueryBuilder:
 
     def __init__(self, session, orm_class: Base) -> None:
         self._session = session
+        self._orm_class = orm_class
         self._parser = self._define_parser(session, orm_class)
 
     @staticmethod
@@ -1222,7 +1223,7 @@ class _QueryBuilder:
                     raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
                 label_query = session.query(
                     Label.version_uid).filter((Label.name == self.name) & op(Label.value, str(other)))
-                return Version.uid.in_(label_query)
+                return getattr(orm_class, 'uid').in_(label_query)
 
             # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
             def __eq__(self, other: Any) -> BinaryExpression:  # type: ignore
@@ -1234,7 +1235,7 @@ class _QueryBuilder:
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> BinaryExpression:
                 label_query = session.query(Label.version_uid).filter(Label.name == self.name)
-                return Version.uid.in_(label_query)
+                return getattr(orm_class, 'uid').in_(label_query)
 
         attributes = []
         for attribute in inspect(orm_class).mapper.composites:
@@ -1312,7 +1313,7 @@ class _QueryBuilder:
         ])
 
     def build(self, filter_expression: Optional[str]):
-        query = self._session.query(Version)
+        query = self._session.query(self._orm_class)
         if filter_expression:
             try:
                 parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]
