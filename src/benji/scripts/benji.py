@@ -58,25 +58,25 @@ class Commands:
             if rbd_hints:
                 data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
                 hints = hints_from_rbd_diff(data)
-            backup_version_uid = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
+            backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
                                                   storage)
 
             if labels:
                 for key, value in label_add:
-                    benji_obj.add_label(backup_version_uid, key, value)
+                    benji_obj.add_label(backup_version.uid, key, value)
                 for key in label_remove:
-                    benji_obj.rm_label(backup_version_uid, key)
+                    benji_obj.rm_label(backup_version.uid, key)
                 if label_add:
                     logger.info('Added label(s) to version {}: {}.'.format(
-                        backup_version_uid.v_string,
+                        backup_version.uid.v_string,
                         ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
                 if label_remove:
-                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version_uid.v_string,
+                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version.uid.v_string,
                                                                                ', '.join(label_remove)))
 
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=backup_version_uid)
+                    'versions': [backup_version]
                 },
                                      sys.stdout,
                                      ignore_relationships=[((Version,), ('blocks',))])

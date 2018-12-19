@@ -894,8 +894,7 @@ class Benji(ReprMixIn):
 
         self._locking.unlock_version(version.uid)
         logger.info('New version {} created, backup successful.'.format(version.uid.v_string))
-        # It might be tempting to return a Version object here but this will only lead to SQLAlchemy errors
-        return version.uid
+        return version
 
     def cleanup(self, dt: int = 3600) -> None:
         with self._locking.with_lock(

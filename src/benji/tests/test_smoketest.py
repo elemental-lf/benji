@@ -102,13 +102,15 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj = self.benjiOpen(init_database=init_database, block_size=block_size)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version_uid = benji_obj.backup(
+                version = benji_obj.backup(
                     version_name='data-backup',
                     version_snapshot_name='snapshot-name',
                     source='file://' + image_filename,
                     hints=hints_from_rbd_diff(hints.read()) if base_version else None,
                     base_version_uid=base_version,
                     storage_name=storage_name)
+                # Don't keep a reference to version because we're closing the SQLAlchemy session
+                version_uid = version.uid
             benji_obj.close()
             version_uids.append(version_uid)
             print('  Backup successful')
