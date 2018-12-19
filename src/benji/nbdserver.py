@@ -37,11 +37,11 @@ import signal
 import struct
 import traceback
 from asyncio import StreamReader, StreamWriter
-from typing import Generator, Optional, cast, Any, Tuple
+from typing import Generator, Optional, Any, Tuple
 
 from benji.benji import BenjiStore
-from benji.exception import NbdServerAbortedNegotiationError
 from benji.database import VersionUid, Version
+from benji.exception import NbdServerAbortedNegotiationError
 from benji.repr import ReprMixIn
 
 
@@ -197,13 +197,14 @@ class NbdServer(ReprMixIn):
                     break
 
                 elif opt == self.NBD_OPT_LIST:
-                    for version in self.store.get_versions():
-                        version_encoded = version.uid.v_string.encode("ascii")
+                    # Don't use version as a loop variable so we don't conflict with the outer scope usage
+                    for list_version in self.store.get_versions():
+                        list_version_encoded = list_version.uid.v_string.encode("ascii")
                         writer.write(
                             struct.pack(">QLLL", self.NBD_REPLY, opt, self.NBD_REP_SERVER,
-                                        len(version_encoded) + 4))
-                        writer.write(struct.pack(">L", len(version_encoded)))
-                        writer.write(version_encoded)
+                                        len(list_version_encoded) + 4))
+                        writer.write(struct.pack(">L", len(list_version_encoded)))
+                        writer.write(list_version_encoded)
                         yield from writer.drain()
 
                     writer.write(struct.pack(">QLLL", self.NBD_REPLY, opt, self.NBD_REP_ACK, 0))
