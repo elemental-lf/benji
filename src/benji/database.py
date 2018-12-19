@@ -554,7 +554,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-        return reversed(stats_result)
+        return list(reversed(stats_result))
 
     def set_version(self, version_uid: VersionUid, *, valid: bool = None, protected: bool = None):
         try:
