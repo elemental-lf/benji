@@ -305,7 +305,8 @@ class NbdServer(ReprMixIn):
         finally:
             if cow_version:
                 self.store.fixate(cow_version)
-            self.store.close(version)
+            if version:
+                self.store.close(version)
             writer.close()
 
     def serve_forever(self) -> None:
