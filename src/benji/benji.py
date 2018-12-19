@@ -191,7 +191,7 @@ class Benji(ReprMixIn):
         return self._database_backend.get_versions_with_filter(filter_expression)
 
     def stats(self, filter_expression: str = None, limit: int = None):
-        return self._database_backend.get_stats_by_filter(filter_expression, limit)
+        return self._database_backend.get_stats_with_filter(filter_expression, limit)
 
     def _scrub_prepare(self,
                        *,

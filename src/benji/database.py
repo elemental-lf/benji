@@ -543,7 +543,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def get_stats_by_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[Stats]:
+    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[Stats]:
         builder = _QueryBuilder(self._session, Stats)
         try:
             stats = builder.build(filter_expression)
