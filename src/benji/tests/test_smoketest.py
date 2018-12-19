@@ -48,7 +48,7 @@ class SmokeTestCase(BenjiTestCaseBase):
 
     def test(self):
         testpath = self.testpath.path
-        base_version = None
+        base_version_uid = None
         version_uids = []
         old_size = 0
         init_database = True
@@ -106,8 +106,8 @@ class SmokeTestCase(BenjiTestCaseBase):
                     version_name='data-backup',
                     version_snapshot_name='snapshot-name',
                     source='file://' + image_filename,
-                    hints=hints_from_rbd_diff(hints.read()) if base_version else None,
-                    base_version_uid=base_version,
+                    hints=hints_from_rbd_diff(hints.read()) if base_version_uid else None,
+                    base_version_uid=base_version_uid,
                     storage_name=storage_name)
                 # Don't keep a reference to version because we're closing the SQLAlchemy session
                 version_uid = version.uid
@@ -189,7 +189,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_2))
             print('  Metadata-backend-less restore successful')
-            base_version = version_uid
+            base_version_uid = version_uid
 
             # delete old versions
             if len(version_uids) > 10:
@@ -208,7 +208,7 @@ class SmokeTestCase(BenjiTestCaseBase):
                 scrub_history = BlockUidHistory()
                 deep_scrub_history = BlockUidHistory()
             if (i % 23) == 0:
-                base_version = None
+                base_version_uid = None
                 if storage_name == 's1':
                     storage_name = 's2'
                 else:
