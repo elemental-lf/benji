@@ -305,9 +305,10 @@ class Benji(ReprMixIn):
             logger.info('Scrub of version {} successful.'.format(version.uid.v_string))
         else:
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+            affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
-                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids) if affected_version != version_uid])))
+                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids)])))
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid.v_string))
 
     def deep_scrub(self,
@@ -423,9 +424,10 @@ class Benji(ReprMixIn):
             if source_mismatch:
                 logger.error('Version {} had source mismatches.'.format(version_uid.v_string))
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+            affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
-                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids) if affected_version != version_uid])))
+                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids)])))
 
         self._locking.unlock_version(version_uid)
 
