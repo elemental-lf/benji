@@ -4,6 +4,7 @@
 
 import argparse
 import fileinput
+import json
 import os
 import sys
 from functools import partial
@@ -417,13 +418,27 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
+    def _metadata_ls_table_output(self, version_uids: List[VersionUid]):
+        tbl = PrettyTable()
+        tbl.field_names = ['uid']
+        tbl.align['uid'] = 'l'
+        for version_uid in version_uids:
+            tbl.add_row([version_uid.v_string])
+        print(tbl)
+
     def metadata_ls(self, storage: str = None) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
             version_uids = benji_obj.metadata_ls(storage)
-            for version_uid in version_uids:
-                print(version_uid.v_string)
+            if self.machine_output:
+                json.dump(
+                    [version_uid.v_string for version_uid in version_uids],
+                    sys.stdout,
+                    indent=2,
+                )
+            else:
+                self._metadata_ls_table_output(version_uids)
         finally:
             if benji_obj:
                 benji_obj.close()
