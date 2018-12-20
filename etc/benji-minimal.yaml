@@ -1,5 +1,5 @@
 configurationVersion: '1.0.0'
-databaseEngine: sqlite:///tmp/benji.sqlite
+databaseEngine: sqlite:////tmp/benji.sqlite
 defaultStorage: storage-1
 storages:
   - name: storage-1
