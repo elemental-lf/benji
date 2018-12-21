@@ -1,3 +1,4 @@
+{{- if not .Values.benji.rook.enabled }}
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -26,30 +27,6 @@ spec:
         - name: benji
           image: "{{ .Values.benji.image.registry }}/{{ .Values.benji.image.repository }}:{{ .Values.benji.image.tag }}"
           imagePullPolicy: {{ .Values.benji.image.pullPolicy }}
-          env:
-            - name: ROOK_ADMIN_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: rook-ceph-mon
-                  key: admin-secret
-            - name: BACKUP_SCHEDULE
-              value: "{{ .Values.benji.backup.schedule }}"
-            - name: BACKUP_RETENTION
-              value: "{{ .Values.benji.backup.retention }}"
-            - name: BACKUP_SELECTOR
-              value: "{{ .Values.benji.backup.selector }}"
-            - name: SCRUBBING_ENABLED
-              value: "{{ .Values.benji.scrubbing.enabled | ternary "1" "0" }}"
-            - name: SCRUBBING_VERSIONS_PERCENTAGE
-              value: "{{ .Values.benji.scrubbing.versionsPercentage }}"
-            - name: SCRUBBING_BLOCKS_PERCENTAGE
-              value: "{{ .Values.benji.scrubbing.blocksPercentage }}"
-            - name: DEEP_SCRUBBING_ENABLED
-              value: "{{ .Values.benji.deepScrubbing.enabled | ternary "1" "0" }}"
-            - name: DEEP_SCRUBBING_VERSIONS_PERCENTAGE
-              value: "{{ .Values.benji.deepScrubbing.versionsPercentage }}"
-            - name: DEEP_SCRUBBING_BLOCKS_PERCENTAGE
-              value: "{{ .Values.benji.deepScrubbing.blocksPercentage }}"
           securityContext:
             privileged: true
           volumeMounts:
@@ -62,7 +39,7 @@ spec:
             - name: mon-endpoint-volume
               mountPath: /etc/rook
             - name: benji-config
-              mountPath: /etc/benji
+              mountPath: /benji/etc
             - name: tz-config
               mountPath: /etc/localtime
           resources:
@@ -100,9 +77,6 @@ spec:
         - name: benji-config
           configMap:
             name: {{ template "benji.fullname" . }}
-            items:
-              - key: benji.yaml
-                path: benji.yaml
         - name: pushgateway
           emptyDir: {}
         - name: tz-config
@@ -112,3 +86,4 @@ spec:
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
     {{- end }}
+{{- end }}

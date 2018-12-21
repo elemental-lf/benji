@@ -6,3 +6,5 @@ metadata:
 data:
   benji.yaml: |
 {{ .Values.benji.configuration | indent 4 }}
+  crontab: |
+{{ .Values.benji.crontab | indent 4 }}

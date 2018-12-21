@@ -1,67 +1,17 @@
 #!/usr/bin/env bash
 
-function benji::enforce {
-    local RETENTION="$1"
-    local NAME="$2"
-    
+function benji::command {
+    local COMMAND="$1"
+    shift
     START_TIME=$(date +'%s')
-    benji_job_start_time -action=enforce -type= -version_name="$NAME" set "$(date +'%s.%N')"
+    benji_command_start_time -command="$COMMAND" -auxiliary_data= -arguments="$*" set "$(date +'%s.%N')"
     try {
-        benji enforce "$RETENTION" "$NAME"
+        benji --log-level "${BENJI_LOG_LEVEL:-INFO}" "$COMMAND" "$@"
     } catch {
-        benji_job_status_failed -action=enforce -type= -version_name=$NAME set 1
+        benji_command_status_failed -command="$COMMAND" -auxiliary_data= -arguments="$*" set 1
     } onsuccess {
-        benji_job_status_succeeded -action=enforce -type= -version_name=$NAME set 1
+        benji_command_status_succeeded -command="$COMMAND" -auxiliary_data= -arguments="$*" set 1
     }
-    benji_job_completion_time -action=enforce -type= -version_name="$NAME" set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=enforce -type= -version_name=$NAME set $[$(date +'%s') - $START_TIME]
-}
-
-function benji::cleanup {
-    START_TIME=$(date +'%s')
-    benji_job_start_time -action=cleanup -type= -version_name= set "$(date +'%s.%N')"
-    try {
-        benji cleanup
-    } catch {
-        benji_job_status_failed -action=cleanup -type= -version_name= set 1
-    } onsuccess {
-        benji_job_status_succeeded -action=cleanup -type= -version_name= set 1
-    }
-    benji_job_completion_time -action=cleanup -type= -version_name= set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=cleanup -type= -version_name= set $[$(date +'%s') - $START_TIME]
-}
-
-function benji::batch_deep_scrub {
-    local VERSIONS_PERCENTAGE="$1"
-    local BLOCKS_PERCENTAGE="$2"
-    
-    START_TIME=$(date +'%s')
-    benji_job_start_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
-    try {
-        benji batch-deep-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
-    } catch {
-        benji_job_status_failed -action=batch-deep-scrub -type= -version_name= set 1
-    } onsuccess {
-        benji_job_status_succeeded -action=batch-deep-scrub -type= -version_name= set 1
-    }
-    benji_job_completion_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=batch-deep-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
-}
-
-function benji::batch_scrub {
-    local VERSIONS_PERCENTAGE="$1"
-    local BLOCKS_PERCENTAGE="$2"
-    
-    START_TIME=$(date +'%s')
-    benji_job_start_time -action=batch-deep-scrub -type= -version_name= set "$(date +'%s.%N')"
-    try {
-        benji batch-scrub -P "$DEEP_SCRUBBING_VERSIONS_PERCENTAGE" -p "$DEEP_SCRUBBING_BLOCKS_PERCENTAGE"
-    } catch {
-        benji_job_status_failed -action=batch-scrub -type= -version_name= set 1
-    } onsuccess {
-        benji_job_status_succeeded -action=batch-scrub -type= -version_name= set 1
-    }
-    
-    benji_job_completion_time -action=batch-scrub -type= -version_name= set "$(date +'%s.%N')"
-    benji_job_runtime_seconds -action=batch-scrub -type= -version_name= set $[$(date +'%s') - $START_TIME]
+    benji_command_completion_time -command="$COMMAND" -auxiliary_data= -arguments="$*" set "$(date +'%s.%N')"
+    benji_command_runtime_seconds -command="$COMMAND" -auxiliary_data= -arguments="$*" set $[$(date +'%s') - $START_TIME]
 }

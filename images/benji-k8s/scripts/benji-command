@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+exec > >(logger -t "benji-$1") 2>&1
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
+. defaults.sh
+. prometheus.sh
+. metrics.sh
+. tryCatch.sh
+. common.sh
+
+benji::command "$@"
+
+echo
+io::prometheus::ExportAsText | grep -v '^#'
+io::prometheus::Push job=benji gateway="$PROM_PUSH_GATEWAY"

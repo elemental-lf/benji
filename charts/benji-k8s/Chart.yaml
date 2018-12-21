@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Benji Backup for Kubernetes
+name: benji-k8s
+version: 0.1.0

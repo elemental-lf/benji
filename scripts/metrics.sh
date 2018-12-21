@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-io::prometheus::NewGauge name=benji_job_start_time labels=action,type,version_name help='Start time of job (time_t)'
-io::prometheus::NewGauge name=benji_job_completion_time labels=action,type,version_name help='Completion time of job (time_t)'
-io::prometheus::NewGauge name=benji_job_runtime_seconds labels=action,type,version_name help='Runtime of job (seconds)'
-io::prometheus::NewGauge name=benji_job_status_succeeded labels=action,type,version_name help='Job succeeded'
-io::prometheus::NewGauge name=benji_job_status_failed labels=action,type,version_name help='Job failed'
+io::prometheus::NewGauge name=benji_command_start_time labels=command,auxiliary_data,arguments help='Start time of Benji command (time_t)'
+io::prometheus::NewGauge name=benji_command_completion_time labels=command,auxiliary_data,arguments help='Completion time of Benji command (time_t)'
+io::prometheus::NewGauge name=benji_command_runtime_seconds labels=command,auxiliary_data,arguments help='Runtime of Benji command (seconds)'
+io::prometheus::NewGauge name=benji_command_status_succeeded labels=command,auxiliary_data,arguments help='Benji command succeeded'
+io::prometheus::NewGauge name=benji_command_status_failed labels=command,auxiliary_data,arguments help='Benji command failed'
+
+io::prometheus::NewGauge name=benji_backup_start_time labels=command,auxiliary_data,version_name help='Start time of Benji backup command (time_t)'
+io::prometheus::NewGauge name=benji_backup_completion_time labels=command,auxiliary_data,version_name help='Completion time of Benji backup command (time_t)'
+io::prometheus::NewGauge name=benji_backup_runtime_seconds labels=command,auxiliary_data,version_name help='Runtime of Benji backup command (seconds)'
+io::prometheus::NewGauge name=benji_backup_status_succeeded labels=command,auxiliary_data,version_name help='Benji backup command succeeded'
+io::prometheus::NewGauge name=benji_backup_status_failed labels=command,auxiliary_data,version_name help='Benji backup command  failed'
