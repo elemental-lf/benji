@@ -998,7 +998,15 @@ class Benji(ReprMixIn):
                                  group_label: str = None) -> List[Version]:
         versions = self._database_backend.get_versions_with_filter(filter_expression)
 
-        dismissed_versions = set(RetentionFilter(rules_spec).filter(versions))
+        versions_by_name: Dict[str, List[Version]] = {}
+        for version in versions:
+            if version.name not in versions_by_name:
+                versions_by_name[version.name] = []
+            versions_by_name[version.name].append(version)
+
+        dismissed_versions = set()
+        for versions_slice in versions_by_name.values():
+            dismissed_versions |= set(RetentionFilter(rules_spec).filter(versions_slice))
 
         if dismissed_versions and group_label is not None:
             additional_versions: Set[Version] = set()
