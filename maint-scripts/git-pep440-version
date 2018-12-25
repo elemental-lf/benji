@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+from importlib.util import module_from_spec, spec_from_file_location
+from os import getenv
+
+# Docker Cloud sets COMMIT_MSG, CWD is the directory of the Dockerfile
+if getenv('COMMIT_MSG'):
+    spec = spec_from_file_location('version', '../../src/benji/_version.py')
+else:
+    spec = spec_from_file_location('version', 'src/benji/_version.py')
+
+module = module_from_spec(spec)
+spec.loader.exec_module(module)
+print(module.__version__)
