@@ -759,11 +759,11 @@ class DatabaseBackend(ReprMixIn):
         rounds = 0
         false_positives_count = 0
         hit_list_count = 0
-        one_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(seconds=dt)
+        cut_off_date = datetime.datetime.utcnow() - datetime.timedelta(seconds=dt)
         while True:
             # http://stackoverflow.com/questions/7389759/memory-efficient-built-in-sqlalchemy-iterator-generator
             delete_candidates = self._session.query(DeletedBlock)\
-                .filter(DeletedBlock.date < one_hour_ago)\
+                .filter(DeletedBlock.date < cut_off_date)\
                 .limit(250)\
                 .all()
             if not delete_candidates:
