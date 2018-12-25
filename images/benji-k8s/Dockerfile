@@ -1,4 +1,5 @@
-FROM elementalnet/benji
+ARG BASE_TAG
+FROM elementalnet/benji:${BASE_TAG}
 
 ARG VCS_REF
 ARG VCS_URL

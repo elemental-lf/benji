@@ -1,19 +1,51 @@
 #!/bin/bash
-set -xueo pipefail
+set -xeo pipefail
+id -a
 pwd
+
 if [[ $COMMIT_MSG ]]; then
 	# Docker Cloud auto build
+
+	# Install pip (globally) which includes setuptools which are needed by 
+	# git-pep440-version
+	curl https://bootstrap.pypa.io/get-pip.py -o ./get-pip.py
+	python3 ./get-pip.py
+
 	VERSION="$(../../maint-scripts/git-pep440-version)"
+	if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
+		BASE_TAG="$VERSION"
+	else
+		BASE_TAG="$SOURCE_BRANCH"
+	fi
+
 	# CWD is directory of the Dockerfile
 	cd ../..
 else
 	# Local
+	SOURCE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+	DOCKER_REPO="$(cd $(dirname $DOCKERFILE_PATH) && pwd)"
+	DOCKER_REPO="elementalnet/${DOCKER_REPO##*/}"
+	
 	VERSION="$(maint-scripts/git-pep440-version)"
+	if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
+		BASE_TAG="$VERSION"
+		TAG="$VERSION"
+	else
+		BASE_TAG="$SOURCE_BRANCH"
+		TAG="$SOURCE_BRANCH"
+	fi
+	IMAGE_NAME="$DOCKER_REPO:$TAG"
+	export SOURCE_BRANCH DOCKER_REPO IMAGE_NAME
 fi
+
+# BASE_TAG is only used by derived images
 exec docker build \
+  --build-arg BASE_TAG="$BASE_TAG" \
   --build-arg VCS_REF="$(git rev-parse --short HEAD)" \
   --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
   --build-arg VCS_URL="$(git config --get remote.origin.url)" \
   --build-arg VERSION="$VERSION" \
   -f $DOCKERFILE_PATH \
   -t $IMAGE_NAME .
+
+[[ $COMMIT_MSG ]] || maint-scripts/docker-post-push
