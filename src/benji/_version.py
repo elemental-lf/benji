@@ -6,14 +6,13 @@ import os
 import subprocess
 
 from distutils.command.build_py import build_py as build_py_orig
-from typing import List, Dict, Union, Optional
 
 from setuptools.command.sdist import sdist as sdist_orig
 
 Version = namedtuple('Version', ('release', 'dev', 'labels'))
 
 # No public API
-__all__: List = []
+__all__ = []
 
 package_root = os.path.dirname(os.path.realpath(__file__))
 package_name = os.path.basename(package_root)
@@ -22,7 +21,7 @@ distr_root = os.path.normpath(os.path.join(package_root, '..', '..'))
 STATIC_VERSION_FILE = '_static_version.py'
 
 
-def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
+def get_version(version_file = STATIC_VERSION_FILE):
     version_info = get_static_version_info(version_file)
     if version_info['version'] == "__use_git__":
         version = get_version_from_git()
@@ -35,18 +34,18 @@ def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
         return version_info['version']
 
 
-def get_static_version_info(version_file: str = STATIC_VERSION_FILE) -> Dict[str, str]:
-    version_info: Dict[str, str] = {}
+def get_static_version_info(version_file = STATIC_VERSION_FILE):
+    version_info = {}
     with open(os.path.join(package_root, version_file), 'rb') as f:
         exec(f.read(), {}, version_info)
     return version_info
 
 
-def version_is_from_git(version_file: str = STATIC_VERSION_FILE) -> bool:
+def version_is_from_git(version_file = STATIC_VERSION_FILE):
     return get_static_version_info(version_file)['version'] == '__use_git__'
 
 
-def pep440_format(version_info: Version) -> str:
+def pep440_format(version_info):
     release, dev, labels = version_info
 
     version_parts = [release]
@@ -63,7 +62,7 @@ def pep440_format(version_info: Version) -> str:
     return "".join(version_parts)
 
 
-def get_version_from_git() -> Optional[Version]:
+def get_version_from_git():
     try:
         p = subprocess.Popen(['git', 'rev-parse', '--show-toplevel'],
                              cwd=distr_root,
@@ -82,8 +81,7 @@ def get_version_from_git() -> Optional[Version]:
     # git describe --first-parent does not take into account tags from branches
     # that were merged-in. The '--long' flag gets us the 'dev' version and
     # git hash, '--always' returns the git hash even if there are no tags.
-    opts_list: List[List[str]] = [['--first-parent'], []]
-    for opts in opts_list:
+    for opts in [['--first-parent'], []]:
         try:
             p = subprocess.Popen(
                 ['git', 'describe', '--long', '--always'] + opts,
@@ -131,7 +129,7 @@ def get_version_from_git() -> Optional[Version]:
 #       Currently we can only tell the tag the current commit is
 #       pointing to, or its hash (with no version info)
 #       if it is not tagged.
-def get_version_from_git_archive(version_info: Dict[str, str]) -> Optional[Version]:
+def get_version_from_git_archive(version_info):
     try:
         refnames = version_info['refnames']
         git_hash = version_info['git_hash']
@@ -161,7 +159,7 @@ __version__ = get_version()
 # '__version__' module globals are used (but not modified).
 
 
-def _write_version(fname: str) -> None:
+def _write_version(fname):
     # This could be a hard link, so try to delete it first.  Is there any way
     # to do this atomically together with opening?
     try:
@@ -174,14 +172,14 @@ def _write_version(fname: str) -> None:
 
 class _build_py(build_py_orig):
 
-    def run(self) -> None:
+    def run(self):
         super().run()
-        _write_version(os.path.join(self.build_lib, package_name, STATIC_VERSION_FILE))  # type: ignore
+        _write_version(os.path.join(self.build_lib, package_name, STATIC_VERSION_FILE))
 
 
 class _sdist(sdist_orig):
 
-    def make_release_tree(self, base_dir, files) -> None:
+    def make_release_tree(self, base_dir, files):
         super().make_release_tree(base_dir, files)
         _write_version(os.path.join(base_dir, 'src', package_name, STATIC_VERSION_FILE))
 
