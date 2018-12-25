@@ -123,7 +123,6 @@ class ImportExportTestCase():
         self.assertEqual(VersionUid(1), block.version_uid)
         self.assertEqual(0, block.id)
         self.assertEqual(670293, block.size)
-        self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18', '%Y-%m-%dT%H:%M:%S'), block.date)
         self.assertTrue(block.valid)
         benji_obj.close()
 

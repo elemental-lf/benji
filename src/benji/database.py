@@ -316,12 +316,11 @@ class Label(Base):
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int, date: datetime.datetime,
+    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int,
                  checksum: Optional[str], size: int, valid: bool) -> None:
         self.uid = uid if uid is not None else BlockUid(None, None)
         self.version_uid = version_uid
         self.id = id
-        self.date = date
         self.checksum = checksum
         self.size = size
         self.valid = valid
@@ -358,7 +357,6 @@ class Block(Base):
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
     # id and uid_right are first because they are most likely to go to BigInteger in the future
-    date = Column("date", DateTime, nullable=False)  # 8 bytes
     id = Column(Integer, primary_key=True, nullable=False)  # 4 bytes
     uid_right = Column(Integer, nullable=True)  # 4 bytes
     uid_left = Column(Integer, nullable=True)  # 4 bytes
@@ -384,7 +382,6 @@ class Block(Base):
             uid=self.uid,
             version_uid=self.version_uid,
             id=self.id,
-            date=self.date,
             checksum=self.checksum,
             size=self.size,
             valid=self.valid,
@@ -662,7 +659,6 @@ class DatabaseBackend(ReprMixIn):
                 block.checksum = checksum
                 block.size = size
                 block.valid = valid
-                block.date = datetime.datetime.utcnow()
             else:
                 block = Block(
                     id=id,
@@ -671,7 +667,6 @@ class DatabaseBackend(ReprMixIn):
                     checksum=checksum,
                     size=size,
                     valid=valid,
-                    date=datetime.datetime.utcnow(),
                 )
                 self._session.add(block)
 
@@ -965,7 +960,7 @@ class DatabaseBackend(ReprMixIn):
                 if not isinstance(block_dict, dict):
                     raise InputDataError('Wrong data type for blocks list element in version {}.'.format(
                         version_uid.v_string))
-                for attribute in ['date', 'uid']:
+                for attribute in ['id', 'uid', 'size', 'valid', 'checksum']:
                     if attribute not in block_dict:
                         raise InputDataError('Missing attribute {} in blocks list in version {}.'.format(
                             attribute, version_uid.v_string))
@@ -993,7 +988,6 @@ class DatabaseBackend(ReprMixIn):
 
             for block_dict in version_dict['blocks']:
                 block_dict['version_uid'] = version_uid
-                block_dict['date'] = datetime.datetime.strptime(block_dict['date'], '%Y-%m-%dT%H:%M:%S')
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right
