@@ -6,12 +6,11 @@ import re
 from copy import deepcopy
 from functools import reduce
 from os.path import expanduser
-from pathlib import Path
 from typing import List, Callable, Union, Dict, Any, Optional, Sequence
 
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
-from ruamel.yaml import YAML
+import ruamel.yaml
 
 from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
@@ -48,10 +47,10 @@ class Config:
 
     @classmethod
     def add_schema(cls, *, module: str, version: str, file: str) -> None:
-        yaml = YAML(typ='safe', pure=True)
         name = cls._schema_name(module, version)
         try:
-            schema = yaml.load(Path(file))
+            with open(file, 'r') as f:
+                schema = ruamel.yaml.load(f, Loader=ruamel.yaml.SafeLoader)
             cls._schema_registry[name] = schema
         except FileNotFoundError:
             raise InternalError('Schema {} not found or not accessible.'.format(file))
@@ -123,8 +122,6 @@ class Config:
         return config_validated
 
     def __init__(self, ad_hoc_config: str = None, sources: Sequence[str] = None) -> None:
-        yaml = YAML(typ='safe', pure=True)
-
         if ad_hoc_config is None:
             if not sources:
                 sources = self._get_sources()
@@ -133,7 +130,8 @@ class Config:
             for source in sources:
                 if os.path.isfile(source):
                     try:
-                        config = yaml.load(Path(source))
+                        with open(source, 'r') as f:
+                            config = ruamel.yaml.load(f, Loader=ruamel.yaml.SafeLoader)
                     except Exception as exception:
                         raise ConfigurationError('Configuration file {} is invalid.'.format(source)) from exception
                     if config is None:
@@ -144,7 +142,7 @@ class Config:
                 raise ConfigurationError('No configuration file found in the default places ({}).'.format(
                     ', '.join(sources)))
         else:
-            config = yaml.load(ad_hoc_config)
+            config = ruamel.yaml.load(ad_hoc_config, Loader=ruamel.yaml.SafeLoader)
             if config is None:
                 raise ConfigurationError('Configuration string is empty.')
 
