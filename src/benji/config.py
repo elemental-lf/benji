@@ -8,12 +8,14 @@ from functools import reduce
 from os.path import expanduser
 from typing import List, Callable, Union, Dict, Any, Optional, Sequence
 
+import ruamel.yaml
+import semantic_version
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
-import ruamel.yaml
 
 from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
+from versions import VERSIONS
 
 
 class ConfigDict(dict):
@@ -35,18 +37,20 @@ class Config:
     _CONFIG_FILE = 'benji.yaml'
     _CONFIGURATION_VERSION_KEY = 'configurationVersion'
     _CONFIGURATION_VERSION_REGEX = r'\d+\.\d+\.\d+'
+    _VERSIONS_CONFIGURATION = 'configuration'
     _PARENTS_KEY = 'parents'
-    _SCHEMA_VERSIONS = ['1.0.0']
     _YAML_SUFFIX = '.yaml'
+
+    _SCHEMA_VERSIONS = [semantic_version.Version('1', partial=True)]
 
     _schema_registry: Dict[str, Dict] = {}
 
     @staticmethod
-    def _schema_name(module: str, version: str) -> str:
-        return '{}-{}'.format(module, version)
+    def _schema_name(module: str, version: semantic_version.Version) -> str:
+        return '{}-v{}'.format(module, version.major)
 
     @classmethod
-    def add_schema(cls, *, module: str, version: str, file: str) -> None:
+    def add_schema(cls, *, module: str, version: semantic_version.Version, file: str) -> None:
         name = cls._schema_name(module, version)
         try:
             with open(file, 'r') as f:
@@ -83,7 +87,7 @@ class Config:
         logger.debug('Resolved schema for {}: {}.'.format(name, result))
         return result
 
-    def _get_validator(self, *, module: str, version: str) -> Validator:
+    def _get_validator(self, *, module: str, version: semantic_version.Version) -> Validator:
         name = self._schema_name(module, version)
         schema = self._resolve_schema(name=name)
         try:
@@ -110,7 +114,7 @@ class Config:
 
         traverse(errors)
 
-    def validate(self, *, module: str, version: str = None, config: Union[Dict, ConfigDict]) -> Dict:
+    def validate(self, *, module: str, version: semantic_version.Version = None, config: Union[Dict, ConfigDict]) -> Dict:
         validator = self._get_validator(module=module, version=self._config_version if version is None else version)
         if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')
@@ -154,10 +158,11 @@ class Config:
         if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):
             raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
 
-        if version not in self._SCHEMA_VERSIONS:
+        version_obj = semantic_version.Version(version)
+        if version_obj not in VERSIONS[self._VERSIONS_CONFIGURATION].supported:
             raise ConfigurationError('Configuration has unsupported version of "{}".'.format(version))
 
-        self._config_version = version
+        self._config_version = version_obj
         self._config = ConfigDict(self.validate(module=__name__, config=config))
         logger.debug('Loaded configuration: {}'.format(self._config))
 
@@ -227,12 +232,12 @@ class Config:
         return Config._get(dict_, name, *args, **kwargs)
 
 
-for version in Config._SCHEMA_VERSIONS:
-    schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), version)
+for version_obj in Config._SCHEMA_VERSIONS:
+    schema_base_path = os.path.join(resource_filename(__name__, 'schemas'), 'v{}'.format(version_obj.major))
     for filename in os.listdir(schema_base_path):
         full_path = os.path.join(schema_base_path, filename)
         if not os.path.isfile(full_path) or not full_path.endswith(Config._YAML_SUFFIX):
             continue
         module = filename[0:len(filename) - len(Config._YAML_SUFFIX)]
-        logger.debug('Loading  schema {} for module {}, version {}.'.format(full_path, module, version))
-        Config.add_schema(module=module, version=version, file=full_path)
+        logger.debug('Loading  schema {} for module {}, version v{}.'.format(full_path, module, str(version_obj)))
+        Config.add_schema(module=module, version=version_obj, file=full_path)

@@ -10,17 +10,19 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
+import semantic_version
 from diskcache import Cache
 
 from benji.config import Config, ConfigDict
-from benji.repr import ReprMixIn
-from benji.storage.dicthmac import DictHMAC
+from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.exception import ConfigurationError, BenjiException
 from benji.factory import TransformFactory
 from benji.logging import logger
-from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
+from benji.repr import ReprMixIn
+from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
+from versions import VERSIONS
 
 
 class InvalidBlockException(BenjiException, IOError):
@@ -45,8 +47,11 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     _OBJECT_SIZE_KEY = 'object_size'
     _CHECKSUM_KEY = 'checksum'
     _HMAC_KEY = 'hmac'
+    _METADATA_VERSION_KEY = 'metadata_version'
 
     _META_SUFFIX = '.meta'
+
+    _VERSIONS_OBJECT_METADATA = 'object_metadata'
 
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         self._name = name
@@ -110,6 +115,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                         transforms_metadata: List[Dict] = None,
                         checksum: str = None) -> Tuple[Dict, bytes]:
         metadata: Dict = {
+            self._METADATA_VERSION_KEY: str(VERSIONS[self._VERSIONS_OBJECT_METADATA].current),
             self._SIZE_KEY: size,
             self._OBJECT_SIZE_KEY: object_size,
         }
@@ -131,9 +137,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if self._dict_hmac:
             self._dict_hmac.verify_hexdigest(metadata)
 
-        for required_key in [self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
+        for required_key in [self._METADATA_VERSION_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
             if required_key not in metadata:
                 raise KeyError('Required object metadata key {} is missing for object {}.'.format(required_key, key))
+
+        # We currently support only one object metadata version
+        version_obj = semantic_version.Version(metadata[self._METADATA_VERSION_KEY])
+        if version_obj not in VERSIONS[self._VERSIONS_OBJECT_METADATA]:
+            raise ValueError('Unsupported object metadata version: "{}".'.format(str(version_obj)))
 
         if data_length != metadata[self._OBJECT_SIZE_KEY]:
             raise ValueError('Length mismatch for object {}. Expected: {}, got: {}.'.format(

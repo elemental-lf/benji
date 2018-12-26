@@ -1,5 +1,5 @@
 parents:
-- benji.storage.base-1.0.0
+- benji.storage.base-v1
 configuration:
   type: dict
   required: True

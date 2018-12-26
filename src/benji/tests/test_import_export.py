@@ -6,9 +6,10 @@ import random
 from io import StringIO
 from unittest import TestCase
 
-from benji.database import DatabaseBackend, VersionUid
+from benji.database import VersionUid
 from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
+from versions import VERSIONS
 
 kB = 1024
 MB = kB * 1024
@@ -91,7 +92,7 @@ class ImportExportTestCase():
             print(f.getvalue())
             a = f.getvalue()
         benji_obj.close()
-        self.assertEqual(DatabaseBackend._METADATA_VERSION, export['metadataVersion'])
+        self.assertEqual(str(VERSIONS['database_metadata'].current), export['metadata_version'])
         self.assertIsInstance(export['versions'], list)
         self.assertTrue(len(export['versions']) == 3)
         version = export['versions'][0]
@@ -205,7 +206,7 @@ class ImportExportTestCase():
                   ]
                 }
               ],
-              "metadataVersion": "1.0.0"
+              "metadata_version": "1.0.0"
             }
             """
 

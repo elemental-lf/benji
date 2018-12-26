@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import subprocess
 try:
     from setuptools import setup, Extension, find_packages
 except ImportError:
@@ -62,6 +61,7 @@ Topic :: System :: Archiving :: Backup
         'cerberus>=1.2,<2',
         'pycryptodome>=3.6.1,<4',
         'pyparsing>=2.3.0,<3',
+        'semantic_version>=2.6.0',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],

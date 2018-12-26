@@ -1,5 +1,5 @@
 parents:
-- benji.storage.base.ReadCache-1.0.0
+- benji.storage.base.ReadCache-v1
 configuration:
   required: True
   schema:

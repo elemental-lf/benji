@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
+import semantic_version
 import sqlalchemy
 from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
     Regex, ParseException, ParseFatalException, Literal, NoMatch
@@ -36,6 +37,7 @@ from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
+from versions import VERSIONS
 
 
 @total_ordering
@@ -418,9 +420,9 @@ class Lock(Base):
 
 
 class DatabaseBackend(ReprMixIn):
-    _METADATA_VERSION = '1.0.0'
-    _METADATA_VERSION_KEY = 'metadataVersion'
+    _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
+    _VERSIONS_DATABASE_METADATA = 'database_metadata'
     _COMMIT_EVERY_N_BLOCKS = 1000
 
     _locking = None
@@ -869,7 +871,7 @@ class DatabaseBackend(ReprMixIn):
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
 
         root_dict = root_dict.copy()
-        root_dict[self._METADATA_VERSION_KEY] = self._METADATA_VERSION
+        root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS[self._VERSIONS_DATABASE_METADATA].current)
 
         json.dump(
             root_dict,
@@ -895,10 +897,15 @@ class DatabaseBackend(ReprMixIn):
         metadata_version = json_input[self._METADATA_VERSION_KEY]
         if not re.fullmatch(self._METADATA_VERSION_REGEX, metadata_version):
             raise InputDataError('Import file has an invalid vesion of "{}".'.format(metadata_version))
-        import_method_name = 'import_{}'.format(metadata_version.replace('.', '_'))
+
+        metadata_version_obj = semantic_version.Version(metadata_version)
+        if metadata_version_obj not in VERSIONS[self._VERSIONS_DATABASE_METADATA].supported:
+            raise InputDataError('Unsupported metadata version (1): "{}".'.format(str(metadata_version_obj)))
+
+        import_method_name = 'import_v{}'.format(metadata_version_obj.major)
         import_method = getattr(self, import_method_name, None)
         if import_method is None or not callable(import_method):
-            raise InputDataError('Unsupported import format version "{}".'.format(metadata_version))
+            raise InputDataError('Unsupported metadata version (2): "{}".'.format(metadata_version))
 
         try:
             version_uids = import_method(json_input)
@@ -909,7 +916,7 @@ class DatabaseBackend(ReprMixIn):
 
         return version_uids
 
-    def import_1_0_0(self, json_input: Dict) -> List[VersionUid]:
+    def import_v1(self, json_input: Dict) -> List[VersionUid]:
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
