@@ -117,7 +117,7 @@ class ImportExportTestCase():
         self.assertFalse(version.protected)
         self.assertIsInstance(version.blocks, list)
         self.assertIsInstance(version.labels, list)
-        self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18', '%Y-%m-%dT%H:%M:%S'), version.date)
+        self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
         blocks = benji_obj._database_backend.get_blocks_by_version(VersionUid(1))
         self.assertTrue(len(blocks) > 0)
         block = blocks[0]
@@ -132,7 +132,7 @@ class ImportExportTestCase():
               "versions": [
                 {
                   "uid": 1,
-                  "date": "2018-12-19T20:28:18",
+                  "date": "2018-12-19T20:28:18.123456",
                   "name": "data-backup",
                   "snapshot_name": "snapshot-name",
                   "size": 670293,
@@ -147,7 +147,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "date": "2018-12-19T20:28:18",
                       "id": 0,
                       "size": 670293,
                       "valid": true,
@@ -157,7 +156,7 @@ class ImportExportTestCase():
                 },
                 {
                   "uid": 2,
-                  "date": "2018-12-19T20:28:19",
+                  "date": "2018-12-19T20:28:19.123456",
                   "name": "test",
                   "snapshot_name": "",
                   "size": 670293,
@@ -172,7 +171,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "date": "2018-12-19T20:28:19",
                       "id": 0,
                       "size": 670293,
                       "valid": true,
@@ -182,7 +180,7 @@ class ImportExportTestCase():
                 },
                 {
                   "uid": 3,
-                  "date": "2018-12-19T20:28:21",
+                  "date": "2018-12-19T20:28:21.123456",
                   "name": "test",
                   "snapshot_name": "",
                   "size": 670293,
@@ -197,7 +195,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "date": "2018-12-19T20:28:21",
                       "id": 0,
                       "size": 670293,
                       "valid": true,

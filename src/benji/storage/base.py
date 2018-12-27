@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import concurrent
+import datetime
 import json
 import os
 import threading
@@ -42,12 +43,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     READ_QUEUE_LENGTH = 1
     WRITE_QUEUE_LENGTH = 1
 
-    _TRANSFORMS_KEY = 'transforms'
-    _SIZE_KEY = 'size'
-    _OBJECT_SIZE_KEY = 'object_size'
     _CHECKSUM_KEY = 'checksum'
+    _CREATED_KEY = 'created'
+    _MODIFIED_KEY = 'modified'
     _HMAC_KEY = 'hmac'
     _METADATA_VERSION_KEY = 'metadata_version'
+    _OBJECT_SIZE_KEY = 'object_size'
+    _SIZE_KEY = 'size'
+    _TRANSFORMS_KEY = 'transforms'
 
     _META_SUFFIX = '.meta'
 
@@ -114,10 +117,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                         object_size: int,
                         transforms_metadata: List[Dict] = None,
                         checksum: str = None) -> Tuple[Dict, bytes]:
+
+        timestamp = datetime.datetime.utcnow().isoformat(timespec='microseconds')
         metadata: Dict = {
+            self._CREATED_KEY: timestamp,
             self._METADATA_VERSION_KEY: str(VERSIONS[self._VERSIONS_OBJECT_METADATA].current),
-            self._SIZE_KEY: size,
+            self._MODIFIED_KEY: timestamp,
             self._OBJECT_SIZE_KEY: object_size,
+            self._SIZE_KEY: size,
         }
 
         if checksum:
@@ -137,7 +144,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if self._dict_hmac:
             self._dict_hmac.verify_hexdigest(metadata)
 
-        for required_key in [self._METADATA_VERSION_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
+        for required_key in [self._CREATED_KEY, self._METADATA_VERSION_KEY, self._MODIFIED_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
             if required_key not in metadata:
                 raise KeyError('Required object metadata key {} is missing for object {}.'.format(required_key, key))
 

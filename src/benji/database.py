@@ -849,7 +849,7 @@ class DatabaseBackend(ReprMixIn):
                     return fields
 
                 if isinstance(obj, datetime.datetime):
-                    return obj.isoformat(timespec='seconds')
+                    return obj.isoformat(timespec='microseconds')
                 elif isinstance(obj, VersionUid):
                     return obj.integer
                 elif isinstance(obj, BlockUid):
@@ -981,7 +981,7 @@ class DatabaseBackend(ReprMixIn):
 
             version = Version(
                 uid=version_uid,
-                date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S'),
+                date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S.%f'),
                 name=version_dict['name'],
                 snapshot_name=version_dict['snapshot_name'],
                 size=version_dict['size'],
