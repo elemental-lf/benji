@@ -144,14 +144,16 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if self._dict_hmac:
             self._dict_hmac.verify_hexdigest(metadata)
 
-        for required_key in [self._CREATED_KEY, self._METADATA_VERSION_KEY, self._MODIFIED_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
-            if required_key not in metadata:
-                raise KeyError('Required object metadata key {} is missing for object {}.'.format(required_key, key))
-
         # We currently support only one object metadata version
+        if self._METADATA_VERSION_KEY not in metadata:
+            raise KeyError('Required object metadata key {} is missing for object {}.'.format(self._METADATA_VERSION_KEY, key))
         version_obj = semantic_version.Version(metadata[self._METADATA_VERSION_KEY])
         if version_obj not in VERSIONS[self._VERSIONS_OBJECT_METADATA]:
             raise ValueError('Unsupported object metadata version: "{}".'.format(str(version_obj)))
+
+        for required_key in [self._CREATED_KEY, self._MODIFIED_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:
+            if required_key not in metadata:
+                raise KeyError('Required object metadata key {} is missing for object {}.'.format(required_key, key))
 
         if data_length != metadata[self._OBJECT_SIZE_KEY]:
             raise ValueError('Length mismatch for object {}. Expected: {}, got: {}.'.format(
