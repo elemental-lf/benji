@@ -4,7 +4,8 @@ configuration:
   empty: False
   schema:
     configurationVersion:
-      type: string
+      type: ['string', 'integer']
+      coerce: to_string
       required: True
       empty: False
       allowed:

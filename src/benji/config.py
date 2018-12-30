@@ -86,11 +86,15 @@ class Config:
         logger.debug('Resolved schema for {}: {}.'.format(name, result))
         return result
 
+    class _Validator(Validator):
+        def _normalize_coerce_to_string(self, value):
+            return str(value)
+
     def _get_validator(self, *, module: str, version: semantic_version.Version) -> Validator:
         name = self._schema_name(module, version)
         schema = self._resolve_schema(name=name)
         try:
-            validator = Validator(schema)
+            validator = Config._Validator(schema)
         except SchemaError as exception:
             logger.error('Schema {} validation errors:'.format(name))
             self._output_validation_errors(exception.args[0])
@@ -153,7 +157,7 @@ class Config:
             raise ConfigurationError('Configuration is missing required key "{}".'.format(
                 self._CONFIGURATION_VERSION_KEY))
 
-        version = config[self._CONFIGURATION_VERSION_KEY]
+        version = str(config[self._CONFIGURATION_VERSION_KEY])
         if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):
             raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
 

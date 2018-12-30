@@ -62,6 +62,33 @@ class ConfigTestCase(TestCaseBase, TestCase):
                 - RBD_FEATURE_EXCLUSIVE_LOCK
         """
 
+    CONFIG_INTEGER = """
+        configurationVersion: 1
+        logFile: /var/log/benji.log
+        blockSize: 4194304
+        defaultStorage: s1
+        databaseEngine: sqlite:////var/lib/benji/benji.sqlite
+        storages:
+          - name: file
+            module: file
+            storageId: 1
+            configuration:
+              path: /var/lib/benji/data
+              simultaneousWrites: 5
+              simultaneousReads: 5
+        nbd:
+          cacheDirectory: /tmp
+        ios:
+          - name: rbd
+            module: rbd
+            configuration:
+              ceph_conffile: /etc/ceph/ceph.conf
+              simultaneousReads: 10
+              newImageFeatures:
+                - RBD_FEATURE_LAYERING
+                - RBD_FEATURE_EXCLUSIVE_LOCK
+        """
+
     def test_load_from_string(self):
         config = Config(ad_hoc_config=self.CONFIG)
         self.assertEqual('/var/log/benji.log', config.get('logFile', types=str))
@@ -131,3 +158,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
         module_configuration = {'path': [1, 2, 3]}
         self.assertRaises(ConfigurationError,
                           lambda: config.validate(module='benji.storage.file', config=module_configuration))
+
+    def test_integer_version(self):
+        self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG_INTEGER), Config))
