@@ -368,7 +368,7 @@ class Block(Base):
     valid = Column(Boolean, nullable=False)  # 1 byte
     checksum = Column(Checksum(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
-    uid: BlockUid = cast(BlockUid, composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
+    uid = cast(BlockUid, composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
         Index('ix_blocks_uid_left_uid_right', 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
@@ -541,7 +541,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> Iterator[VersionStatistic]:
+    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> List[VersionStatistic]:
         builder = _QueryBuilder(self._session, VersionStatistic)
         try:
             stats = builder.build(filter_expression)

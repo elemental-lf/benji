@@ -642,7 +642,7 @@ class Benji(ReprMixIn):
                source: str,
                hints: List[Tuple[int, int, bool]] = None,
                base_version_uid: VersionUid = None,
-               storage_name: str = None) -> VersionUid:
+               storage_name: str = None) -> Version:
         """ Create a backup from source.
         If hints are given, they must be tuples of (offset, length, exists) where offset and length are integers and
         exists is a boolean. In this case only data within hints will be backed up.
@@ -1004,7 +1004,7 @@ class Benji(ReprMixIn):
                 versions_by_name[version.name] = []
             versions_by_name[version.name].append(version)
 
-        dismissed_versions = set()
+        dismissed_versions: Set[Version] = set()
         for versions_slice in versions_by_name.values():
             dismissed_versions |= set(RetentionFilter(rules_spec).filter(versions_slice))
 
