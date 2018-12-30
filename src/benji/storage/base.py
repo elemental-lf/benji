@@ -132,7 +132,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             metadata[self._TRANSFORMS_KEY] = transforms_metadata
 
         if self._dict_hmac:
-            self._dict_hmac.add_hexdigest(metadata)
+            self._dict_hmac.add_digest(metadata)
 
         return metadata, json.dumps(metadata, separators=(',', ':')).encode('utf-8')
 
@@ -140,7 +140,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         metadata = json.loads(metadata_json.decode('utf-8'))
 
         if self._dict_hmac:
-            self._dict_hmac.verify_hexdigest(metadata)
+            self._dict_hmac.verify_digest(metadata)
 
         # We currently support only one object metadata version
         if self._METADATA_VERSION_KEY not in metadata:

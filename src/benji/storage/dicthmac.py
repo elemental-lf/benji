@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+import base64
 
 from Crypto.Hash import HMAC, SHA256
 
@@ -21,7 +22,7 @@ class DictHMAC(ReprMixIn):
         self._hmac_key = hmac_key
         self._secret_key = secret_key
 
-    def _calculate_hexdigest(self, dict_data: dict) -> str:
+    def _calculate_digest(self, dict_data: dict) -> str:
         hmac = HMAC.new(self._secret_key, digestmod=self._HASH_MODULE)
 
         def traverse(cursor) -> None:
@@ -37,18 +38,18 @@ class DictHMAC(ReprMixIn):
 
         traverse(dict_data)
 
-        return hmac.hexdigest()
+        return base64.b64encode(hmac.digest()).decode('ascii')
 
-    def add_hexdigest(self, dict_data: dict) -> None:
+    def add_digest(self, dict_data: dict) -> None:
         if not isinstance(dict_data, dict):
             raise InternalError('dict_data must be of type dict, but is of type {}.', type(dict_data))
 
         dict_data[self._hmac_key] = {
             self._ALGORITHM_KEY: self._HASH_NAME,
-            self._DIGEST_KEY: self._calculate_hexdigest(dict_data)
+            self._DIGEST_KEY: self._calculate_digest(dict_data)
         }
 
-    def verify_hexdigest(self, dict_data) -> None:
+    def verify_digest(self, dict_data) -> None:
         if not isinstance(dict_data, dict):
             raise InternalError('dict_data must be of type dict, but is of type {}.', type(dict_data))
         if self._hmac_key not in dict_data:
@@ -66,9 +67,9 @@ class DictHMAC(ReprMixIn):
         if hmac_dict[self._ALGORITHM_KEY] != self._HASH_NAME:
             raise ValueError('Unsupported hash algorithm {}.'.format(hmac_dict[self._ALGORITHM_KEY]))
 
-        hexdigest_expected = hmac_dict[self._DIGEST_KEY]
+        digest_expected = hmac_dict[self._DIGEST_KEY]
         del dict_data[self._hmac_key]
-        hexdigest = self._calculate_hexdigest(dict_data)
-        if hexdigest != hexdigest_expected:
+        digest = self._calculate_digest(dict_data)
+        if digest != digest_expected:
             raise ValueError('Dictionary HMAC is invalid (expected {}, actual {}).'.format(
-                hexdigest_expected, hexdigest))
+                digest_expected, digest))
