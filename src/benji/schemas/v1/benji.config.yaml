@@ -8,7 +8,7 @@ configuration:
       required: True
       empty: False
       allowed:
-        - '1.0.0'
+        - '1'
 
     logFile:
       type: string

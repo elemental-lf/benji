@@ -1,4 +1,4 @@
-configurationVersion: '1.0.0'
+configurationVersion: '1'
 
 # Logfile location (default: null)
 # Setting this to null disables logging to a file, this might be useful when running Benji inside a container.

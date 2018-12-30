@@ -346,7 +346,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
-        configurationVersion: '1.0.0'
+        configurationVersion: '1'
         logFile: /dev/stderr
         ios:
         - name: file
@@ -365,7 +365,7 @@ class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
 class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
-        configurationVersion: '1.0.0'
+        configurationVersion: '1'
         logFile: /dev/stderr
         ios:
         - name: file
@@ -384,7 +384,7 @@ class DatabaseBackendTestSQLLiteInMemory(DatabaseBackendTestCase, TestCase):
 class DatabaseBackendTestPostgreSQL(DatabaseBackendTestCase, TestCase):
 
     CONFIG = """
-        configurationVersion: '1.0.0'
+        configurationVersion: '1'
         logFile: /dev/stderr
         ios:
         - name: file

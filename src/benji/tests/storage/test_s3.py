@@ -5,7 +5,7 @@ from . import StorageTestCase
 
 class test_s3(StorageTestCase, TestCase):
     CONFIG = """
-        configurationVersion: '1.0.0'
+        configurationVersion: '1'
         logFile: /dev/stderr
         databaseEngine: sqlite://        
         defaultStorage: s1

@@ -92,7 +92,7 @@ class ImportExportTestCase():
             print(f.getvalue())
             a = f.getvalue()
         benji_obj.close()
-        self.assertEqual(str(VERSIONS['database_metadata'].current), export['metadata_version'])
+        self.assertEqual(str(VERSIONS.database_metadata.current), export['metadata_version'])
         self.assertIsInstance(export['versions'], list)
         self.assertTrue(len(export['versions']) == 3)
         version = export['versions'][0]
@@ -213,7 +213,7 @@ class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCaseBase, Test
     VERSIONS = 3
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             blockSize: 4096
@@ -239,7 +239,7 @@ class ImportExportTestCasePostgreSQL_File(
     VERSIONS = 3
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             blockSize: 4096

@@ -36,8 +36,7 @@ class Config:
     _CONFIG_DIRS = ['/etc', '/etc/benji']
     _CONFIG_FILE = 'benji.yaml'
     _CONFIGURATION_VERSION_KEY = 'configurationVersion'
-    _CONFIGURATION_VERSION_REGEX = r'\d+\.\d+\.\d+'
-    _VERSIONS_CONFIGURATION = 'configuration'
+    _CONFIGURATION_VERSION_REGEX = r'\d+'
     _PARENTS_KEY = 'parents'
     _YAML_SUFFIX = '.yaml'
 
@@ -158,8 +157,8 @@ class Config:
         if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):
             raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
 
-        version_obj = semantic_version.Version(version)
-        if version_obj not in VERSIONS[self._VERSIONS_CONFIGURATION].supported:
+        version_obj = semantic_version.Version(version, partial=True)
+        if version_obj not in VERSIONS.configuration.supported:
             raise ConfigurationError('Configuration has unsupported version of "{}".'.format(version))
 
         self._config_version = version_obj

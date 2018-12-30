@@ -1271,7 +1271,7 @@ class BenjiStore(ReprMixIn):
                 logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid.v_string, block.id))
                 self._block_cache.rm(block.uid)
                 block.checksum = None
-                block.uid = None
+                block.uid = BlockUid(None, None)
             else:
                 storage.save_sync(block, data)
                 self._block_cache.rm(block.uid)

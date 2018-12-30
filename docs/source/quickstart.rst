@@ -37,7 +37,7 @@ Backup
 
 This represents a minimal configuration mit SQLite3 backend and file-based block storage::
 
-    configurationVersion: '1.0.0'
+    configurationVersion: '1'
     dataBackend:
       type: file
       file:

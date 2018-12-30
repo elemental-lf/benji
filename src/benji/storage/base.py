@@ -54,8 +54,6 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
     _META_SUFFIX = '.meta'
 
-    _VERSIONS_OBJECT_METADATA = 'object_metadata'
-
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         self._name = name
         self._storage_id = storage_id
@@ -121,7 +119,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         timestamp = datetime.datetime.utcnow().isoformat(timespec='microseconds')
         metadata: Dict = {
             self._CREATED_KEY: timestamp,
-            self._METADATA_VERSION_KEY: str(VERSIONS[self._VERSIONS_OBJECT_METADATA].current),
+            self._METADATA_VERSION_KEY: str(VERSIONS.object_metadata.current),
             self._MODIFIED_KEY: timestamp,
             self._OBJECT_SIZE_KEY: object_size,
             self._SIZE_KEY: size,
@@ -148,7 +146,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if self._METADATA_VERSION_KEY not in metadata:
             raise KeyError('Required object metadata key {} is missing for object {}.'.format(self._METADATA_VERSION_KEY, key))
         version_obj = semantic_version.Version(metadata[self._METADATA_VERSION_KEY])
-        if version_obj not in VERSIONS[self._VERSIONS_OBJECT_METADATA]:
+        if version_obj not in VERSIONS.object_metadata.supported:
             raise ValueError('Unsupported object metadata version: "{}".'.format(str(version_obj)))
 
         for required_key in [self._CREATED_KEY, self._MODIFIED_KEY, self._OBJECT_SIZE_KEY, self._SIZE_KEY]:

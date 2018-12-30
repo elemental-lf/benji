@@ -6,8 +6,8 @@ import threading
 from unittest import TestCase
 
 from benji.benji import BenjiStore
-from benji.logging import logger
 from benji.database import VersionUid
+from benji.logging import logger
 from benji.nbdserver import NbdServer
 from benji.tests.testcase import BenjiTestCaseBase
 
@@ -150,7 +150,7 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
     NBD_DEVICE = '/dev/nbd15'
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: BLAKE2b,digest_bits=256
@@ -201,7 +201,7 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
     NBD_DEVICE = '/dev/nbd15'
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA512

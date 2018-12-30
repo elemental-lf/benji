@@ -9,7 +9,7 @@ from benji.tests.testcase import TestCaseBase
 class ConfigTestCase(TestCaseBase, TestCase):
 
     CONFIG = """
-        configurationVersion: '1.0.0'
+        configurationVersion: '1'
         logFile: /var/log/benji.log
         blockSize: 4194304
         defaultStorage: s1

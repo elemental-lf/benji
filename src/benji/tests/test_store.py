@@ -129,7 +129,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
 class BenjiStoreTestCaseSQLLite_File(BenjiStoreTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: BLAKE2b,digest_bits=256
@@ -176,7 +176,7 @@ class BenjiStoreTestCaseSQLLite_File(BenjiStoreTestCase, TestCase):
 class BenjiStoreTestCasePostgreSQL_S3(BenjiStoreTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA512

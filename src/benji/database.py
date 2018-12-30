@@ -422,7 +422,6 @@ class Lock(Base):
 class DatabaseBackend(ReprMixIn):
     _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
-    _VERSIONS_DATABASE_METADATA = 'database_metadata'
     _COMMIT_EVERY_N_BLOCKS = 1000
 
     _locking = None
@@ -871,7 +870,7 @@ class DatabaseBackend(ReprMixIn):
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
 
         root_dict = root_dict.copy()
-        root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS[self._VERSIONS_DATABASE_METADATA].current)
+        root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
 
         json.dump(
             root_dict,
@@ -899,7 +898,7 @@ class DatabaseBackend(ReprMixIn):
             raise InputDataError('Import file has an invalid vesion of "{}".'.format(metadata_version))
 
         metadata_version_obj = semantic_version.Version(metadata_version)
-        if metadata_version_obj not in VERSIONS[self._VERSIONS_DATABASE_METADATA].supported:
+        if metadata_version_obj not in VERSIONS.database_metadata.supported:
             raise InputDataError('Unsupported metadata version (1): "{}".'.format(str(metadata_version_obj)))
 
         import_method_name = 'import_v{}'.format(metadata_version_obj.major)

@@ -218,7 +218,7 @@ class SmokeTestCase(BenjiTestCaseBase):
 class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: BLAKE2b,digest_bits=256
@@ -278,7 +278,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
 class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA256
@@ -338,7 +338,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
 class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA512
@@ -406,7 +406,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
 class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA224
@@ -480,7 +480,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
 
     CONFIG = """
-            configurationVersion: '1.0.0'
+            configurationVersion: '1'
             processName: benji
             logFile: /dev/stderr
             hashFunction: SHA512
