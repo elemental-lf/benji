@@ -144,13 +144,13 @@ class Checksum(TypeDecorator):
 
     impl = LargeBinary
 
-    def process_bind_param(self, value: Union[None, str], dialect) -> Union[None, bytes]:
+    def process_bind_param(self, value: Optional[str], dialect) -> Optional[bytes]:
         if value is not None:
             return unhexlify(value)
         else:
             return None
 
-    def process_result_value(self, value: bytes, dialect) -> Union[None, str]:
+    def process_result_value(self, value: bytes, dialect) -> Optional[str]:
         if value is not None:
             return hexlify(value).decode('ascii')
         else:
