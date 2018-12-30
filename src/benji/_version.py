@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # This file is part of 'miniver': https://github.com/jbweston/miniver
 #
-from collections import namedtuple
 import os
 import subprocess
-
+from collections import namedtuple
 from distutils.command.build_py import build_py as build_py_orig
 
 from setuptools.command.sdist import sdist as sdist_orig
@@ -21,7 +20,7 @@ distr_root = os.path.normpath(os.path.join(package_root, '..', '..'))
 STATIC_VERSION_FILE = '_static_version.py'
 
 
-def get_version(version_file = STATIC_VERSION_FILE):
+def get_version(version_file=STATIC_VERSION_FILE):
     version_info = get_static_version_info(version_file)
     if version_info['version'] == "__use_git__":
         version = get_version_from_git()
@@ -34,14 +33,14 @@ def get_version(version_file = STATIC_VERSION_FILE):
         return version_info['version']
 
 
-def get_static_version_info(version_file = STATIC_VERSION_FILE):
+def get_static_version_info(version_file=STATIC_VERSION_FILE):
     version_info = {}
     with open(os.path.join(package_root, version_file), 'rb') as f:
         exec(f.read(), {}, version_info)
     return version_info
 
 
-def version_is_from_git(version_file = STATIC_VERSION_FILE):
+def version_is_from_git(version_file=STATIC_VERSION_FILE):
     return get_static_version_info(version_file)['version'] == '__use_git__'
 
 

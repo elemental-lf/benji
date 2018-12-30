@@ -318,8 +318,8 @@ class Label(Base):
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int,
-                 checksum: Optional[str], size: int, valid: bool) -> None:
+    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int, checksum: Optional[str], size: int,
+                 valid: bool) -> None:
         self.uid = uid if uid is not None else BlockUid(None, None)
         self.version_uid = version_uid
         self.id = id
@@ -928,7 +928,16 @@ class DatabaseBackend(ReprMixIn):
             version_uid = VersionUid(version_dict['uid'])
 
             for attribute in [
-                    'date', 'name', 'snapshot_name', 'size', 'storage_id', 'block_size', 'valid', 'protected', 'blocks', 'labels',
+                    'date',
+                    'name',
+                    'snapshot_name',
+                    'size',
+                    'storage_id',
+                    'block_size',
+                    'valid',
+                    'protected',
+                    'blocks',
+                    'labels',
             ]:
                 if attribute not in version_dict:
                     raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))

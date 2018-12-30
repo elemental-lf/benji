@@ -87,6 +87,7 @@ class Config:
         return result
 
     class _Validator(Validator):
+
         def _normalize_coerce_to_string(self, value):
             return str(value)
 
@@ -117,7 +118,8 @@ class Config:
 
         traverse(errors)
 
-    def validate(self, *, module: str, version: semantic_version.Version = None, config: Union[Dict, ConfigDict]) -> Dict:
+    def validate(self, *, module: str, version: semantic_version.Version = None,
+                 config: Union[Dict, ConfigDict]) -> Dict:
         validator = self._get_validator(module=module, version=self._config_version if version is None else version)
         if not validator.validate({'configuration': config if config is not None else {}}):
             logger.error('Configuration validation errors:')

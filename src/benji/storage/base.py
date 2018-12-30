@@ -144,7 +144,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         # We currently support only one object metadata version
         if self._METADATA_VERSION_KEY not in metadata:
-            raise KeyError('Required object metadata key {} is missing for object {}.'.format(self._METADATA_VERSION_KEY, key))
+            raise KeyError('Required object metadata key {} is missing for object {}.'.format(
+                self._METADATA_VERSION_KEY, key))
         version_obj = semantic_version.Version(metadata[self._METADATA_VERSION_KEY])
         if version_obj not in VERSIONS.object_metadata.supported:
             raise ValueError('Unsupported object metadata version: "{}".'.format(str(version_obj)))

@@ -314,7 +314,8 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version_statistic_filter(self):
         for i in range(16):
-            self.database_backend.set_stats(uid=VersionUid(i),
+            self.database_backend.set_stats(
+                uid=VersionUid(i),
                 base_uid=None,
                 hints_supplied=True,
                 date=datetime.datetime.utcnow(),
@@ -335,12 +336,13 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         stats = self.database_backend.get_stats_with_filter('snapshot_name == "snapshot-name.1"')
         self.assertEqual(1, len(stats))
 
-        self.assertRaises(
-            UsageError, lambda: self.database_backend.get_stats_with_filter('labels["label-key"] and "label-value"'))
+        self.assertRaises(UsageError,
+                          lambda: self.database_backend.get_stats_with_filter('labels["label-key"] and "label-value"'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('True'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('10'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('"hallo" == "hey"'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('labels["label-key"] == "label-value"'))
+        self.assertRaises(UsageError,
+                          lambda: self.database_backend.get_stats_with_filter('labels["label-key"] == "label-value"'))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

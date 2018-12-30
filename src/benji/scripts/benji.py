@@ -59,8 +59,7 @@ class Commands:
             if rbd_hints:
                 data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
                 hints = hints_from_rbd_diff(data)
-            backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
-                                                  storage)
+            backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj, storage)
 
             if labels:
                 for key, value in label_add:
