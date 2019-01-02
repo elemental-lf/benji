@@ -37,7 +37,7 @@ from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
-from versions import VERSIONS
+from benji.versions import VERSIONS
 
 
 @total_ordering

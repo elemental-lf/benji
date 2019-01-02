@@ -15,7 +15,7 @@ from pkg_resources import resource_filename
 
 from benji.exception import ConfigurationError, InternalError
 from benji.logging import logger
-from versions import VERSIONS
+from benji.versions import VERSIONS
 
 
 class ConfigDict(dict):

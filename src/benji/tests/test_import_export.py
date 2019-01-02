@@ -9,7 +9,7 @@ from unittest import TestCase
 from benji.database import VersionUid
 from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
-from versions import VERSIONS
+from benji.versions import VERSIONS
 
 kB = 1024
 MB = kB * 1024

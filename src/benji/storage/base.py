@@ -23,7 +23,7 @@ from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, future_results_as_completed, derive_key
-from versions import VERSIONS
+from benji.versions import VERSIONS
 
 
 class InvalidBlockException(BenjiException, IOError):
