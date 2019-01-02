@@ -3,7 +3,11 @@ set -xeo pipefail
 id -a
 pwd
 
-VERSION="$(../../maint-scripts/git-pep440-version)"
+# Travis CI and local
+[ -x maint-scripts/git-pep440-version ] && VERSION="$(maint-scripts/git-pep440-version)"
+# Docker Cloud
+[ -x ../../maint-scripts/git-pep440-version ] && VERSION="$(../../maint-scripts/git-pep440-version)"
+
 if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
 	docker tag $IMAGE_NAME "$DOCKER_REPO:$VERSION"
 	[[ $COMMIT_MSG ]] && docker push "$DOCKER_REPO:$VERSION"
