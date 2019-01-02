@@ -1,3 +1,4 @@
+dist: xenial
 language: python
 
 services:
@@ -45,7 +46,7 @@ before_script:
   - pip freeze
   - psql -U postgres -c 'CREATE DATABASE benji;'
   - psql -U postgres -c "CREATE ROLE benji WITH PASSWORD 'verysecret';"
-  - psql -U postgres -c 'GRANT ALL ON DATABASE benji TO benji'
+  - psql -U postgres -c 'GRANT ALL ON DATABASE benji TO benji;'
   # Forward PostgreSQL connections, tests scripts use 15432
   - 'simpleproxy -L localhost:15432 -R localhost:5432 &'
 
