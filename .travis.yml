@@ -31,6 +31,7 @@ cache:
 before_install:
   - uname -a
   - lsb_release -a
+  - printenv
   - virtualenv --version
   - python --version
   - docker version
@@ -50,6 +51,7 @@ script:
   - python -m unittest discover -v -t src -s src/benji/tests
   - DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
   - DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+  - python setup.py sdist
 
 after_success:
   - 'docker images | grep elementalnet'
