@@ -1,14 +1,8 @@
-.. |br| raw:: html
-
-   <br />
-
 .. image:: https://img.shields.io/travis/elemental-lf/benji/master.svg?style=plastic&label=Travis%20CI
     :target: https://travis-ci.org/elemental-lf/benji
 
 .. image:: https://img.shields.io/pypi/l/benji.svg?style=plastic&label=License
     :target: https://pypi.org/project/benji/
-
-|br|
 
 .. image:: https://img.shields.io/pypi/v/benji.svg?style=plastic&label=PyPI%20version
     :target: https://pypi.org/project/benji/
