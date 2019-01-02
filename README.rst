@@ -1,3 +1,21 @@
+.. |br| raw:: html
+
+   <br />
+
+.. image:: https://img.shields.io/travis/elemental-lf/benji/master.svg?style=plastic&label=Travis%20CI
+    :target: https://travis-ci.org/elemental-lf/benji
+
+.. image:: https://img.shields.io/pypi/l/benji.svg?style=plastic&label=License
+    :target: https://pypi.org/project/benji/
+
+|br|
+
+.. image:: https://img.shields.io/pypi/v/benji.svg?style=plastic&label=PyPI%20version
+    :target: https://pypi.org/project/benji/
+
+.. image:: https://img.shields.io/pypi/pyversions/benji.svg?style=plastic&label=Supported%20Python%20versions
+    :target: https://pypi.org/project/benji/
+
 Benji Backup
 ============
 
@@ -13,18 +31,33 @@ The primary use cases for Benji are:
   drives or the cloud
 
 Benji features a Docker image and Helm chart for integration with
-`Kubernetes <https://kubernetes.io/>`_ and  `Rook <https://rook.io/>`_. This makes it
-easy to setup a backup solution for your persistent volumes.
+`Kubernetes <https://kubernetes.io/>`_. This makes it easy to setup a backup solution 
+for your persistent volumes.
 
 Status
 ------
 
-Benji is currently somewhere between alpha and beta quality. It passes all included
-tests. The documentation is mostly up-to-date but the web site is not.
+**The current master branch is not compatible with the old master branch of 10/05/2018
+and earlier and there is no migration path. The last commit supporting the old data
+structures is available under the tag master-20181005 if you need it. I'm sorry for
+any inconveniences this may cause but please also remember that Benji is still in its
+infancy.**
+
+Benji is currently somewhere between alpha and beta quality I think. It passes all
+included tests. The documentation isn't completely up-to-date, especially in regard
+to the new unified filter syntax. The Helm chart is currently work in progress.
 
 Benji requires **Python 3.6.5 or newer** because older Python versions
-have some shortcomings in the concurrent.futures implementation which lead to an
+have some shortcomings in the ``concurrent.futures`` implementation which lead to an
 excessive memory usage.
+
+Older versions contained a Docker image for integrating with `Rook <https://rook.io/>`_.
+As I no longer have access to a Rook installation and Rook changed its Docker base
+image in the meantime I've dropped this support for the time being. The new generic
+Kubernetes image (``benji-k8s``) can be used instead, but it will be more work to get
+the Ceph credentials into the container. I'd accept patches for a third Docker
+image (resurrecting the old ``benji-rook`` image) or maybe it's also possible to integrate
+the changes into the ``benji-k8s`` image without too much fuss.
 
 Main Features
 -------------
@@ -91,7 +124,7 @@ Main Features
     the block, or because of bit rot on the backup target storage.
 
     Benji also supports a faster light-weight scrubbing mode which only checks
-    the metadata's consistency and object existence on the backup storage.
+    the object's existence and metadata consistency.
 
     If a scrubbing failure occurs, the defective block and the backups it belongs
     to are marked as 'invalid' and the block will be re-read for the next backup
@@ -101,20 +134,17 @@ Main Features
     it should scrub. So you can statistically scrub 16% each day and have a
     full scrub each week (16*7 > 100).
 
-    .. NOTE:: Even invalid backups can be restored!
-
 **Concurrency: Backup while scrubbing while restoring**
     As Benji is a long-running process, you don't want to wait until something has
-    finished of course. While there are a few places in Benji where
-    a global lock will be held most operations can run in parallel. So you
-    can scrub, backup and restore at the same time and multiple times each.
+    finished of course. You can scrub, backup and restore at the same time and
+    multiple times each.
 
     Benji even supports distributed operation where multiple instances run on
     different hosts or in different containers at the same time.
 
 **Cache friendly**
-    While reading large pieces of data on Linux, often buffers and caches get filled
-    up with data (which in case of backups is essentially only needed once).
+    While reading large pieces of data on Linux, buffers and caches get filled
+    up with data, which in case of backups is essentially only needed once.
     Benji instructs Linux and Ceph to immediately forget the data once it's processed.
 
 **Simplicity: As simple as cp, but as clever as a backup solution needs to be**
