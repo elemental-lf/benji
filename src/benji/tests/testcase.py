@@ -7,9 +7,9 @@ from binascii import hexlify
 
 from benji.benji import Benji
 from benji.config import Config
+from benji.database import DatabaseBackend
 from benji.factory import StorageFactory
 from benji.logging import init_logging
-from benji.database import DatabaseBackend
 
 
 class TestCaseBase:
@@ -42,7 +42,7 @@ class TestCaseBase:
 
     def setUp(self):
         self.testpath = self.TestPath()
-        init_logging(None, logging.DEBUG)
+        init_logging(None, logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG)
 
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 
@@ -80,12 +80,7 @@ class DatabaseBackendTestCaseBase(TestCaseBase):
         self.database_backend = database_backend.open()
 
     def tearDown(self):
-        if hasattr(self, 'data_backend'):
-            uids = self.data_backend.list_blocks()
-            self.assertEqual(0, len(uids))
-            self.data_backend.close()
-        if hasattr(self, 'database_backend'):
-            self.database_backend.close()
+        self.database_backend.close()
         super().tearDown()
 
 

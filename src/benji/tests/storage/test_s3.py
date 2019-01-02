@@ -1,8 +1,11 @@
+import os
+import unittest
 from unittest import TestCase
 
 from . import StorageTestCase
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_S3', False), 'No S3 setup available.')
 class test_s3(StorageTestCase, TestCase):
     CONFIG = """
         configurationVersion: '1'

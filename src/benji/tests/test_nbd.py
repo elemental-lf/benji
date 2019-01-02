@@ -3,6 +3,7 @@ import random
 import re
 import subprocess
 import threading
+import unittest
 from unittest import TestCase
 
 from benji.benji import BenjiStore
@@ -16,6 +17,7 @@ MB = kB * 1024
 GB = MB * 1024
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_NBD', False), 'No NBD setup available.')
 class NbdTestCase:
 
     @staticmethod

@@ -2,12 +2,14 @@
 import json
 import os
 import random
+import unittest
 from functools import reduce
 from operator import and_
 from shutil import copyfile
 from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
+from benji.logging import logger
 from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
 
@@ -58,7 +60,7 @@ class SmokeTestCase(BenjiTestCaseBase):
         deep_scrub_history = BlockUidHistory()
         storage_name = 's1'
         for i in range(1, 100):
-            print('Run {}'.format(i + 1))
+            logger.debug('Run {}'.format(i + 1))
             hints = []
             if not os.path.exists(image_filename):
                 open(image_filename, 'wb').close()
@@ -76,7 +78,7 @@ class SmokeTestCase(BenjiTestCaseBase):
                         data = b'\0' * patch_size
                         exists = "false"
                     offset = random.randint(0, size - patch_size - 1)
-                    print('    Applied change at {}({}):{}, exists {}'.format(offset, int(offset / 4096), patch_size,
+                    logger.debug('Applied change at {}({}):{}, exists {}'.format(offset, int(offset / 4096), patch_size,
                                                                               exists))
                     self.patch(image_filename, offset, data)
                     hints.append({'offset': offset, 'length': patch_size, 'exists': exists})
@@ -88,14 +90,14 @@ class SmokeTestCase(BenjiTestCaseBase):
             if old_size and size > old_size:
                 patch_size = size - old_size + 1
                 offset = old_size - 1
-                print('    Image got bigger at {}({}):{}'.format(offset, int(offset / 4096), patch_size))
+                logger.debug('Image got bigger at {}({}):{}'.format(offset, int(offset / 4096), patch_size))
                 hints.append({'offset': offset, 'length': patch_size, 'exists': 'true'})
 
             old_size = size
 
             copyfile(image_filename, '{}.{}'.format(image_filename, i + 1))
 
-            print('  Applied {} changes, size is {}.'.format(len(hints), size))
+            logger.debug('Applied {} changes, size is {}.'.format(len(hints), size))
             with open(os.path.join(testpath, 'hints'), 'w') as f:
                 f.write(json.dumps(hints))
 
@@ -113,23 +115,23 @@ class SmokeTestCase(BenjiTestCaseBase):
                 version_uid = version.uid
             benji_obj.close()
             version_uids.append(version_uid)
-            print('  Backup successful')
+            logger.debug('Backup successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.add_label(version_uid, 'label-1', 'value-1')
             benji_obj.add_label(version_uid, 'label-2', 'value-2')
             benji_obj.close()
-            print('  Labeling of version successful')
+            logger.debug('Labeling of version successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.rm(version_uid, force=True, keep_metadata_backup=True)
             benji_obj.close()
-            print('  Removal of version successful')
+            logger.debug('Removal of version successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.close()
-            print('  Restore of version successful')
+            logger.debug('Restore of version successful')
 
             benji_obj = self.benjiOpen()
             blocks = benji_obj._database_backend.get_blocks_by_version(version_uid)
@@ -138,7 +140,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             if len(blocks) > 1:
                 self.assertTrue(reduce(and_, [block.size == block_size for block in blocks[:-1]]))
             benji_obj.close()
-            print('  Block list successful')
+            logger.debug('Block list successful')
 
             benji_obj = self.benjiOpen()
             versions = benji_obj.ls()
@@ -148,32 +150,32 @@ class SmokeTestCase(BenjiTestCaseBase):
             self.assertTrue(reduce(and_, [version.block_size == block_size for version in versions]))
             self.assertTrue(reduce(and_, [version.size > 0 for version in versions]))
             benji_obj.close()
-            print('  Version list successful')
+            logger.debug('Version list successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.scrub(version_uid)
             benji_obj.close()
-            print('  Scrub successful')
+            logger.debug('Scrub successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid)
             benji_obj.close()
-            print('  Deep scrub successful')
+            logger.debug('Deep scrub successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid, 'file://' + image_filename)
             benji_obj.close()
-            print('  Deep scrub with source successful')
+            logger.debug('Deep scrub with source successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.scrub(version_uid, history=scrub_history)
             benji_obj.close()
-            print('  Scrub with history successful')
+            logger.debug('Scrub with history successful')
 
             benji_obj = self.benjiOpen()
             benji_obj.deep_scrub(version_uid, history=deep_scrub_history)
             benji_obj.close()
-            print('  Deep scrub with history successful')
+            logger.debug('Deep scrub with history successful')
 
             restore_filename_1 = os.path.join(testpath, 'restore.{}'.format(i + 1))
             restore_filename_2 = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
@@ -181,14 +183,14 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.restore(version_uid, 'file://' + restore_filename_1, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_1))
-            print('  Restore successful')
+            logger.debug('Restore successful')
 
             benji_obj = self.benjiOpen(in_memory_database=True)
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.restore(version_uid, 'file://' + restore_filename_2, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_2))
-            print('  Metadata-backend-less restore successful')
+            logger.debug('Metadata-backend-less restore successful')
             base_version_uid = version_uid
 
             # delete old versions
@@ -274,6 +276,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
             """
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False), 'No PostgreSQL setup available.')
 class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
 
     CONFIG = """
@@ -334,6 +337,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
             """
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False), 'No PostgreSQL or S3 setup available.')
 class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
 
     CONFIG = """
@@ -402,6 +406,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
             """
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False), 'No PostgreSQL or S3 setup available.')
 class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 
     CONFIG = """
@@ -476,6 +481,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             """
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_B2', False), 'No PostgreSQL or B2 setup available.')
 class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
 
     CONFIG = """

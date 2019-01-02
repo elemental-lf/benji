@@ -1,5 +1,6 @@
 import os
 import random
+import unittest
 from unittest import TestCase
 
 from parameterized import parameterized
@@ -21,7 +22,8 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         with open(image_filename, 'wb') as f:
             f.write(self.image)
         benji_obj = self.benjiOpen(init_database=True)
-        version_uid = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename, None, None)
+        version = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename, None, None)
+        version_uid = version.uid
         benji_obj.close()
         return version_uid, size, image_filename
 
@@ -31,9 +33,6 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.version_uid = version_uid
         self.size = size
         self.image_filename = image_filename
-
-    def tearDown(self):
-        super().tearDown()
 
     def test_get_versions(self):
         benji_obj = self.benjiOpen()
@@ -73,6 +72,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.assertEqual(version.block_size, cow_version.block_size)
         self.assertEqual(version.storage_id, cow_version.storage_id)
         self.assertNotEqual(version.snapshot_name, cow_version.snapshot_name)
+        store.fixate(cow_version)
         store.close(version)
         benji_obj.close()
 
@@ -172,7 +172,7 @@ class BenjiStoreTestCaseSQLLite_File(BenjiStoreTestCase, TestCase):
                 cacheDirectory: {testpath}/nbd-cache
             """
 
-
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False), 'No PostgreSQL setup available.')
 class BenjiStoreTestCasePostgreSQL_S3(BenjiStoreTestCase, TestCase):
 
     CONFIG = """

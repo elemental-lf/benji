@@ -1,8 +1,11 @@
+import os
+import unittest
 from unittest import TestCase
 
 from . import StorageTestCase
 
 
+@unittest.skipIf(os.environ.get('UNITTEST_SKIP_B2', False), 'No B2 setup available.')
 class StorageTestB2(StorageTestCase, TestCase):
     CONFIG = """
         configurationVersion: '1'
