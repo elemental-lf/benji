@@ -20,23 +20,23 @@ Metadata Redundancy
 ~~~~~~~~~~~~~~~~~~~
 
 Benji already exports the version metadata to the *data backend*, too. You
-can restore this information with ``benji import-from-backend``:
+can restore this information with ``benji metadata-restore``:
 
-.. command-output::benji import-from-backend --help
+.. command-output::benji metadata-restore --help
 
 The metadata-backend-less uses this import from the *data backend* to
 populate an in-memory database to enable restores when the metadata
 backend is unavailable, please see section :ref:`metadata_backend_less`.
 
-You can also make further copies of the metadata with ``benji export``
+You can also make further copies of the metadata with ``benji metadata-export``
 and store them somewhere safe to increase your redundancy even more. It is
 advisable to compress them as the JSON export format is quite redundant.
 
-.. command-output::benji export --help
+.. command-output::benji metadata-export --help
 
 You can import these exports again with:
 
-.. command-output::benji import --help
+.. command-output::benji metadata-import --help
 
 If the imported *version* already exists in the database backend Benji
 terminates with an error and doesn't proceed with the import.
@@ -46,8 +46,8 @@ to reimport all existing versions again!
 
 .. ATTENTION:: When you remove (``benji rm``) versions from the database and
     then call ``benji cleanup``, the blocks containing the backed up data will
-    be removed. No ``benji import`` can bring them back, because Benji's export
-    format *only* contains metadata information.
+    be removed. No ``benji metadata-import`` can bring them back, because
+    Benji's export format *only* contains metadata information.
 
 Database High-Availability
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,8 +58,8 @@ backup in place.
 
 .. CAUTION:: DBMS replication only helps when one server crashes or has a
     failure. It does not help against software-bug related data loss, human
-    error and more. So the automatic metadata export and ``benji export`` are
-    the only reliable options for long-term data safety.
+    error and more. So the automatic metadata backup and ``benji metadata-export``
+    are the only reliable options for long-term data safety.
 
 Secure your block data
 ----------------------

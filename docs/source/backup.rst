@@ -246,9 +246,9 @@ restore your image.
 This information is stored in the database backend. Additionally Benji will
 save the metadata on the *data backend* automatically. Should you lose your
 database backend, you can restore these metadata backups by using
-``benji import-from-backend``.
+``benji metadata-restore``.
 
-.. command-output:: benji import-from-backend --help
+.. command-output:: benji metadata-restore --help
 
 There is currently no mechanism to import the backup of all version's
 metadata from the *data backend*, but you could get a list of all versions
@@ -258,16 +258,16 @@ manually from the *data backend*.
     if you have these features enabled.
 
 If you want to make your own copies of your metadata you can do so by using
-``benji export``.
+``benji metadata-export``.
 
-.. command-output:: benji export --help
+.. command-output:: benji metadata-export --help
 
 If you're doing this programmatically and are exporting to STDOUT you should
 probably add ``-m`` to your export command to reduce the logging level of Benji.
 
 ::
 
-    $ benji -m export V1
+    $ benji -m metadata-export V1
     {
       "metadataVersion": "1.0.0",
       "versions": [
@@ -295,9 +295,9 @@ probably add ``-m`` to your export command to reduce the logging level of Benji.
             },
     [...]
 
-You can import such a dump of a version's metadata with ``benji import``.
+You can import such a dump of a version's metadata with ``benji metadata-import``.
 
-.. command-output:: benji import --help
+.. command-output:: benji metadata-import --help
 
 You can't import versions that already exist in the database backend.
 

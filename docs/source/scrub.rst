@@ -80,7 +80,7 @@ is limited. It is not a replacement for deep-scrubs but you can reduce
 their frequency.
 
 Batch scrubbing
---------------
+---------------
 
 Benji also supports two commands to facilitate batch scrubbing of versions:
 ``benji batch-scrub`` and ``benji batch-deep-scrub``:
