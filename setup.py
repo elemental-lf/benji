@@ -30,8 +30,8 @@ Environment :: Console
 Intended Audience :: System Administrators
 License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)
 Operating System :: POSIX
-Programming Language :: Python :: 3
 Programming Language :: Python :: 3.6
+Programming Language :: Python :: 3.7
 Topic :: System :: Archiving :: Backup
 """ [:-1].split('\n'),
     keywords='backup',
