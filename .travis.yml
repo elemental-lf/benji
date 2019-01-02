@@ -33,6 +33,7 @@ before_install:
   - lsb_release -a
   - virtualenv --version
   - python --version
+  - docker version
   - travis_retry pip install --upgrade setuptools
   - travis_retry pip install --upgrade pip
 
@@ -47,3 +48,8 @@ before_script:
 
 script:
   - python -m unittest discover -v -t src -s src/benji/tests
+  - DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
+  - DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+
+after_success:
+  - 'docker images | grep elementalnet'
