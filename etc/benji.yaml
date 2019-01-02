@@ -6,24 +6,26 @@ configurationVersion: '1'
 # Benji with the '-v' option.
 logFile: /var/log/benji.log
 
-# Default block size. 4MB are recommended for backup of Ceph RBD images.
+# Default block size (default: 4194304)
 # The block size can be changed on the command line on a version by version basis, but be aware that this will affect
 # deduplication and increase the space usage. One possible use case for different block sizes would be backing up LVM
 # volumes and Ceph images with the same Benji installation. While for Ceph 4MB is usually the best size, LVM volume
 # might profit from a smaller block size.
 blockSize: 4194304
 
-# Hash function to use for calculating block checksum
+# Hash function to use for calculating block checksums (default: BLAKE2b,digest_bits=256)
 # There is normally no reason to change the default.
 # DO NOT CHANGE WHEN BACKUPS EXIST!
 hashFunction: BLAKE2b,digest_bits=256
 
+# Process name (default: benji)
 # This name will be used to identify a specific configuration in the
 # process list and could be used to distinguish several parallel installations.
 processName: benji
 
-# Allow removal of backup versions after n days (set to 0 to disable, i.e. to be
-# able to delete any version)
+# Days of protection for backup versions (default: 6)
+# Disallow removal of backup versions if they are younger than this number of days. Set to 0 to disable, i.e. to be
+# able to delete any version.
 disallowRemoveWhenYounger: 6
 
 # Database engine (default: none)
@@ -33,7 +35,10 @@ disallowRemoveWhenYounger: 6
 #           sqlite:////var/lib/benji/benji.sqlite
 metadataEngine: sqlite:////var/lib/benji/benji.sqlite
 
-dataBackend:
+# Default storage to use (no default, required)
+defaultStorage: s-1
+
+storage:
   # Which data backend to use?
   # Available types:
   #   file, s3, b2
