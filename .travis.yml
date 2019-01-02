@@ -11,7 +11,7 @@ python:
 
 branches:
   only:
-    - wip
+    - master
 
 env:
   global:
