@@ -1,0 +1,46 @@
+language: python
+
+services:
+  - postgresql
+
+python:
+  - 3.6
+  - 3.7
+  - nightly
+
+branches:
+  only:
+    - wip
+
+env:
+  global:
+    - UNITTEST_QUIET=1
+    - UNITTEST_SKIP_POSTGESQL=1
+    - UNITTEST_SKIP_S3=1
+    - UNITTEST_SKIP_B2=1
+    - UNITTEST_SKIP_NBD=1
+
+matrix:
+  allow_failures:
+    - python: nightly
+
+cache:
+  - pip
+
+before_install:
+  - uname -a
+  - lsb_release -a
+  - virtualenv --version
+  - python --version
+  - travis_retry pip install --upgrade setuptools
+  - travis_retry pip install --upgrade pip
+
+install:
+  - pip install '.[s3,b2,compression,readcache,dev]'
+  - pip install -r requirements_docs.txt
+
+before_script:
+  - pip freeze
+
+script:
+  - PYTHONPATH=./src python -m unittest discover -v -t src -s src/benji/tests
