@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Administration &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -256,11 +255,10 @@
             
   <div class="section" id="administration">
 <span id="id1"></span><h1>Administration<a class="headerlink" href="#administration" title="Permalink to this headline">¶</a></h1>
-<p>Benji is an important tool when it’s responsible for company-wide backups.
-Backups, scrubs, restores and cleanups must run smoothly and need to be
-monitored closely.</p>
-<p>Also, as Benji has two parts (<em>metadata backend and *data backend</em>), both have to
-be checked regularly and be as highly-available as possible.</p>
+<p>Benji is an important tool when it’s responsible for keeping backups of your
+important data. Backups, scrubs, restores and cleanups must run smoothly and
+need to be monitored closely. Also, the database backend and the collection
+of data storages need to meet your availability requirements.</p>
 <div class="section" id="secure-your-metadata">
 <span id="administration-meta-backend"></span><h2>Secure your Metadata<a class="headerlink" href="#secure-your-metadata" title="Permalink to this headline">¶</a></h2>
 <p>This section shows methods of how to keep your metadata safe even when
@@ -268,15 +266,15 @@ disasters happen.</p>
 <div class="section" id="metadata-redundancy">
 <h3>Metadata Redundancy<a class="headerlink" href="#metadata-redundancy" title="Permalink to this headline">¶</a></h3>
 <p>Benji already exports the version metadata to the <em>data backend</em>, too. You
-can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>:</p>
+can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>:</p>
 <p>The metadata-backend-less uses this import from the <em>data backend</em> to
 populate an in-memory database to enable restores when the metadata
 backend is unavailable, please see section <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</p>
-<p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>
+<p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>
 and store them somewhere safe to increase your redundancy even more. It is
 advisable to compress them as the JSON export format is quite redundant.</p>
 <p>You can import these exports again with:</p>
-<p>If the imported <em>version</em> already exists in the <em>metadata backend</em> Benji
+<p>If the imported <em>version</em> already exists in the database backend Benji
 terminates with an error and doesn’t proceed with the import.</p>
 <p>So now, even if your backup database server crashes, you’ll still be able
 to reimport all existing versions again!</p>
@@ -284,8 +282,8 @@ to reimport all existing versions again!</p>
 <p class="first admonition-title">Attention</p>
 <p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) versions from the database and
 then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>, the blocks containing the backed up data will
-be removed. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import</span></code> can bring them back, because Benji’s export
-format <em>only</em> contains metadata information.</p>
+be removed. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code> can bring them back, because
+Benji’s export format <em>only</em> contains metadata information.</p>
 </div>
 </div>
 <div class="section" id="database-high-availability">
@@ -297,8 +295,8 @@ backup in place.</p>
 <p class="first admonition-title">Caution</p>
 <p class="last">DBMS replication only helps when one server crashes or has a
 failure. It does not help against software-bug related data loss, human
-error and more. So the automatic metadata export and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code> are
-the only reliable options for long-term data safety.</p>
+error and more. So the automatic metadata backup and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>
+are the only reliable options for long-term data safety.</p>
 </div>
 </div>
 </div>
@@ -343,15 +341,15 @@ logfile or by checking your process-tree:</p>
 <p>To know which backup took how long and to see how many blocks/bytes have been
 read and written, you can use the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">stats</span></code> command:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji stats --help
-usage: benji stats [-h] [-l LIMIT] [version_uid]
+usage: benji stats [-h] [-l LIMIT] [filter_expression]
 
 positional arguments:
-  version_uid           Show statistics for this version
+  filter_expression     Statistics filter expression
 
 optional arguments:
   -h, --help            show this help message and exit
   -l LIMIT, --limit LIMIT
-                        Limit output to this number (default: unlimited)
+                        Limit output to this number of entries
 </pre></div>
 </div>
 <p>Example:</p>
@@ -403,8 +401,8 @@ the whole output.</p>
 output:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="22%" />
-<col width="78%" />
+<col width="23%" />
+<col width="77%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Command</th>
@@ -430,10 +428,10 @@ output:</p>
 <tr class="row-odd"><td>deep-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
-<tr class="row-even"><td>bulk-scrub</td>
+<tr class="row-even"><td>batch-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
-<tr class="row-odd"><td>bulk-deep-scrub</td>
+<tr class="row-odd"><td>batch-deep-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
 </tbody>
@@ -482,7 +480,7 @@ logging verbosity. This outputs much more information.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -501,21 +499,15 @@ logging verbosity. This outputs much more information.</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

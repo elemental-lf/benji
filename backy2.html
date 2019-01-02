@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>For Backy² Users &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>For Backy² Users &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -271,25 +270,28 @@ from backy²:</p>
 <li>Encryption support (AES-256, GCM mode)</li>
 <li>Compression support (zstandard)</li>
 <li>Automatic metadata export to data backend for backup purposes</li>
-<li>Support for Backblaze’s B2 Cloud Storage as a <em>data backend</em></li>
+<li>Support for Backblaze’s B2 Cloud Storage as a storage backend</li>
+<li>Support for multiple storage backends</li>
 <li>Variable block size for efficient support of LVM and Ceph in
 one installation of Benji</li>
-<li>More compact metadata storage, the <em>metadata backend</em> now uses
+<li>More compact metadata storage, the database backend now uses
 significantly less disk space</li>
 <li>Database based locking to make it possible to have multiple instances
 on different hosts or in different containers</li>
 <li>New scrubbing mode based on metadata, object existence and length</li>
-<li>Randomly sampled bulk scrubbing of <em>versions</em></li>
+<li>Randomly sampled batch scrubbing of <em>versions</em></li>
 <li>Simple yet flexible retention policy enforcement</li>
 <li>Migration from boto to boto3 with better compatibility for other
 S3 implementations (Google Storage for example)</li>
-<li>Rook integration via Kubernetes deployment based on a Helm chart</li>
+<li>Kubernetes integration with a Helm chart</li>
 <li>blake2b with 32 byte digest as default hash function</li>
 <li>Optional read caching of blocks</li>
 <li>Configuration file format changed to YAML</li>
 <li>Machine readable output is JSON instead of CSV</li>
 <li>More commands support machine readable output</li>
 <li>Import/export format is JSON instead of CSV</li>
+<li>Replacement of the original tags with labels (key-value pairs)</li>
+<li>Flexible filter specification for listings, scrubs and other operations</li>
 </ul>
 <p>There also have been quite a few changes under the hood:</p>
 <ul class="simple">
@@ -298,7 +300,8 @@ S3 implementations (Google Storage for example)</li>
 <li>Some refactoring and rewriting to share more code</li>
 <li>Update to database transaction handling</li>
 <li>Update to exit code handling, exit codes have changed</li>
-<li>SQLAlchemy based <em>metadata backend</em> is the only supported backend now</li>
+<li>SQLAlchemy based database backend is the only supported backend now</li>
+<li>Configuration file validation</li>
 </ul>
 </div>
 
@@ -322,7 +325,7 @@ S3 implementations (Google Storage for example)</li>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -341,21 +344,15 @@ S3 implementations (Google Storage for example)</li>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

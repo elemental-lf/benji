@@ -57,13 +57,13 @@ A container from this image can be parametrised with three enviroment variables:
 +------------------------------------+--------------------------------+----------------------------------------------+
 | BACKUP_SELECTOR                    | nomatch==matchnot              | Kubernetes label selector applied to PVCs    |
 +------------------------------------+--------------------------------+----------------------------------------------+
-| DEEP_SCRUBBING_ENABLED             |                              1 | Enable bulk deep scrubbing                   |
+| DEEP_SCRUBBING_ENABLED             |                              1 | Enable batch deep scrubbing                  |
 +------------------------------------+--------------------------------+----------------------------------------------+
 | DEEP_SCRUBBING_VERSIONS_PERCENTAGE |                              6 | Percentage of versions to check              |
 +------------------------------------+--------------------------------+----------------------------------------------+
 | DEEP_SCRUBBING_BLOCKS_PERCENTAGE   |                             50 | Percentage of blocks to check                |
 +------------------------------------+--------------------------------+----------------------------------------------+
-| SCRUBBING_ENABLED                  |                              0 | Enable bulk scrubbing                        |
+| SCRUBBING_ENABLED                  |                              0 | Enable batch scrubbing                       |
 +------------------------------------+--------------------------------+----------------------------------------------+
 | SCRUBBING_VERSIONS_PERCENTAGE      |                              6 | Percentage of versions to check              |
 +------------------------------------+--------------------------------+----------------------------------------------+

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Backup &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Backup &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -258,25 +257,30 @@
 <h1>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h1>
 <p>In this chapter you will learn all possibilities and options for backup.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
-usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD] [-f BASE_VERSION_UID]
-                    [-t tag] [-b BLOCK_SIZE]
-                    source name
+usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD_HINTS]
+                    [-f BASE_VERSION_UID] [-b BLOCK_SIZE] [-l label]
+                    [-S STORAGE]
+                    source version_name
 
 positional arguments:
-  source                Source (url-like, e.g. file:///dev/sda or
-                        rbd://pool/imagename@snapshot)
-  name                  Backup name (e.g. the hostname)
+  source                Source URL
+  version_name          Backup version name (e.g. the hostname)
 
 optional arguments:
   -h, --help            show this help message and exit
   -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
                         Snapshot name (e.g. the name of the RBD snapshot)
-  -r RBD, --rbd RBD     Hints as RBD JSON format
-  -f BASE_VERSION_UID, --from-version BASE_VERSION_UID
-                        Use this version as base
-  -t tag, --tag tag     Tag this verion with the specified tag(s)
+  -r RBD_HINTS, --rbd-hints RBD_HINTS
+                        Hints in rbd diff JSON format
+  -f BASE_VERSION_UID, --base-version BASE_VERSION_UID
+                        Base version UID
   -b BLOCK_SIZE, --block-size BLOCK_SIZE
-                        Block size to use for this backup in bytes
+                        Block size in bytes
+  -l label, --label label
+                        Labels for this version (can be repeated)
+  -S STORAGE, --storage STORAGE
+                        Destination storage (if unspecified the default is
+                        used)
 </pre></div>
 </div>
 <div class="section" id="simple-backup">
@@ -333,18 +337,14 @@ Scrubbing may set this to False if the backup is found invalid for any reason.</
 <p class="first admonition-title">Hint</p>
 <p>You can filter the output with various parameters:</p>
 <div class="last highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji ls --help
-usage: benji ls [-h] [-s SNAPSHOT_NAME] [-t TAG] [--include-blocks] [name]
+usage: benji ls [-h] [-l] [filter_expression]
 
 positional arguments:
-  name                  Show versions for this name only
+  filter_expression     Version filter expression
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
-                        Limit output to this SNAPSHOT_NAME
-  -t TAG, --tag TAG     Limit output to this TAG. Multiple use constitutes an
-                        OR operation.
-  --include-blocks      Include blocks in output
+  -l, --include-labels  Include labels in output
 </pre></div>
 </div>
 </div>
@@ -354,7 +354,7 @@ optional arguments:
 <p>Benji only backups changed blocks. It can do this in two different ways:</p>
 <ol class="arabic simple">
 <li><strong>It can read the whole image</strong>: Checksum each block and look the checksum up
-in the <em>metadata backend</em>. If it is found, only a reference to the existing
+in the database backend. If it is found, only a reference to the existing
 block will be stored, thus there’s no write action on the <em>data backend</em>.</li>
 <li><strong>It can receive a hints file</strong>: The hints file is a JSON formatted list of
 (offset, size) tuples (see <a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a> for an example) which indicate
@@ -362,7 +362,7 @@ the status (used or changed) of each region of the image.
 Fortunately the format matches exactly the output of
 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>.  In this case it will only read blocks hinted
 at by the <em>hints file</em>, checksum each block and look the checksum up in the
-<em>metadata backend</em>. If it is found (which may rarely happen for file copies
+database backend. If it is found (which may rarely happen for file copies
 or when blocks are all zeros), only a reference to the existing block will
 be stored. Otherwise the block is written to the <em>data backend</em>.
 The hints file is passed via the  <code class="docutils literal notranslate"><span class="pre">-r</span></code> or <code class="docutils literal notranslate"><span class="pre">--rbd</span></code> option to
@@ -447,12 +447,13 @@ $ benji backup -s backup2 -r /tmp/vm1.diff -f V001234567 rbd://pool/vm1@backup2 
 <p>This is how you can automate forward differential backups including automatic
 initial backups where necessary:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env bash</span>
-. tryCatch.sh
 
 <span class="k">function</span> benji::backup::ceph::initial <span class="o">{</span>
     <span class="nb">local</span> <span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+    <span class="nb">shift</span> <span class="m">3</span>
+    <span class="nb">local</span> <span class="nv">LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
 
     <span class="nv">SNAPNAME</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-19T11:33:23</span>
     <span class="nv">TEMPFILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
@@ -461,7 +462,8 @@ initial backups where necessary:</p>
 
     rbd snap create <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span>
     rbd diff --whole-object <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> --format<span class="o">=</span>json &gt;<span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
-    benji backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
+    benji --log-level <span class="s2">&quot;</span><span class="si">${</span><span class="nv">BENJI_LOG_LEVEL</span><span class="k">:-</span><span class="nv">INFO</span><span class="si">}</span><span class="s2">&quot;</span> backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> <span class="se">\</span>
+        <span class="k">$(</span><span class="nb">printf</span> -- <span class="s2">&quot;-l \&quot;%s\&quot; &quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
 
     rm -f <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
 <span class="o">}</span>
@@ -472,6 +474,8 @@ initial backups where necessary:</p>
     <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">LAST_RBD_SNAP</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$5</span><span class="s2">&quot;</span>
+    <span class="nb">shift</span> <span class="m">5</span>
+    <span class="nb">local</span> <span class="nv">LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
 
     <span class="nb">local</span> <span class="nv">SNAPNAME</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-20T11:33:23</span>
     <span class="nb">local</span> <span class="nv">TEMPFILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
@@ -483,7 +487,8 @@ initial backups where necessary:</p>
     <span class="c1"># delete old snapshot</span>
     rbd snap rm <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span>
     <span class="c1"># and backup</span>
-    benji backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> -f <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
+    benji --log-level <span class="s2">&quot;</span><span class="si">${</span><span class="nv">BENJI_LOG_LEVEL</span><span class="k">:-</span><span class="nv">INFO</span><span class="si">}</span><span class="s2">&quot;</span> backup -s <span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span> -f <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span> <span class="se">\</span>
+        <span class="k">$(</span><span class="nb">printf</span> -- <span class="s2">&quot;-l \&quot;%s\&quot; &quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span> rbd://<span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$SNAPNAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span>
     
     rm -f <span class="s2">&quot;</span><span class="nv">$TEMPFILE</span><span class="s2">&quot;</span>
 <span class="o">}</span>
@@ -492,51 +497,53 @@ initial backups where necessary:</p>
     <span class="nb">local</span> <span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
     <span class="nb">local</span> <span class="nv">IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
+    <span class="nb">shift</span> <span class="m">3</span>
+    <span class="nb">local</span> <span class="nv">LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
 
     <span class="c1"># find the latest snapshot name from rbd</span>
     <span class="nv">LAST_RBD_SNAP</span><span class="o">=</span><span class="k">$(</span>rbd snap ls <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> --format<span class="o">=</span>json <span class="p">|</span> jq -r <span class="s1">&#39;[.[].name] | map(select(test(&quot;^b-&quot;))) | sort | .[-1] // &quot;&quot;&#39;</span><span class="k">)</span>
     <span class="k">if</span> <span class="o">[[</span> -z <span class="nv">$LAST_RBD_SNAP</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
         <span class="nb">echo</span> <span class="s1">&#39;No previous RBD snapshot found, reverting to initial backup.&#39;</span>
         <span class="nv">START_TIME</span><span class="o">=</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span>
-        benji_job_start_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+        benji_backup_start_time -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
         try <span class="o">{</span>
-            benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>
+            benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="o">}</span> catch <span class="o">{</span>
-            benji_job_status_failed -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+            benji_backup_status_failed -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
         <span class="o">}</span> onsuccess <span class="o">{</span>
-            benji_job_status_succeeded -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+            benji_backup_status_succeeded -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
         <span class="o">}</span>
-        benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
-        benji_job_runtime_seconds -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
+        benji_backup_completion_time -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+        benji_backup_runtime_seconds -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
     <span class="k">else</span>
         <span class="c1"># check if a valid version of this RBD snapshot exists</span>
-        <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="k">$(</span>benji -m ls -s <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="p">|</span> jq -r <span class="s1">&#39;.versions[0] | select(.valid == true) | .uid // &quot;&quot;&#39;</span><span class="k">)</span>
+        <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="k">$(</span>benji -m ls <span class="s1">&#39;name == &quot;$NAME&quot; and snapshot_name == &quot;$LAST_RBD_SNAP&quot;&#39;</span> <span class="p">|</span> jq -r <span class="s1">&#39;.versions[0] | select(.valid == true) | .uid // &quot;&quot;&#39;</span><span class="k">)</span>
         <span class="k">if</span> <span class="o">[[</span> -z <span class="nv">$BENJI_SNAP_VERSION_UID</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
             <span class="nb">echo</span> <span class="s1">&#39;Existing RBD snapshot not found in Benji, deleting it and reverting to initial backup.&#39;</span>
             <span class="nv">START_TIME</span><span class="o">=</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span>
-            benji_job_start_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            benji_backup_start_time -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
             try <span class="o">{</span>
                 rbd snap rm <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span>
-                benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span>
+                benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="o">}</span> catch <span class="o">{</span>
-                benji_job_status_failed -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+                benji_backup_status_failed -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
             <span class="o">}</span> onsuccess <span class="o">{</span>
-                benji_job_status_succeeded -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+                benji_backup_status_succeeded -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
             <span class="o">}</span>
-            benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
-            benji_job_runtime_seconds -action<span class="o">=</span>backup -type<span class="o">=</span>initial -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
+            benji_backup_completion_time -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            benji_backup_runtime_seconds -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>initial -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
         <span class="k">else</span>
             <span class="nv">START_TIME</span><span class="o">=</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span>
-            benji_job_start_time -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> -action<span class="o">=</span>backup -type<span class="o">=</span>differential <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            benji_backup_start_time -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>differential <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
             try <span class="o">{</span>
-                benji::backup::ceph::differential <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span>
+                benji::backup::ceph::differential <span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$LAST_RBD_SNAP</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="o">}</span> catch <span class="o">{</span>
-                benji_job_status_failed -action<span class="o">=</span>backup -type<span class="o">=</span>differential -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+                benji_backup_status_failed -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>differential -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
             <span class="o">}</span> onsuccess <span class="o">{</span>
-                benji_job_status_succeeded -action<span class="o">=</span>backup -type<span class="o">=</span>differential -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="m">1</span>
+                benji_backup_status_succeeded -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>differential -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="m">1</span>
             <span class="o">}</span>
-            benji_job_completion_time -action<span class="o">=</span>backup -type<span class="o">=</span>differential -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
-            benji_job_runtime_seconds -action<span class="o">=</span>backup -type<span class="o">=</span>differential -version_name<span class="o">=</span><span class="nv">$NAME</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
+            benji_backup_completion_time -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>differential -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> <span class="k">$(</span>date +<span class="s1">&#39;%s.%N&#39;</span><span class="k">)</span>
+            benji_backup_runtime_seconds -command<span class="o">=</span>backup -auxiliary_data<span class="o">=</span>differential -version_name<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$NAME</span><span class="s2">&quot;</span> <span class="nb">set</span> $<span class="o">[</span><span class="k">$(</span>date +<span class="s1">&#39;%s&#39;</span><span class="k">)</span> - <span class="nv">$START_TIME</span><span class="o">]</span>
         <span class="k">fi</span>
     <span class="k">fi</span>
 <span class="o">}</span>
@@ -614,18 +621,20 @@ warning in these cases.</p>
 the blocks are of no use without the corresponding metadata. Benji
 will need this information to get the blocks back in the correct order and
 restore your image.</p>
-<p>This information is stored in the <em>metadata backend</em>. Additionally Benji will
+<p>This information is stored in the database backend. Additionally Benji will
 save the metadata on the <em>data backend</em> automatically. Should you lose your
-<em>metadata backend</em>, you can restore these metadata backups by using
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import-from-backend</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import-from-backend --help
-usage: benji import-from-backend [-h] VERSION_UID [VERSION_UID ...]
+database backend, you can restore these metadata backups by using
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-restore --help
+usage: benji metadata-restore [-h] [-S STORAGE] VERSION_UID [VERSION_UID ...]
 
 positional arguments:
-  VERSION_UID  Version UID
+  VERSION_UID           Version UID
 
 optional arguments:
-  -h, --help   show this help message and exit
+  -h, --help            show this help message and exit
+  -S STORAGE, --storage STORAGE
+                        Source storage (if unspecified the default is used)
 </pre></div>
 </div>
 <p>There is currently no mechanism to import the backup of all version’s
@@ -637,24 +646,23 @@ manually from the <em>data backend</em>.</p>
 if you have these features enabled.</p>
 </div>
 <p>If you want to make your own copies of your metadata you can do so by using
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">export</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji export --help
-usage: benji export [-h] [-f] [-o OUTPUT_FILE] VERSION_UID [VERSION_UID ...]
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-export --help
+usage: benji metadata-export [-h] [-f] [-o OUTPUT_FILE] [filter_expression]
 
 positional arguments:
-  VERSION_UID           Version UID
+  filter_expression     Version filter expression
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f, --force           Force overwrite of existing output file
+  -f, --force           Overwrite an existing output file
   -o OUTPUT_FILE, --output-file OUTPUT_FILE
-                        Write export into this file (stdout is used if this
-                        option isn&#39;t specified)
+                        Output file (standard output if missing)
 </pre></div>
 </div>
 <p>If you’re doing this programmatically and are exporting to STDOUT you should
 probably add <code class="docutils literal notranslate"><span class="pre">-m</span></code> to your export command to reduce the logging level of Benji.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m <span class="nb">export</span> V1
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m metadata-export V1
 <span class="o">{</span>
   <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
   <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
@@ -683,18 +691,17 @@ probably add <code class="docutils literal notranslate"><span class="pre">-m</sp
 <span class="o">[</span>...<span class="o">]</span>
 </pre></div>
 </div>
-<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">import</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji import --help
-usage: benji import [-h] [-i INPUT_FILE]
+<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-import --help
+usage: benji metadata-import [-h] [-i INPUT_FILE]
 
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT_FILE, --input-file INPUT_FILE
-                        Read from this file (stdin is used if this option
-                        isn&#39;t specified)
+                        Input file (standard input if missing)
 </pre></div>
 </div>
-<p>You can’t import versions that already exist in the <em>metadata backend</em>.</p>
+<p>You can’t import versions that already exist in the database backend.</p>
 </div>
 <div class="section" id="the-hints-file">
 <span id="hints-file"></span><h2>The Hints File<a class="headerlink" href="#the-hints-file" title="Permalink to this headline">¶</a></h2>
@@ -745,7 +752,7 @@ and smaller offset+length tuples (not that that’d take very long).</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -764,21 +771,15 @@ and smaller offset+length tuples (not that that’d take very long).</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

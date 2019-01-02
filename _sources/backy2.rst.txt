@@ -22,25 +22,28 @@ from backy²:
 - Encryption support (AES-256, GCM mode)
 - Compression support (zstandard)
 - Automatic metadata export to data backend for backup purposes
-- Support for Backblaze's B2 Cloud Storage as a *data backend*
+- Support for Backblaze's B2 Cloud Storage as a storage backend
+- Support for multiple storage backends
 - Variable block size for efficient support of LVM and Ceph in
   one installation of Benji
-- More compact metadata storage, the *metadata backend* now uses
+- More compact metadata storage, the database backend now uses
   significantly less disk space
 - Database based locking to make it possible to have multiple instances
   on different hosts or in different containers
 - New scrubbing mode based on metadata, object existence and length
-- Randomly sampled bulk scrubbing of *versions*
+- Randomly sampled batch scrubbing of *versions*
 - Simple yet flexible retention policy enforcement
 - Migration from boto to boto3 with better compatibility for other
   S3 implementations (Google Storage for example)
-- Rook integration via Kubernetes deployment based on a Helm chart
+- Kubernetes integration with a Helm chart
 - blake2b with 32 byte digest as default hash function
 - Optional read caching of blocks
 - Configuration file format changed to YAML
 - Machine readable output is JSON instead of CSV
 - More commands support machine readable output
 - Import/export format is JSON instead of CSV
+- Replacement of the original tags with labels (key-value pairs)
+- Flexible filter specification for listings, scrubs and other operations
 
 There also have been quite a few changes under the hood:
 
@@ -49,4 +52,5 @@ There also have been quite a few changes under the hood:
 - Some refactoring and rewriting to share more code
 - Update to database transaction handling
 - Update to exit code handling, exit codes have changed
-- SQLAlchemy based *metadata backend* is the only supported backend now
+- SQLAlchemy based database backend is the only supported backend now
+- Configuration file validation

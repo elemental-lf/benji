@@ -10,7 +10,7 @@ The *data backend* stores the binary blocks whereas the *meta
 backend* stores to which version the block belongs, its checksum
 but also whether it actually contains data or not.
 
-The *metadata backend* uses SQLAlchemy to access an underlying SQL database.
+The database backend uses SQLAlchemy to access an underlying SQL database.
 Benji has been tested with SQLite3 and PostgreSQL. For production deployments
 PostgreSQL ist recommended.
 
@@ -25,9 +25,9 @@ implementations from which you can choose:
 Meta Backend
 ------------
 
-The *metadata backend* is responsible for managing all metadata.
+The database backend is responsible for managing all metadata.
 
-The *metadata backend* relies on SQLAlchemy, a Python ORM which works with a
+The database backend relies on SQLAlchemy, a Python ORM which works with a
 huge number of DBMS, e.g. MySQL, PostgreSQL, SQLite3 and Oracle.
 
 Benji has been developed and test with PostgreSQL and SQLite3, so they are

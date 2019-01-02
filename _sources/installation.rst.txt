@@ -50,7 +50,7 @@ After installing a recent Python version, it is now time to install
 Benji and its dependencies::
 
     # Create new virtual environment
-    python3.6 -m venv /usr/local/beni
+    python3.6 -m venv /usr/local/benji
     # Activate it (your shell prompt should change)
     . /usr/local/benji/bin/activate
     # Let's upgrade pip first

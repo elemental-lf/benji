@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Data Layout &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Data Layout &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -261,7 +260,7 @@ backend</em>.</p>
 <p>The <em>data backend</em> stores the binary blocks whereas the <em>meta
 backend</em> stores to which version the block belongs, its checksum
 but also whether it actually contains data or not.</p>
-<p>The <em>metadata backend</em> uses SQLAlchemy to access an underlying SQL database.
+<p>The database backend uses SQLAlchemy to access an underlying SQL database.
 Benji has been tested with SQLite3 and PostgreSQL. For production deployments
 PostgreSQL ist recommended.</p>
 <p>The <em>data backend</em> is pluggable and there are currently three different
@@ -274,8 +273,8 @@ or Minio</li>
 </ul>
 <div class="section" id="meta-backend">
 <h2>Meta Backend<a class="headerlink" href="#meta-backend" title="Permalink to this headline">¶</a></h2>
-<p>The <em>metadata backend</em> is responsible for managing all metadata.</p>
-<p>The <em>metadata backend</em> relies on SQLAlchemy, a Python ORM which works with a
+<p>The database backend is responsible for managing all metadata.</p>
+<p>The database backend relies on SQLAlchemy, a Python ORM which works with a
 huge number of DBMS, e.g. MySQL, PostgreSQL, SQLite3 and Oracle.</p>
 <p>Benji has been developed and test with PostgreSQL and SQLite3, so they are
 the recommended database engines and you may encounter problems with other
@@ -323,7 +322,7 @@ compression and mention metadata accompanying blocks.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -342,21 +341,15 @@ compression and mention metadata accompanying blocks.</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

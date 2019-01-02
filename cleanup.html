@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Cleanup &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Cleanup &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -265,14 +264,14 @@ collection algorithm.</p>
 usage: benji rm [-h] [-f] [-k] version_uid [version_uid ...]
 
 positional arguments:
-  version_uid
+  version_uid           Version UID
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f, --force           Force removal of version, even if it&#39;s younger than
-                        the configured disallow_rm_when_younger_than_days.
-  -k, --keep-backend-metadata
-                        Don&#39;t delete version&#39;s metadata in data backend.
+  -f, --force           Force removal (overrides protection of recent
+                        versions)
+  -k, --keep-metadata-backup
+                        Keep version metadata backup
 </pre></div>
 </div>
 <p>Example:</p>
@@ -292,7 +291,7 @@ than this value, Benji exists with an error:</p>
 </div>
 <p>You can force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
-<em>metadata backend</em>. It also adds the removed block entries into a deletion
+database backend. It also adds the removed block entries into a deletion
 candidate list. By default it also removes the backup of the metadata on
 the <em>data backend</em>. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
 or <code class="docutils literal notranslate"><span class="pre">--keep-backend-metadata</span></code> option.</p>
@@ -305,15 +304,10 @@ or <code class="docutils literal notranslate"><span class="pre">--keep-backend-m
 There are two different cleanup methods, but you’ll usually only need the
 so-called <em>fast-cleanup</em>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji cleanup --help
-usage: benji cleanup [-h] [-f]
+usage: benji cleanup [-h]
 
 optional arguments:
   -h, --help  show this help message and exit
-  -f, --full  Do a full cleanup. This will read the full metadata from the
-              data backend (i.e. backup storage) and compare it to the
-              metadata in the metadata backend. Unused data will then be
-              deleted. This is a slow, but complete process. A full cleanup
-              must not run in parallel to ANY other jobs.
 </pre></div>
 </div>
 <div class="section" id="fast-cleanup">
@@ -335,8 +329,8 @@ database based on export/import) when Benji does not know if the blocks in the
 <em>data backend</em> are all known by the metadata store.</p>
 <p>Then the <code class="docutils literal notranslate"><span class="pre">-full</span></code> option of cleanup comes into play. With this option, Benji will
 read all block UIDs from the backend storage (which can take <em>very</em> long) and
-compare it to the list of known block UIDs in the <em>metadata backend</em></p>
-<p>Blocks unknown to the <em>metadata backend</em> are then deleted from the <em>data backend</em>.</p>
+compare it to the list of known block UIDs in the database backend</p>
+<p>Blocks unknown to the database backend are then deleted from the <em>data backend</em>.</p>
 </div>
 </div>
 </div>
@@ -361,7 +355,7 @@ compare it to the list of known block UIDs in the <em>metadata backend</em></p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -380,21 +374,15 @@ compare it to the list of known block UIDs in the <em>metadata backend</em></p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

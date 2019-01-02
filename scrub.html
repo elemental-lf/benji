@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Scrub &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Scrub &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -259,16 +258,17 @@
 <p>Scrubbing backups is needed to ensure data consistency over time.</p>
 <div class="section" id="reasons-for-scrubbing">
 <h2>Reasons for Scrubbing<a class="headerlink" href="#reasons-for-scrubbing" title="Permalink to this headline">¶</a></h2>
-<p>Benji backs up data in blocks. These blocks are referenced from the metadata
-store. When restoring images, these blocks are read and restored in the order
-the metadata store says. As Benji also does deduplication, an invalid block
-could potentially create invalid restore data in multiple places.</p>
-<p>Invalid blocks can happen in these cases (probably incomplete):</p>
+<p>Benji divides the data you backup into blocks. These blocks are referenced
+by the metadata stored in the database backend. When restoring images, these
+blocks are read and restored to form the original image. As Benji also does
+deduplication, an invalid block can potentially affect multiple versions and
+so image backups.</p>
+<p>Invalid blocks can occur for the following reasons (probably incomplete):</p>
 <ul class="simple">
-<li>Bit rot / Data degradation (<a class="reference external" href="https://en.wikipedia.org/wiki/Data_degradation">https://en.wikipedia.org/wiki/Data_degradation</a>)</li>
+<li>Bit rot / data degradation (<a class="reference external" href="https://en.wikipedia.org/wiki/Data_degradation">https://en.wikipedia.org/wiki/Data_degradation</a>)</li>
 <li>Software failure when writing the block for the first time</li>
 <li>OS errors and bugs</li>
-<li>Human error: deleting or modifying blocks by accident</li>
+<li>Human error: Deleting or modifying blocks by accident</li>
 <li>Software errors in Benji and other used tools</li>
 </ul>
 </div>
@@ -295,31 +295,31 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -s SOURCE, --source SOURCE
-                        Source, optional. If given, check if source matches
-                        backup in addition to checksum tests. URL-like format
-                        as in backup.
+                        Additionally compare version against source URL
+                        (default: None)
   -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
-                        Only check BLOCK-PERCENTAGE percent of the blocks
-                        (value 1..100). Default: 100
+                        Check only a certain percentage of blocks (default:
+                        100)
 </pre></div>
 </div>
-<p>Benji reads block-metadata (UID and checksum) from the metadata store, reads
-the block by its UID from the <em>data backend</em>, calculates its checksum and
-compares the checksums.</p>
+<p>For each block in a version Benji reads the block’s metadata (UID and
+checksum) from the database backend, reads the actual block by its UID
+from the storage, calculates its checksum and compares it to the
+originally recorded checksum. If the checksums are not the same the
+block is marked as invalid and won’t be used for deduplication anymore.
+All other versions which reference this block are also marked as invalid
+as is the scrubbed version itself.</p>
 </div>
 <div class="section" id="using-the-backup-source">
 <h3>Using the Backup Source<a class="headerlink" href="#using-the-backup-source" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji deep-scrub --source &lt;snapshot&gt; &lt;version_uid&gt;
 </pre></div>
 </div>
-<p>Benji also reads the backup source for this version. This means that
-Benji reads the block metadata (UID, position and checksum), reads the
-corresponding source data block, the target block, calculates the checksum
-of both, compares these checksums to the stored one and compares the source- and
-data-block byte for byte.</p>
-<p>This is not necessarily slower, but it will of course create some load on the
-source storage, whereas target-only scrub only creates load on the target
-storage.</p>
+<p>In addition to the consistency and checksum checks Benji can also compare
+the backup data to the original backup source by specifying the <code class="docutils literal notranslate"><span class="pre">--source</span></code>
+option. The comparison is done byte by byte. Although this is an additional
+safeguard against data corruption it requires that the backup source is still
+present and it produces additional load on the backup source.</p>
 </div>
 <div class="section" id="consistency-only">
 <h3>Consistency Only<a class="headerlink" href="#consistency-only" title="Permalink to this headline">¶</a></h3>
@@ -332,71 +332,63 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
-                        Only check BLOCK-PERCENTAGE percent of the blocks
-                        (value 1..100). Default: 100
+                        Check only a certain percentage of blocks (default:
+                        100)
 </pre></div>
 </div>
-<p>Benji only checks the metadata consistency between the metadata saved in the
-database and the metadata accompanying each block. It also checks if the
-block exists and has the right length. The actual data is <strong>not</strong> checked.</p>
+<p>With this command Benji only checks the metadata consistency between the
+metadata saved in the database and the metadata accompanying each block
+on the storage. It also checks if the block exists and has the right length
+as reported by the storage provider. The actual data is <strong>not</strong> checked in
+this case.</p>
 <p>This mode of operation can be a useful in addition to deep-scrubs if
-you pay for data downloads or bandwidth is limited. It is not a replacement
-for doing deep-scrubs but you can reduce their frequency.</p>
+you pay for data downloads from the storage provider or your bandwidth
+is limited. It is not a replacement for deep-scrubs but you can reduce
+their frequency.</p>
 </div>
 </div>
-<div class="section" id="what-scrubbing-does-not">
-<h2>What Scrubbing Does Not<a class="headerlink" href="#what-scrubbing-does-not" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>Scrubbing doesn’t modify any block data on the <em>data backend</em></li>
-</ul>
-<p>This means it</p>
-<ul class="simple">
-<li>doesn’t fix filesystem errors on backed up images</li>
-<li>doesn’t check for any structure within blocks</li>
-<li>and doesn’t replay database journals or execute similar repair operations.</li>
-</ul>
-</div>
-<div class="section" id="bulk-scrubbing">
-<h2>Bulk scrubbing<a class="headerlink" href="#bulk-scrubbing" title="Permalink to this headline">¶</a></h2>
-<p>Benji also supports two commands to facilitate bulk scrubbing of versions:
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-scrub</span></code> and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code>:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-scrub --help
-usage: benji bulk-scrub [-h] [-p BLOCK_PERCENTAGE] [-P VERSION_PERCENTAGE]
-                        [-t TAG]
-                        [NAME [NAME ...]]
+<div class="section" id="batch-scrubbing">
+<h2>Batch scrubbing<a class="headerlink" href="#batch-scrubbing" title="Permalink to this headline">¶</a></h2>
+<p>Benji also supports two commands to facilitate batch scrubbing of versions:
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-scrub</span></code> and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji batch-scrub --help
+usage: benji batch-scrub [-h] [-p BLOCK_PERCENTAGE] [-P VERSION_PERCENTAGE]
+                         [-g GROUP_LABEL]
+                         [filter_expression]
 
 positional arguments:
-  NAME                  Version names
+  filter_expression     Version filter expression (default: None)
 
 optional arguments:
   -h, --help            show this help message and exit
   -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
-                        Only check BLOCK-PERCENTAGE percent of the blocks
-                        (value 1..100). Default: 100
+                        Check only a certain percentage of blocks (default:
+                        100)
   -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
-                        Only check VERSION-PERCENTAGE of matching
-                        versions(value 1..100). Default: 100
-  -t TAG, --tag TAG     Scrub only versions matching this tag.
+                        Check only a certain percentage of blocks (default:
+                        100)
+  -g GROUP_LABEL, --group_label GROUP_LABEL
+                        Label to find related versions (default: None)
 </pre></div>
 </div>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji bulk-deep-scrub --help
-usage: benji bulk-deep-scrub [-h] [-p BLOCK_PERCENTAGE]
-                             [-P VERSION_PERCENTAGE] [-t TAG]
-                             [NAME [NAME ...]]
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji batch-deep-scrub --help
+usage: benji batch-deep-scrub [-h] [-p BLOCK_PERCENTAGE]
+                              [-P VERSION_PERCENTAGE] [-g GROUP_LABEL]
+                              [filter_expression]
 
 positional arguments:
-  NAME                  Version names
+  filter_expression     Version filter expression (default: None)
 
 optional arguments:
   -h, --help            show this help message and exit
   -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
-                        Only check BLOCK-PERCENTAGE percent of the blocks
-                        (value 1..100). Default: 100
+                        Check only a certain percentage of blocks (default:
+                        100)
   -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
-                        Only check VERSION-PERCENTAGE of matching
-                        versions(value 1..100). Default: 100
-  -t TAG, --tag TAG     Scrub only versions matching this tag. Multiple use of
-                        this option constitutes an OR operation.
+                        Check only a certain percentage of blocks (default:
+                        100)
+  -g GROUP_LABEL, --group_label GROUP_LABEL
+                        Label to find related versions (default: None)
 </pre></div>
 </div>
 <p>Both can take a list of <em>version</em> names. All <em>versions</em> matching these
@@ -409,29 +401,29 @@ options are given, then they constitute an OR  operation.</p>
 randomly select a certain sample of these <em>versions</em> with <code class="docutils literal notranslate"><span class="pre">--version-percentage</span></code>
 (short form``-P``). A <em>version’s</em> size isn’t taken into account when selecting the
 sample, every <em>version</em> is equally eligible.</p>
-<p>The bulk scrubbing commands also accepts the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> (short
+<p>The batch scrubbing commands also accepts the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> (short
 form <code class="docutils literal notranslate"><span class="pre">-p</span></code>) option.</p>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">bulk-deep-scrub</span></code> doesn’t support the <code class="docutils literal notranslate"><span class="pre">--source</span></code> option like
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code> doesn’t support the <code class="docutils literal notranslate"><span class="pre">--source</span></code> option like
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code>.</p>
 <p>This is a good use cause for tags: You could mark your <em>versions</em> with a list of
 different tags denoting the importance of the backed up data. Then you could scrub
 each class of <em>versions</em> differently:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 14% of the versions are deep scrubbed for data of high importance</span>
-$ benji bulk-deep-scrub --tag high --version-percentage <span class="m">14</span>
+$ benji batch-deep-scrub --version-percentage <span class="m">14</span> <span class="s1">&#39;labels[&quot;priority&quot;] == &quot;high&quot;&#39;</span>
 
 <span class="c1"># 7% of the versions are deep scrubbed for data of medium importance</span>
-$ benji bulk-deep-scrub --tag medium --version-percentage <span class="m">7</span>
+$ benji batch-deep-scrub --version-percentage <span class="m">7</span> <span class="s1">&#39;labels[&quot;priority&quot;] == &quot;medium&quot;&#39;</span>
 
 <span class="c1"># 3% of the versions are deep scrubbed for data of low importance</span>
-$ benji bulk-deep-scrub --tag low --version-percentage <span class="m">3</span>
+$ benji batch-deep-scrub --version-percentage <span class="m">3</span> <span class="s1">&#39;labels[&quot;priority&quot;] == &quot;low&quot;&#39;</span>
 
-<span class="c1"># 3% of the versions are scrubbed when they contain reproducible bulk data</span>
-$ benji bulk-scrub --tag bulk --version-percentage <span class="m">3</span>
+<span class="c1"># 3% of the versions are scrubbed when they contain reproducible scratch data or don&#39;t have a priority label</span>
+$ benji batch-scrub --version-percentage <span class="m">3</span> <span class="s1">&#39;labels[&quot;priority&quot;] == &quot;scratch&quot; or not labels[&quot;priority&quot;]&#39;</span>
 </pre></div>
 </div>
 <p>If you’d call this schedule every day, you’d scrub the important data completely
 about every seven days (statistically), data of medium importance completely every
-fourteen days and low priority data completely every month. Bulk data would also
+fourteen days and low priority data completely every month. Scratch data would also
 be scrubbed completely every month, but only metadata consistency and block
 existence is checked.</p>
 </div>
@@ -485,7 +477,7 @@ different images.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -504,21 +496,15 @@ different images.</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -261,41 +260,47 @@
 <h2>benji.yaml<a class="headerlink" href="#benji-yaml" title="Permalink to this headline">¶</a></h2>
 <p>There is an example configuration which lists all possible configuration
 options:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1.0.0&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1&#39;</span>
 
-<span class="c1"># Where should the logfile be placed?</span>
-<span class="c1"># Benji will by default log INFO, WARNING and ERROR to this log.</span>
-<span class="c1"># If you also need DEBUG information, please start Benji with &#39;-v&#39;.</span>
+<span class="c1"># Logfile location (default: null)</span>
+<span class="c1"># Setting this to null disables logging to a file, this might be useful when running Benji inside a container.</span>
+<span class="c1"># Benji will by default log INFO, WARNING and ERROR to this file. If you also need DEBUG information, please start</span>
+<span class="c1"># Benji with the &#39;-v&#39; option.</span>
 logFile: /var/log/benji.log
 
-<span class="c1"># Default block size. 4MB are recommended for backup of Ceph RBD images.</span>
+<span class="c1"># Default block size (default: 4194304)</span>
 <span class="c1"># The block size can be changed on the command line on a version by version basis, but be aware that this will affect</span>
 <span class="c1"># deduplication and increase the space usage. One possible use case for different block sizes would be backing up LVM</span>
 <span class="c1"># volumes and Ceph images with the same Benji installation. While for Ceph 4MB is usually the best size, LVM volume</span>
 <span class="c1"># might profit from a smaller block size.</span>
 blockSize: <span class="m">4194304</span>
 
-<span class="c1"># Hash function to use. Use a large one to avoid collisions.</span>
-<span class="c1"># DO NOT CHANGE WHEN BACKUPS EXIST</span>
-hashFunction: blake2b,digest_size<span class="o">=</span><span class="m">32</span>
+<span class="c1"># Hash function to use for calculating block checksums (default: BLAKE2b,digest_bits=256)</span>
+<span class="c1"># There is normally no reason to change the default.</span>
+<span class="c1"># DO NOT CHANGE WHEN BACKUPS EXIST!</span>
+hashFunction: BLAKE2b,digest_bits<span class="o">=</span><span class="m">256</span>
 
+<span class="c1"># Process name (default: benji)</span>
 <span class="c1"># This name will be used to identify a specific configuration in the</span>
 <span class="c1"># process list and could be used to distinguish several parallel installations.</span>
 processName: benji
 
-<span class="c1"># Allow removal of backup versions after n days (set to 0 to disable, i.e. to be</span>
-<span class="c1"># able to delete any version)</span>
+<span class="c1"># Days of protection for backup versions (default: 6)</span>
+<span class="c1"># Disallow removal of backup versions if they are younger than this number of days. Set to 0 to disable, i.e. to be</span>
+<span class="c1"># able to delete any version.</span>
 disallowRemoveWhenYounger: <span class="m">6</span>
 
-metadataBackend:
-  <span class="c1"># Which SQL Server?</span>
-  <span class="c1"># Available servers:</span>
-  <span class="c1">#   sqlite:////path/to/sqlitefile</span>
-  <span class="c1">#   postgresql:///database</span>
-  <span class="c1">#   postgresql://user:password@host:port/database</span>
-  engine: sqlite:////var/lib/benji/benji.sqlite
+<span class="c1"># Database engine (default: none)</span>
+<span class="c1"># See https://docs.sqlalchemy.org/en/latest/core/engines.html for options.</span>
+<span class="c1"># Only postgresql (dialect psycopg2) and sqlite are tested with during development.</span>
+<span class="c1"># Examples: postgresql://scott:tiger@localhost/mydatabase&#39;,</span>
+<span class="c1">#           sqlite:////var/lib/benji/benji.sqlite</span>
+metadataEngine: sqlite:////var/lib/benji/benji.sqlite
 
-dataBackend:
+<span class="c1"># Default storage to use (no default, required)</span>
+defaultStorage: s-1
+
+storage:
   <span class="c1"># Which data backend to use?</span>
   <span class="c1"># Available types:</span>
   <span class="c1">#   file, s3, b2</span>
@@ -468,7 +473,7 @@ have a dedicated instance for restores for example.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -487,21 +492,15 @@ have a dedicated instance for restores for example.</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

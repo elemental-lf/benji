@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -257,21 +256,18 @@
   <div class="section" id="restore">
 <span id="id1"></span><h1>Restore<a class="headerlink" href="#restore" title="Permalink to this headline">¶</a></h1>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji restore --help
-usage: benji restore [-h] [-s] [-f] [-M] version_uid target
+usage: benji restore [-h] [-s] [-f] [-d] version_uid destination
 
 positional arguments:
-  version_uid
-  target                Source (URL like, e.g. file:///dev/sda or
-                        rbd://pool/imagename)
+  version_uid           Version UID to restore
+  destination           Destination URL
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s, --sparse          Restore only existing blocks. Works only with file and
-                        RBD targets, not with LVM. Faster.
-  -f, --force           Force overwrite of existing files/devices/images
-  -M, --metadata-backend-less
-                        Restore directly from data backend without requiring
-                        the metadata backend.
+  -s, --sparse          Restore only existing blocks
+  -f, --force           Overwrite an existing file, device or image
+  -d, --database-backend-less
+                        Restore without requiring the database backend
 </pre></div>
 </div>
 <p>There are two possible restore options with Benji.</p>
@@ -328,7 +324,7 @@ in there before the restore will remain.</p>
 <div class="section" id="with-unavailable-metadata-backend">
 <span id="metadata-backend-less"></span><h3>With Unavailable Metadata Backend<a class="headerlink" href="#with-unavailable-metadata-backend" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode (<code class="docutils literal notranslate"><span class="pre">-M</span></code> or <code class="docutils literal notranslate"><span class="pre">--metadata-backend-less</span></code>)
-where it doesn’t require its <em>metadata backend</em> to be up und running. In this mode
+where it doesn’t require its database backend to be up und running. In this mode
 Benji will import the backup of the <em>version’s</em> metadata from the <em>data backend</em>
 into an ad-hoc in-memory database and then restore the image normally. This is
 for failure scenarios where the database is unavailable and you still need to
@@ -357,11 +353,10 @@ usage: benji nbd [-h] [-a BIND_ADDRESS] [-p BIND_PORT] [-r]
 optional arguments:
   -h, --help            show this help message and exit
   -a BIND_ADDRESS, --bind-address BIND_ADDRESS
-                        Bind to this ip address (default: 127.0.0.1)
+                        Bind to the specified IP address (default: 127.0.0.1)
   -p BIND_PORT, --bind-port BIND_PORT
-                        Bind to this port (default: 10809)
-  -r, --read-only       Read only if set, otherwise a copy on write backup is
-                        created.
+                        Bind to the specified port (default: 10809)
+  -r, --read-only       NBD device is read-only (default: False)
 </pre></div>
 </div>
 <div class="section" id="read-only-mount">
@@ -489,7 +484,7 @@ independently of each other.</p>
 <div class="section" id="restore-of-invalid-versions">
 <h2>Restore of Invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
 <p>During a restore Benji will compare each restored block’s checksum to the
-stored checksum in the <em>metadata backend</em> <strong>no matter if the block has been
+stored checksum in the database backend <strong>no matter if the block has been
 marked as invalid previously</strong>. If it encounters a difference, the block
 and all versions containing this block will be marked as invalid and a
 warning will be given:</p>
@@ -529,7 +524,7 @@ You get as much of your data back as possible!</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -548,21 +543,15 @@ You get as much of your data back as possible!</p>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 

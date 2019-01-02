@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start &mdash; Benji Backup 0.1.0 documentation</title>
+  <title>Quick Start &mdash; Benji Backup 0.1.1+dirty documentation</title>
   
 
   
@@ -119,8 +119,7 @@
 <li class="toctree-l3"><a class="reference internal" href="scrub.html#consistency-only">Consistency Only</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#what-scrubbing-does-not">What Scrubbing Does Not</a></li>
-<li class="toctree-l2"><a class="reference internal" href="scrub.html#bulk-scrubbing">Bulk scrubbing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scrub.html#batch-scrubbing">Batch scrubbing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="scrub.html#scrubbing-failures">Scrubbing Failures</a></li>
 </ul>
 </li>
@@ -270,8 +269,8 @@ stop all writes or create a snapshot.</dd>
 backed up data will be saved. Also referred to as the <em>data backend</em>.</dd>
 <dt>Backup Metadata</dt>
 <dd>A SQL database containing information on how to reassemble the stored blocks
-to get the original data back. Also referred to as the <em>metadata backend</em>.
-For restores the <em>metadata backend</em> is not compulsory. See <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
+to get the original data back. Also referred to as the database backend.
+For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
 <dt>Version</dt>
 <dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
 A <em>version</em> is identified by a unique id.</dd>
@@ -283,7 +282,7 @@ A <em>version</em> is identified by a unique id.</dd>
 <li>Minimal configuration:</li>
 </ol>
 <p>This represents a minimal configuration mit SQLite3 backend and file-based block storage:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1.0.0&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1&#39;</span>
 dataBackend:
   type: file
   file:
@@ -298,8 +297,8 @@ backup sources.</p>
 <p>Please see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for a full list of configuration options.</p>
 <ol class="arabic">
 <li><p class="first">Initialize the database:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji initdb
-    INFO: $ benji initdb
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji init
+    INFO: $ benji init
 </pre></div>
 </div>
 <div class="admonition note">
@@ -349,18 +348,14 @@ data. Instead it will fail because it finds already existing tables.</p>
 </ol>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> supports various options to filter the output:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji ls --help
-usage: benji ls [-h] [-s SNAPSHOT_NAME] [-t TAG] [--include-blocks] [name]
+usage: benji ls [-h] [-l] [filter_expression]
 
 positional arguments:
-  name                  Show versions for this name only
+  filter_expression     Version filter expression
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
-                        Limit output to this SNAPSHOT_NAME
-  -t TAG, --tag TAG     Limit output to this TAG. Multiple use constitutes an
-                        OR operation.
-  --include-blocks      Include blocks in output
+  -l, --include-labels  Include labels in output
 </pre></div>
 </div>
 <p>Some commands can also produce machine readable JSON output for usage in scripts:</p>
@@ -390,7 +385,7 @@ errors. Please see section <a class="reference internal" href="administration.ht
 <h2>Deep Scrub and Scrub<a class="headerlink" href="#deep-scrub-and-scrub" title="Permalink to this headline">¶</a></h2>
 <p>Deep scrubbing reads all the blocks of a particular <em>version</em> from the <em>data backend</em>
 (or some of them if you use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option) and compares the checksums of these
-blocks to the checksums recorded in the <em>metadata backend</em>. If you pass the
+blocks to the checksums recorded in the database backend. If you pass the
 source option (<code class="docutils literal notranslate"><span class="pre">-s</span></code>) the blocks will also be compared to the original source data.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub v1
     INFO: $ benji deep-scrub v1
@@ -580,7 +575,7 @@ be avoided. Digest lengths below 32 bytes are not recommened.</td></tr>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2018, Daniel Kraft, Lars Fenneberg.
+        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
 
     </p>
   </div>
@@ -599,21 +594,15 @@ be avoided. Digest lengths below 32 bytes are not recommened.</td></tr>
 
   
 
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1.0',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
 
   
 
