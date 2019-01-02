@@ -7,6 +7,7 @@ from io import StringIO
 from unittest import TestCase
 
 from benji.database import VersionUid
+from benji.logging import logger
 from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.versions import VERSIONS
@@ -34,7 +35,7 @@ class ImportExportTestCase():
         init_database = True
         image_filename = os.path.join(testpath, 'image')
         for i in range(self.VERSIONS):
-            print('Run {}'.format(i + 1))
+            logger.debug('Run {}'.format(i + 1))
             hints = []
             if old_size and random.randint(0, 10) == 0:  # every 10th time or so do not apply any changes.
                 size = old_size
@@ -51,7 +52,7 @@ class ImportExportTestCase():
                         data = b'\0' * patch_size
                         exists = "false"
                     offset = random.randint(0, size - 1 - patch_size)
-                    print('    Applied change at {}:{}, exists {}'.format(offset, patch_size, exists))
+                    logger.debug('Applied change at {}:{}, exists {}'.format(offset, patch_size, exists))
                     self.patch(image_filename, offset, data)
                     hints.append({'offset': offset, 'length': patch_size, 'exists': exists})
             # truncate?
@@ -60,7 +61,7 @@ class ImportExportTestCase():
             with open(image_filename, 'r+b') as f:
                 f.truncate(size)
 
-            print('  Applied {} changes, size is {}.'.format(len(hints), size))
+            logger.debug('Applied {} changes, size is {}.'.format(len(hints), size))
             with open(os.path.join(testpath, 'hints'), 'w') as f:
                 f.write(json.dumps(hints))
 
@@ -89,8 +90,7 @@ class ImportExportTestCase():
             f.seek(0)
             export = json.load(f)
             f.seek(0)
-            print(f.getvalue())
-            a = f.getvalue()
+            unused_output = f.getvalue()
         benji_obj.close()
         self.assertEqual(str(VERSIONS.database_metadata.current), export['metadata_version'])
         self.assertIsInstance(export['versions'], list)

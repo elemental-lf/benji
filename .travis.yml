@@ -15,7 +15,7 @@ branches:
 env:
   global:
     - UNITTEST_QUIET=1
-    - UNITTEST_SKIP_POSTGESQL=1
+    - UNITTEST_SKIP_POSTGESQL=0
     - UNITTEST_SKIP_S3=1
     - UNITTEST_SKIP_B2=1
     - UNITTEST_SKIP_NBD=1
@@ -34,13 +34,20 @@ before_install:
   - python --version
   - travis_retry pip install --upgrade setuptools
   - travis_retry pip install --upgrade pip
+  - travis_retry sudo apt-get update
+  - travis_retry sudo apt-get install -y simpleproxy
 
 install:
-  - pip install '.[s3,b2,compression,readcache,dev]'
-  - pip install -r requirements_docs.txt
+  - travis_retry pip install '.[s3,b2,compression,readcache,dev]'
+  - travis_retry pip install -r requirements_docs.txt
 
 before_script:
   - pip freeze
+  - psql -U postgres -c 'CREATE DATABASE benji;'
+  - psql -U postgres -c "CREATE ROLE benji WITH PASSWORD 'verysecret';"
+  - psql -U postgres -c 'GRANT ALL ON DATABASE benji TO benji'
+  # Forward PostgreSQL connections, tests scripts use 15432
+  - 'simpleproxy -L localhost:15432 -R localhost:5432 &'
 
 script:
-  - PYTHONPATH=./src python -m unittest discover -v -t src -s src/benji/tests
+  - python -m unittest discover -v -t src -s src/benji/tests
