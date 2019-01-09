@@ -58,7 +58,7 @@ class IO(IOBase):
             raise FileNotFoundError('Image or snapshot not found for IO path {}.'.format(self._path)) from None
 
     def open_w(self, size: int, force: bool = False) -> None:
-        re_match = re.match('^rbd://([^/]+)/([^@]+)$', self._path)
+        re_match = re.match('^([^/]+)/([^@]+)$', self._path)
         if not re_match:
             raise UsageError('IO path {} is invalid . Need {}://<pool>/<imagename>.'.format(self._path, self.name))
         self._pool_name, self._image_name = re_match.groups()
