@@ -62,6 +62,7 @@ class IO(IOBase):
         if not re_match:
             raise UsageError('IO path {} is invalid . Need {}://<pool>/<imagename>.'.format(self._path, self.name))
         self._pool_name, self._image_name = re_match.groups()
+        self._snapshot_name = ''
 
         # try opening it and quit if that's not possible.
         try:
