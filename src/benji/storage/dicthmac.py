@@ -71,5 +71,4 @@ class DictHMAC(ReprMixIn):
         del dict_data[self._hmac_key]
         digest = self._calculate_digest(dict_data)
         if digest != digest_expected:
-            raise ValueError('Dictionary HMAC is invalid (expected {}, actual {}).'.format(
-                digest_expected, digest))
+            raise ValueError('Dictionary HMAC is invalid (expected {}, actual {}).'.format(digest_expected, digest))

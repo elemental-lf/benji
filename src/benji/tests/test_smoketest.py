@@ -79,7 +79,7 @@ class SmokeTestCase(BenjiTestCaseBase):
                         exists = "false"
                     offset = random.randint(0, size - patch_size - 1)
                     logger.debug('Applied change at {}({}):{}, exists {}'.format(offset, int(offset / 4096), patch_size,
-                                                                              exists))
+                                                                                 exists))
                     self.patch(image_filename, offset, data)
                     hints.append({'offset': offset, 'length': patch_size, 'exists': exists})
 
@@ -337,7 +337,9 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
             """
 
 
-@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False), 'No PostgreSQL or S3 setup available.')
+@unittest.skipIf(
+    os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False),
+    'No PostgreSQL or S3 setup available.')
 class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
 
     CONFIG = """
@@ -406,7 +408,9 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
             """
 
 
-@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False), 'No PostgreSQL or S3 setup available.')
+@unittest.skipIf(
+    os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_S3', False),
+    'No PostgreSQL or S3 setup available.')
 class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 
     CONFIG = """
@@ -481,7 +485,9 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             """
 
 
-@unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_B2', False), 'No PostgreSQL or B2 setup available.')
+@unittest.skipIf(
+    os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_B2', False),
+    'No PostgreSQL or B2 setup available.')
 class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
 
     CONFIG = """

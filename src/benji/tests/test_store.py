@@ -172,6 +172,7 @@ class BenjiStoreTestCaseSQLLite_File(BenjiStoreTestCase, TestCase):
                 cacheDirectory: {testpath}/nbd-cache
             """
 
+
 @unittest.skipIf(os.environ.get('UNITTEST_SKIP_POSTGRESQL', False), 'No PostgreSQL setup available.')
 class BenjiStoreTestCasePostgreSQL_S3(BenjiStoreTestCase, TestCase):
 
