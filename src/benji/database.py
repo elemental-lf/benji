@@ -18,7 +18,9 @@ from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, O
 import semantic_version
 import sqlalchemy
 from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
-    Regex, ParseException, ParseFatalException, Literal, NoMatch
+    Regex, ParseException, ParseFatalException, Literal, NoMatch, ParserElement
+
+ParserElement.enablePackrat()
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
     DateTime, UniqueConstraint, and_, or_, not_
 from sqlalchemy import distinct
