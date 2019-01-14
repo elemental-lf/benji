@@ -1171,18 +1171,6 @@ class _QueryBuilder:
             def build(self) -> ColumnElement:
                 raise NotImplementedError()
 
-            def __and__(self, other: Any) -> BooleanClauseList:
-                if isinstance(other, Buildable):
-                    return and_(self.build(), other.build())
-                else:
-                    raise TypeError('Operands of boolean and must be expressions, identifier or label references.')
-
-            def __or__(self, other: Any) -> BooleanClauseList:
-                if isinstance(other, Buildable):
-                    return or_(self.build(), other.build())
-                else:
-                    raise TypeError('Operands of boolean or must be expressions, identifier or label references.')
-
         class Token(Buildable):
             pass
 
@@ -1268,9 +1256,10 @@ class _QueryBuilder:
 
         class BinaryOp(Buildable):
 
-            op: Optional[Union[Callable[[Any, Any], BooleanClauseList], Callable[[Any], BooleanClauseList]]] = None
+            op: Optional[Callable[[Any, Any], BooleanClauseList]] = None
 
             def __init__(self, t) -> None:
+                assert len(t[0]) == 3
                 self.args = t[0][0::2]
 
             def build(self) -> BooleanClauseList:
@@ -1295,11 +1284,29 @@ class _QueryBuilder:
         class GtOp(BinaryOp):
             op = operator.gt
 
-        class AndOp(BinaryOp):
-            op = operator.and_
+        class MultiaryOp(Buildable):
 
-        class OrOp(BinaryOp):
-            op = operator.or_
+            # Need to use Any here as mypy doesn't understand that Python thinks that op is a method and
+            # so has a __func__ attribute
+            op: Any = None
+
+            def __init__(self, t) -> None:
+                args = t[0][0::2]
+                for token in args:
+                    if not isinstance(token, Buildable):
+                        raise ParseFatalException('Operands of boolean and must be expressions, identifier or label references.')
+                self.args = args
+
+            def build(self) -> BooleanClauseList:
+                assert self.op is not None
+                # __func__ is necessary to call op as a function instead of as a method
+                return self.op.__func__(*map(lambda token: token.build(), self.args))
+
+        class AndOp(MultiaryOp):
+            op = and_
+
+        class OrOp(MultiaryOp):
+            op = or_
 
         class NotOp(Buildable):
 

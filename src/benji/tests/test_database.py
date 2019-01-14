@@ -312,6 +312,26 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('labels["label-key-4"] and name')
         self.assertEqual(128, len(versions))
 
+    # Issue https://github.com/elemental-lf/benji/issues/9
+    def test_version_filter_issue_9(self):
+        version_uids = set()
+        for i in range(3):
+            version = self.database_backend.create_version(
+                version_name='backup-name',
+                snapshot_name='snapshot-name.{}'.format(i),
+                size=16 * 1024 * 4096,
+                storage_id=1,
+                block_size=4 * 1024 * 4096,
+                valid=True)
+            self.assertNotIn(version.uid, version_uids)
+            version_uids.add(version.uid)
+
+        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name" and valid == True')
+        self.assertEqual(1, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" or name == "backup-name" or valid == True')
+        self.assertEqual(3, len(versions))
+
     def test_version_statistic_filter(self):
         for i in range(16):
             self.database_backend.set_stats(
