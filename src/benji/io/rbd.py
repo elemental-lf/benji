@@ -22,9 +22,9 @@ class IO(IOBase):
         super().__init__(
             config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
 
-        ceph_conffile = config.get_from_dict(module_configuration, 'cephConfigFile', types=str)
+        ceph_config_file = config.get_from_dict(module_configuration, 'cephConfigFile', types=str)
         client_identifier = config.get_from_dict(module_configuration, 'clientIdentifier', types=str)
-        self._cluster = rados.Rados(conffile=ceph_conffile, rados_id=client_identifier)
+        self._cluster = rados.Rados(conffile=ceph_config_file, rados_id=client_identifier)
         self._cluster.connect()
         # create a bitwise or'd list of the configured features
         self._new_image_features = 0

@@ -28,7 +28,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
           - name: rbd
             module: rbd
             configuration:
-              ceph_conffile: /etc/ceph/ceph.conf
+              cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
@@ -55,7 +55,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
           - name: rbd
             module: rbd
             configuration:
-              ceph_conffile: /etc/ceph/ceph.conf
+              cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
@@ -82,7 +82,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
           - name: rbd
             module: rbd
             configuration:
-              ceph_conffile: /etc/ceph/ceph.conf
+              cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
@@ -159,5 +159,20 @@ class ConfigTestCase(TestCaseBase, TestCase):
         self.assertRaises(ConfigurationError,
                           lambda: config.validate(module='benji.storage.file', config=module_configuration))
 
-    def test_integer_version(self):
-        self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG_INTEGER), Config))
+    # Pull request https://github.com/elemental-lf/benji/pull/7
+    def test_validation_io_rbd(self):
+        config = Config(ad_hoc_config=self.CONFIG)
+        module_configuration = config.get('ios')[0]['configuration']
+        self.assertEqual({
+            'cephConfigFile': '/etc/ceph/ceph.conf',
+            'clientIdentifier': 'admin',
+            'newImageFeatures': ['RBD_FEATURE_LAYERING', 'RBD_FEATURE_EXCLUSIVE_LOCK'],
+            'simultaneousReads': 10
+        }, config.validate(module='benji.io.rbd', config=module_configuration))
+        module_configuration['newImageFeatures'] = ['ASASA', 'DDASAD']
+        self.assertRaises(ConfigurationError,
+                          lambda: config.validate(module='benji.io.rbd', config=module_configuration))
+
+
+def test_integer_version(self):
+    self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG_INTEGER), Config))
