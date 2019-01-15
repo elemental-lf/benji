@@ -603,10 +603,10 @@ class Benji(ReprMixIn):
                 try:
                     storage = StorageFactory.get_by_storage_id(version.storage_id)
                     storage.rm_version(version_uid)
-                    logger.info('Removed version {} metadata from backend storage.'.format(version_uid.v_string))
+                    logger.info('Removed version {} metadata backup from storage.'.format(version_uid.v_string))
                 except FileNotFoundError:
                     logger.warning(
-                        'Unable to remove version {} metadata from backend storage, the object wasn\'t found.'.format(
+                        'Unable to remove version {} metadata backup from storage, the object wasn\'t found.'.format(
                             version_uid.v_string))
                     pass
 
