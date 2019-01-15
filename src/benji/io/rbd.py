@@ -3,7 +3,7 @@
 import re
 import threading
 import time
-from typing import Tuple
+from typing import Tuple, Optional
 
 import rados
 import rbd
@@ -16,6 +16,11 @@ from benji.logging import logger
 
 
 class IO(IOBase):
+
+    _writer: Optional[rbd.Image]
+    _pool_name: Optional[str]
+    _image_name: Optional[str]
+    _snapshot_name: Optional[str]
 
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, path: str,
                  block_size: int) -> None:
@@ -60,7 +65,7 @@ class IO(IOBase):
         except rbd.ImageNotFound:
             raise FileNotFoundError('Image or snapshot not found for IO path {}.'.format(self._path)) from None
 
-    def open_w(self, size: int, force: bool = False) -> None:
+    def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         re_match = re.match('^([^/]+)/([^@]+)$', self._path)
         if not re_match:
             raise UsageError('IO path {} is invalid . Need {}://<pool>/<imagename>.'.format(self._path, self.name))
@@ -73,19 +78,25 @@ class IO(IOBase):
             raise FileNotFoundError('RBD pool {} not found.'.format(self._pool_name)) from None
 
         try:
-            rbd.Image(ioctx, self._image_name)
+            self._writer = rbd.Image(ioctx, self._image_name)
         except rbd.ImageNotFound:
             rbd.RBD().create(ioctx, self._image_name, size, old_format=False, features=self._new_image_features)
+            self._writer = rbd.Image(ioctx, self._image_name)
         else:
             if not force:
                 raise FileExistsError(
                     'Restore target {}://{} already exists. Force the restore if you want to overwrite it.'.format(
                         self.name, self._path))
             else:
-                if size < self.size():
+                image_size = self._writer.size()
+                if size > image_size:
                     raise IOError(
                         'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
-                            self._name, self._path, self.size(), size))
+                            self._name, self._path, image_size, size))
+
+                # If this is an existing image and sparse is true discard all objects from this image
+                if sparse:
+                    self._writer.discard(0, image_size)
 
     def size(self) -> int:
         assert self._pool_name is not None and self._image_name is not None
@@ -114,10 +125,6 @@ class IO(IOBase):
         return block, data
 
     def write(self, block: DereferencedBlock, data: bytes) -> None:
-        if not self._writer:
-            ioctx = self._cluster.open_ioctx(self._pool_name)
-            self._writer = rbd.Image(ioctx, self._image_name)
-
         offset = block.id * self._block_size
         written = self._writer.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)  # type: ignore
         assert written == len(data)
@@ -129,3 +136,4 @@ class IO(IOBase):
         super().close()
         if self._writer:
             self._writer.close()
+            self._writer = None

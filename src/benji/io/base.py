@@ -6,8 +6,8 @@ from threading import BoundedSemaphore
 from typing import Tuple, Union, Optional, List, cast, Iterator
 
 from benji.config import ConfigDict, Config
-from benji.logging import logger
 from benji.database import Block, DereferencedBlock
+from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.utils import future_results_as_completed
 
@@ -59,7 +59,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         return future_results_as_completed(self._read_futures, semaphore=self._read_semaphore, timeout=timeout)
 
     @abstractmethod
-    def open_w(self, size: int, force: bool = False) -> None:
+    def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         raise NotImplementedError()
 
     @abstractmethod

@@ -491,7 +491,7 @@ class Benji(ReprMixIn):
             self._storage = version.storage_id
 
             io = IOFactory.get(target, version.block_size)
-            io.open_w(version.size, force)
+            io.open_w(version.size, force=force, sparse=sparse)
         except:
             self._locking.unlock_version(version_uid)
             raise

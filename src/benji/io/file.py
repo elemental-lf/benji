@@ -6,9 +6,9 @@ import time
 from typing import Optional, BinaryIO, Tuple
 
 from benji.config import ConfigDict, Config
+from benji.database import DereferencedBlock
 from benji.io.base import IOBase
 from benji.logging import logger
-from benji.database import DereferencedBlock
 
 
 class IO(IOBase):
@@ -20,7 +20,7 @@ class IO(IOBase):
 
         self._writer: Optional[BinaryIO] = None
 
-    def open_w(self, size: int, force: bool = False) -> None:
+    def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         if os.path.exists(self._path):
             if not force:
                 raise FileExistsError(
