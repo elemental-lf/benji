@@ -4,8 +4,6 @@
 Configuration
 =============
 
-Benji only needs to be configured once.
-
 benji.yaml
 ----------
 
@@ -33,8 +31,8 @@ Multiple Instance Installations
 -------------------------------
 
 You can run Benji multiple times on different machines or in different
-containers simultaneously. The configurations will have to match!
-this is the responsibility of the user and isn't checked by Benji.  Be
+containers simultaneously. The configurations will have to match.
+This is the responsibility of the user and isn't checked by Benji!  Be
 careful to shutdown all instances before making configuration changes that
 could affect other instances (like adding an encryption key).
 
@@ -42,4 +40,4 @@ Multiple instances open up the possibility to scale-out Benji for
 performance reasons, to put instances where the backup source data is or to
 have a dedicated instance for restores for example.
 
-Locking between different instances is done via the central database.
+Locking between different instances is done via the database backend.

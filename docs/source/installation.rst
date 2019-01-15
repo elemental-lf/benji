@@ -53,30 +53,26 @@ Benji and its dependencies::
     python3.6 -m venv /usr/local/benji
     # Activate it (your shell prompt should change)
     . /usr/local/benji/bin/activate
-    # Let's upgrade pip first
-    pip install --upgrade pip
-    # And now install Benji and its dependencies
-    pip install --process-dependency-links 'git+https://github.com/elemental-lf/benji'
-
-.. NOTE:: aes_keywrap is available on PyPI, but the version there isn't
-    compatible with Python 3. The source repository contains the
-    necessary changes. The option ``--process-dependency-links`` is
-    necessary to allow PIP to fetch this external dependency.
+    # Alternative A: Install a released version from PyPI (0.1.1 in this case)
+    pip install benji==0.1.1
+    # Alternative B: Install the latest released version from PyPI
+    pip install benji
+    # Alternative C: Install the latest version from the master branch of the Git repository
+    pip install git+https://github.com/elemental-lf/benji
 
 If you want to use certain features of Benji you need to install additional
 dependencies:
 
-- ``s3``: AWS S3 *data backend* support
-- ``b2``: Backblaze's B2 Cloud *data backend* support
-- ``encryption``: Encryption support
+- ``s3``: AWS S3 object storage support
+- ``b2``: Backblaze's B2 Cloud object storage support
 - ``compression``: Compression support
 - ``readcache``: Disk caching support
 
 You can do this be specifying a comma delimited list of extra features in square brackets after the package URL::
 
-    pip install --process-dependency-links 'git+https://github.com/elemental-lf/benji[encryption,compression,s3,readcache,b2]'
+    pip install 'benji==0.1.1[compression,s3,readcache,b2]'
 
-To uprgade an existing installation use the same command line but add the ``--upgrade`` option.
+To upgrade an existing installation use the same command line but add the ``--upgrade`` option.
 
 .. NOTE:: It is recommended to install and use the compression feature for
     almost all use cases.
