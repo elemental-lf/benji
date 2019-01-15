@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.1.1+dirty documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.1.1.dev10+g63d8882.dirty documentation</title>
   
 
   
@@ -165,8 +165,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
@@ -255,7 +255,6 @@
             
   <div class="section" id="configuration">
 <span id="id1"></span><h1>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h1>
-<p>Benji only needs to be configured once.</p>
 <div class="section" id="benji-yaml">
 <h2>benji.yaml<a class="headerlink" href="#benji-yaml" title="Permalink to this headline">¶</a></h2>
 <p>There is an example configuration which lists all possible configuration
@@ -301,11 +300,6 @@ metadataEngine: sqlite:////var/lib/benji/benji.sqlite
 defaultStorage: s-1
 
 storage:
-  <span class="c1"># Which data backend to use?</span>
-  <span class="c1"># Available types:</span>
-  <span class="c1">#   file, s3, b2</span>
-  type: file
-
   file:
     <span class="c1"># Store data to this path. A structure of 2 folders depth will be created</span>
     <span class="c1"># in this path (e.g. &#39;0a/33&#39;). Blocks of DEFAULTS.block_size will be stored</span>
@@ -325,6 +319,14 @@ storage:
   <span class="c1">#  disableEncodingType: true or false (default is false)</span>
   <span class="c1">#  activeEncryption: k1</span>
   <span class="c1">#  activeCompression: zstd</span>
+  <span class="c1">#</span>
+  <span class="c1"># For Google S3 API use:</span>
+  <span class="c1">#</span>
+  <span class="c1">#  endpointUrl: https://storage.googleapis.com/</span>
+  <span class="c1">#  multiDelete: false</span>
+  <span class="c1">#  addressingStyle: path</span>
+  <span class="c1">#  disableEncodingType: true</span>
+
 
   <span class="c1">#b2:</span>
   <span class="c1">#   accountId: ***********</span>
@@ -442,14 +444,14 @@ io:
 <div class="section" id="multiple-instance-installations">
 <h2>Multiple Instance Installations<a class="headerlink" href="#multiple-instance-installations" title="Permalink to this headline">¶</a></h2>
 <p>You can run Benji multiple times on different machines or in different
-containers simultaneously. The configurations will have to match!
-this is the responsibility of the user and isn’t checked by Benji.  Be
+containers simultaneously. The configurations will have to match.
+This is the responsibility of the user and isn’t checked by Benji!  Be
 careful to shutdown all instances before making configuration changes that
 could affect other instances (like adding an encryption key).</p>
 <p>Multiple instances open up the possibility to scale-out Benji for
 performance reasons, to put instances where the backup source data is or to
 have a dedicated instance for restores for example.</p>
-<p>Locking between different instances is done via the central database.</p>
+<p>Locking between different instances is done via the database backend.</p>
 </div>
 </div>
 

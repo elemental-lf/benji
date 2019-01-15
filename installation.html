@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.1.1+dirty documentation</title>
+  <title>Installation &mdash; Benji Backup 0.1.1.dev10+g63d8882.dirty documentation</title>
   
 
   
@@ -165,8 +165,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
@@ -305,33 +305,27 @@ Benji and its dependencies:</p>
 python3.6 -m venv /usr/local/benji
 <span class="c1"># Activate it (your shell prompt should change)</span>
 . /usr/local/benji/bin/activate
-<span class="c1"># Let&#39;s upgrade pip first</span>
-pip install --upgrade pip
-<span class="c1"># And now install Benji and its dependencies</span>
-pip install --process-dependency-links <span class="s1">&#39;git+https://github.com/elemental-lf/benji&#39;</span>
+<span class="c1"># Alternative A: Install a released version from PyPI (0.1.1 in this case)</span>
+pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.1.1
+<span class="c1"># Alternative B: Install the latest released version from PyPI</span>
+pip install benji
+<span class="c1"># Alternative C: Install the latest version from the master branch of the Git repository</span>
+pip install git+https://github.com/elemental-lf/benji
 </pre></div>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">aes_keywrap is available on PyPI, but the version there isn’t
-compatible with Python 3. The source repository contains the
-necessary changes. The option <code class="docutils literal notranslate"><span class="pre">--process-dependency-links</span></code> is
-necessary to allow PIP to fetch this external dependency.</p>
 </div>
 <p>If you want to use certain features of Benji you need to install additional
 dependencies:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 <em>data backend</em> support</li>
-<li><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud <em>data backend</em> support</li>
-<li><code class="docutils literal notranslate"><span class="pre">encryption</span></code>: Encryption support</li>
+<li><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 object storage support</li>
+<li><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud object storage support</li>
 <li><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</li>
 <li><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</li>
 </ul>
 <p>You can do this be specifying a comma delimited list of extra features in square brackets after the package URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install --process-dependency-links <span class="s1">&#39;git+https://github.com/elemental-lf/benji[encryption,compression,s3,readcache,b2]&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.1.1[compression,s3,readcache,b2]&#39;</span>
 </pre></div>
 </div>
-<p>To uprgade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>
+<p>To upgrade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">It is recommended to install and use the compression feature for

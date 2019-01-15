@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Data Layout &mdash; Benji Backup 0.1.1+dirty documentation</title>
+  <title>Data Layout &mdash; Benji Backup 0.1.1.dev10+g63d8882.dirty documentation</title>
   
 
   
@@ -165,8 +165,8 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#meta-backend">Meta Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#data-backend">Data Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
@@ -255,49 +255,47 @@
             
   <div class="section" id="data-layout">
 <h1>Data Layout<a class="headerlink" href="#data-layout" title="Permalink to this headline">¶</a></h1>
-<p>Benji uses two separate data storages: The <em>data backend</em> and the <em>meta
-backend</em>.</p>
-<p>The <em>data backend</em> stores the binary blocks whereas the <em>meta
-backend</em> stores to which version the block belongs, its checksum
-but also whether it actually contains data or not.</p>
-<p>The database backend uses SQLAlchemy to access an underlying SQL database.
-Benji has been tested with SQLite3 and PostgreSQL. For production deployments
-PostgreSQL ist recommended.</p>
-<p>The <em>data backend</em> is pluggable and there are currently three different
-implementations from which you can choose:</p>
-<ul class="simple">
-<li>file: File based storage</li>
-<li>s3: S3 compatible storage like AWS S3, Google Storage, Ceph RADOS Gateway
-or Minio</li>
-<li>b2: Backblaze’s B2 Cloud Storage</li>
-</ul>
-<div class="section" id="meta-backend">
-<h2>Meta Backend<a class="headerlink" href="#meta-backend" title="Permalink to this headline">¶</a></h2>
+<p>Benji works with two different categories of data: The metadata is stored
+in a database backend and describes how the blocks fit together to form
+a backup <em>version</em>. The actual blocks are saved in one or more object
+storages.</p>
+<div class="section" id="database-backend">
+<h2>Database Backend<a class="headerlink" href="#database-backend" title="Permalink to this headline">¶</a></h2>
 <p>The database backend is responsible for managing all metadata.</p>
 <p>The database backend relies on SQLAlchemy, a Python ORM which works with a
 huge number of DBMS, e.g. MySQL, PostgreSQL, SQLite3 and Oracle.</p>
-<p>Benji has been developed and test with PostgreSQL and SQLite3, so they are
+<p>Benji has been developed and tested with PostgreSQL and SQLite3, so they are
 the recommended database engines and you may encounter problems with other
 databases. Patches to support other databases are welcome of course!</p>
-<p>For Benji’s purpose, you may use either PostgreSQL or SQLite3. But depending
-on the amount of backup data and on how many versions you want to keep to
-might want to chose one over the other. For a single workstation’s backup
-with 10-20 versions, SQLite3 is perfectly suitable. However you will
-benefit from PostgreSQL’s performance and stability when doing hundreds of
-versions with terabytes of backup data.</p>
-<p>You configure the location of your database with the <code class="docutils literal notranslate"><span class="pre">metadataBackend.engine</span></code>
-directive. Please refer to the SQLAlchemy documentation for options and format
-at <a class="reference external" href="http://docs.sqlalchemy.org/en/latest/core/engines.html">http://docs.sqlalchemy.org/en/latest/core/engines.html</a>.</p>
-<p>All timestamps in the database are in UTC and without timezone information.</p>
-</div>
-<div class="section" id="data-backend">
-<h2>Data Backend<a class="headerlink" href="#data-backend" title="Permalink to this headline">¶</a></h2>
-<p>As mentioned above there are three <em>data backend</em> implementations. Please
-refer to section <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a>.</p>
+<p>For Benji’s purposes, you may use either PostgreSQL or SQLite3. For a single
+workstation’s backup with 10 to 20 versions, SQLite3 is perfectly suitable.
+However you will benefit from PostgreSQL’s performance and stability when
+doing hundreds of versions with terabytes of backup data. A distributed
+installation of Benji requires PostgreSQL to work and it is also the
+recommended DBMS for production deployments.</p>
+<p>You configure the location of your database with the <code class="docutils literal notranslate"><span class="pre">databaseEngine</span></code>
+directive. Please consult the <a class="reference external" href="http://docs.sqlalchemy.org/en/latest/core/engines.html">SQLAlchemy documentation</a>
+for options and format.</p>
+<p>All timestamps in the database are in UTC.</p>
 <div class="admonition-todo admonition" id="index-0">
 <p class="first admonition-title">Todo</p>
+<p class="last">Document all tables</p>
+</div>
+</div>
+<div class="section" id="object-storages">
+<h2>Object Storages<a class="headerlink" href="#object-storages" title="Permalink to this headline">¶</a></h2>
+<p>The object storage backend is pluggable and there are currently three different
+implementations from which you can choose:</p>
+<ul class="simple">
+<li>file: File based storage</li>
+<li>s3: S3 compatible storage like AWS S3, Google Storage, Ceph’s RADOS Gateway
+or Minio</li>
+<li>b2: Backblaze’s B2 Cloud Storage</li>
+</ul>
+<div class="admonition-todo admonition" id="index-1">
+<p class="first admonition-title">Todo</p>
 <p class="last">Document information about the actual data layout, encryption,
-compression and mention metadata accompanying blocks.</p>
+compression and mention metadata accompanying objects.</p>
 </div>
 </div>
 </div>

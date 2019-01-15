@@ -287,7 +287,7 @@ inconsistency is suspected as it can take a very long time to complete.
 .. [1] Benji uses blake2b with a 32 byte digest size but this can be configured
     in ``benji.yaml``. blake2b is the recommended hash function as it is very
     fast on modern computers. However it's possible to use any other algorithm
-    from Python's hashlib (i.e. ``md5``, ``sha1``, ``sha224``, ``sha256``,
-    ``sha384`` or ``sha512``). The maximum supported digest length is 64.
-    Smaller digest lengths have a higher chance of hash collisions which must
-    be avoided. Digest lengths below 32 bytes are not recommened.
+    which is included in `PyCryptodome <https://pycryptodome.readthedocs.io/en/latest/src/hash/hash.html#modern-hash-algorithms>`_.
+    The maximum supported digest length is 64. Smaller digest lengths have a
+    higher chance of hash collisions which must be avoided. Digest lengths below
+    32 bytes are not recommended.

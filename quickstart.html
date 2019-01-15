@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start &mdash; Benji Backup 0.1.1+dirty documentation</title>
+  <title>Quick Start &mdash; Benji Backup 0.1.1.dev10+g63d8882.dirty documentation</title>
   
 
   
@@ -165,8 +165,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#meta-backend">Meta Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#data-backend">Data Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
@@ -546,10 +546,10 @@ not work reliably with other DBMS.</p>
 <tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>Benji uses blake2b with a 32 byte digest size but this can be configured
 in <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code>. blake2b is the recommended hash function as it is very
 fast on modern computers. However it’s possible to use any other algorithm
-from Python’s hashlib (i.e. <code class="docutils literal notranslate"><span class="pre">md5</span></code>, <code class="docutils literal notranslate"><span class="pre">sha1</span></code>, <code class="docutils literal notranslate"><span class="pre">sha224</span></code>, <code class="docutils literal notranslate"><span class="pre">sha256</span></code>,
-<code class="docutils literal notranslate"><span class="pre">sha384</span></code> or <code class="docutils literal notranslate"><span class="pre">sha512</span></code>). The maximum supported digest length is 64.
-Smaller digest lengths have a higher chance of hash collisions which must
-be avoided. Digest lengths below 32 bytes are not recommened.</td></tr>
+which is included in <a class="reference external" href="https://pycryptodome.readthedocs.io/en/latest/src/hash/hash.html#modern-hash-algorithms">PyCryptodome</a>.
+The maximum supported digest length is 64. Smaller digest lengths have a
+higher chance of hash collisions which must be avoided. Digest lengths below
+32 bytes are not recommended.</td></tr>
 </tbody>
 </table>
 </div>
