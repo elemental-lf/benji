@@ -176,7 +176,7 @@ class TokenBucket:
 class InputValidation:
 
     QUALIFIED_NAME_REGEXP = '(?!-)[-a-zA-Z0-9_.]{1,63}(?<!-)'
-    VALUE_REGEXP = '(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)'
+    VALUE_REGEXP = '(?!-)[-a-zA-Z0-9_.:/@+]+(?<!-)'
     OPTIONAL_VALUE_REGEXP = '(' + VALUE_REGEXP + ')?'
     DNS1123_LABEL_REGEXP = '(?!-)[-a-z0-9]{1,63}(?<!-)'
     DNS1123_SUBDOMAIN_REGEXP = DNS1123_LABEL_REGEXP + '(\\.' + DNS1123_LABEL_REGEXP + ')*'
