@@ -9,10 +9,10 @@ import rados
 import rbd
 
 from benji.config import ConfigDict, Config
+from benji.database import DereferencedBlock
 from benji.exception import UsageError, ConfigurationError
 from benji.io.base import IOBase
 from benji.logging import logger
-from benji.database import DereferencedBlock
 
 
 class IO(IOBase):
@@ -34,6 +34,9 @@ class IO(IOBase):
             except AttributeError:
                 raise ConfigurationError('{}: Unknown image feature {}.'.format(module_configuration.full_name, feature))
 
+        self._pool_name = None
+        self._image_name = None
+        self._snapshot_name = None
         self._writer = None
 
     def open_r(self) -> None:
@@ -85,6 +88,7 @@ class IO(IOBase):
                             self._name, self._path, self.size(), size))
 
     def size(self) -> int:
+        assert self._pool_name is not None and self._image_name is not None
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
             size = image.size()
