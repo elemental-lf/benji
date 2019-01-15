@@ -19,4 +19,4 @@ configuration:
       default: ['RBD_FEATURE_LAYERING']
       schema:
         type: string
-        regex: '^RBD_FEATURE_'
+        regex: '^RBD_FEATURE_.*'
