@@ -95,8 +95,15 @@ class IO(IOBase):
                             self._name, self._path, image_size, size))
 
                 # If this is an existing image and sparse is true discard all objects from this image
+                # RBD discard only supports a maximum region length of 0x7fffffff.
                 if sparse:
-                    self._writer.discard(0, image_size)
+                    region_start = 0
+                    bytes_to_end = image_size
+                    while bytes_to_end > 0:
+                        region_length = min(0x7fffffff, bytes_to_end)
+                        self._writer.discard(region_start, region_length)
+                        region_start += region_length
+                        bytes_to_end -= region_length
 
     def size(self) -> int:
         assert self._pool_name is not None and self._image_name is not None
