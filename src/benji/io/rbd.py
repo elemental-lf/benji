@@ -50,32 +50,32 @@ class IO(IOBase):
         re_match = re.match('^([^/]+)/([^@]+)@?(.+)?$', self._path)
         if not re_match:
             raise UsageError(
-                'IO path {} is invalid . Need {}://<pool>/<imagename> or {}://<pool>/<imagename>@<snapshotname>.'.format(
-                    self._path, self.name, self.name))
+                'URL {} is invalid . Need {}://<pool>/<imagename> or {}://<pool>/<imagename>@<snapshotname>.'.format(
+                    self.url, self.name, self.name))
         self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
         except rados.ObjectNotFound:
-            raise FileNotFoundError('RBD pool {} not found.'.format(self._pool_name)) from None
+            raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
         try:
             rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True)
         except rbd.ImageNotFound:
-            raise FileNotFoundError('Image or snapshot not found for IO path {}.'.format(self._path)) from None
+            raise FileNotFoundError('RBD image or snapshot {} not found.'.format(self.url)) from None
 
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         re_match = re.match('^([^/]+)/([^@]+)$', self._path)
         if not re_match:
-            raise UsageError('IO path {} is invalid . Need {}://<pool>/<imagename>.'.format(self._path, self.name))
+            raise UsageError('URL {} is invalid . Need {}://<pool>/<imagename>.'.format(self.url, self.name))
         self._pool_name, self._image_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
         except rados.ObjectNotFound:
-            raise FileNotFoundError('RBD pool {} not found.'.format(self._pool_name)) from None
+            raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
         try:
             self._writer = rbd.Image(ioctx, self._image_name)
@@ -85,18 +85,18 @@ class IO(IOBase):
         else:
             if not force:
                 raise FileExistsError(
-                    'Restore target {}://{} already exists. Force the restore if you want to overwrite it.'.format(
-                        self.name, self._path))
+                    'RBD image {} already exists. Force the restore if you want to overwrite it.'.format(self.url))
             else:
                 image_size = self._writer.size()
                 if size > image_size:
                     raise IOError(
-                        'Restore target {}://{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
-                            self._name, self._path, image_size, size))
+                        'RBD image {} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
+                            self.url, image_size, size))
 
                 # If this is an existing image and sparse is true discard all objects from this image
                 # RBD discard only supports a maximum region length of 0x7fffffff.
                 if sparse:
+                    logger.debug('Discarding all objects of RBD image {}.'.format(self.url))
                     region_start = 0
                     bytes_to_end = image_size
                     while bytes_to_end > 0:
@@ -132,12 +132,13 @@ class IO(IOBase):
         return block, data
 
     def write(self, block: DereferencedBlock, data: bytes) -> None:
+        assert self._writer is not None
         offset = block.id * self._block_size
-        written = self._writer.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)  # type: ignore
+        written = self._writer.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
         assert written == len(data)
         if written != len(data):
-            raise IOError('Wanted to write {} bytes to restore target {}://{}, but only {} bytes written.', len(data),
-                          self.name, self._path, written)
+            raise IOError('Wanted to write {} bytes to RBD image {}, but only {} bytes written.', len(data), self.url,
+                          written)
 
     def close(self) -> None:
         super().close()

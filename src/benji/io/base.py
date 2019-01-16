@@ -28,6 +28,10 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
     def name(self) -> str:
         return self._name
 
+    @property
+    def url(self) -> str:
+        return '{}://{}.'.format(self._name, self._path)
+
     @abstractmethod
     def size(self) -> int:
         raise NotImplementedError()
@@ -75,7 +79,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
                     future.cancel()
                 logger.debug('IO backend cancelled all outstanding read jobs.')
                 # Get all jobs so that the semaphore gets released and still waiting jobs can complete
-                for result in self.read_get_completed():
+                for _ in self.read_get_completed():
                     pass
                 logger.debug('IO backend read results from all outstanding read jobs.')
             self._read_executor.shutdown()
