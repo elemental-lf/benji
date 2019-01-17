@@ -424,7 +424,7 @@ class Lock(Base):
 class DatabaseBackend(ReprMixIn):
     _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
-    _COMMIT_EVERY_N_BLOCKS = 1000
+    _BLOCKS_COMMIT_INTERVAL = 20 # in seconds
 
     _locking = None
 
@@ -439,8 +439,6 @@ class DatabaseBackend(ReprMixIn):
                 # Increase timeout to 60 seconds (5 seconds is the default). This will make "database is locked" errors
                 # due to concurrent database access less likely.
                 connect_args['timeout'] = 60
-                # Commit more often to give other processes a chance to also access the database
-                self._COMMIT_EVERY_N_BLOCKS = 10
             self.engine = sqlalchemy.create_engine(url, connect_args=connect_args)
         else:
             logger.info('Running with ephemeral in-memory database.')
@@ -465,7 +463,7 @@ class DatabaseBackend(ReprMixIn):
         Session = sessionmaker(bind=self.engine)
         self._session = Session()
         self._locking = DatabaseBackendLocking(self._session)
-        self._commit_block_counter = 0
+        self._last_blocks_commit = time.monotonic()
         return self
 
     def migrate(self) -> None:
@@ -684,12 +682,13 @@ class DatabaseBackend(ReprMixIn):
                 )
                 self._session.add(block)
 
-            self._commit_block_counter += 1
-            if self._commit_block_counter % self._COMMIT_EVERY_N_BLOCKS == 0:
+            current_clock = time.monotonic()
+            if current_clock - self._last_blocks_commit > self._BLOCKS_COMMIT_INTERVAL:
                 t1 = time.time()
                 self._session.commit()
                 t2 = time.time()
                 logger.debug('Commited metadata transaction in {:.2f}s'.format(t2 - t1))
+                self._last_blocks_commit = current_clock
         except:
             self._session.rollback()
             raise
