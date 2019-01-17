@@ -436,9 +436,9 @@ class DatabaseBackend(ReprMixIn):
                 # This tries to work around a SQLite design limitation. It's best to use PostgreSQL if you're affected
                 # by this as it doesn't have this limitation.
                 # Also see https://github.com/elemental-lf/benji/issues/11.
-                # Increase timeout to 60 seconds (5 seconds is the default). This will make "database is locked" errors
+                # Increase the timeout (5 seconds is the default). This will make "database is locked" errors
                 # due to concurrent database access less likely.
-                connect_args['timeout'] = 60
+                connect_args['timeout'] = 3 * self._BLOCKS_COMMIT_INTERVAL
             self.engine = sqlalchemy.create_engine(url, connect_args=connect_args)
         else:
             logger.info('Running with ephemeral in-memory database.')
