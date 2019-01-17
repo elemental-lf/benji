@@ -26,9 +26,5 @@ class ConfigurationError(BenjiException, RuntimeError):
     pass
 
 
-class NbdServerAbortedNegotiationError(BenjiException, IOError):
-    pass
-
-
 class ScrubbingError(BenjiException, IOError):
     pass
