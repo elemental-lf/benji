@@ -104,7 +104,7 @@ class Benji(ReprMixIn):
             if base_version_locking and old_blocks:
                 self._locking.lock_version(base_version_uid, reason='Base version cloning')
 
-            # we always start with invalid versions, then validate them after backup
+            # We always start with invalid versions, then mark them valid after the backup succeeds.
             version = self._database_backend.create_version(
                 version_name=version_name,
                 snapshot_name=version_snapshot_name,
@@ -732,20 +732,27 @@ class Benji(ReprMixIn):
             read_jobs = 0
             for i, block in enumerate(blocks):
                 if block.id in read_blocks or not block.valid:
-                    io.read(block)  # adds a read job.
+                    io.read(block)
                     read_jobs += 1
                 elif block.id in sparse_blocks:
-                    # This "elif" is very important. Because if the block is in read_blocks
-                    # AND sparse_blocks, it *must* be read.
-                    self._database_backend.set_block(
-                        id=block.id,
-                        version_uid=version.uid,
-                        block_uid=None,
-                        checksum=None,
-                        size=block.size,
-                        valid=True)
+                    # This "elif" is very important. Because if the block is in read_blocks AND sparse_blocks,
+                    # it *must* be read.
+
+                    # Only update the database when the block wasn't sparse to begin with
+                    if block.uid is not None:
+                        self._database_backend.set_block(
+                            id=block.id,
+                            version_uid=version.uid,
+                            block_uid=None,
+                            checksum=None,
+                            size=block.size,
+                            valid=True)
+                        logger.debug('Skipping block (had data, turned sparse) {}'.format(block.id))
+                    else:
+                        assert block.checksum is None
+                        logger.debug('Skipping block (sparse) {}'.format(block.id))
                     stats['bytes_sparse'] += block.size
-                    logger.debug('Skipping block (sparse) {}'.format(block.id))
+
                 else:
                     # Block is already in database, no need to update it
                     logger.debug('Keeping block {}'.format(block.id))
