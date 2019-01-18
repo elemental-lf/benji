@@ -502,6 +502,10 @@ class Commands:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
+    def migrate(self) -> None:
+        benji_obj = Benji(self.config, migrate_database=True)
+        benji_obj.close()
+
     def enforce_retention_policy(self, rules_spec: str, filter_expression: str, dry_run: bool,
                                  keep_metadata_backup: bool, group_label: Optional[str]) -> None:
         benji_obj = None
@@ -771,6 +775,10 @@ def main():
     # INIT
     p = subparsers_root.add_parser('init', help='Initialize the database (will not delete existing tables or data)')
     p.set_defaults(func='init')
+
+    # MIGRATE
+    p = subparsers_root.add_parser('migrate', help='Migrate an existing database to a new schema revision')
+    p.set_defaults(func='migrate')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

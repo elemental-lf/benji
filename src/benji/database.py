@@ -17,6 +17,10 @@ from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, O
 
 import semantic_version
 import sqlalchemy
+from alembic import command as alembic_command
+from alembic.config import Config as alembic_config_Config
+from alembic.runtime.environment import EnvironmentContext
+from alembic.script import ScriptDirectory
 from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
     Regex, ParseException, ParseFatalException, Literal, NoMatch, ParserElement
 from sqlalchemy.sql.ddl import DropTable
@@ -454,11 +458,46 @@ class DatabaseBackend(ReprMixIn):
             logger.info('Running with ephemeral in-memory database.')
             self.engine = sqlalchemy.create_engine('sqlite://')
 
+    def _alembic_config(self):
+        return alembic_config_Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
+
+    def _migration_needed(self, alembic_config: alembic_config_Config) -> Tuple[bool, str, str]:
+        with self.engine.begin() as connection:
+            alembic_config.attributes['connection'] = connection
+            script = ScriptDirectory.from_config(alembic_config)
+            with EnvironmentContext(alembic_config, script) as env_context:
+                env_context.configure(connection, version_table="alembic_version")
+                head_revision = env_context.get_head_revision()
+                migration_context = env_context.get_context()
+                current_revision = migration_context.get_current_revision()
+
+        if current_revision is None:
+            current_revision = '<unknown>'
+
+        logger.debug('Current database schema revision: {}.'.format(current_revision))
+        logger.debug('Expected database schema revision: {}.'.format(head_revision))
+
+        return ((head_revision != current_revision), current_revision, head_revision)
+
+    def migrate(self) -> None:
+        alembic_config = self._alembic_config()
+        migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
+        if migration_needed:
+            logger.info('Migrating from database schema revision {} to {}.'.format(current_revision, head_revision))
+            with self.engine.begin() as connection:
+                alembic_config.attributes['connection'] = connection
+                alembic_command.upgrade(alembic_config, "head")
+        else:
+            logger.info('Current database schema revision: {}.'.format(current_revision))
+            logger.info('The database schema is up-to-date.')
+
     def open(self) -> 'DatabaseBackend':
-        try:
-            self.migrate()
-        except Exception as exception:
-            raise RuntimeError('Database migration attempt failed.') from exception
+        alembic_config = self._alembic_config()
+        migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
+        if migration_needed:
+            logger.info('Current database schema revision: {}.'.format(current_revision))
+            logger.info('Expected database schema revision: {}.'.format(head_revision))
+            raise RuntimeError('The database schema requires migration.')
 
         # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
         # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
@@ -474,17 +513,6 @@ class DatabaseBackend(ReprMixIn):
         self._locking = DatabaseBackendLocking(self._session)
         self._last_blocks_commit = time.monotonic()
         return self
-
-    def migrate(self, stamp_only: bool = False) -> None:
-        from alembic.config import Config
-        from alembic import command
-        alembic_cfg = Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
-        with self.engine.begin() as connection:
-            alembic_cfg.attributes['connection'] = connection
-            if not stamp_only:
-                command.upgrade(alembic_cfg, "head")
-            else:
-                command.stamp(alembic_cfg, "head")
 
     def init(self, _destroy: bool = False) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
@@ -502,7 +530,10 @@ class DatabaseBackend(ReprMixIn):
             logger.debug('Existing tables: {}'.format(', '.join(sorted(table_names))))
             raise FileExistsError('Database schema contains tables already. Not touching anything.')
 
-        self.migrate(stamp_only=True)
+        alembic_config = self._alembic_config()
+        with self.engine.begin() as connection:
+            alembic_config.attributes['connection'] = connection
+            alembic_command.stamp(alembic_config, "head")
 
     def commit(self) -> None:
         self._session.commit()
