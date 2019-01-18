@@ -20,7 +20,7 @@ def run_migrations_offline():
     if database_engine is None:
         raise RuntimeError('Offline migrations only work when directly running Alembic.')
 
-    context.configure(url=database_engine, target_metadata=target_metadata, literal_binds=True)
+    context.configure(url=database_engine, target_metadata=target_metadata, literal_binds=True, compare_type=True, compare_server_default=True)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -35,7 +35,7 @@ def run_migrations_online():
         connectable = create_engine(database_engine)
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True, compare_server_default=True)
 
         with context.begin_transaction():
             context.run_migrations()
