@@ -19,10 +19,11 @@ import semantic_version
 import sqlalchemy
 from pyparsing import pyparsing_common, quotedString, removeQuotes, replaceWith, Keyword, opAssoc, infixNotation, \
     Regex, ParseException, ParseFatalException, Literal, NoMatch, ParserElement
+from sqlalchemy.sql.ddl import DropTable
 
 ParserElement.enablePackrat()
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
-    DateTime, UniqueConstraint, and_, or_, not_
+    DateTime, UniqueConstraint, and_, or_, not_, MetaData, Table
 from sqlalchemy import distinct
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -444,12 +445,11 @@ class DatabaseBackend(ReprMixIn):
             logger.info('Running with ephemeral in-memory database.')
             self.engine = sqlalchemy.create_engine('sqlite://')
 
-    def open(self, _migrate: bool = True) -> 'DatabaseBackend':
-        if _migrate:
-            try:
-                self.migrate()
-            except Exception as exception:
-                raise RuntimeError('Database migration attempt failed.') from exception
+    def open(self) -> 'DatabaseBackend':
+        try:
+            self.migrate()
+        except Exception as exception:
+            raise RuntimeError('Database migration attempt failed.') from exception
 
         # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
         # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
@@ -466,35 +466,34 @@ class DatabaseBackend(ReprMixIn):
         self._last_blocks_commit = time.monotonic()
         return self
 
-    def migrate(self) -> None:
-        # migrate the db to the lastest version
+    def migrate(self, stamp_only: bool = False) -> None:
         from alembic.config import Config
         from alembic import command
         alembic_cfg = Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
         with self.engine.begin() as connection:
             alembic_cfg.attributes['connection'] = connection
-            command.upgrade(alembic_cfg, "head")
+            if not stamp_only:
+                command.upgrade(alembic_cfg, "head")
+            else:
+                command.stamp(alembic_cfg, "head")
 
-    def init(self, _destroy: bool = False, _migrate: bool = True) -> None:
+    def init(self, _destroy: bool = False) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
         if _destroy:
             Base.metadata.drop_all(self.engine)
+            # Drop alembic_version table
+            if self.engine.has_table('alembic_version'):
+                with self.engine.begin() as connection:
+                    connection.execute(DropTable(Table('alembic_version', MetaData()))) # type: ignore
 
-        # This will create all tables. It will NOT delete any tables or data.
-        # Instead, it will raise when something can't be created.
-        # TODO: explicitly check if the database is empty
-        Base.metadata.create_all(
-            self.engine, checkfirst=False)  # checkfirst==False will raise when it finds an existing table
+        table_names = self.engine.table_names()
+        if not table_names:
+            Base.metadata.create_all(self.engine, checkfirst=False)
+        else:
+            logger.debug('Existing tables: {}'.format(', '.join(sorted(table_names))))
+            raise FileExistsError('Database schema contains tables already. Not touching anything.')
 
-        if _migrate:
-            from alembic.config import Config
-            from alembic import command
-            alembic_cfg = Config(
-                os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
-            with self.engine.begin() as connection:
-                alembic_cfg.attributes['connection'] = connection
-                # create the version table, "stamping" it with the most recent rev:
-                command.stamp(alembic_cfg, "head")
+        self.migrate(stamp_only=True)
 
     def commit(self) -> None:
         self._session.commit()

@@ -32,8 +32,7 @@ class Benji(ReprMixIn):
                  block_size: int = None,
                  init_database: bool = False,
                  in_memory_database: bool = False,
-                 _destroy_database: bool = False,
-                 _migrate_database: bool = True) -> None:
+                 _destroy_database: bool = False) -> None:
 
         self.config = config
 
@@ -53,9 +52,9 @@ class Benji(ReprMixIn):
 
         database_backend = DatabaseBackend(config, in_memory=in_memory_database)
         if init_database or in_memory_database:
-            database_backend.init(_destroy=_destroy_database, _migrate=_migrate_database)
+            database_backend.init(_destroy=_destroy_database)
 
-        self._database_backend = database_backend.open(_migrate=_migrate_database)
+        self._database_backend = database_backend.open()
         self._locking = self._database_backend.locking()
 
         notify(self._process_name)
