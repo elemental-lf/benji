@@ -251,7 +251,7 @@ Base: Any = declarative_base(metadata=metadata)
 class VersionStatistic(Base):
     __tablename__ = 'version_statistics'
     # No foreign key references here, so that we can keep the stats around even when the version is deleted
-    uid = Column(VersionUidType, primary_key=True)
+    uid = Column(VersionUidType, primary_key=True, autoincrement=False)
     base_uid = Column(VersionUidType, nullable=True)
     hints_supplied = Column(Boolean(name='hints_supplied'), nullable=False)
     name = Column(String, nullable=False)
@@ -275,7 +275,7 @@ class Version(Base):
 
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
-    uid = Column(VersionUidType, primary_key=True, nullable=False)
+    uid = Column(VersionUidType, primary_key=True, autoincrement=True, nullable=False)
     date = Column("date", DateTime, nullable=False)
     name = Column(String, nullable=False, default='', index=True)
     snapshot_name = Column(String, nullable=False, server_default='', default='')
@@ -410,7 +410,7 @@ class DeletedBlock(Base):
     date = Column("date", DateTime, nullable=False)
     # BigInteger as the id could get large over time
     # Use INTEGER with SQLLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
-    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, nullable=False)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, nullable=False)
     storage_id = Column(Integer, nullable=False)
     uid_left = Column(Integer, nullable=False)
     uid_right = Column(Integer, nullable=False)
