@@ -235,7 +235,16 @@ class BlockUid(MutableComposite, StorageKeyMixIn['BlockUid']):
     # End: Implements StorageKeyMixIn
 
 
-Base: Any = declarative_base(cls=ReprMixIn)
+# Explicit naming helps Alembic to auto-generate versions
+metadata = MetaData(
+    naming_convention={
+        "ix": "ix_%(column_0_label)s",
+        "uq": "uq_%(table_name)s_%(column_0_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s"
+    })
+Base: Any = declarative_base(metadata=metadata)
 
 
 # This mirrors Version with some extra fields
@@ -244,7 +253,7 @@ class VersionStatistic(Base):
     # No foreign key references here, so that we can keep the stats around even when the version is deleted
     uid = Column(VersionUidType, primary_key=True)
     base_uid = Column(VersionUidType, nullable=True)
-    hints_supplied = Column(Boolean, nullable=False)
+    hints_supplied = Column(Boolean(name='hints_supplied'), nullable=False)
     name = Column(String, nullable=False)
     date = Column("date", DateTime, nullable=False)
     snapshot_name = Column(String, nullable=False)
@@ -273,8 +282,8 @@ class Version(Base):
     size = Column(BigInteger, nullable=False)
     block_size = Column(Integer, nullable=False)
     storage_id = Column(Integer, nullable=False)
-    valid = Column(Boolean, nullable=False)
-    protected = Column(Boolean, nullable=False)
+    valid = Column(Boolean(name='valid'), nullable=False)
+    protected = Column(Boolean(name='protected'), nullable=False)
 
     labels = sqlalchemy.orm.relationship(
         'Label',
@@ -368,15 +377,15 @@ class Block(Base):
     size = Column(Integer, nullable=True)  # 4 bytes
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)  # 4 bytes
-    valid = Column(Boolean, nullable=False)  # 1 byte
+    valid = Column(Boolean(name='valid'), nullable=False)  # 1 byte
     checksum = Column(Checksum(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
     uid = cast(BlockUid, composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
-        Index('ix_blocks_uid_left_uid_right', 'uid_left', 'uid_right'),
+        Index(None, 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
-        # Index('ix_blocks_checksum', 'checksum', postgresql_using='hash'),
-        Index('ix_blocks_checksum', 'checksum'),
+        # Index(None, 'checksum', postgresql_using='hash'),
+        Index(None, 'checksum'),
     )
 
     def deref(self) -> DereferencedBlock:
@@ -407,7 +416,7 @@ class DeletedBlock(Base):
     uid_right = Column(Integer, nullable=False)
 
     uid = composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
-    __table_args__ = (Index('ix_blocks_uid_left_uid_right_2', 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
+    __table_args__ = (Index(None, 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
 
 
 class Lock(Base):
