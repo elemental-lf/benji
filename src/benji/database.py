@@ -254,9 +254,9 @@ class VersionStatistic(Base):
     uid = Column(VersionUidType, primary_key=True, autoincrement=False)
     base_uid = Column(VersionUidType, nullable=True)
     hints_supplied = Column(Boolean(name='hints_supplied'), nullable=False)
-    name = Column(String, nullable=False)
-    date = Column("date", DateTime, nullable=False)
-    snapshot_name = Column(String, nullable=False)
+    name = Column(String(255), nullable=False)
+    date = Column(DateTime, nullable=False)
+    snapshot_name = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     storage_id = Column(Integer, nullable=False)
     block_size = Column(BigInteger, nullable=False)
@@ -276,9 +276,9 @@ class Version(Base):
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
     uid = Column(VersionUidType, primary_key=True, autoincrement=True, nullable=False)
-    date = Column("date", DateTime, nullable=False)
-    name = Column(String, nullable=False, default='', index=True)
-    snapshot_name = Column(String, nullable=False, server_default='', default='')
+    date = Column(DateTime, nullable=False)
+    name = Column(String(255), nullable=False, index=True)
+    snapshot_name = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     block_size = Column(Integer, nullable=False)
     storage_id = Column(Integer, nullable=False)
@@ -322,8 +322,8 @@ class Label(Base):
 
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)
-    name = Column(String, nullable=False, primary_key=True)
-    value = Column(String, nullable=False, index=True)
+    name = Column(String(255), nullable=False, primary_key=True)
+    value = Column(String(255), nullable=False, index=True)
 
     __table_args__ = (UniqueConstraint('version_uid', 'name'),)
 
@@ -424,11 +424,11 @@ class Lock(Base):
 
     REPR_SQL_ATTR_SORT_FIRST = ['host', 'process_id', 'date']
 
-    host = Column(String, nullable=False, primary_key=True)
-    process_id = Column(String, nullable=False, primary_key=True)
-    lock_name = Column(String, nullable=False, primary_key=True)
-    reason = Column(String, nullable=False)
-    date = Column("date", DateTime, nullable=False)
+    host = Column(String(255), nullable=False, primary_key=True)
+    process_id = Column(String(255), nullable=False, primary_key=True)
+    lock_name = Column(String(255), nullable=False, primary_key=True)
+    reason = Column(String(255), nullable=False)
+    date = Column(DateTime, nullable=False)
 
 
 class DatabaseBackend(ReprMixIn):
