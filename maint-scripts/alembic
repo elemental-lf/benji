@@ -1,0 +1,3 @@
+#!/bin/bash
+export PYTHONPATH=./src
+exec alembic -c src/benji/sql_migrations/alembic.ini "$@"
