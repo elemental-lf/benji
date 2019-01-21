@@ -15,7 +15,7 @@ from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import DatabaseBackend, VersionUid, Version, Block, \
-    BlockUid, DereferencedBlock
+    BlockUid, DereferencedBlock, VersionStatus
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError
 from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
@@ -207,20 +207,20 @@ class Benji(ReprMixIn):
         read_jobs = 0
         for i, block in enumerate(blocks):
             notify(
-                self._process_name, 'Preparing {} scrub of version {} ({:.1f}%)'.format(
-                    'deep' if deep_scrub else '', version.uid.v_string, (i + 1) / len(blocks) * 100))
+                self._process_name, 'Preparing {} of version {} ({:.1f}%)'.format(
+                    'deep-scrub' if deep_scrub else 'scrub', version.uid.v_string, (i + 1) / len(blocks) * 100))
             if not block.uid:
-                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep scrub' if deep_scrub else 'Scrub',
+                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep -scrub' if deep_scrub else 'Scrub',
                                                                                 block.id, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
-                    'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid))
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid))
                 continue
             # i != 0 makes sure that we always scrub at least one block (the first in this case)
             if i != 0 and block_percentage < 100 and random.randint(1, 100) > block_percentage:
                 logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
-                    'Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
             else:
                 storage.read(block, metadata_only=(not deep_scrub))
                 read_jobs += 1
@@ -228,14 +228,14 @@ class Benji(ReprMixIn):
 
     def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, read_jobs: int,
                                done_read_jobs: int, deep_scrub: bool) -> None:
-        logger.debug('{} of block {} (UID {}) ok.'.format('Deep scrub' if deep_scrub else 'Scrub', block.id, block.uid))
+        logger.debug('{} of block {} (UID {}) ok.'.format('Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid))
 
         notify(
-            self._process_name, '{} version {} ({:.1f}%)'.format('Deep scrubbing' if deep_scrub else 'Scrubbing',
+            self._process_name, '{} version {} ({:.1f}%)'.format('Deep-scrubbing' if deep_scrub else 'Scrubbing',
                                                                  version_uid.v_string, done_read_jobs / read_jobs * 100))
         log_every_jobs = read_jobs // 200 + 1  # about every half percent
         if done_read_jobs % log_every_jobs == 0 or done_read_jobs == read_jobs:
-            logger.info('{} {}/{} blocks ({:.1f}%)'.format('Deep scrubbed' if deep_scrub else 'Scrubbed',
+            logger.info('{} {}/{} blocks ({:.1f}%)'.format('Deep-scrubbed' if deep_scrub else 'Scrubbed',
                                                            done_read_jobs, read_jobs, done_read_jobs / read_jobs * 100))
 
     def scrub(self, version_uid: VersionUid, block_percentage: int = 100, history: BlockUidHistory = None) -> None:
@@ -319,7 +319,7 @@ class Benji(ReprMixIn):
                    source: str = None,
                    block_percentage: int = 100,
                    history: BlockUidHistory = None) -> None:
-        self._locking.lock_version(version_uid, reason='Deep scrubbing')
+        self._locking.lock_version(version_uid, reason='Deep-scrubbing')
         try:
             version = self._database_backend.get_version(version_uid)
             if not version.valid:
@@ -371,7 +371,7 @@ class Benji(ReprMixIn):
                 data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
                     logger.error(
-                        'Checksum mismatch during deep scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
+                        'Checksum mismatch during deep-scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.id, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
                     affected_version_uids.extend(self._database_backend.set_block_invalid(block.uid))
@@ -422,7 +422,7 @@ class Benji(ReprMixIn):
                 except:
                     self._locking.unlock_version(version_uid)
                     raise
-            logger.info('Deep scrub of version {} successful.'.format(version.uid.v_string))
+            logger.info('Deep-scrub of version {} successful.'.format(version.uid.v_string))
         else:
             if source_mismatch:
                 logger.error('Version {} had source mismatches.'.format(version_uid.v_string))
@@ -435,7 +435,7 @@ class Benji(ReprMixIn):
         self._locking.unlock_version(version_uid)
 
         if not valid:
-            raise ScrubbingError('Deep scrub of version {} failed.'.format(version_uid.v_string))
+            raise ScrubbingError('Deep-scrub of version {} failed.'.format(version_uid.v_string))
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                      block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
