@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import datetime
+import enum
 import json
 import operator
 import os
@@ -523,7 +524,8 @@ class DatabaseBackend(ReprMixIn):
                 with self.engine.begin() as connection:
                     connection.execute(DropTable(Table('alembic_version', MetaData()))) # type: ignore
 
-        table_names = self.engine.table_names()
+        # Need to ignore internal SQLite table here
+        table_names = [table for table in self.engine.table_names() if table != 'sqlite_sequence']
         if not table_names:
             Base.metadata.create_all(self.engine, checkfirst=False)
         else:
