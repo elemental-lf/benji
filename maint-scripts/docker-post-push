@@ -12,3 +12,8 @@ if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
 	docker tag $IMAGE_NAME "$DOCKER_REPO:$VERSION"
 	[[ $COMMIT_MSG ]] && docker push "$DOCKER_REPO:$VERSION"
 fi
+
+if [[ $SOURCE_BRANCH == master ]]; then
+	docker tag $IMAGE_NAME "$DOCKER_REPO:latest"
+	[[ $COMMIT_MSG ]] && docker push "$DOCKER_REPO:latest"
+fi
