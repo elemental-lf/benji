@@ -129,7 +129,7 @@ class VersionUidType(TypeDecorator):
 
     impl = Integer
 
-    def process_bind_param(self, value: Union[None, int, str, VersionUid], dialect) -> Union[None, int]:
+    def process_bind_param(self, value: Optional[Union[int, str, VersionUid]], dialect) -> Optional[int]:
         if value is None:
             return None
         elif isinstance(value, int):
@@ -141,7 +141,7 @@ class VersionUidType(TypeDecorator):
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
-    def process_result_value(self, value: int, dialect) -> Union[None, VersionUid]:
+    def process_result_value(self, value: Optional[int], dialect) -> Optional[VersionUid]:
         if value is not None:
             return VersionUid(value)
         else:
@@ -158,7 +158,7 @@ class ChecksumType(TypeDecorator):
         else:
             return None
 
-    def process_result_value(self, value: bytes, dialect) -> Optional[str]:
+    def process_result_value(self, value: Optional[bytes], dialect) -> Optional[str]:
         if value is not None:
             return hexlify(value).decode('ascii')
         else:
