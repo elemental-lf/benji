@@ -2,7 +2,7 @@ import datetime
 import timeit
 from unittest import TestCase
 
-from benji.database import BlockUid, VersionUid
+from benji.database import BlockUid, VersionUid, VersionStatus
 from benji.exception import InternalError, UsageError
 from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
@@ -16,8 +16,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             snapshot_name='snapshot-name',
             size=16 * 1024 * 4096,
             storage_id=1,
-            block_size=4 * 1024 * 4096,
-            valid=False)
+            block_size=4 * 1024 * 4096)
         self.database_backend.commit()
 
         version = self.database_backend.get_version(version.uid)
@@ -25,16 +24,16 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertEqual('snapshot-name', version.snapshot_name)
         self.assertEqual(16 * 1024 * 4096, version.size)
         self.assertEqual(4 * 1024 * 4096, version.block_size)
-        self.assertFalse(version.valid)
+        self.assertEqual(version.status, VersionStatus.incomplete)
         self.assertFalse(version.protected)
 
-        self.database_backend.set_version(version.uid, valid=True)
+        self.database_backend.set_version(version.uid, status=VersionStatus.valid)
         version = self.database_backend.get_version(version.uid)
-        self.assertTrue(version.valid)
+        self.assertEqual(version.status, VersionStatus.valid)
 
-        self.database_backend.set_version(version.uid, valid=False)
+        self.database_backend.set_version(version.uid, status=VersionStatus.invalid)
         version = self.database_backend.get_version(version.uid)
-        self.assertFalse(version.valid)
+        self.assertEqual(version.status, VersionStatus.invalid)
 
         self.database_backend.set_version(version.uid, protected=True)
         version = self.database_backend.get_version(version.uid)
@@ -80,8 +79,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 snapshot_name='snapshot-name',
                 size=16 * 1024 * 4096,
                 storage_id=1,
-                block_size=4 * 1024 * 4096,
-                valid=False)
+                block_size=4 * 1024 * 4096)
             version = self.database_backend.get_version(version.uid)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
@@ -92,8 +90,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             snapshot_name='snapshot-name-' + self.random_string(12),
             size=256 * 1024 * 4096,
             block_size=1024 * 4096,
-            storage_id=1,
-            valid=False)
+            storage_id=1)
         self.database_backend.commit()
 
         checksums = []
@@ -221,7 +218,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 size=16 * 1024 * 4096,
                 storage_id=1,
                 block_size=4 * 1024 * 4096,
-                valid=False)
+                status=VersionStatus.valid)
             version = self.database_backend.get_version(version.uid)
             self.assertEqual(0, len(version.labels))
             self.database_backend.add_label(version.uid, 'label-key', 'label-value')
@@ -257,10 +254,10 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('name')
         self.assertEqual(256, len(versions))
 
-        versions = self.database_backend.get_versions_with_filter('valid == False')
+        versions = self.database_backend.get_versions_with_filter('status == "valid"')
         self.assertEqual(256, len(versions))
 
-        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('valid == wrong'))
+        self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('status == wrong'))
 
         versions = self.database_backend.get_versions_with_filter('labels["label-key-3"] == ""')
         self.assertEqual(256, len(versions))
@@ -324,14 +321,14 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 size=16 * 1024 * 4096,
                 storage_id=1,
                 block_size=4 * 1024 * 4096,
-                valid=True)
+                status=VersionStatus.valid)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name" and valid == True')
+        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name" and status == "valid"')
         self.assertEqual(1, len(versions))
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" or name == "backup-name" or valid == True')
+        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" or name == "backup-name" or status == "valid"')
         self.assertEqual(3, len(versions))
 
     # Issue https://github.com/elemental-lf/benji/issues/9 (slowness part)
@@ -343,8 +340,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 snapshot_name='snapshot-name.{}'.format(i),
                 size=16 * 1024 * 4096,
                 storage_id=1,
-                block_size=4 * 1024 * 4096,
-                valid=True)
+                block_size=4 * 1024 * 4096)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 

@@ -28,7 +28,7 @@ from sqlalchemy.sql.ddl import DropTable
 
 ParserElement.enablePackrat()
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBinary, Boolean, inspect, event, Index, \
-    DateTime, UniqueConstraint, and_, or_, not_, MetaData, Table
+    DateTime, UniqueConstraint, and_, or_, not_, MetaData, Table, CheckConstraint
 from sqlalchemy import distinct
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -46,6 +46,53 @@ from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 from benji.versions import VERSIONS
+
+
+class VersionStatus(enum.Enum):
+    incomplete = 1
+    valid = 2
+    invalid = 3
+
+    min = incomplete
+    max = invalid
+
+    def __str__(self):
+        return self.name
+
+    def is_valid(self):
+        return self == self.valid
+
+    def is_deep_scrubbable(self):
+        return self == self.invalid or self == self.valid
+
+    def is_scrubbable(self):
+        return self == self.valid
+
+    def is_removable(self):
+        return self != self.incomplete
+
+
+class VersionStatusType(TypeDecorator):
+
+    impl = Integer
+
+    def process_bind_param(self, value: Optional[Union[int, str, VersionStatus]], dialect) -> Optional[int]:
+        if value is None:
+            return None
+        elif isinstance(value, int):
+            return value
+        elif isinstance(value, str):
+            return VersionStatus[value].value
+        elif isinstance(value, VersionStatus):
+            return value.value
+        else:
+            raise InternalError('Unexpected type {} for value in VersionStatusType.process_bind_param'.format(type(value)))
+
+    def process_result_value(self, value: Optional[int], dialect) -> Optional[VersionStatus]:
+        if value is not None:
+            return VersionStatus(value)
+        else:
+            return None
 
 
 @total_ordering
@@ -287,7 +334,7 @@ class Version(Base):
     size = Column(BigInteger, nullable=False)
     block_size = Column(Integer, nullable=False)
     storage_id = Column(Integer, nullable=False)
-    valid = Column(Boolean(name='valid'), nullable=False)
+    status = Column(VersionStatusType, CheckConstraint('status >= {} AND status <= {}'.format(VersionStatus.min.value, VersionStatus.max.value), name='status'), nullable=False)
     protected = Column(Boolean(name='protected'), nullable=False)
 
     labels = sqlalchemy.orm.relationship(
@@ -546,7 +593,7 @@ class DatabaseBackend(ReprMixIn):
                        size: int,
                        storage_id: int,
                        block_size: int,
-                       valid: bool = False,
+                       status: VersionStatus = VersionStatus.incomplete,
                        protected: bool = False) -> Version:
         version = Version(
             name=version_name,
@@ -554,7 +601,7 @@ class DatabaseBackend(ReprMixIn):
             size=size,
             storage_id=storage_id,
             block_size=block_size,
-            valid=valid,
+            status=status,
             protected=protected,
             date=datetime.datetime.utcnow(),
         )
@@ -606,17 +653,17 @@ class DatabaseBackend(ReprMixIn):
 
         return list(reversed(stats_result))
 
-    def set_version(self, version_uid: VersionUid, *, valid: bool = None, protected: bool = None):
+    def set_version(self, version_uid: VersionUid, *, status: VersionStatus = None, protected: bool = None):
         try:
             version = self.get_version(version_uid)
-            if valid is not None:
-                version.valid = valid
+            if status is not None:
+                version.status = status
             if protected is not None:
                 version.protected = protected
             self._session.commit()
-            if valid is not None:
-                logger_func = logger.info if valid else logger.error
-                logger_func('Marked version {} as {}.'.format(version_uid.v_string, 'valid' if valid else 'invalid'))
+            if status is not None:
+                logger_func = logger.info if version.status.is_valid() else logger.error
+                logger_func('Set status of version {} to {}.'.format(version_uid.v_string, version.status.name))
             if protected is not None:
                 logger.info('Marked version {} as {}.'.format(version_uid.v_string,
                                                               'protected' if protected else 'unprotected'))
@@ -745,7 +792,7 @@ class DatabaseBackend(ReprMixIn):
                 block_uid, ', '.join([version_uid.v_string for version_uid in affected_version_uids])))
 
             for version_uid in affected_version_uids:
-                self.set_version(version_uid, valid=False)
+                self.set_version(version_uid, status=VersionStatus.invalid)
             self._session.commit()
         except:
             self._session.rollback()
@@ -906,6 +953,8 @@ class DatabaseBackend(ReprMixIn):
                     return obj.integer
                 elif isinstance(obj, BlockUid):
                     return {'left': obj.left, 'right': obj.right}
+                elif isinstance(obj, VersionStatus):
+                    return obj.name
 
                 return super().default(obj)
 
@@ -987,7 +1036,7 @@ class DatabaseBackend(ReprMixIn):
                     'size',
                     'storage_id',
                     'block_size',
-                    'valid',
+                    'status',
                     'protected',
                     'blocks',
                     'labels',
@@ -1048,7 +1097,7 @@ class DatabaseBackend(ReprMixIn):
                 size=version_dict['size'],
                 storage_id=version_dict['storage_id'],
                 block_size=version_dict['block_size'],
-                valid=version_dict['valid'],
+                status=VersionStatus[version_dict['status']],
                 protected=version_dict['protected'],
             )
             self._session.add(version)

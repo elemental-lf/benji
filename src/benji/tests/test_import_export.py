@@ -6,7 +6,7 @@ import random
 from io import StringIO
 from unittest import TestCase
 
-from benji.database import VersionUid
+from benji.database import VersionUid, VersionStatus
 from benji.logging import logger
 from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
@@ -100,7 +100,7 @@ class ImportExportTestCase():
         self.assertEqual('data-backup', version['name'])
         self.assertEqual('snapshot-name', version['snapshot_name'])
         self.assertEqual(4096, version['block_size'])
-        self.assertTrue(version['valid'])
+        self.assertEqual(version['status'], VersionStatus.valid.name)
         self.assertFalse(version['protected'])
         self.assertEqual(1, version['storage_id'])
 
@@ -113,7 +113,7 @@ class ImportExportTestCase():
         self.assertEqual('data-backup', version.name)
         self.assertEqual('snapshot-name', version.snapshot_name)
         self.assertEqual(4194304, version.block_size)
-        self.assertTrue(version.valid)
+        self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
         self.assertIsInstance(version.blocks, list)
         self.assertIsInstance(version.labels, list)
@@ -138,7 +138,7 @@ class ImportExportTestCase():
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
-                  "valid": true,
+                  "status": "valid",
                   "protected": false,
                   "labels": [],
                   "blocks": [
@@ -162,7 +162,7 @@ class ImportExportTestCase():
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
-                  "valid": true,
+                  "status": "valid",
                   "protected": false,
                   "labels": [],
                   "blocks": [
@@ -186,7 +186,7 @@ class ImportExportTestCase():
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
-                  "valid": true,
+                  "status": "valid",
                   "protected": false,
                   "labels": [],
                   "blocks": [

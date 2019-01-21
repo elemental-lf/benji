@@ -240,7 +240,7 @@ class Commands:
                 'snapshot_name',
                 'size',
                 'block_size',
-                'valid',
+                'status',
                 'protected',
                 'storage',
                 'labels',
@@ -253,7 +253,7 @@ class Commands:
                 'snapshot_name',
                 'size',
                 'block_size',
-                'valid',
+                'status',
                 'protected',
                 'storage',
             ]
@@ -271,7 +271,7 @@ class Commands:
                 version.snapshot_name,
                 PrettyPrint.bytes(version.size),
                 PrettyPrint.bytes(version.block_size),
-                version.valid,
+                version.status,
                 version.protected,
                 StorageFactory.storage_id_to_name(version.storage_id),
             ]

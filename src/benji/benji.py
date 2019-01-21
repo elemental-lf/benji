@@ -83,8 +83,8 @@ class Benji(ReprMixIn):
             if not base_version_locking and not self._locking.is_version_locked(base_version_uid):
                 raise InternalError('Base version is not locked.')
             old_version = self._database_backend.get_version(base_version_uid)  # raise if not exists
-            if not old_version.valid:
-                raise UsageError('You cannot base a new version on an old invalid one.')
+            if not old_version.status.is_valid():
+                raise UsageError('You can only base a new version on a valid old version.')
             if old_version.block_size != self._block_size:
                 raise UsageError('You cannot base a new version on an old version with a different block size.')
             if storage_id is not None and old_version.storage_id != storage_id:
@@ -114,10 +114,8 @@ class Benji(ReprMixIn):
                 size=new_size,
                 block_size=self._block_size,
                 storage_id=new_storage_id,
-                valid=False,
-                protected=True)
+                status=VersionStatus.incomplete)
             self._locking.lock_version(version.uid, reason='Preparing version')
-            self._database_backend.set_version(version.uid, protected=False)
 
             uid: Optional[BlockUid]
             checksum: Optional[str]
@@ -167,8 +165,6 @@ class Benji(ReprMixIn):
 
             self._database_backend.commit()
         except:
-            if version:
-                self._database_backend.set_version(version.uid, protected=False)
             if self._locking.is_version_locked(version.uid):
                 self._locking.unlock_version(version.uid)
             raise
@@ -242,8 +238,8 @@ class Benji(ReprMixIn):
         self._locking.lock_version(version_uid, reason='Scrubbing version')
         try:
             version = self._database_backend.get_version(version_uid)
-            if not version.valid:
-                logger.warn('Version {} is already marked as invalid.'.format(version_uid.v_string))
+            if not version.status.is_scrubbable():
+                raise ScrubbingError('Version {} cannot be scrubbed, it has a status of {}.'.format(version_uid.v_string, version.status.name))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
         except:
             self._locking.unlock_version(version_uid)
@@ -322,8 +318,10 @@ class Benji(ReprMixIn):
         self._locking.lock_version(version_uid, reason='Deep-scrubbing')
         try:
             version = self._database_backend.get_version(version_uid)
-            if not version.valid:
-                logger.warn('Version {} is already marked as invalid.'.format(version_uid.v_string))
+            if not version.status.is_deep_scrubbable():
+                raise ScrubbingError('Version {} cannot be deep-scrubbed, it has a status of {}.'.format(version_uid.v_string, version.status.name))
+            if not version.status.is_valid():
+                logger.warn('Version {} has a status of {}.'.format(version_uid.v_string, version.status.name))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
 
             if source:
@@ -418,7 +416,7 @@ class Benji(ReprMixIn):
         if valid:
             if block_percentage == 100:
                 try:
-                    self._database_backend.set_version(version_uid, valid=True)
+                    self._database_backend.set_version(version_uid, status=VersionStatus.valid)
                 except:
                     self._locking.unlock_version(version_uid)
                     raise
@@ -599,6 +597,8 @@ class Benji(ReprMixIn):
                 age_days = (datetime.datetime.now() - version.date).days
                 if disallow_rm_when_younger_than_days > age_days:
                     raise RuntimeError('Version {} is too young. Will not delete.'.format(version_uid.v_string))
+                if not version.status.is_removable():
+                    raise RuntimeError('Version {} cannot be removed without force, it has status {}.'.format(version_uid.v_string, version.status.name))
 
             num_blocks = self._database_backend.rm_version(version_uid)
 
@@ -880,7 +880,7 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
                     write_jobs, done_write_jobs))
 
-        self._database_backend.set_version(version.uid, valid=True)
+        self._database_backend.set_version(version.uid, status=VersionStatus.valid)
 
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
@@ -1300,7 +1300,7 @@ class BenjiStore(ReprMixIn):
                     storage.rm(block.uid)
 
         self._benji_obj._database_backend.commit()
-        self._benji_obj._database_backend.set_version(cow_version.uid, valid=True, protected=True)
+        self._benji_obj._database_backend.set_version(cow_version.uid, status=VersionStatus.valid, protected=True)
         self._benji_obj.metadata_backup([cow_version.uid], overwrite=True, locking=False)
         self._benji_obj._locking.unlock_version(cow_version.uid)
         del self._cow[cow_version.uid.integer]
