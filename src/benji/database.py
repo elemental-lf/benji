@@ -148,7 +148,7 @@ class VersionUidType(TypeDecorator):
             return None
 
 
-class Checksum(TypeDecorator):
+class ChecksumType(TypeDecorator):
 
     impl = LargeBinary
 
@@ -383,7 +383,7 @@ class Block(Base):
     version_uid = Column(
         VersionUidType, ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True, nullable=False)  # 4 bytes
     valid = Column(Boolean(name='valid'), nullable=False)  # 1 byte
-    checksum = Column(Checksum(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
+    checksum = Column(ChecksumType(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
     uid = cast(BlockUid, composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
