@@ -52,36 +52,4 @@ def upgrade():
 
 
 def downgrade():
-    with op.batch_alter_table('versions', schema=None) as batch_op:
-        batch_op.alter_column(
-            'snapshot_name',
-            existing_type=sa.String(length=255),
-            server_default=sa.text("''::character varying"),
-            type_=sa.VARCHAR(),
-            existing_nullable=False)
-        batch_op.alter_column('name', existing_type=sa.String(length=255), type_=sa.VARCHAR(), existing_nullable=False)
-
-    with op.batch_alter_table('version_statistics', schema=None) as batch_op:
-        batch_op.alter_column(
-            'snapshot_name', existing_type=sa.String(length=255), type_=sa.VARCHAR(), existing_nullable=False)
-        batch_op.alter_column('name', existing_type=sa.String(length=255), type_=sa.VARCHAR(), existing_nullable=False)
-
-    with op.batch_alter_table('locks', schema=None) as batch_op:
-        batch_op.alter_column(
-            'reason', existing_type=sa.String(length=255), type_=sa.VARCHAR(), existing_nullable=False)
-        batch_op.alter_column('process_id', existing_type=sa.String(length=255), type_=sa.VARCHAR())
-        batch_op.alter_column('lock_name', existing_type=sa.String(length=255), type_=sa.VARCHAR())
-        batch_op.alter_column('host', existing_type=sa.String(length=255), type_=sa.VARCHAR())
-
-    with op.batch_alter_table('labels', schema=None) as batch_op:
-        batch_op.drop_constraint(batch_op.f('uq_labels_version_uid'), type_='unique')
-        batch_op.alter_column('value', existing_type=sa.String(length=255), type_=sa.VARCHAR(), existing_nullable=False)
-        batch_op.alter_column('name', existing_type=sa.String(length=255), type_=sa.VARCHAR())
-
-    with op.batch_alter_table('deleted_blocks', schema=None) as batch_op:
-        batch_op.create_index('ix_blocks_uid_left_uid_right_2', ['uid_left', 'uid_right'], unique=False)
-        batch_op.drop_index(batch_op.f('ix_deleted_blocks_uid_left'))
-
-    with op.batch_alter_table('blocks', schema=None) as batch_op:
-        batch_op.create_index('ix_blocks_uid_left_uid_right', ['uid_left', 'uid_right'], unique=False)
-        batch_op.drop_index(batch_op.f('ix_blocks_uid_left'))
+    pass
