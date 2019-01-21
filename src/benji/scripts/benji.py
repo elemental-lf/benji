@@ -498,11 +498,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def init(self) -> None:
+    def database_init(self) -> None:
         benji_obj = Benji(self.config, init_database=True)
         benji_obj.close()
 
-    def migrate(self) -> None:
+    def database_migrate(self) -> None:
         benji_obj = Benji(self.config, migrate_database=True)
         benji_obj.close()
 
@@ -772,13 +772,13 @@ def main():
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
 
-    # INIT
-    p = subparsers_root.add_parser('init', help='Initialize the database (will not delete existing tables or data)')
-    p.set_defaults(func='init')
+    # DATABASE-INIT
+    p = subparsers_root.add_parser('database-init', help='Initialize the database (will not delete existing tables or data)')
+    p.set_defaults(func='database_init')
 
     # MIGRATE
-    p = subparsers_root.add_parser('migrate', help='Migrate an existing database to a new schema revision')
-    p.set_defaults(func='migrate')
+    p = subparsers_root.add_parser('database-migrate', help='Migrate an existing database to a new schema revision')
+    p.set_defaults(func='database_migrate')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
