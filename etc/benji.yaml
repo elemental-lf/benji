@@ -39,11 +39,6 @@ metadataEngine: sqlite:////var/lib/benji/benji.sqlite
 defaultStorage: s-1
 
 storage:
-  # Which data backend to use?
-  # Available types:
-  #   file, s3, b2
-  type: file
-
   file:
     # Store data to this path. A structure of 2 folders depth will be created
     # in this path (e.g. '0a/33'). Blocks of DEFAULTS.block_size will be stored
@@ -63,6 +58,14 @@ storage:
   #  disableEncodingType: true or false (default is false)
   #  activeEncryption: k1
   #  activeCompression: zstd
+  #
+  # For Google S3 API use:
+  #
+  #  endpointUrl: https://storage.googleapis.com/
+  #  multiDelete: false
+  #  addressingStyle: path
+  #  disableEncodingType: true
+
 
   #b2:
   #   accountId: ***********
