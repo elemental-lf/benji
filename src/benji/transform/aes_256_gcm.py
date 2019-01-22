@@ -1,14 +1,13 @@
 import base64
 from typing import Dict, Tuple, Optional
 
-from benji.aes_keywrap import aes_wrap_key, aes_unwrap_key
-
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 
+from benji.aes_keywrap import aes_wrap_key, aes_unwrap_key
+from benji.config import Config, ConfigDict
 from benji.transform.base import TransformBase
 from benji.utils import derive_key
-from benji.config import Config, ConfigDict
 
 
 class Transform(TransformBase):
@@ -16,14 +15,16 @@ class Transform(TransformBase):
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
 
-        master_key: Optional[bytes] = Config.get_from_dict(module_configuration, 'masterKey', None, types=bytes)
-        if master_key is not None:
+        master_key_encoded: Optional[str] = Config.get_from_dict(module_configuration, 'masterKey', None, types=str)
+        if master_key_encoded is not None:
+            master_key = base64.b64decode(master_key_encoded)
+
             if len(master_key) != 32:
-                raise ValueError('Key masterKey has the wrong length. It must be 32 bytes long.')
+                raise ValueError('Key masterKey has the wrong length. It must be 32 bytes long and encoded as BASE64.')
 
             self._master_key = master_key
         else:
-            kdf_salt: bytes = Config.get_from_dict(module_configuration, 'kdfSalt', types=bytes)
+            kdf_salt: bytes = base64.b64decode(Config.get_from_dict(module_configuration, 'kdfSalt', types=str))
             kdf_iterations: int = Config.get_from_dict(module_configuration, 'kdfIterations', types=int)
             password: str = Config.get_from_dict(module_configuration, 'password', types=str)
 

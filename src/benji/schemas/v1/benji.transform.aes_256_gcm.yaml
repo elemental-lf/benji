@@ -4,20 +4,17 @@ configuration:
   required: True
   schema:
     masterKey:
-      type: binary
+      type: string
       empty: False
       required: True
-      minlength: 32
-      maxlength: 32
       excludes:
         - kdfSalt
         - kdfIterations
         - password
     kdfSalt:
-      type: binary
+      type: string
       empty: False
       required: True
-      minlength: 8
       excludes:
         - masterKey
       dependencies:

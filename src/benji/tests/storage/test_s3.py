@@ -41,12 +41,11 @@ class test_s3(StorageTestCase, TestCase):
         - name: k1
           module: aes_256_gcm
           configuration:
-            masterKey: !!binary |
-              e/i1X4NsuT9k+FIVe2kd3vtHVkzZsbeYv35XQJeV8nA=
+            masterKey: VPSQYIyD+dfLIRBTYJlGziu1hsT2eNFXnEuvl6jM/m8=
         - name: k2
           module: aes_256_gcm
           configuration:
-            kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+            kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
             kdfIterations: 20000
             password: "this is a very secret password"
             

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+import base64
 import concurrent
 import datetime
 import json
@@ -75,14 +76,17 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         self._consistency_check_writes = Config.get_from_dict(
             module_configuration, 'consistencyCheckWrites', False, types=bool)
 
-        hmac_key = Config.get_from_dict(module_configuration, 'hmac.key', None, types=bytes)
-        if hmac_key is None:
+        hmac_key_encoded = Config.get_from_dict(module_configuration, 'hmac.key', None, types=str)
+        hmac_key: Optional[bytes] = None
+        if hmac_key_encoded is None:
             hmac_password = Config.get_from_dict(module_configuration, 'hmac.password', None, types=str)
             if hmac_password is not None:
-                hmac_kdf_salt = Config.get_from_dict(module_configuration, 'hmac.kdfSalt', types=bytes)
+                hmac_kdf_salt = base64.b64decode(Config.get_from_dict(module_configuration, 'hmac.kdfSalt', types=str))
                 hmac_kdf_iterations = Config.get_from_dict(module_configuration, 'hmac.kdfIterations', types=int)
                 hmac_key = derive_key(
                     salt=hmac_kdf_salt, iterations=hmac_kdf_iterations, key_length=32, password=hmac_password)
+        else:
+            hmac_key = base64.b64decode(hmac_key_encoded)
         self._dict_hmac: Optional[DictHMAC] = None
         if hmac_key is not None:
             logger.info('Enabling HMAC object metadata integrity protection for storage {}.'.format(name))

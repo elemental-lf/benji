@@ -176,7 +176,7 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123     
             transforms:
@@ -187,7 +187,7 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: sqlite:///{testpath}/benji.sqlite
@@ -233,7 +233,7 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123    
             transforms:
@@ -244,7 +244,7 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji

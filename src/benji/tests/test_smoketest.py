@@ -243,7 +243,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
@@ -258,7 +258,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123        
             transforms:
@@ -269,7 +269,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: sqlite:///{testpath}/benji.sqlite
@@ -304,7 +304,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
@@ -319,7 +319,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123        
             transforms:
@@ -330,7 +330,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
@@ -371,7 +371,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
@@ -390,7 +390,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123        
             transforms:
@@ -401,7 +401,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
@@ -442,7 +442,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
                 readCache:
@@ -464,7 +464,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
                 readCache:
@@ -478,7 +478,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji              
@@ -519,7 +519,7 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
@@ -538,7 +538,7 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
                   - zstd
                   - k1
                 hmac:
-                  kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123        
             transforms:
@@ -549,7 +549,7 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
             - name: k1
               module: aes_256_gcm
               configuration:
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 kdfIterations: 20000
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji              

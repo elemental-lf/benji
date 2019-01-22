@@ -20,7 +20,7 @@ class StorageTestFile(StorageTestCase, TestCase):
               hmac:
                 password: geheim12345
                 kdfIterations: 1000
-                kdfSalt: !!binary CPJlYMjRjfbXWOcqsE309A==
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                 
         ios:
             - name: file

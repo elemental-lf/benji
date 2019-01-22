@@ -42,10 +42,9 @@ configuration:
           required: True
           minlength: 8
         kdfSalt:
-          type: binary
+          type: string
           empty: False
           required: True
-          minlength: 8
         kdfIterations:
           type: integer
           empty: False

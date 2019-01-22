@@ -41,8 +41,7 @@ class StorageTestB2(StorageTestCase, TestCase):
         - name: k1
           module: aes_256_gcm
           configuration:
-            masterKey: !!binary |
-              e/i1X4NsuT9k+FIVe2kd3vtHVkzZsbeYv35XQJeV8nA=
+            masterKey: VPSQYIyD+dfLIRBTYJlGziu1hsT2eNFXnEuvl6jM/m8=
                 
         ios:
             - name: file
