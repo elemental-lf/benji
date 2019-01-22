@@ -30,9 +30,9 @@ from collections import OrderedDict
 from collections import defaultdict
 from typing import List, Dict, Sequence
 
+from benji.database import Version
 from benji.exception import UsageError
 from benji.logging import logger
-from benji.database import Version
 from benji.repr import ReprMixIn
 
 
@@ -94,10 +94,6 @@ class RetentionFilter(ReprMixIn):
 
         dismissed_versions = []
         for version in versions:
-            if version.protected:
-                logger.info('Not considering version {}, it is protected.'.format(version.uid.v_string))
-                continue
-
             try:
                 td = _Timedelta(version.date.timestamp(), self.reference_time)
             except _TimedeltaError as exception:

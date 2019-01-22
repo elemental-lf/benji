@@ -1010,6 +1010,14 @@ class Benji(ReprMixIn):
 
         versions_by_name: Dict[str, List[Version]] = {}
         for version in versions:
+            if version.protected:
+                logger.info('Not considering version {}, it is protected.'.format(version.uid.v_string))
+                continue
+
+            if not version.status.is_removable():
+                logger.info('Not considering version {}, it has a status of {}.'.format(version.uid.v_string, version.status.name))
+                continue
+
             if version.name not in versions_by_name:
                 versions_by_name[version.name] = []
             versions_by_name[version.name].append(version)
