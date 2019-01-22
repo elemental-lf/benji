@@ -19,9 +19,9 @@ spec:
         release: {{ .Release.Name }}
       annotations:
         prometheus.io/port: "{{ .Values.pushgateway.port }}"
-        prometheus.io/scrape: "true"
+        prometheus.io/scrape: "false"
     spec:
-      serviceAccount: {{ template "benji.fullname" . }}
+      serviceAccountName: {{ template "benji.fullname" . }}
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: benji
@@ -30,18 +30,20 @@ spec:
           securityContext:
             privileged: true
           volumeMounts:
-            - mountPath: /dev
-              name: dev
-            - mountPath: /sys/bus
-              name: sysbus
-            - mountPath: /lib/modules
-              name: libmodules
-            - name: mon-endpoint-volume
-              mountPath: /etc/rook
             - name: benji-config
               mountPath: /benji/etc
             - name: tz-config
               mountPath: /etc/localtime
+            # Ceph volumes start
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            - name: ceph-client-admin-keyring
+              mountPath: /etc/ceph/ceph.client.admin.keyring
+              subPath: ceph.client.admin.keyring
+              readOnly: true
+            # Ceph volumes end
           resources:
 {{ toYaml .Values.benji.resources | indent 12 }}
         - name: pushgateway
@@ -59,21 +61,6 @@ spec:
               mountPath: /etc/localtime
       hostNetwork: false
       volumes:
-        - name: dev
-          hostPath:
-            path: /dev
-        - name: sysbus
-          hostPath:
-            path: /sys/bus
-        - name: libmodules
-          hostPath:
-            path: /lib/modules
-        - name: mon-endpoint-volume
-          configMap:
-            name: rook-ceph-mon-endpoints
-            items:
-              - key: data
-                path: mon-endpoints
         - name: benji-config
           configMap:
             name: {{ template "benji.fullname" . }}
@@ -82,6 +69,15 @@ spec:
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
+        # Ceph volumes start
+        - name: ceph-etc
+          configMap:
+            name: ceph-etc
+            defaultMode: 0444
+        - name: ceph-client-admin-keyring
+          secret:
+            secretName: ceph-client-admin-keyring
+        # Ceph end
     {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}

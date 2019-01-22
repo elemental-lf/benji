@@ -5,6 +5,6 @@ metadata:
   name: {{ template "benji.fullname" . }}
 data:
   benji.yaml: |
-{{ .Values.benji.configuration | indent 4 }}
+    {{ .Values.benji.configuration | toYaml | nindent 4 }}
   crontab: |
-{{ .Values.benji.crontab | indent 4 }}
+    {{ .Values.benji.crontab | nindent 4 }}
