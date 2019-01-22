@@ -1,6 +1,7 @@
 import random
 
 from benji.database import Block, BlockUid, VersionUid
+from benji.storage.base import InvalidBlockException
 from benji.tests.testcase import StorageTestCaseBase
 
 
@@ -119,7 +120,7 @@ class StorageTestCase(StorageTestCaseBase):
         self.storage.rm(block.uid)
 
         self.assertRaises(FileNotFoundError, lambda: self.storage.rm(block.uid))
-        self.assertRaises(FileNotFoundError, lambda: self.storage.read_sync(block))
+        self.assertRaises(InvalidBlockException, lambda: self.storage.read_sync(block))
 
     def test_block_uid_to_key(self):
         for i in range(100):
