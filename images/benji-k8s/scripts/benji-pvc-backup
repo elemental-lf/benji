@@ -33,7 +33,7 @@ do
 	NAME="$PVC_NAMESPACE/$PVC_NAME"
 
 	benji::backup::ceph "$NAME" "$CEPH_POOL" "$CEPH_IMAGE" \
-            "benji-backup.me/instance=${BENJI_INSTANCE:-benji-k8s}" \
+            "benji-backup.me/instance=$BENJI_INSTANCE" \
             "benji-backup.me/ceph-pool=$CEPH_POOL" \
             "benji-backup.me/ceph-image=$CEPH_IMAGE" \
             "benji-backup.me/k8s-pvc-namespace=$PVC_NAMESPACE" \
