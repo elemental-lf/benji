@@ -89,7 +89,7 @@ class Storage(ReadCacheStorageBase):
                 self.bucket.download_file_by_name(key, data_io)
             except (B2Error, B2ConnectionError) as exception:
                 if isinstance(exception, FileNotPresent):
-                    raise FileNotFoundError('UID {} not found.'.format(key)) from None
+                    raise FileNotFoundError('Object {} not found.'.format(key)) from None
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
@@ -119,7 +119,7 @@ class Storage(ReadCacheStorageBase):
                 file_version_info = self._file_info(key)
             except (B2Error, B2ConnectionError) as exception:
                 if isinstance(exception, FileNotPresent):
-                    raise FileNotFoundError('UID {} not found.'.format(key)) from None
+                    raise FileNotFoundError('Object {} not found.'.format(key)) from None
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
