@@ -19,7 +19,7 @@ spec:
         release: {{ .Release.Name }}
       annotations:
         prometheus.io/port: "{{ .Values.pushgateway.port }}"
-        prometheus.io/scrape: "false"
+        prometheus.io/scrape: "true"
     spec:
       serviceAccountName: {{ template "benji.fullname" . }}
       dnsPolicy: ClusterFirstWithHostNet
