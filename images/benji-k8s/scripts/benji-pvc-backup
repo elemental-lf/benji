@@ -3,7 +3,7 @@
 exec > >(logger -t "benji-backup") 2>&1
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
-if [ $# != 1 ]; then
+if [ $# -lt 1 ]; then
     echo "usage: $0 KUBECTL-GET-PVC-ARGS" 1>&2
     exit 1
 fi
