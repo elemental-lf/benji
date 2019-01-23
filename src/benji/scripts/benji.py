@@ -811,13 +811,7 @@ def main():
     else:
         config = Config()
 
-    if args.machine_output:
-        console_level = 'ERROR'
-        no_color = True
-    else:
-        console_level = args.log_level
-        no_color = args.no_color
-    init_logging(config.get('logFile', types=(str, type(None))), console_level, no_color=no_color)
+    init_logging(config.get('logFile', types=(str, type(None))), args.log_level, no_color=args.no_color)
 
     commands = Commands(args.machine_output, config)
     func = getattr(commands, args.func)
