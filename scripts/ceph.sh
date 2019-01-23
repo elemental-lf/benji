@@ -7,8 +7,8 @@ function benji::backup::ceph::initial {
     shift 3
     local LABELS=("$@")
 
-    SNAPNAME="b-$(date '+%Y-%m-%dT%H:%M:%S')"  # b-2017-04-19T11:33:23
-    TEMPFILE=$(mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX)
+    local SNAPNAME="b-$(date '+%Y-%m-%dT%H:%M:%S')"  # b-2017-04-19T11:33:23
+    local TEMPFILE=$(mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX)
 
     echo "Performing initial backup of $NAME:$POOL/$IMAGE."
 
@@ -53,11 +53,11 @@ function benji::backup::ceph {
     local LABELS=("$@")
 
     # find the latest snapshot name from rbd
-    LAST_RBD_SNAP=$(rbd snap ls "$POOL"/"$IMAGE" --format=json | jq -r '[.[].name] | map(select(test("^b-"))) | sort | .[-1] // ""')
+    local LAST_RBD_SNAP=$(rbd snap ls "$POOL"/"$IMAGE" --format=json | jq -r '[.[].name] | map(select(test("^b-"))) | sort | .[-1] // ""')
     echo "Snapshot found for $POOL/$IMAGE is $LAST_RBD_SNAP."
     if [[ -z $LAST_RBD_SNAP ]]; then
         echo 'No previous RBD snapshot found, reverting to initial backup.'
-        START_TIME=$(date +'%s')
+        local START_TIME=$(date +'%s')
         benji_backup_start_time -command=backup -auxiliary_data=initial -version_name="$NAME" set $(date +'%s.%N')
         try {
             benji::backup::ceph::initial "$NAME" "$POOL" "$IMAGE" "${LABELS[@]}"
@@ -73,7 +73,7 @@ function benji::backup::ceph {
         BENJI_SNAP_VERSION_UID=$(benji -m ls 'name == "'"$NAME"'" and snapshot_name == "'"$LAST_RBD_SNAP"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
         if [[ -z $BENJI_SNAP_VERSION_UID ]]; then
             echo 'Existing RBD snapshot not found in Benji, deleting it and reverting to initial backup.'
-            START_TIME=$(date +'%s')
+            local START_TIME=$(date +'%s')
             benji_backup_start_time -command=backup -auxiliary_data=initial -version_name="$NAME" set $(date +'%s.%N')
             try {
                 rbd snap rm "$POOL"/"$IMAGE"@"$LAST_RBD_SNAP"
@@ -86,7 +86,7 @@ function benji::backup::ceph {
             benji_backup_completion_time -command=backup -auxiliary_data=initial -version_name="$NAME" set $(date +'%s.%N')
             benji_backup_runtime_seconds -command=backup -auxiliary_data=initial -version_name="$NAME" set $[$(date +'%s') - $START_TIME]
         else
-            START_TIME=$(date +'%s')
+            local START_TIME=$(date +'%s')
             benji_backup_start_time -version_name="$NAME" -command=backup -auxiliary_data=differential set $(date +'%s.%N')
             try {
                 benji::backup::ceph::differential "$NAME" "$POOL" "$IMAGE" "$LAST_RBD_SNAP" "$BENJI_SNAP_VERSION_UID" "${LABELS[@]}"
