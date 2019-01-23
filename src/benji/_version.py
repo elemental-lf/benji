@@ -30,6 +30,11 @@ def get_version(version_file=STATIC_VERSION_FILE):
             version = Version("unknown", None, None)
         return pep440_format(version)
     else:
+        if version_info['version'] == "unknown":
+            # This is the version info injected into images
+            image_version = os.getenv('IMAGE_VERSION', None)
+            if image_version is not None:
+                return image_version
         return version_info['version']
 
 

@@ -23,8 +23,8 @@ from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
-
-__version__ = pkg_resources.get_distribution('benji').version
+from benji import __version__
+from benji.versions import VERSIONS
 
 
 class _ExceptionMapping(NamedTuple):
@@ -540,6 +540,20 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
+    def version_info(self) -> None:
+        if not self.machine_output:
+            logger.info('Benji version: {}.'.format(__version__))
+            logger.info('Configuration version: {}, supported {}.'.format(VERSIONS.configuration.current, VERSIONS.configuration.supported))
+            logger.info('Database metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current, VERSIONS.database_metadata.supported))
+            logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current, VERSIONS.object_metadata.supported))
+        else:
+            versions = {
+                'version': __version__,
+                'configuration_version': {'current': str(VERSIONS.configuration.current), 'supported': str(VERSIONS.configuration.supported) },
+                'database_metadata_version': {'current': str(VERSIONS.database_metadata.current), 'supported': str(VERSIONS.database_metadata.supported) },
+                'object_metadata_version': {'current': str(VERSIONS.object_metadata.current), 'supported': str(VERSIONS.object_metadata.supported) },
+            }
+            print(json.dumps(versions, indent=4))
 
 def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
     if arg is None:
@@ -786,10 +800,6 @@ def main():
     if not hasattr(args, 'func'):
         parser.print_usage()
         exit(os.EX_USAGE)
-
-    if args.func == 'version_info':
-        print(__version__)
-        exit(os.EX_OK)
 
     if args.config_file is not None and args.config_file != '':
         try:
