@@ -714,7 +714,7 @@ def main():
         '--version-percentage',
         type=partial(integer_range, 1, 100),
         default=100,
-        help='Check only a certain percentage of blocks')
+        help='Check only a certain percentage of versions')
     p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_scrub')
@@ -735,7 +735,7 @@ def main():
         '--version-percentage',
         type=partial(integer_range, 1, 100),
         default=100,
-        help='Check only a certain percentage of blocks')
+        help='Check only a certain percentage of versions')
     p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_deep_scrub')
