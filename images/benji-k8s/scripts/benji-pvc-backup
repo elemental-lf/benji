@@ -4,10 +4,9 @@ exec > >(logger -t "benji-backup") 2>&1
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 if [ $# != 1 ]; then
-    echo "usage: $0 LABEL-SELECTOR" 1>&2
+    echo "usage: $0 KUBECTL-GET-PVC-ARGS" 1>&2
     exit 1
 fi
-LABEL_SELECTOR="$1"
 
 . defaults.sh
 . prometheus.sh
@@ -17,7 +16,8 @@ LABEL_SELECTOR="$1"
 . ceph.sh
 
 # Get a list of persistent volumes
-PVS=$(kubectl get pvc --all-namespaces -l "$LABEL_SELECTOR" -o json | jq -r '
+# Rook uses "rook.io/block"
+PVS=$(kubectl get pvc "$@" -o json | jq -r '
 	.items | map(select(.metadata.annotations."volume.beta.kubernetes.io/storage-provisioner" as $prov | ["ceph.com/rbd"] | index($prov))
                | .spec.volumeName)
                | .[]
@@ -25,6 +25,7 @@ PVS=$(kubectl get pvc --all-namespaces -l "$LABEL_SELECTOR" -o json | jq -r '
 
 for pv in $PVS
 do
+	# Rook uses .spec.flexVolume.options.pool and .spec.flexVolume.options.image to store the pool and image name
 	set -- $(kubectl get pv "$pv" -o jsonpath='{.spec.claimRef.namespace}{" "}{.spec.claimRef.name}{" "}{.spec.rbd.pool}{" "}{.spec.rbd.image}')
 	PVC_NAMESPACE="$1"
 	PVC_NAME="$2"
