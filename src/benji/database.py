@@ -509,6 +509,10 @@ class DatabaseBackend(ReprMixIn):
     def _alembic_config(self):
         return alembic_config_Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
 
+    def _database_tables(self) -> List[str]:
+        # Need to ignore internal SQLite table here
+        return [table for table in self.engine.table_names() if table != 'sqlite_sequence']
+
     def _migration_needed(self, alembic_config: alembic_config_Config) -> Tuple[bool, str, str]:
         with self.engine.begin() as connection:
             alembic_config.attributes['connection'] = connection
@@ -528,6 +532,10 @@ class DatabaseBackend(ReprMixIn):
         return ((head_revision != current_revision), current_revision, head_revision)
 
     def migrate(self) -> None:
+        table_names = self._database_tables()
+        if not table_names:
+            raise RuntimeError('Database schema appears to be empty. Not touching anything.')
+
         alembic_config = self._alembic_config()
         migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
         if migration_needed:
@@ -571,8 +579,7 @@ class DatabaseBackend(ReprMixIn):
                 with self.engine.begin() as connection:
                     connection.execute(DropTable(Table('alembic_version', MetaData()))) # type: ignore
 
-        # Need to ignore internal SQLite table here
-        table_names = [table for table in self.engine.table_names() if table != 'sqlite_sequence']
+        table_names = self._database_tables()
         if not table_names:
             Base.metadata.create_all(self.engine, checkfirst=False)
         else:
