@@ -65,7 +65,7 @@ RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 
 RUN mkdir /etc/benji && \
     ln -s $VENV_DIR/etc/benji.yaml /etc/benji/benji.yaml && \
-    echo "PATH DEFAULT=$PATH" >>/etc/security/pam_env.conf
+    echo "PATH=$PATH" >>/etc/environment
 
 COPY --from=build $VENV_DIR/ $VENV_DIR/
 COPY scripts/ $VENV_DIR/scripts/
