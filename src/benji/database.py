@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
+import dateparser
 import semantic_version
 import sqlalchemy
 from alembic import command as alembic_command
@@ -1304,7 +1305,7 @@ class _QueryBuilder:
                 return self.op(operator.ne, other)
 
             def __lt__(self, other: Any) -> BinaryExpression:
-                return self.op(operator.ne, other)
+                return self.op(operator.lt, other)
 
             def __le__(self, other: Any) -> BinaryExpression:
                 return self.op(operator.le, other)
