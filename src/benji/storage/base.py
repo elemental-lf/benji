@@ -248,8 +248,9 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             time.sleep(self.read_throttling.consume(len(data) if data else 0 + len(metadata_json)))
             t2 = time.time()
         except FileNotFoundError as exception:
-            raise InvalidBlockException('Object metadata or data of block {} (UID{}) not found.'.format(block.id, block.uid),
-                                        block) from exception
+            raise InvalidBlockException(
+                'Object metadata or data of block {} (UID{}) not found.'.format(block.id, block.uid),
+                block) from exception
 
         try:
             metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)

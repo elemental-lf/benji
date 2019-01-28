@@ -38,9 +38,7 @@ def run_migrations_online():
 
                     # now rewrite the list of "ops" such that DropIndexOp
                     # is removed for those tables.   Needs a recursive function.
-                    directive.ops = list(
-                        _filter_drop_indexes(directive.ops, tables_dropped)
-                    )
+                    directive.ops = list(_filter_drop_indexes(directive.ops, tables_dropped))
             else:
                 directives[:] = []
 
@@ -53,9 +51,7 @@ def run_migrations_online():
             # commands.  process those in place recursively.
             if isinstance(directive, ops.ModifyTableOps) and \
                     (directive.table_name, directive.schema) in tables_dropped:
-                directive.ops = list(
-                    _filter_drop_indexes(directive.ops, tables_dropped)
-                )
+                directive.ops = list(_filter_drop_indexes(directive.ops, tables_dropped))
 
                 # if we emptied out the directives, then skip the
                 # container altogether.
@@ -80,7 +76,13 @@ def run_migrations_online():
         if isinstance(connection.connection, sqlite3.Connection):
             connection.execute('PRAGMA foreign_keys=OFF')
 
-        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True, compare_server_default=True, process_revision_directives=process_revision_directives, render_as_batch=True)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
+            process_revision_directives=process_revision_directives,
+            render_as_batch=True)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -206,8 +206,8 @@ class Benji(ReprMixIn):
                 self._process_name, 'Preparing {} of version {} ({:.1f}%)'.format(
                     'deep-scrub' if deep_scrub else 'scrub', version.uid.v_string, (i + 1) / len(blocks) * 100))
             if not block.uid:
-                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep -scrub' if deep_scrub else 'Scrub',
-                                                                                block.id, block.uid))
+                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format(
+                    'Deep -scrub' if deep_scrub else 'Scrub', block.id, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
@@ -239,7 +239,8 @@ class Benji(ReprMixIn):
         try:
             version = self._database_backend.get_version(version_uid)
             if not version.status.is_scrubbable():
-                raise ScrubbingError('Version {} cannot be scrubbed, it has a status of {}.'.format(version_uid.v_string, version.status.name))
+                raise ScrubbingError('Version {} cannot be scrubbed, it has a status of {}.'.format(
+                    version_uid.v_string, version.status.name))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
         except:
             self._locking.unlock_version(version_uid)
@@ -319,7 +320,8 @@ class Benji(ReprMixIn):
         try:
             version = self._database_backend.get_version(version_uid)
             if not version.status.is_deep_scrubbable():
-                raise ScrubbingError('Version {} cannot be deep-scrubbed, it has a status of {}.'.format(version_uid.v_string, version.status.name))
+                raise ScrubbingError('Version {} cannot be deep-scrubbed, it has a status of {}.'.format(
+                    version_uid.v_string, version.status.name))
             if not version.status.is_valid():
                 logger.warn('Version {} has a status of {}.'.format(version_uid.v_string, version.status.name))
             blocks = self._database_backend.get_blocks_by_version(version_uid)
@@ -598,7 +600,8 @@ class Benji(ReprMixIn):
                 if disallow_rm_when_younger_than_days > age_days:
                     raise RuntimeError('Version {} is too young. Will not delete.'.format(version_uid.v_string))
                 if not version.status.is_removable():
-                    raise RuntimeError('Version {} cannot be removed without force, it has status {}.'.format(version_uid.v_string, version.status.name))
+                    raise RuntimeError('Version {} cannot be removed without force, it has status {}.'.format(
+                        version_uid.v_string, version.status.name))
 
             num_blocks = self._database_backend.rm_version(version_uid)
 
@@ -1016,7 +1019,8 @@ class Benji(ReprMixIn):
                 continue
 
             if not version.status.is_removable():
-                logger.info('Not considering version {}, it has a status of {}.'.format(version.uid.v_string, version.status.name))
+                logger.info('Not considering version {}, it has a status of {}.'.format(
+                    version.uid.v_string, version.status.name))
                 continue
 
             if version.name not in versions_by_name:

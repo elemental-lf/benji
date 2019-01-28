@@ -931,8 +931,7 @@ class DatabaseBackend(ReprMixIn):
                     hit_list_count += 1
 
             if false_positives:
-                logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(
-                    len(false_positives)))
+                logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(len(false_positives)))
                 self._session.query(DeletedBlock)\
                     .filter(DeletedBlock.uid.in_(false_positives))\
                     .delete(synchronize_session=False)

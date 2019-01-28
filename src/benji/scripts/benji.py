@@ -11,11 +11,11 @@ from functools import partial
 from typing import List, NamedTuple, Type, Optional, Tuple
 
 import argcomplete
-import pkg_resources
 from argcomplete.completers import ChoicesCompleter
 from prettytable import PrettyTable
 
 import benji.exception
+from benji import __version__
 from benji.benji import Benji, BenjiStore
 from benji.config import Config
 from benji.database import Version, VersionUid, VersionStatistic
@@ -23,7 +23,6 @@ from benji.factory import StorageFactory
 from benji.logging import logger, init_logging
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
-from benji import __version__
 from benji.versions import VERSIONS
 
 
@@ -543,17 +542,30 @@ class Commands:
     def version_info(self) -> None:
         if not self.machine_output:
             logger.info('Benji version: {}.'.format(__version__))
-            logger.info('Configuration version: {}, supported {}.'.format(VERSIONS.configuration.current, VERSIONS.configuration.supported))
-            logger.info('Database metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current, VERSIONS.database_metadata.supported))
-            logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current, VERSIONS.object_metadata.supported))
+            logger.info('Configuration version: {}, supported {}.'.format(VERSIONS.configuration.current,
+                                                                          VERSIONS.configuration.supported))
+            logger.info('Database metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current,
+                                                                              VERSIONS.database_metadata.supported))
+            logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current,
+                                                                            VERSIONS.object_metadata.supported))
         else:
             versions = {
                 'version': __version__,
-                'configuration_version': {'current': str(VERSIONS.configuration.current), 'supported': str(VERSIONS.configuration.supported) },
-                'database_metadata_version': {'current': str(VERSIONS.database_metadata.current), 'supported': str(VERSIONS.database_metadata.supported) },
-                'object_metadata_version': {'current': str(VERSIONS.object_metadata.current), 'supported': str(VERSIONS.object_metadata.supported) },
+                'configuration_version': {
+                    'current': str(VERSIONS.configuration.current),
+                    'supported': str(VERSIONS.configuration.supported)
+                },
+                'database_metadata_version': {
+                    'current': str(VERSIONS.database_metadata.current),
+                    'supported': str(VERSIONS.database_metadata.supported)
+                },
+                'object_metadata_version': {
+                    'current': str(VERSIONS.object_metadata.current),
+                    'supported': str(VERSIONS.object_metadata.supported)
+                },
             }
             print(json.dumps(versions, indent=4))
+
 
 def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
     if arg is None:
@@ -787,7 +799,8 @@ def main():
     p.set_defaults(func='version_info')
 
     # DATABASE-INIT
-    p = subparsers_root.add_parser('database-init', help='Initialize the database (will not delete existing tables or data)')
+    p = subparsers_root.add_parser(
+        'database-init', help='Initialize the database (will not delete existing tables or data)')
     p.set_defaults(func='database_init')
 
     # MIGRATE
