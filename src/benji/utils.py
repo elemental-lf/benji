@@ -9,15 +9,14 @@ from ast import literal_eval
 from concurrent.futures import Future
 from datetime import datetime
 from importlib import import_module
-from reprlib import Repr
 from threading import Lock
 from time import time
 from typing import List, Tuple, Union, Any, Optional, Dict, Iterator
 
-from dateutil import tz
-from dateutil.relativedelta import relativedelta
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2
+from dateutil import tz
+from dateutil.relativedelta import relativedelta
 
 from benji.exception import ConfigurationError
 from benji.logging import logger
@@ -133,7 +132,10 @@ class PrettyPrint:
 
     @staticmethod
     def local_time(date: datetime) -> str:
-        return date.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")
+        if date.tzinfo is None:
+            return date.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")
+        else:
+            return date.astimezone(tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 class TokenBucket:

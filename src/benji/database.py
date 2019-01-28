@@ -49,6 +49,34 @@ from benji.utils import InputValidation
 from benji.versions import VERSIONS
 
 
+class BenjiDateTime(TypeDecorator):
+
+    impl = DateTime
+
+    def process_bind_param(self, value: Optional[Union[datetime.datetime, str]], dialect) -> Optional[datetime.datetime]:
+        if isinstance(value, datetime.datetime):
+            if value.tzinfo is None:
+                return value
+            else:
+                return value.astimezone(tz=datetime.timezone.utc).replace(tzinfo=None)
+        elif isinstance(value, str):
+            date = dateparser.parse(
+                date_string=value,
+                date_formats=['%Y-%m-%dT%H:%M:%S'],
+                locales=['en'],
+                settings={
+                    'PREFER_DATES_FROM': 'past',
+                    'PREFER_DAY_OF_MONTH': 'first',
+                    'RETURN_AS_TIMEZONE_AWARE': True,
+                    'TO_TIMEZONE': 'UTC'
+                })
+            if date is None:
+                raise ValueError('Invalid date and time specification: {}.'.format(value))
+            return date.replace(tzinfo=None)
+        else:
+            raise InternalError('Unexpected type {} for value in BenjiDateTime.process_bind_param'.format(type(value)))
+
+
 class VersionStatus(enum.Enum):
     incomplete = 1
     valid = 2
@@ -87,7 +115,8 @@ class VersionStatusType(TypeDecorator):
         elif isinstance(value, VersionStatus):
             return value.value
         else:
-            raise InternalError('Unexpected type {} for value in VersionStatusType.process_bind_param'.format(type(value)))
+            raise InternalError('Unexpected type {} for value in VersionStatusType.process_bind_param'.format(
+                type(value)))
 
     def process_result_value(self, value: Optional[int], dialect) -> Optional[VersionStatus]:
         if value is not None:
@@ -308,7 +337,7 @@ class VersionStatistic(Base):
     base_uid = Column(VersionUidType, nullable=True)
     hints_supplied = Column(Boolean(name='hints_supplied'), nullable=False)
     name = Column(String(255), nullable=False)
-    date = Column(DateTime, nullable=False)
+    date = Column(BenjiDateTime, nullable=False)
     snapshot_name = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     storage_id = Column(Integer, nullable=False)
@@ -329,13 +358,17 @@ class Version(Base):
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
     uid = Column(VersionUidType, primary_key=True, autoincrement=True, nullable=False)
-    date = Column(DateTime, nullable=False)
+    date = Column(BenjiDateTime, nullable=False)
     name = Column(String(255), nullable=False, index=True)
     snapshot_name = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     block_size = Column(Integer, nullable=False)
     storage_id = Column(Integer, nullable=False)
-    status = Column(VersionStatusType, CheckConstraint('status >= {} AND status <= {}'.format(VersionStatus.min.value, VersionStatus.max.value), name='status'), nullable=False)
+    status = Column(
+        VersionStatusType,
+        CheckConstraint(
+            'status >= {} AND status <= {}'.format(VersionStatus.min.value, VersionStatus.max.value), name='status'),
+        nullable=False)
     protected = Column(Boolean(name='protected'), nullable=False)
 
     labels = sqlalchemy.orm.relationship(
@@ -460,7 +493,7 @@ class DeletedBlock(Base):
 
     REPR_SQL_ATTR_SORT_FIRST = ['id']
 
-    date = Column("date", DateTime, nullable=False)
+    date = Column("date", BenjiDateTime, nullable=False)
     # BigInteger as the id could get large over time
     # Use INTEGER with SQLLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
     id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True, nullable=False)
@@ -481,13 +514,13 @@ class Lock(Base):
     process_id = Column(String(255), nullable=False, primary_key=True)
     lock_name = Column(String(255), nullable=False, primary_key=True)
     reason = Column(String(255), nullable=False)
-    date = Column(DateTime, nullable=False)
+    date = Column(BenjiDateTime, nullable=False)
 
 
 class DatabaseBackend(ReprMixIn):
     _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
-    _BLOCKS_COMMIT_INTERVAL = 20 # in seconds
+    _BLOCKS_COMMIT_INTERVAL = 20  # in seconds
 
     _locking = None
 
@@ -508,7 +541,8 @@ class DatabaseBackend(ReprMixIn):
             self.engine = sqlalchemy.create_engine('sqlite://')
 
     def _alembic_config(self):
-        return alembic_config_Config(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
+        return alembic_config_Config(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
 
     def _database_tables(self) -> List[str]:
         # Need to ignore internal SQLite table here
@@ -578,7 +612,7 @@ class DatabaseBackend(ReprMixIn):
             # Drop alembic_version table
             if self.engine.has_table('alembic_version'):
                 with self.engine.begin() as connection:
-                    connection.execute(DropTable(Table('alembic_version', MetaData()))) # type: ignore
+                    connection.execute(DropTable(Table('alembic_version', MetaData())))  # type: ignore
 
         table_names = self._database_tables()
         if not table_names:

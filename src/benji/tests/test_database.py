@@ -1,6 +1,10 @@
 import datetime
+import time
 import timeit
 from unittest import TestCase
+
+import sqlalchemy
+from dateutil import tz
 
 from benji.database import BlockUid, VersionUid, VersionStatus
 from benji.exception import InternalError, UsageError
@@ -238,6 +242,9 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('labels["label-key"] == "label-value"')
         self.assertEqual(256, len(versions))
 
+        versions = self.database_backend.get_versions_with_filter('"label-value" == labels["label-key"]')
+        self.assertEqual(256, len(versions))
+
         self.assertRaises(
             UsageError, lambda: self.database_backend.get_versions_with_filter('labels["label-key"] and "label-value"'))
         self.assertRaises(UsageError, lambda: self.database_backend.get_versions_with_filter('True'))
@@ -344,8 +351,12 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
-        t1 = timeit.timeit(lambda: self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name"'), number=1)
-        t2 = timeit.timeit(lambda: self.database_backend.get_versions_with_filter('(snapshot_name == "snapshot-name.2" and name == "backup-name")'), number=1)
+        t1 = timeit.timeit(
+            lambda: self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name"'),
+            number=1)
+        t2 = timeit.timeit(
+            lambda: self.database_backend.get_versions_with_filter('(snapshot_name == "snapshot-name.2" and name == "backup-name")'),
+            number=1)
         logger.debug('test_version_filter_issue_9_slowness: t1 {}, t2 {}'.format(t1, t2))
         self.assertLess(t1 - t2, 5)
 
@@ -380,6 +391,54 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('"hallo" == "hey"'))
         self.assertRaises(UsageError,
                           lambda: self.database_backend.get_stats_with_filter('labels["label-key"] == "label-value"'))
+
+    def test_version_filter_dateparse(self):
+        version_uids = set()
+        for i in range(3):
+            version = self.database_backend.create_version(
+                version_name='backup-name',
+                snapshot_name='snapshot-name.{}'.format(i),
+                size=16 * 1024 * 4096,
+                storage_id=1,
+                block_size=4 * 1024 * 4096)
+            self.assertNotIn(version.uid, version_uids)
+            version_uids.add(version.uid)
+
+        # Wait at least one seconds
+        time.sleep(1)
+
+        versions = self.database_backend.get_versions_with_filter('date <= "now"')
+        self.assertEqual(3, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('date > "1 month ago"')
+        self.assertEqual(3, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('date > "now"')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('date < "1 month ago"')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('"now" >= date')
+        self.assertEqual(3, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('"1 month ago" < date')
+        self.assertEqual(3, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('"now" < date')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('"1 month ago" > date')
+        self.assertEqual(0, len(versions))
+
+        versions = self.database_backend.get_versions_with_filter('date <= "{}"'.format(
+            datetime.datetime.now(tz=tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")))
+        self.assertEqual(3, len(versions))
+
+        self.assertRaises(sqlalchemy.exc.StatementError,
+                          lambda: self.database_backend.get_stats_with_filter('date == "asdasdsa asdasd asdasd"'))
+        self.assertRaises(sqlalchemy.exc.StatementError,
+                          lambda: self.database_backend.get_stats_with_filter('date == 10'))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
