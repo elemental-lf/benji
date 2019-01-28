@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exec > >(logger -t "benji-backup") 2>&1
+exec > >(logger -i -t "benji-pvc-backup") 2>&1
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 if [ $# -lt 1 ]; then
@@ -42,6 +42,4 @@ do
             "benji-backup.me/k8s-pv=$pv"
 done
 
-echo
-io::prometheus::ExportAsText | grep -v '^#'
-io::prometheus::Push job=benji gateway="$PROM_PUSH_GATEWAY"
+benji::push_metrics

@@ -14,7 +14,7 @@ function benji::backup::ceph::initial {
 
     rbd snap create "$POOL"/"$IMAGE"@"$SNAPNAME"
     rbd diff --whole-object "$POOL"/"$IMAGE"@"$SNAPNAME" --format=json >"$TEMPFILE"
-    benji --log-level "${BENJI_LOG_LEVEL:-INFO}" backup -s "$SNAPNAME" -r "$TEMPFILE" \
+    benji --log-level "$BENJI_LOG_LEVEL" backup -s "$SNAPNAME" -r "$TEMPFILE" \
         $(printf -- "-l %s " "${LABELS[@]}") rbd://"$POOL"/"$IMAGE"@"$SNAPNAME" "$NAME"
 
     rm -f "$TEMPFILE"
@@ -39,7 +39,7 @@ function benji::backup::ceph::differential {
     # delete old snapshot
     rbd snap rm "$POOL"/"$IMAGE"@"$LAST_RBD_SNAP"
     # and backup
-    benji --log-level "${BENJI_LOG_LEVEL:-INFO}" backup -s "$SNAPNAME" -r "$TEMPFILE" -f "$BENJI_SNAP_VERSION_UID" \
+    benji --log-level "$BENJI_LOG_LEVEL" backup -s "$SNAPNAME" -r "$TEMPFILE" -f "$BENJI_SNAP_VERSION_UID" \
         $(printf -- "-l %s " "${LABELS[@]}") rbd://"$POOL"/"$IMAGE"@"$SNAPNAME" "$NAME"
     
     rm -f "$TEMPFILE"

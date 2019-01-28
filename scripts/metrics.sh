@@ -10,3 +10,6 @@ io::prometheus::NewGauge name=benji_backup_completion_time labels=command,auxili
 io::prometheus::NewGauge name=benji_backup_runtime_seconds labels=command,auxiliary_data,version_name help='Runtime of Benji backup command (seconds)'
 io::prometheus::NewGauge name=benji_backup_status_succeeded labels=command,auxiliary_data,version_name help='Benji backup command succeeded'
 io::prometheus::NewGauge name=benji_backup_status_failed labels=command,auxiliary_data,version_name help='Benji backup command  failed'
+
+io::prometheus::NewGauge name=benji_invalid_versions help='Number of invalid backup versions'
+io::prometheus::NewGauge name=benji_older_incomplete_versions help='Number of older incomplete versions'

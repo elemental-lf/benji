@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exec > >(logger -i -t "benji-$1") 2>&1
+exec > >(logger -i -t "benji-versions-status") 2>&1
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 
@@ -10,5 +10,5 @@ cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 . tryCatch.sh
 . common.sh
 
-benji::command "$@"
+benji::versions_status
 benji::push_metrics
