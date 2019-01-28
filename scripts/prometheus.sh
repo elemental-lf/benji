@@ -144,9 +144,9 @@ io::prometheus::NewGauge() {
   io::prometheus::internal::escape_help_string "${help}"
   io_prometheus_help["${name}"]="$REPLY"
   io_prometheus_labelnames["${name}"]="${labels}"
-  if [[ -z "${labels}" ]]; then
-    io_prometheus_value["${name}"]=0
-  fi
+  #if [[ -z "${labels}" ]]; then
+  #  io_prometheus_value["${name}"]=0
+  #fi
   local dollar_at='"$@"'
   eval "${name}() { io::prometheus::internal::DispatchGauge ${name} ${dollar_at}; }"
 
