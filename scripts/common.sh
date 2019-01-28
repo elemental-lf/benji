@@ -3,7 +3,7 @@
 function benji::push_metrics {
     echo
     io::prometheus::ExportAsText | grep -v '^#'
-    io::prometheus::Push job="$BENJI_INSTANCE" gateway="$PROM_PUSH_GATEWAY"
+    io::prometheus::PushAdd job="$BENJI_INSTANCE" gateway="$PROM_PUSH_GATEWAY"
 }
 
 function benji::command {
