@@ -62,7 +62,7 @@ Topic :: System :: Archiving :: Backup
         'pycryptodome>=3.6.1,<4',
         'pyparsing>=2.3.0,<3',
         'semantic_version>=2.6.0,<3',
-        'dateparser=>0.7.0,<=1',
+        'dateparser>=0.7.0,<=1',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
