@@ -912,7 +912,7 @@ class DatabaseBackend(ReprMixIn):
             for candidate in delete_candidates:
                 rounds += 1
                 if rounds % 1000 == 0:
-                    logger.info("Cleanup-fast: {} false positives, {} data deletions.".format(
+                    logger.info("Cleanup: {} false positives, {} data deletions.".format(
                         false_positives_count,
                         hit_list_count,
                     ))
@@ -931,7 +931,7 @@ class DatabaseBackend(ReprMixIn):
                     hit_list_count += 1
 
             if false_positives:
-                logger.debug("Cleanup-fast: Removing {} false positive from delete candidates.".format(
+                logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(
                     len(false_positives)))
                 self._session.query(DeletedBlock)\
                     .filter(DeletedBlock.uid.in_(false_positives))\
@@ -944,7 +944,7 @@ class DatabaseBackend(ReprMixIn):
                 yield (hit_list)
 
         self._session.commit()
-        logger.info("Cleanup-fast: Cleanup finished. {} false positives, {} data deletions.".format(
+        logger.info("Cleanup: Cleanup finished. {} false positives, {} data deletions.".format(
             false_positives_count,
             hit_list_count,
         ))
