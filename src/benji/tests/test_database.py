@@ -169,12 +169,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertRaises(InternalError, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
         locking.unlock_version(VersionUid(1))
 
-    def test_lock_global(self):
-        locking = self.database_backend.locking()
-        locking.lock(reason='locking test')
-        self.assertRaises(InternalError, lambda: locking.lock(reason='locking test'))
-        locking.unlock()
-
     def test_lock_singleton(self):
         locking = self.database_backend.locking()
         locking2 = self.database_backend.locking()
@@ -182,10 +176,10 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_is_locked(self):
         locking = self.database_backend.locking()
-        lock = locking.lock(reason='locking test')
-        self.assertTrue(locking.is_locked())
-        locking.unlock()
-        self.assertFalse(locking.is_locked())
+        lock = locking.lock(lock_name='test', reason='locking test')
+        self.assertTrue(locking.is_locked(lock_name='test'))
+        locking.unlock(lock_name='test')
+        self.assertFalse(locking.is_locked(lock_name='test'))
 
     def test_is_version_locked(self):
         locking = self.database_backend.locking()
@@ -204,11 +198,11 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_lock_context_manager(self):
         locking = self.database_backend.locking()
-        with locking.with_lock(reason='locking test'):
+        with locking.with_lock(lock_name='test', reason='locking test'):
             with self.assertRaises(InternalError):
-                locking.lock(reason='locking test')
-        locking.lock(reason='locking test')
-        locking.unlock()
+                locking.lock(lock_name='test', reason='locking test')
+        locking.lock(lock_name='test', reason='locking test')
+        locking.unlock(lock_name='test')
 
     def test_version_uid_string(self):
         self.assertEqual(VersionUid(1), VersionUid('V1'))

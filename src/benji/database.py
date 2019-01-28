@@ -510,9 +510,9 @@ class Lock(Base):
 
     REPR_SQL_ATTR_SORT_FIRST = ['host', 'process_id', 'date']
 
-    host = Column(String(255), nullable=False, primary_key=True)
-    process_id = Column(String(255), nullable=False, primary_key=True)
     lock_name = Column(String(255), nullable=False, primary_key=True)
+    host = Column(String(255), nullable=False)
+    process_id = Column(String(255), nullable=False)
     reason = Column(String(255), nullable=False)
     date = Column(BenjiDateTime, nullable=False)
 
@@ -1173,26 +1173,23 @@ class DatabaseBackend(ReprMixIn):
 
 class DatabaseBackendLocking:
 
-    GLOBAL_LOCK = 'global'
-
     def __init__(self, session) -> None:
         self._session = session
         self._host = platform.node()
         self._uuid = uuid.uuid1().hex
-        self._locks: Dict[str, Lock] = {}
 
-    def lock(self, *, lock_name: str = GLOBAL_LOCK, reason: str = None, locked_msg: str = None):
-        if lock_name in self._locks:
-            raise InternalError('Attempt to acquire lock "{}" twice'.format(lock_name))
-
-        lock = Lock(
-            host=self._host,
-            process_id=self._uuid,
-            lock_name=lock_name,
-            reason=reason,
-            date=datetime.datetime.utcnow(),
-        )
+    def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None):
         try:
+            lock = self._session.query(Lock).filter_by(host=self._host, lock_name=lock_name, process_id=self._uuid).first()
+            if lock is not None:
+                raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
+            lock = Lock(
+                lock_name=lock_name,
+                host=self._host,
+                process_id=self._uuid,
+                reason=reason,
+                date=datetime.datetime.utcnow(),
+            )
             self._session.add(lock)
             self._session.commit()
         except SQLAlchemyError:  # this is actually too broad and will also include other errors
@@ -1204,23 +1201,20 @@ class DatabaseBackendLocking:
         except:
             self._session.rollback()
             raise
-        else:
-            self._locks[lock_name] = lock
 
-    def is_locked(self, *, lock_name: str = GLOBAL_LOCK) -> bool:
+    def is_locked(self, *, lock_name: str) -> bool:
         try:
-            locks = self._session.query(Lock).filter_by(
-                host=self._host, lock_name=lock_name, process_id=self._uuid).all()
+            lock = self._session.query(Lock).filter_by(lock_name=lock_name).first()
         except:
             self._session.rollback()
             raise
         else:
-            return len(locks) > 0
+            return lock is not None
 
-    def update_lock(self, *, lock_name: str = GLOBAL_LOCK, reason: str = None) -> None:
+    def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
             lock = self._session.query(Lock).filter_by(
-                host=self._host, lock_name=lock_name, process_id=self._uuid).first()
+                host=self._host, lock_name=lock_name, process_id=self._uuid).with_for_update().first()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
@@ -1229,29 +1223,27 @@ class DatabaseBackendLocking:
             self._session.rollback()
             raise
 
-    def unlock(self, *, lock_name: str = GLOBAL_LOCK) -> None:
-        if lock_name not in self._locks:
-            raise InternalError('Attempt to release lock "{}" even though it isn\'t held'.format(lock_name))
-
-        lock = self._locks[lock_name]
+    def unlock(self, *, lock_name: str) -> None:
         try:
+            lock = self._session.query(Lock).filter_by(
+                host=self._host, lock_name=lock_name, process_id=self._uuid).first()
+            if not lock:
+                raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             self._session.delete(lock)
             self._session.commit()
         except:
             self._session.rollback()
             raise
-        else:
-            del self._locks[lock_name]
 
     def unlock_all(self) -> None:
-        for lock_name, lock in self._locks.items():
-            try:
-                logger.error('Lock {} not released correctly, trying to release it now.'.format(lock))
+        try:
+            locks = self._session.query(Lock).filter_by(host=self._host, process_id=self._uuid).all()
+            for lock in locks:
+                logger.error('Lock {} not released correctly, releasing it now.'.format(lock))
                 self._session.delete(lock)
-                self._session.commit()
-            except:
-                pass
-        self._locks = {}
+            self._session.commit()
+        except:
+            pass
 
     def lock_version(self, version_uid: VersionUid, reason: str = None) -> None:
         self.lock(
@@ -1271,7 +1263,7 @@ class DatabaseBackendLocking:
     @contextmanager
     def with_lock(self,
                   *,
-                  lock_name: str = GLOBAL_LOCK,
+                  lock_name: str,
                   reason: str = None,
                   locked_msg: str = None,
                   unlock: bool = True) -> Iterator[None]:

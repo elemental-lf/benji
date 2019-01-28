@@ -63,9 +63,6 @@ class Benji(ReprMixIn):
 
         notify(self._process_name)
 
-        if self._locking.is_locked():
-            raise AlreadyLocked('Another instance is already running.')
-
     def _prepare_version(self,
                          version_name: str,
                          version_snapshot_name: str,
