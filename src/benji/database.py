@@ -1239,7 +1239,7 @@ class DatabaseBackendLocking:
         try:
             locks = self._session.query(Lock).filter_by(host=self._host, process_id=self._uuid).all()
             for lock in locks:
-                logger.error('Lock {} not released correctly, releasing it now.'.format(lock))
+                logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
                 self._session.delete(lock)
             self._session.commit()
         except:
