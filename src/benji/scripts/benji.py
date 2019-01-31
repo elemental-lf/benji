@@ -544,7 +544,7 @@ class Commands:
             logger.info('Benji version: {}.'.format(__version__))
             logger.info('Configuration version: {}, supported {}.'.format(VERSIONS.configuration.current,
                                                                           VERSIONS.configuration.supported))
-            logger.info('Database metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current,
+            logger.info('Metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current,
                                                                               VERSIONS.database_metadata.supported))
             logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current,
                                                                             VERSIONS.object_metadata.supported))
