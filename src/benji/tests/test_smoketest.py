@@ -447,7 +447,8 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                   password: Hallo123
                 readCache:
                   directory: {testpath}/read-cache
-                  maximumSize: 16777216              
+                  maximumSize: 16777216
+                  shards: 8
             - name: s2
               storageId: 2
               module: s3
@@ -467,9 +468,10 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                   kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
                   password: Hallo123
-                readCache:
+                readCache: 
                   directory: {testpath}/read-cache-2
-                  maximumSize: 16777216                        
+                  maximumSize: 16777216
+                  shards: 8
             transforms:
             - name: zstd
               module: zstd

@@ -15,9 +15,18 @@ configuration:
           empty: False
           dependencies:
           - maximumSize
+          - shards
         maximumSize:
           type: integer
           required: True
           min: 1
           dependencies:
           - directory
+          - shards
+        shards:
+          type: integer
+          required: True
+          min: 1
+          dependencies:
+          - directory
+          - maximumSize

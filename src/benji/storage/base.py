@@ -13,7 +13,7 @@ from threading import BoundedSemaphore
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
 import semantic_version
-from diskcache import Cache
+from diskcache import Cache, FanoutCache
 
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
@@ -506,16 +506,15 @@ class ReadCacheStorageBase(StorageBase):
     def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
         read_cache_directory = Config.get_from_dict(module_configuration, 'readCache.directory', None, types=str)
         read_cache_maximum_size = Config.get_from_dict(module_configuration, 'readCache.maximumSize', None, types=int)
-
-        if read_cache_directory and not read_cache_maximum_size or not read_cache_directory and read_cache_maximum_size:
-            raise ConfigurationError('Both readCache.directory and readCache.maximumSize need to be set ' + 'to enable disk based caching.')
+        read_cache_shards = Config.get_from_dict(module_configuration, 'readCache.shards', None, types=int)
 
         if read_cache_directory and read_cache_maximum_size:
             os.makedirs(read_cache_directory, exist_ok=True)
             try:
-                self._read_cache = Cache(
+                self._read_cache = FanoutCache(
                     read_cache_directory,
                     size_limit=read_cache_maximum_size,
+                    shards=read_cache_shards,
                     eviction_policy='least-frequently-used',
                     statistics=1,
                 )
@@ -523,7 +522,7 @@ class ReadCacheStorageBase(StorageBase):
                 logger.warning('Unable to enable disk based read caching. Continuing without it.')
                 self._read_cache = None
             else:
-                logger.debug('Disk based read caching instantiated (cache size {}).'.format(read_cache_maximum_size))
+                logger.debug('Disk based read caching instantiated (cache size {}, shards {}).'.format(read_cache_maximum_size, read_cache_shards))
         else:
             self._read_cache = None
         self._use_read_cache = True
