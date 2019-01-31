@@ -1,165 +1,107 @@
 configurationVersion: '1'
 
-# Logfile location (default: null)
-# Setting this to null disables logging to a file, this might be useful when running Benji inside a container.
-# Benji will by default log INFO, WARNING and ERROR to this file. If you also need DEBUG information, please start
-# Benji with the '-v' option.
-logFile: /var/log/benji.log
+#logFile: none
+#blockSize: 4194304
+#hashFunction: BLAKE2b,digest_bits=256
+#processName: benji
+#disallowRemoveWhenYounger: 6
+databaseEngine:
+defaultStorage:
 
-# Default block size (default: 4194304)
-# The block size can be changed on the command line on a version by version basis, but be aware that this will affect
-# deduplication and increase the space usage. One possible use case for different block sizes would be backing up LVM
-# volumes and Ceph images with the same Benji installation. While for Ceph 4MB is usually the best size, LVM volume
-# might profit from a smaller block size.
-blockSize: 4194304
+storages:
+#
+# All storage modules support these directives:
+#
+#      simultaneousReads: 1
+#      simultaneousWrites: 1
+#      bandwidthRead: 0
+#      bandwidthWrite: 0
+#      consistencyCheckWrites: false
+#      activeTransforms:
+#      readCache:
+#        directory:
+#        maximumSize:
+#        shards:
+#
+#  - name:
+#    storageId:
+#    module: file
+#    configuration:
+#      path:
+#
+#  - name:
+#    storageId:
+#    module: s3
+#    configuration:
+#      awsAccessKeyId:
+#      awsAccessKeyIdFile:
+#      awsSecretAccessKey:
+#      awsSecretAccessKeyFile:
+#      regionName:
+#      endpointUrl:
+#      signatureVersion:
+#      useSsl:
+#      bucketName:
+#      multiDelete: true
+#      addressingStyle:
+#      disableEncodingType: false
+#
+# For Google S3 API use:
+#
+#      endpointUrl: https://storage.googleapis.com/
+#      multiDelete: false
+#      addressingStyle: path
+#      disableEncodingType: true
+#
+#  - name:
+#    storageId:
+#    module: b2
+#    configuration:
+#      accountId:
+#      applicationKey:
+#      bucketName:
+#      accountInfoFile:
+#      readObjectAttempts: 3
+#      writeObjectAttempts: 3
+#      uploadAttempts: 5
 
-# Hash function to use for calculating block checksums (default: BLAKE2b,digest_bits=256)
-# There is normally no reason to change the default.
-# DO NOT CHANGE WHEN BACKUPS EXIST!
-hashFunction: BLAKE2b,digest_bits=256
-
-# Process name (default: benji)
-# This name will be used to identify a specific configuration in the
-# process list and could be used to distinguish several parallel installations.
-processName: benji
-
-# Days of protection for backup versions (default: 6)
-# Disallow removal of backup versions if they are younger than this number of days. Set to 0 to disable, i.e. to be
-# able to delete any version.
-disallowRemoveWhenYounger: 6
-
-# Database engine (default: none)
-# See https://docs.sqlalchemy.org/en/latest/core/engines.html for options.
-# Only postgresql (dialect psycopg2) and sqlite are tested with during development.
-# Examples: postgresql://scott:tiger@localhost/mydatabase',
-#           sqlite:////var/lib/benji/benji.sqlite
-metadataEngine: sqlite:////var/lib/benji/benji.sqlite
-
-# Default storage to use (no default, required)
-defaultStorage: s-1
-
-storage:
-  file:
-    # Store data to this path. A structure of 2 folders depth will be created
-    # in this path (e.g. '0a/33'). Blocks of DEFAULTS.block_size will be stored
-    # there. This is your backup storage!
-    path: /var/lib/benji/data
-
-  #s3:
-  #  awsAccessKeyId: ********
-  #  awsSecretAccessKey: ********
-  #  regionName: (optional)
-  #  endpointUrl: (optional)
-  #  signatureVersion: (optional)
-  #  useSsl: true or false (default is true, ignored when endpointUrl is set)
-  #  bucketName: benji
-  #  multiDelete: true or false (default is true)
-  #  addressingStyle: path, virtual or auto (default is path)
-  #  disableEncodingType: true or false (default is false)
-  #  activeEncryption: k1
-  #  activeCompression: zstd
-  #
-  # For Google S3 API use:
-  #
-  #  endpointUrl: https://storage.googleapis.com/
-  #  multiDelete: false
-  #  addressingStyle: path
-  #  disableEncodingType: true
-
-
-  #b2:
-  #   accountId: ***********
-  #   applicationKey: *************
-  #   bucketName: benji
-  #   accountInfoFile: .... (optional)
-  #   writeObjectAttempts: 1
-  #   uploadAttempts: 5
-
-  # Encryption support
-  #
-  # The identifier is saved together with the object and the corresponding materials
-  # are then looked up during decryption. This means that you mustn't change the
-  # materials identified by a specific identifier after objects have been encrypted
-  # with it. If you want to change the encryption configurarion you must define
-  # a new encryption method with a new identifier. If you mark this encryption method
-  # as active it will be used to encrypt new objects. Reencrypting old objects is
-  # currently not implemented but it wouldn't be a problem to implement proper key
-  # rotation.
-  #
-  # Regarding kdfSalt and kdfIterations:
-  # It is highly recommended to generate your own random salt for example with:
-  #   dd if=/dev/urandom bs=16 count=1 status=none | base64
-  # Don't change the salt and iteration count after writing encrypted objects
-  # to the data backend, they cannot be decrypted anymore.
-  #
-  # Specify either a password, kdfSalt and kdfIteraions or use your
-  # own high-entropy-key directly with masterKey in which case the other options
-  # are ignored.
-  #
-  #
-  # encryption:
-  #   - identifier: k1
-  #     type: aes_256_gcm
-  #     materials:
-  #       masterKey: VPSQYIyD+dfLIRBTYJlGziu1hsT2eNFXnEuvl6jM/m8=
-  #       OR
-  #       password: "your secret password"
-  #       kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
-  #       kdfIterations: 16384
-
-  # Currently only zstd compression is supported. You can specify the compression level:
-  # Higher values mean better compression ratios but increased CPU use. For details please
-  # see the zstd documentation.
-  #
-  # compression:
-  #   - type: zstd
-  #     materials:
-  #       level: 3
-
-  # How many writes to perform in parallel. This is useful if your data backend
-  # can perform parallel writes faster than serial ones.
-  simultaneousWrites: 5
-
-  # How many reads to perform in parallel. This is useful if your data backend
-  # can perform parallel reads faster than serial ones.
-  simultaneousReads: 5
-
-  # Bandwidth throttling (set to 0 to disable, i.e. use full bandwidth)
-  # bytes per second
-  #bandwidthRead: 78643200
-  #bandwidthWrite: 78643200
-
-  #readCache:
-  #  directory: /var/lib/benji/read-cache
-  #  maximumSize: (in bytes)
-
-nbd:
-  cacheDirectory: /tmp
+# transforms:
+#   - name:
+#     module: zstd
+#     configuration:
+#       level:
+#       dictDataFile:
+#
+#   - name:
+#     module: aes_256_gcm
+#     configuration:
+#       kdfSalt:
+#       kdfIterations:
+#       password:
+#       masterKey:
 
 io:
-  file:
-    # Configure the file IO (file://<path>)
-    # This is for a file or a blockdevice (e.g. /dev/sda)
+#
+# All I/O modules supports these directives:
+#
+#       simultaneousReads: 1
+#
+#   - name:
+#     module: file
+#     configuration:
+#
+#   - name:
+#     module: rbd
+#     configuration:
+#       cephConfigFile: /etc/ceph/ceph.conf
+#       clientIdentifier: admin
+#       newImageFeatures:
+#         - RBD_FEATURE_LAYERING
+#         - RBD_FEATURE_EXCLUSIVE_LOCK
+#         - RBD_FEATURE_STRIPINGV2
+#         - RBD_FEATURE_OBJECT_MAP
+#         - RBD_FEATURE_FAST_DIFF
+#         - RBD_FEATURE_DEEP_FLATTEN
 
-    # How many parallel reads are permitted? (also affects the queue length)
-    simultaneousReads: 5
-
-  rbd:
-    # Configure the rbd IO (rbd://<pool>/<imagename>[@<snapshotname>])
-    # This accepts rbd images in the form rbd://pool/image@snapshot or rbd://pool/image
-    cephConfigFile: /etc/ceph/ceph.conf
-
-    # How many parallel reads are permitted? (also affects the queue length)
-    simultaneousReads: 10
-
-    # When restoring images, new images are created (if you don't --force). For these
-    # newly created images, use these features:
-    newImageFeatures:
-      - RBD_FEATURE_LAYERING
-      - RBD_FEATURE_EXCLUSIVE_LOCK
-      #- RBD_FEATURE_STRIPINGV2
-      #-RBD_FEATURE_OBJECT_MAP
-      #-RBD_FEATURE_FAST_DIFF
-      #-RBD_FEATURE_DEEP_FLATTEN
-
-    clientIdentifier: admin
+# nbd:
+#   cacheDirectory:
