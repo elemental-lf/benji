@@ -482,29 +482,29 @@ Storage Module s3
 * type: string
 * one of **awsAccessKeyId** or **awsAccessKeyIdFile** required
 
-Sets the access key id. This option is mutually exclusive to the
-**awsAccessKeyIdFile** option.
+Sets the access key id. This option and the **awsAccessKeyIdFile**
+option are mutually exclusive.
 
 * name: **awsAccessKeyIdFile**
 * type: string
 * one of **awsAccessKeyId** or **awsAccessKeyIdFile** required
 
-Sets the access key id from a file. This option is mutually exclusive to the
-**awsAccessKeyId** option.
+Sets the access key id from a file. This option and the **awsAccessKeyId**
+option are mutually exclusive.
 
 * name: **awsSecretAccessKey**
 * type: string
 * one of **awsSecretAccessKey** or **awsSecretAccessKeyFile** required
 
-Set the access key. This option is mutually exclusive to the
-**awsSecretAccessKeyFile** option.
+Set the access key. This option and the **awsSecretAccessKeyFile**
+option are mutually exclusive.
 
 * name: **awsSecretAccessKeyFile**
 * type: string
 * one of **awsSecretAccessKey** or **awsSecretAccessKeyFile** required
 
-Sets the access key from a file. This option is mutually exclusive to the
-**awsSecretAccessKey** option.
+Sets the access key from a file.This option and the **awsSecretAccessKey**
+option are mutually exclusive.
 
 * name: **bucketName**
 * type: string
@@ -575,31 +575,31 @@ Storage Module b2
 
 * name: **accountId**
 * type: string
-* default: one of **accountId** or **accountIdFile** required
+* one of **accountId** or **accountIdFile** required
 
-Set the account id. This option is mutually exclusive to the
-**accountIdFile** option.
+Set the account id. This option and the **accountIdFile**
+option are mutually exclusive.
 
 * name: **accountIdFile**
 * type: string
-* default: one of **accountId** or **accountIdFile** required
+* one of **accountId** or **accountIdFile** required
 
-Sets the account id from a file. This option is mutually exclusive to the
-**accountId** option.
+Sets the account id from a file. This option and the **accountId**
+option are mutually exclusive.
 
 * name: **applicationKey**
 * type: string
-* default: one of **applicationKey** or **applicationKeyFile** required
+* one of **applicationKey** or **applicationKeyFile** required
 
-Sets the application key. This option is mutually exclusive to the
-**applicationKeyFile** option.
+Sets the application key. This option and the **applicationKeyFile**
+option are mutually exclusive.
 
 * name: **applicationKeyFile**
 * type: string
-* default: one of **applicationKey** or **applicationKeyFile** required
+* one of **applicationKey** or **applicationKeyFile** required
 
-Sets the application key from a file. This option is mutually exclusive to the
-**applicationKey** option.
+Sets the application key from a file. This option and the **applicationKey**
+option are mutually exclusive.
 
 * name: **bucketName**
 * type: string
