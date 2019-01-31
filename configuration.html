@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.1.1.dev69+ga8cb9e2.dirty documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.1.1.dev70+g3ac5c1e.dirty documentation</title>
   
 
   
@@ -94,7 +94,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#configuration-file-location">Configuration File Location</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#top-level-configuration-directives">Top level configuration directives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#top-level-configuration-directives">Top-level configuration directives</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-of-i-o-configurations">List of I/O Configurations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-of-transform-configurations">List of Transform Configurations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-of-storage-configurations">List of Storage Configurations</a></li>
@@ -291,11 +291,11 @@
 <code class="docutils literal notranslate"><span class="pre">--configfile</span></code>) parameter.</p>
 </div>
 <div class="section" id="top-level-configuration-directives">
-<h2>Top level configuration directives<a class="headerlink" href="#top-level-configuration-directives" title="Permalink to this headline">¶</a></h2>
+<h2>Top-level configuration directives<a class="headerlink" href="#top-level-configuration-directives" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li>key: <strong>configurationVersion</strong></li>
-<li>type: string (integer is also excepted)</li>
-<li>default: none, required</li>
+<li>type: string (integer is also accepted)</li>
+<li>required</li>
 </ul>
 <p>Currently this is always <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
 <ul class="simple">
@@ -343,39 +343,45 @@ backup version regardless of its age.</p>
 <ul class="simple">
 <li>key: <strong>databaseEngine</strong></li>
 <li>type: string</li>
-<li>default: none, required</li>
+<li>required</li>
 </ul>
 <p>See <a class="reference external" href="https://docs.sqlalchemy.org/en/latest/core/engines.html">https://docs.sqlalchemy.org/en/latest/core/engines.html</a> for options.
 Only PostgreSQL (dialect psycopg2) and SQLite 3 are tested with during development.</p>
 <ul class="simple">
 <li>key: <strong>ios</strong></li>
 <li>type: list of dictionaries</li>
-<li>default: none, required</li>
+<li>required</li>
 </ul>
 <p>List of I/O configurations. Backup sources are accessed via these configurations.
 They are also used as a destination during restore operations. See below.</p>
 <ul class="simple">
 <li>key: <strong>storages</strong></li>
 <li>type: list of dictionaries</li>
-<li>default: none, required</li>
+<li>required</li>
 </ul>
 <p>List of storage configurations used for storing backup versions. See below.</p>
 <ul class="simple">
 <li>key: <strong>defaultStorage</strong></li>
 <li>type: string</li>
-<li>default: none, required</li>
+<li>required</li>
 </ul>
 <p>Default storage for storing backup versions. Reference to a storage name.</p>
 <ul class="simple">
 <li>key: <strong>transforms</strong></li>
 <li>type: list of dictionaries</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">[]</span></code></li>
+<li>default: empty list</li>
 </ul>
 <p>List of data transformation configurations. See below.</p>
+<ul class="simple">
+<li>key: <strong>nbd</strong></li>
+<li>type: dictionary</li>
+<li>default: see below</li>
+</ul>
+<p>Configuration options pertaining to Benji’s NBD server.</p>
 </div>
 <div class="section" id="list-of-i-o-configurations">
 <h2>List of I/O Configurations<a class="headerlink" href="#list-of-i-o-configurations" title="Permalink to this headline">¶</a></h2>
-<p>The list of I/O configurations (<code class="docutils literal notranslate"><span class="pre">ios</span></code>) is a list of dictionaries with the
+<p>The list of I/O configurations (<strong>ios</strong>) is a list of dictionaries with the
 following keys:</p>
 <ul class="simple">
 <li>key: <strong>name</strong></li>
@@ -399,7 +405,7 @@ scheme in backup source or restore destination specifications.</p>
 </div>
 <div class="section" id="list-of-transform-configurations">
 <h2>List of Transform Configurations<a class="headerlink" href="#list-of-transform-configurations" title="Permalink to this headline">¶</a></h2>
-<p>The list of transform configuration (<code class="docutils literal notranslate"><span class="pre">transforms</span></code>) is a list of
+<p>The list of transform configuration (<strong>transforms</strong>) is a list of
 dictionaries with the following keys:</p>
 <ul class="simple">
 <li>key: <strong>name</strong></li>
@@ -407,7 +413,7 @@ dictionaries with the following keys:</p>
 <li>default: none</li>
 </ul>
 <p>This sets the name of this transform configuration entry. It is
-referenced in the list of <code class="docutils literal notranslate"><span class="pre">activeTransforms</span></code>.</p>
+referenced in the list of <strong>activeTransforms</strong>.</p>
 <ul class="simple">
 <li>key: <strong>module</strong></li>
 <li>type: string</li>
@@ -423,7 +429,7 @@ referenced in the list of <code class="docutils literal notranslate"><span class
 </div>
 <div class="section" id="list-of-storage-configurations">
 <h2>List of Storage Configurations<a class="headerlink" href="#list-of-storage-configurations" title="Permalink to this headline">¶</a></h2>
-<p>The list of storage configurations (<code class="docutils literal notranslate"><span class="pre">storages</span></code>) is a list of dictionaries
+<p>The list of storage configurations (<strong>storages</strong>) is a list of dictionaries
 with the following keys:</p>
 <ul class="simple">
 <li>key: <strong>name</strong></li>
@@ -431,7 +437,7 @@ with the following keys:</p>
 <li>default: none</li>
 </ul>
 <p>This sets the name of this storage configuration entry. It is referenced by
-the <code class="docutils literal notranslate"><span class="pre">defaultStorage</span></code> top-level configuration directive or it is specified
+the <strong>defaultStorage</strong> top-level configuration directive or it is specified
 on the command line.</p>
 <ul class="simple">
 <li>key: <strong>module</strong></li>
@@ -507,7 +513,7 @@ configuration after a transform has been used by a storage. For example
 you can’t just change the encryption key because you will lose access to
 all data objects already encrypted with the old key. But you can create
 a new encryption configuration with a new name and use it instead in
-the list of <code class="docutils literal notranslate"><span class="pre">activeTransforms</span></code> of your storage. All newly create data
+the list of <strong>activeTransforms</strong> of your storage. All newly create data
 objects will then use this new transform. Old objects will still be
 encrypted with the old key but they can still be decrypted as long as
 the old encryption configuration is available under the old name. Key
@@ -565,10 +571,10 @@ options:</p>
 </ul>
 <p>Sets the master key used for encrypting the envelope keys. This key should
 have a high entropy. In most cases it is safer and easier to derive
-the key from a <code class="docutils literal notranslate"><span class="pre">password</span></code>.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">masterKey</span></code> configuration directive is mutually exclusive
+the key from a <strong>password</strong>.</p>
+<p>The <strong>masterKey</strong> configuration directive is mutually exclusive
 to the other three directives.</p>
-<p>When the <code class="docutils literal notranslate"><span class="pre">masterKey</span></code> directive is not set the master key is derived from
+<p>When the <strong>masterKey</strong> directive is not set the master key is derived from
 the other three configuration directives by using PBKDF2 with SHA-512.</p>
 <p>Regarding kdfSalt and kdfIterations: It is highly recommended to generate
 your own random salt and chose your own number of iterations. Don’t change
@@ -616,7 +622,7 @@ bucket algorithm.  A value of <code class="docutils literal notranslate"><span c
 <ul class="simple">
 <li>name: <strong>activeTransforms</strong></li>
 <li>type: list of strings</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">[]</span></code></li>
+<li>default: empty list</li>
 </ul>
 <p>Sets a list of transform which are applied to each data object before it is
 written to the storage. The transformations are performed in order. In
@@ -642,7 +648,7 @@ implementation conforms to RFC 2104 and uses SHA-256 as the hash algorithm.</p>
 <li>type: dictionary</li>
 <li>default: none</li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">hmac</span></code> dictionary supports the following keys:</p>
+<p>The <strong>hmac</strong> dictionary supports the following keys:</p>
 <ul class="simple">
 <li>name: <strong>kdfSalt</strong></li>
 <li>type: binary string encoded with BASE64</li>
@@ -667,10 +673,10 @@ implementation conforms to RFC 2104 and uses SHA-256 as the hash algorithm.</p>
 <li>default: none</li>
 </ul>
 <p>Sets the key used for seeding the hash function. In most cases it is safer and
-easier to derive the key from a <code class="docutils literal notranslate"><span class="pre">password</span></code>.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">key</span></code> configuration directive is mutually exclusive to the other
+easier to derive the key from a <strong>password</strong>.</p>
+<p>The <strong>key</strong> configuration directive is mutually exclusive to the other
 three directives.</p>
-<p>When the <code class="docutils literal notranslate"><span class="pre">key</span></code> directive is not set the key is derived from the other
+<p>When the <strong>key</strong> directive is not set the key is derived from the other
 three configuration directives by using PBKDF2 with SHA-512.</p>
 </div>
 <div class="section" id="read-cache">
@@ -682,7 +688,7 @@ be beneficial when frequently restoring images that are mostly identical.</p>
 <li>type: dictionary</li>
 <li>default: none</li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">readCache</span></code> dictionary supports the following keys:</p>
+<p>The <strong>readCache</strong> dictionary supports the following keys:</p>
 <ul class="simple">
 <li>name: <strong>directory</strong></li>
 <li>type: string</li>
@@ -702,7 +708,7 @@ be beneficial when frequently restoring images that are mostly identical.</p>
 <li>default: none</li>
 </ul>
 <p>Sets the number of cache shards. Needs to be scaled together with
-<code class="docutils literal notranslate"><span class="pre">simultaneousReads</span></code>.</p>
+<strong>simultaneousReads</strong>.</p>
 </div>
 <div class="section" id="storage-module-file">
 <h3>Storage Module file<a class="headerlink" href="#storage-module-file" title="Permalink to this headline">¶</a></h3>
@@ -719,31 +725,31 @@ be beneficial when frequently restoring images that are mostly identical.</p>
 <ul class="simple">
 <li>name: <strong>awsAccessKeyId</strong></li>
 <li>type: string</li>
-<li>one of <code class="docutils literal notranslate"><span class="pre">awsAccessKeyId</span></code> or <code class="docutils literal notranslate"><span class="pre">awsAccessKeyIdFile</span></code> required</li>
+<li>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</li>
 </ul>
-<p>Set the access key id. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">awsAccessKeyIdFile</span></code> option.</p>
+<p>Sets the access key id. This option is mutually exclusive to the
+<strong>awsAccessKeyIdFile</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>awsAccessKeyIdFile</strong></li>
 <li>type: string</li>
-<li>one of <code class="docutils literal notranslate"><span class="pre">awsAccessKeyId</span></code> or <code class="docutils literal notranslate"><span class="pre">awsAccessKeyIdFile</span></code> required</li>
+<li>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</li>
 </ul>
 <p>Sets the access key id from a file. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">awsAccessKeyId</span></code> option.</p>
+<strong>awsAccessKeyId</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>awsSecretAccessKey</strong></li>
 <li>type: string</li>
-<li>one of <code class="docutils literal notranslate"><span class="pre">awsSecretAccessKey</span></code> or <code class="docutils literal notranslate"><span class="pre">awsSecretAccessKeyFile</span></code> required</li>
+<li>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</li>
 </ul>
 <p>Set the access key. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">awsSecretAccessKeyFile</span></code> option.</p>
+<strong>awsSecretAccessKeyFile</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>awsSecretAccessKeyFile</strong></li>
 <li>type: string</li>
-<li>one of <code class="docutils literal notranslate"><span class="pre">awsSecretAccessKey</span></code> or <code class="docutils literal notranslate"><span class="pre">awsSecretAccessKeyFile</span></code> required</li>
+<li>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</li>
 </ul>
 <p>Sets the access key from a file. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">awsSecretAccessKey</span></code> option.</p>
+<strong>awsSecretAccessKey</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>bucketName</strong></li>
 <li>type: string</li>
@@ -753,13 +759,13 @@ be beneficial when frequently restoring images that are mostly identical.</p>
 <ul class="simple">
 <li>name: <strong>regionName</strong></li>
 <li>type: string</li>
-<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <code class="docutils literal notranslate"><span class="pre">endpointUrl</span></code> is specified</li>
+<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</li>
 </ul>
 <p>Sets the region of the bucket.</p>
 <ul class="simple">
 <li>name: <strong>useSsl</strong></li>
 <li>type: bool</li>
-<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <code class="docutils literal notranslate"><span class="pre">endpointUrl</span></code> is specified</li>
+<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</li>
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used.
 When this option is set to <code class="docutils literal notranslate"><span class="pre">true</span></code> then TLS is used to connect to
@@ -771,7 +777,7 @@ the S3 API endpoint. When it is set to <code class="docutils literal notranslate
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used.
 This option sets the S3 API endpoint to use in URL format. If it is
-specified other options like <code class="docutils literal notranslate"><span class="pre">regionName</span></code> and <code class="docutils literal notranslate"><span class="pre">useSsl</span></code> are ignored
+specified other options like <strong>regionName</strong> and <strong>useSsl</strong> are ignored
 by the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library. This needs to be set to
 <code class="docutils literal notranslate"><span class="pre">https://storage.googleapis.com/</span></code> when connecting to a Google Storage
 bucket.</p>
@@ -814,31 +820,31 @@ to a Google Storage bucket.</p>
 <ul class="simple">
 <li>name: <strong>accountId</strong></li>
 <li>type: string</li>
-<li>default: one of <code class="docutils literal notranslate"><span class="pre">accountId</span></code> or <code class="docutils literal notranslate"><span class="pre">accountIdFile</span></code> required</li>
+<li>default: one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</li>
 </ul>
 <p>Set the account id. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">accountIdFile</span></code> option.</p>
+<strong>accountIdFile</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>accountIdFile</strong></li>
 <li>type: string</li>
-<li>default: one of <code class="docutils literal notranslate"><span class="pre">accountId</span></code> or <code class="docutils literal notranslate"><span class="pre">accountIdFile</span></code> required</li>
+<li>default: one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</li>
 </ul>
 <p>Sets the account id from a file. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">accountId</span></code> option.</p>
+<strong>accountId</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>applicationKey</strong></li>
 <li>type: string</li>
-<li>default: one of <code class="docutils literal notranslate"><span class="pre">applicationKey</span></code> or <code class="docutils literal notranslate"><span class="pre">applicationKeyFile</span></code> required</li>
+<li>default: one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</li>
 </ul>
 <p>Sets the application key. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">applicationKeyFile</span></code> option.</p>
+<strong>applicationKeyFile</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>applicationKeyFile</strong></li>
 <li>type: string</li>
-<li>default: one of <code class="docutils literal notranslate"><span class="pre">applicationKey</span></code> or <code class="docutils literal notranslate"><span class="pre">applicationKeyFile</span></code> required</li>
+<li>default: one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</li>
 </ul>
 <p>Sets the application key from a file. This option is mutually exclusive to the
-<code class="docutils literal notranslate"><span class="pre">applicationKey</span></code> option.</p>
+<strong>applicationKey</strong> option.</p>
 <ul class="simple">
 <li>name: <strong>bucketName</strong></li>
 <li>type: string</li>
@@ -870,13 +876,8 @@ retry reads this number of times.</p>
 <div class="section" id="nbd">
 <h2>NBD<a class="headerlink" href="#nbd" title="Permalink to this headline">¶</a></h2>
 <p>Configuration options pertaining to Benji’s NBD server are located under
-the top-level key <code class="docutils literal notranslate"><span class="pre">nbd</span></code>:</p>
-<ul class="simple">
-<li>name: <strong>nbd</strong></li>
-<li>type: dictionary</li>
-<li>default: see below</li>
-</ul>
-<p>The only configuration option currently presents in the <code class="docutils literal notranslate"><span class="pre">nbd</span></code> dictionary
+the top-level key <strong>nbd</strong>:</p>
+<p>The only configuration option currently present in the <strong>nbd</strong> dictionary
 is:</p>
 <ul class="simple">
 <li>name: <strong>directory</strong></li>
