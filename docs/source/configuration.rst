@@ -20,12 +20,12 @@ In order to explicitly pass a configuration file, use the ``-c`` (or
 ``--configfile``) parameter.
 
 
-Top level configuration directives
+Top-level configuration directives
 ----------------------------------
 
 * key: **configurationVersion**
-* type: string (integer is also excepted)
-* default: none, required
+* type: string (integer is also accepted)
+* required
 
 Currently this is always ``1``.
 
@@ -73,7 +73,7 @@ backup version regardless of its age.
 
 * key: **databaseEngine**
 * type: string
-* default: none, required
+* required
 
 See https://docs.sqlalchemy.org/en/latest/core/engines.html for options.
 Only PostgreSQL (dialect psycopg2) and SQLite 3 are tested with during development.
@@ -81,34 +81,39 @@ Only PostgreSQL (dialect psycopg2) and SQLite 3 are tested with during developme
 
 * key: **ios**
 * type: list of dictionaries
-* default: none, required
+* required
 
 List of I/O configurations. Backup sources are accessed via these configurations.
 They are also used as a destination during restore operations. See below.
 
 * key: **storages**
 * type: list of dictionaries
-* default: none, required
+* required
 
 List of storage configurations used for storing backup versions. See below.
 
 * key: **defaultStorage**
 * type: string
-* default: none, required
+* required
 
 Default storage for storing backup versions. Reference to a storage name.
 
 * key: **transforms**
 * type: list of dictionaries
-* default: ``[]``
+* default: empty list
 
 List of data transformation configurations. See below.
 
+* key: **nbd**
+* type: dictionary
+* default: see below
+
+Configuration options pertaining to Benji's NBD server.
 
 List of I/O Configurations
 --------------------------
 
-The list of I/O configurations (``ios``) is a list of dictionaries with the
+The list of I/O configurations (**ios**) is a list of dictionaries with the
 following keys:
 
 * key: **name**
@@ -133,7 +138,7 @@ Module specific configuration for this I/O configuration entry.
 List of Transform Configurations
 --------------------------------
 
-The list of transform configuration (``transforms``) is a list of
+The list of transform configuration (**transforms**) is a list of
 dictionaries with the following keys:
 
 * key: **name**
@@ -141,7 +146,7 @@ dictionaries with the following keys:
 * default: none
 
 This sets the name of this transform configuration entry. It is
-referenced in the list of ``activeTransforms``.
+referenced in the list of **activeTransforms**.
 
 * key: **module**
 * type: string
@@ -158,7 +163,7 @@ Module specific configuration for this transform configuration entry.
 List of Storage Configurations
 ------------------------------
 
-The list of storage configurations (``storages``) is a list of dictionaries
+The list of storage configurations (**storages**) is a list of dictionaries
 with the following keys:
 
 * key: **name**
@@ -166,7 +171,7 @@ with the following keys:
 * default: none
 
 This sets the name of this storage configuration entry. It is referenced by
-the ``defaultStorage`` top-level configuration directive or it is specified
+the **defaultStorage** top-level configuration directive or it is specified
 on the command line.
 
 * key: **module**
@@ -247,7 +252,7 @@ configuration after a transform has been used by a storage. For example
 you can't just change the encryption key because you will lose access to
 all data objects already encrypted with the old key. But you can create
 a new encryption configuration with a new name and use it instead in
-the list of ``activeTransforms`` of your storage. All newly create data
+the list of **activeTransforms** of your storage. All newly create data
 objects will then use this new transform. Old objects will still be
 encrypted with the old key but they can still be decrypted as long as
 the old encryption configuration is available under the old name. Key
@@ -311,12 +316,12 @@ Sets the password from which the master key is generated.
 
 Sets the master key used for encrypting the envelope keys. This key should
 have a high entropy. In most cases it is safer and easier to derive
-the key from a ``password``.
+the key from a **password**.
 
-The ``masterKey`` configuration directive is mutually exclusive
+The **masterKey** configuration directive is mutually exclusive
 to the other three directives.
 
-When the ``masterKey`` directive is not set the master key is derived from
+When the **masterKey** directive is not set the master key is derived from
 the other three configuration directives by using PBKDF2 with SHA-512.
 
 Regarding kdfSalt and kdfIterations: It is highly recommended to generate
@@ -365,7 +370,7 @@ bucket algorithm.  A value of ``0`` disables this feature.
 
 * name: **activeTransforms**
 * type: list of strings
-* default: ``[]``
+* default: empty list
 
 Sets a list of transform which are applied to each data object before it is
 written to the storage. The transformations are performed in order. In
@@ -393,7 +398,7 @@ implementation conforms to RFC 2104 and uses SHA-256 as the hash algorithm.
 * type: dictionary
 * default: none
 
-The ``hmac`` dictionary supports the following keys:
+The **hmac** dictionary supports the following keys:
 
 * name: **kdfSalt**
 * type: binary string encoded with BASE64
@@ -418,13 +423,13 @@ Sets the password from which the key is generated.
 * default: none
 
 Sets the key used for seeding the hash function. In most cases it is safer and
-easier to derive the key from a ``password``.
+easier to derive the key from a **password**.
 
 
-The ``key`` configuration directive is mutually exclusive to the other
+The **key** configuration directive is mutually exclusive to the other
 three directives.
 
-When the ``key`` directive is not set the key is derived from the other
+When the **key** directive is not set the key is derived from the other
 three configuration directives by using PBKDF2 with SHA-512.
 
 Read Cache
@@ -437,7 +442,7 @@ be beneficial when frequently restoring images that are mostly identical.
 * type: dictionary
 * default: none
 
-The ``readCache`` dictionary supports the following keys:
+The **readCache** dictionary supports the following keys:
 
 * name: **directory**
 * type: string
@@ -457,7 +462,7 @@ Maximum size of the cache in bytes.
 * default: none
 
 Sets the number of cache shards. Needs to be scaled together with
-``simultaneousReads``.
+**simultaneousReads**.
 
 Storage Module file
 ~~~~~~~~~~~~~~~~~~~
@@ -475,31 +480,31 @@ Storage Module s3
 
 * name: **awsAccessKeyId**
 * type: string
-* one of ``awsAccessKeyId`` or ``awsAccessKeyIdFile`` required
+* one of **awsAccessKeyId** or **awsAccessKeyIdFile** required
 
-Set the access key id. This option is mutually exclusive to the
-``awsAccessKeyIdFile`` option.
+Sets the access key id. This option is mutually exclusive to the
+**awsAccessKeyIdFile** option.
 
 * name: **awsAccessKeyIdFile**
 * type: string
-* one of ``awsAccessKeyId`` or ``awsAccessKeyIdFile`` required
+* one of **awsAccessKeyId** or **awsAccessKeyIdFile** required
 
 Sets the access key id from a file. This option is mutually exclusive to the
-``awsAccessKeyId`` option.
+**awsAccessKeyId** option.
 
 * name: **awsSecretAccessKey**
 * type: string
-* one of ``awsSecretAccessKey`` or ``awsSecretAccessKeyFile`` required
+* one of **awsSecretAccessKey** or **awsSecretAccessKeyFile** required
 
 Set the access key. This option is mutually exclusive to the
-``awsSecretAccessKeyFile`` option.
+**awsSecretAccessKeyFile** option.
 
 * name: **awsSecretAccessKeyFile**
 * type: string
-* one of ``awsSecretAccessKey`` or ``awsSecretAccessKeyFile`` required
+* one of **awsSecretAccessKey** or **awsSecretAccessKeyFile** required
 
 Sets the access key from a file. This option is mutually exclusive to the
-``awsSecretAccessKey`` option.
+**awsSecretAccessKey** option.
 
 * name: **bucketName**
 * type: string
@@ -509,13 +514,13 @@ Sets the bucket name.
 
 * name: **regionName**
 * type: string
-* default: from ``boto3`` library, ignored if ``endpointUrl`` is specified
+* default: from ``boto3`` library, ignored if **endpointUrl** is specified
 
 Sets the region of the bucket.
 
 * name: **useSsl**
 * type: bool
-* default: from ``boto3`` library, ignored if ``endpointUrl`` is specified
+* default: from ``boto3`` library, ignored if **endpointUrl** is specified
 
 If not set, the default of the underlying ``boto3`` library is used.
 When this option is set to ``true`` then TLS is used to connect to
@@ -527,7 +532,7 @@ the S3 API endpoint. When it is set to ``false`` HTTP is used.
 
 If not set, the default of the underlying ``boto3`` library is used.
 This option sets the S3 API endpoint to use in URL format. If it is
-specified other options like ``regionName`` and ``useSsl`` are ignored
+specified other options like **regionName** and **useSsl** are ignored
 by the underlying ``boto3`` library. This needs to be set to
 ``https://storage.googleapis.com/`` when connecting to a Google Storage
 bucket.
@@ -570,31 +575,31 @@ Storage Module b2
 
 * name: **accountId**
 * type: string
-* default: one of ``accountId`` or ``accountIdFile`` required
+* default: one of **accountId** or **accountIdFile** required
 
 Set the account id. This option is mutually exclusive to the
-``accountIdFile`` option.
+**accountIdFile** option.
 
 * name: **accountIdFile**
 * type: string
-* default: one of ``accountId`` or ``accountIdFile`` required
+* default: one of **accountId** or **accountIdFile** required
 
 Sets the account id from a file. This option is mutually exclusive to the
-``accountId`` option.
+**accountId** option.
 
 * name: **applicationKey**
 * type: string
-* default: one of ``applicationKey`` or ``applicationKeyFile`` required
+* default: one of **applicationKey** or **applicationKeyFile** required
 
 Sets the application key. This option is mutually exclusive to the
-``applicationKeyFile`` option.
+**applicationKeyFile** option.
 
 * name: **applicationKeyFile**
 * type: string
-* default: one of ``applicationKey`` or ``applicationKeyFile`` required
+* default: one of **applicationKey** or **applicationKeyFile** required
 
 Sets the application key from a file. This option is mutually exclusive to the
-``applicationKey`` option.
+**applicationKey** option.
 
 * name: **bucketName**
 * type: string
@@ -626,13 +631,9 @@ NBD
 ---
 
 Configuration options pertaining to Benji's NBD server are located under
-the top-level key ``nbd``:
+the top-level key **nbd**:
 
-* name: **nbd**
-* type: dictionary
-* default: see below
-
-The only configuration option currently presents in the ``nbd`` dictionary
+The only configuration option currently present in the **nbd** dictionary
 is:
 
 * name: **directory**
