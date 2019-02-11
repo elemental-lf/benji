@@ -4,7 +4,7 @@ FROM centos:7 AS build
 ARG CEPH_CODENAME="mimic"
 ARG CEPH_DISTRO="el7"
 # For the Git checkout
-ARG CEPH_VERSION="13.2.2"
+ARG CEPH_VERSION="13.2.4"
 
 ENV VENV_DIR /benji
 
