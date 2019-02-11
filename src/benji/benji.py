@@ -912,11 +912,12 @@ class Benji(ReprMixIn):
             for hit_list in self._database_backend.get_delete_candidates(dt):
                 for storage_id, uids in hit_list.items():
                     storage = StorageFactory.get_by_storage_id(storage_id)
-                    logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name, uids))
-                no_del_uids = storage.rm_many(uids)
-                if no_del_uids:
-                    logger.info('Unable to delete these UIDs from storage {}: {}'.format(
-                        storage.name, ', '.join([str(uid) for uid in no_del_uids])))
+                    logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name,
+                                                                            ', '.join([str(uid) for uid in uids])))
+                    no_del_uids = storage.rm_many(uids)
+                    if no_del_uids:
+                        logger.info('Unable to delete these UIDs from storage {}: {}'.format(
+                            storage.name, ', '.join([str(uid) for uid in no_del_uids])))
 
     def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
         self._database_backend.add_label(version_uid, key, value)
