@@ -11,7 +11,7 @@ import colorlog
 logger = logging.getLogger(__name__)
 
 
-def init_logging(logfile: Optional[str], console_level: str, no_color: bool = False):
+def init_logging(logfile: Optional[str], level: str, no_color: bool = False):
     handlers = []
 
     if no_color:
@@ -21,21 +21,21 @@ def init_logging(logfile: Optional[str], console_level: str, no_color: bool = Fa
         console = colorlog.StreamHandler(stream=sys.stderr)
         console.setFormatter(
             colorlog.TTYColoredFormatter('%(log_color)s%(levelname)8s: %(message)s', stream=sys.stderr))
-    console.setLevel(console_level)
+    console.setLevel(level)
     handlers.append(console)
 
     if logfile is not None:
         logfile_handler = WatchedFileHandler(logfile)
-        logfile_handler.setLevel(logging.INFO)
-        logfile_handler.setFormatter(logging.Formatter('%(asctime)s [%(process)d] %(message)s'))
+        # Always log at least at level INFO
+        logfile_handler.setLevel(min(logging.getLevelName(level), logging.INFO)) # type: ignore
+        logfile_handler.setFormatter(
+            logging.Formatter('%(asctime)s %(process)d/%(threadName)s %(filename)s:%(lineno)d %(levelname)s %(message)s'))
         handlers.append(logfile_handler)  # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...
 
     logging.basicConfig(handlers=handlers, level=logging.DEBUG)
 
     # silence alembic
     logging.getLogger('alembic').setLevel(logging.WARN)
-    # silence filelock
-    logging.getLogger('filelock').setLevel(logging.WARN)
     # silence boto3
     # See https://github.com/boto/boto3/issues/521
     logging.getLogger('boto3').setLevel(logging.WARN)

@@ -127,7 +127,8 @@ class Config:
             raise ConfigurationError('Configuration for module {} is invalid.'.format(module))
 
         config_validated = validator.document['configuration']
-        logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
+        # This output leaks sensitive information. Only reinstate when such infos are redacted somehow.
+        # logger.debug('Configuration for module {}: {}.'.format(module, config_validated))
         return config_validated
 
     def __init__(self, ad_hoc_config: str = None, sources: Sequence[str] = None) -> None:
