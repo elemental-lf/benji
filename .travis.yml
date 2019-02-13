@@ -43,14 +43,13 @@ install:
   - travis_retry pip install --upgrade setuptools pip
   - travis_retry pip install '.[s3,b2,compression,readcache,dev]'
   - travis_retry pip install -r requirements_docs.txt
-before_script:
+
+script:
   - pip freeze
   - make -C tests/minio-setup up
   - make -C tests/postgresql-setup up
-script:
   - python -m unittest discover -v -t src -s src/benji/tests
   - python setup.py sdist
-after_script:
   - make -C tests/minio-setup down
   - make -C tests/postgresql-setup down
 
