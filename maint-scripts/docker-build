@@ -5,10 +5,10 @@ pwd
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 if [[ $GIT_PEP440_VERSION_VARIANT ]]; then
-    GIT_PEP440_VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version-$GIT_PEP440_VERSION_VARIANT)"
+    GIT_PEP440_VERSION="$REPO_ROOT/maint-scripts/git-pep440-version-$GIT_PEP440_VERSION_VARIANT"
 else
     GIT_PEP440_VERSION_VARIANT=''
-    GIT_PEP440_VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version)"
+    GIT_PEP440_VERSION="$REPO_ROOT/maint-scripts/git-pep440-version"
 fi
 
 if [[ $COMMIT_MSG ]]; then
