@@ -4,7 +4,12 @@ id -a
 pwd
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-: ${GIT_PEP440_VERSION_VARIANT:=}
+if [[ $GIT_PEP440_VERSION_VARIANT ]]; then
+    GIT_PEP440_VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version-$GIT_PEP440_VERSION_VARIANT)"
+else
+    GIT_PEP440_VERSION_VARIANT=''
+    GIT_PEP440_VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version)"
+fi
 
 if [[ $COMMIT_MSG ]]; then
     # Docker Cloud
@@ -17,7 +22,7 @@ if [[ $COMMIT_MSG ]]; then
         python3 ./get-pip.py
     fi
 
-    VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version$GIT_PEP440_VERSION_VARIANT)"
+    VERSION="$($GIT_PEP440_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
     else
@@ -33,7 +38,7 @@ elif [[ $TRAVIS_COMMIT_MESSAGE ]]; then
     DOCKER_REPO="elementalnet/${DOCKER_REPO##*/}"
     SOURCE_BRANCH="$TRAVIS_BRANCH"
 
-    VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version$GIT_PEP440_VERSION_VARIANT)"
+    VERSION="$($GIT_PEP440_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
         TAG="$VERSION"
@@ -49,7 +54,7 @@ else
     DOCKER_REPO="$(cd $(dirname $DOCKERFILE_PATH) && pwd)"
     DOCKER_REPO="elementalnet/${DOCKER_REPO##*/}"
 
-    VERSION="$($REPO_ROOT/maint-scripts/git-pep440-version$GIT_PEP440_VERSION_VARIANT)"
+    VERSION="$($GIT_PEP440_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
         TAG="$VERSION"
