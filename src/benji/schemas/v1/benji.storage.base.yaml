@@ -18,6 +18,11 @@ configuration:
       empty: False
       min: 1
       default: 1
+    simultaneousDeletes:
+      type: integer
+      empty: False
+      min: 1
+      default: 1
     bandwidthRead:
       type: integer
       empty: False

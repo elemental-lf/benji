@@ -424,7 +424,8 @@ class Benji(ReprMixIn):
             if source_mismatch:
                 logger.error('Version {} had source mismatches.'.format(version_uid.v_string))
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
-            affected_version_uids.remove(version_uid)
+            if version_uid in affected_version_uids:
+                affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
                              .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids)])))
@@ -498,14 +499,26 @@ class Benji(ReprMixIn):
 
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
+
+            sparse_blocks = 0
+            for block in blocks:
+                if not block.uid:
+                    sparse_blocks += 1
+
             read_jobs = 0
+            write_jobs = 0
+            done_write_jobs = 0
+            log_every_jobs = read_jobs // 200 + 1  # about every half percent
+            sparse_data_block = b'\0' * block.size
             for i, block in enumerate(blocks):
                 if block.uid:
                     storage.read(block)
                     read_jobs += 1
                 elif not sparse:
-                    io.write(block, b'\0' * block.size)
-                    logger.debug('Restored sparse block {} successfully ({} bytes).'.format(block.id, block.size))
+                    io.write(block, sparse_data_block)
+                    write_jobs += 1
+                    logger.debug('Queued write for sparse block {} successfully ({} bytes).'.format(
+                        block.id, block.size))
                 else:
                     logger.debug('Ignored sparse block {}.'.format(block.id))
                 if sparse:
@@ -513,12 +526,44 @@ class Benji(ReprMixIn):
                         self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
                             version_uid.v_string, target, (i + 1) / len(blocks) * 100))
                 else:
+                    try:
+                        for written_block in io.write_get_completed(timeout=0):
+                            if isinstance(written_block, Exception):
+                                raise written_block
+                            done_write_jobs += 1
+                    except (TimeoutError, CancelledError):
+                        pass
+
                     notify(
                         self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                            version_uid.v_string, target, (i + 1) / len(blocks) * 100))
+                            version_uid.v_string, target, done_write_jobs / sparse_blocks * 100))
+                    if i % log_every_jobs == 0 or done_write_jobs == write_jobs:
+                        logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(done_write_jobs, sparse_blocks,
+                                                                                 done_write_jobs / sparse_blocks * 100))
+
+            try:
+                for written_block in io.write_get_completed():
+                    if isinstance(written_block, Exception):
+                        raise written_block
+                    done_write_jobs += 1
+
+                    notify(
+                        self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
+                            version_uid.v_string, target, done_write_jobs / sparse_blocks * 100))
+                    if i % log_every_jobs == 0 or done_write_jobs == write_jobs:
+                        logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(done_write_jobs, sparse_blocks,
+                                                                                 done_write_jobs / sparse_blocks * 100))
+            except CancelledError:
+                pass
+
+            if write_jobs != done_write_jobs:
+                raise InternalError(
+                    'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
+                        write_jobs, done_write_jobs))
 
             done_read_jobs = 0
-            log_every_jobs = read_jobs // 200 + 1  # about every half percent
+            write_jobs = 0
+            done_write_jobs = 0
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
@@ -534,6 +579,7 @@ class Benji(ReprMixIn):
 
                 # Write what we have
                 io.write(block, data)
+                write_jobs += 1
 
                 try:
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
@@ -554,12 +600,36 @@ class Benji(ReprMixIn):
                 else:
                     logger.debug('Restored block {} successfully ({} bytes).'.format(block.id, block.size))
 
+                try:
+                    for written_block in io.write_get_completed(timeout=0):
+                        if isinstance(written_block, Exception):
+                            raise written_block
+                        done_write_jobs += 1
+                except (TimeoutError, CancelledError):
+                    pass
+
                 notify(
                     self._process_name, 'Restoring version {} to {} ({:.1f}%)'.format(
                         version_uid.v_string, target, done_read_jobs / read_jobs * 100))
                 if i % log_every_jobs == 0 or done_read_jobs == read_jobs:
-                    logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_read_jobs, read_jobs,
-                                                                         done_read_jobs / read_jobs * 100))
+                    logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, write_jobs,
+                                                                         done_write_jobs / write_jobs * 100))
+
+            try:
+                for written_block in io.write_get_completed():
+                    if isinstance(written_block, Exception):
+                        raise written_block
+                    done_write_jobs += 1
+
+                    notify(
+                        self._process_name, 'Restoring version {} to {} ({:.1f}%)'.format(
+                            version_uid.v_string, target, done_read_jobs / read_jobs * 100))
+                    if i % log_every_jobs == 0 or done_read_jobs == read_jobs:
+                        logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, write_jobs,
+                                                                             done_write_jobs / write_jobs * 100))
+            except CancelledError:
+                pass
+
         except:
             raise
         finally:
@@ -571,6 +641,11 @@ class Benji(ReprMixIn):
             raise InternalError(
                 'Number of submitted and completed read jobs inconsistent (submitted: {}, completed {}).'.format(
                     read_jobs, done_read_jobs))
+
+        if write_jobs != done_write_jobs:
+            raise InternalError(
+                'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
+                    write_jobs, done_write_jobs))
 
         logger.info('Restore of version {} successful.'.format(version.uid.v_string))
 
@@ -729,7 +804,7 @@ class Benji(ReprMixIn):
                     # remove version
                     self._database_backend.rm_version(version.uid)
                     raise InputDataError('Source changed in regions outside of ones indicated by the hints.')
-            logger.info('Finished sanity check. Checked {} blocks {}.'.format(num_reading, check_block_ids))
+            logger.info('Finished sanity check. Checked {} blocks: {}.'.format(num_reading, check_block_ids))
 
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
@@ -793,13 +868,6 @@ class Benji(ReprMixIn):
                         checksum=None,
                         size=block.size,
                         valid=True)
-                # Don't try to detect sparse partial blocks as it counteracts the optimisation above
-                #elif data == b'\0' * block.size:
-                #    # if the block is only \0, set it as a sparse block.
-                #    stats['blocks_sparse'] += 1
-                #    stats['bytes_sparse'] += block.size
-                #    logger.debug('Skipping block (detected sparse) {}'.format(block.id))
-                #    self.database_backend.set_block(block.id, version_uid, None, None, block.size, valid=True)
                 elif existing_block:
                     self._database_backend.set_block(
                         id=block.id,
@@ -820,21 +888,21 @@ class Benji(ReprMixIn):
                 done_read_jobs += 1
 
                 try:
-                    for saved_block in storage.write_get_completed(timeout=0):
-                        if isinstance(saved_block, Exception):
-                            raise saved_block
+                    for written_block in storage.write_get_completed(timeout=0):
+                        if isinstance(written_block, Exception):
+                            raise written_block
 
-                        saved_block = cast(DereferencedBlock, saved_block)
+                        written_block = cast(DereferencedBlock, written_block)
 
                         self._database_backend.set_block(
-                            id=saved_block.id,
-                            version_uid=saved_block.version_uid,
-                            block_uid=saved_block.uid,
-                            checksum=saved_block.checksum,
-                            size=saved_block.size,
+                            id=written_block.id,
+                            version_uid=written_block.version_uid,
+                            block_uid=written_block.uid,
+                            checksum=written_block.checksum,
+                            size=written_block.size,
                             valid=True)
                         done_write_jobs += 1
-                        stats['bytes_written'] += saved_block.size
+                        stats['bytes_written'] += written_block.size
                 except (TimeoutError, CancelledError):
                     pass
 
@@ -846,21 +914,21 @@ class Benji(ReprMixIn):
                                                                           done_read_jobs / read_jobs * 100))
 
             try:
-                for saved_block in storage.write_get_completed():
-                    if isinstance(saved_block, Exception):
-                        raise saved_block
+                for written_block in storage.write_get_completed():
+                    if isinstance(written_block, Exception):
+                        raise written_block
 
-                    saved_block = cast(DereferencedBlock, saved_block)
+                    written_block = cast(DereferencedBlock, written_block)
 
                     self._database_backend.set_block(
-                        id=saved_block.id,
-                        version_uid=saved_block.version_uid,
-                        block_uid=saved_block.uid,
-                        checksum=saved_block.checksum,
-                        size=saved_block.size,
+                        id=written_block.id,
+                        version_uid=written_block.version_uid,
+                        block_uid=written_block.uid,
+                        checksum=written_block.checksum,
+                        size=written_block.size,
                         valid=True)
                     done_write_jobs += 1
-                    stats['bytes_written'] += saved_block.size
+                    stats['bytes_written'] += written_block.size
             except CancelledError:
                 pass
 

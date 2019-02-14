@@ -76,8 +76,6 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             self.storage.read(block)
 
-        self.storage.wait_reads_finished()
-
         for block, data, metadata in self.storage.read_get_completed(timeout=1):
             self.assertEqual(data_by_uid[block.uid], data)
 
