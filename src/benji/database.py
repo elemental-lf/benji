@@ -940,7 +940,10 @@ class DatabaseBackend(ReprMixIn):
                 for uids in hit_list.values():
                     self._session.query(DeletedBlock).filter(
                         DeletedBlock.uid.in_(uids)).delete(synchronize_session=False)
-                yield (hit_list)
+                yield hit_list
+                # We expect that the caller has handled all the blocks returned so far, so we can call commit after
+                # the yield to keep the transaction small.
+                self._session.commit()
 
         self._session.commit()
         logger.info("Cleanup: Cleanup finished. {} false positives, {} data deletions.".format(
@@ -1180,7 +1183,8 @@ class DatabaseBackendLocking:
 
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None):
         try:
-            lock = self._session.query(Lock).filter_by(host=self._host, lock_name=lock_name, process_id=self._uuid).first()
+            lock = self._session.query(Lock).filter_by(
+                host=self._host, lock_name=lock_name, process_id=self._uuid).first()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
@@ -1261,11 +1265,7 @@ class DatabaseBackendLocking:
         self.unlock(lock_name=version_uid.v_string)
 
     @contextmanager
-    def with_lock(self,
-                  *,
-                  lock_name: str,
-                  reason: str = None,
-                  locked_msg: str = None,
+    def with_lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None,
                   unlock: bool = True) -> Iterator[None]:
         self.lock(lock_name=lock_name, reason=reason, locked_msg=locked_msg)
         try:
