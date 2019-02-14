@@ -812,14 +812,14 @@ class Benji(ReprMixIn):
                 else:
                     block.uid = BlockUid(version.uid.integer, block.id + 1)
                     block.checksum = data_checksum
-                    storage.save(block, data)
+                    storage.write(block, data)
                     write_jobs += 1
                     logger.debug('Queued block {} for write (checksum {}...)'.format(block.id, data_checksum[:16]))
 
                 done_read_jobs += 1
 
                 try:
-                    for saved_block in storage.save_get_completed(timeout=0):
+                    for saved_block in storage.write_get_completed(timeout=0):
                         if isinstance(saved_block, Exception):
                             raise saved_block
 
@@ -845,7 +845,7 @@ class Benji(ReprMixIn):
                                                                           done_read_jobs / read_jobs * 100))
 
             try:
-                for saved_block in storage.save_get_completed():
+                for saved_block in storage.write_get_completed():
                     if isinstance(saved_block, Exception):
                         raise saved_block
 
@@ -959,7 +959,7 @@ class Benji(ReprMixIn):
                 with StringIO() as metadata_export:
                     self._database_backend.export([version.uid], metadata_export)
                     storage = StorageFactory.get_by_storage_id(version.storage_id)
-                    storage.save_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
+                    storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
                 logger.info('Backed up version {} metadata.'.format(version.uid.v_string))
         finally:
             for version_uid in locked_version_uids:
@@ -1294,7 +1294,7 @@ class BenjiStore(ReprMixIn):
                 block.checksum = None
                 block.uid = BlockUid(None, None)
             else:
-                storage.save_sync(block, data)
+                storage.write_sync(block, data)
                 self._block_cache.rm(block.uid)
 
             try:

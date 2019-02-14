@@ -27,7 +27,7 @@ def init_logging(logfile: Optional[str], level: str, no_color: bool = False):
     if logfile is not None:
         logfile_handler = WatchedFileHandler(logfile)
         # Always log at least at level INFO
-        logfile_handler.setLevel(min(logging.getLevelName(level), logging.INFO)) # type: ignore
+        logfile_handler.setLevel(min(logging.getLevelName(level), logging.INFO))  # type: ignore
         logfile_handler.setFormatter(
             logging.Formatter('%(asctime)s %(process)d/%(threadName)s %(filename)s:%(lineno)d %(levelname)s %(message)s'))
         handlers.append(logfile_handler)  # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...

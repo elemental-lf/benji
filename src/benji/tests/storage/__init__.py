@@ -7,7 +7,7 @@ from benji.tests.testcase import StorageTestCaseBase
 
 class StorageTestCase(StorageTestCaseBase):
 
-    def test_save_rm_sync(self):
+    def test_write_rm_sync(self):
         NUM_BLOBS = 15
         BLOB_SIZE = 4096
 
@@ -21,7 +21,7 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             data = self.random_bytes(BLOB_SIZE)
             self.assertEqual(BLOB_SIZE, len(data))
-            self.storage.save_sync(block, data)
+            self.storage.write_sync(block, data)
             data_by_uid[block.uid] = data
 
         saved_uids = self.storage.list_blocks()
@@ -42,7 +42,7 @@ class StorageTestCase(StorageTestCaseBase):
         saved_uids = self.storage.list_blocks()
         self.assertEqual(0, len(saved_uids))
 
-    def test_save_rm_async(self):
+    def test_write_rm_async(self):
         NUM_BLOBS = 15
         BLOB_SIZE = 4096
 
@@ -56,12 +56,12 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             data = self.random_bytes(BLOB_SIZE)
             self.assertEqual(BLOB_SIZE, len(data))
-            self.storage.save(block, data)
+            self.storage.write(block, data)
             data_by_uid[block.uid] = data
 
-        self.storage.wait_saves_finished()
+        self.storage.wait_writes_finished()
 
-        for saved_block in self.storage.save_get_completed(timeout=1):
+        for _ in self.storage.write_get_completed(timeout=1):
             pass
 
         saved_uids = self.storage.list_blocks()
@@ -93,7 +93,7 @@ class StorageTestCase(StorageTestCaseBase):
 
         blocks = [Block(uid=BlockUid(i + 1, i + 100), size=1, checksum='0000000000000000') for i in range(NUM_BLOBS)]
         for block in blocks:
-            self.storage.save_sync(block, b'B')
+            self.storage.write_sync(block, b'B')
 
         self.assertEqual([], self.storage.rm_many([block.uid for block in blocks]))
 
@@ -112,7 +112,7 @@ class StorageTestCase(StorageTestCaseBase):
 
     def test_not_exists(self):
         block = Block(uid=BlockUid(1, 2), size=15, checksum='00000000000000000000')
-        self.storage.save_sync(block, b'test_not_exists')
+        self.storage.write_sync(block, b'test_not_exists')
 
         data = self.storage.read_sync(block)
         self.assertTrue(len(data) > 0)
@@ -140,7 +140,7 @@ class StorageTestCase(StorageTestCaseBase):
 
     def test_version(self):
         version_uid = VersionUid(1)
-        self.storage.save_version(version_uid, 'Hallo')
+        self.storage.write_version(version_uid, 'Hallo')
         data = self.storage.read_version(version_uid)
         self.assertEqual('Hallo', data)
         version_uids = self.storage.list_versions()

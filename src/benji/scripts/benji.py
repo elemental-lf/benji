@@ -545,7 +545,7 @@ class Commands:
             logger.info('Configuration version: {}, supported {}.'.format(VERSIONS.configuration.current,
                                                                           VERSIONS.configuration.supported))
             logger.info('Metadata version: {}, supported {}.'.format(VERSIONS.database_metadata.current,
-                                                                              VERSIONS.database_metadata.supported))
+                                                                     VERSIONS.database_metadata.supported))
             logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current,
                                                                             VERSIONS.object_metadata.supported))
         else:

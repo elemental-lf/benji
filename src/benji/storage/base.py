@@ -13,7 +13,7 @@ from threading import BoundedSemaphore
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
 import semantic_version
-from diskcache import Cache, FanoutCache
+from diskcache import FanoutCache
 
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
@@ -209,7 +209,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         return block
 
-    def save(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         self._write_semaphore.acquire()
 
         block_deref = block.deref() if isinstance(block, Block) else block
@@ -224,11 +224,11 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         self._write_futures.append(self._write_executor.submit(write_with_release))
 
-    def save_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         block_deref = block.deref() if isinstance(block, Block) else block
         self._write(block_deref, data)
 
-    def save_get_completed(self, timeout: int = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
+    def write_get_completed(self, timeout: int = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         """ Returns a generator for all completed read jobs
         """
         return future_results_as_completed(self._write_futures, timeout=timeout)
@@ -370,7 +370,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         return data.decode('utf-8')
 
-    def save_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool] = False) -> None:
+    def write_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool] = False) -> None:
         key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
 
@@ -448,7 +448,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     def wait_reads_finished(self) -> None:
         concurrent.futures.wait(self._read_futures)
 
-    def wait_saves_finished(self) -> None:
+    def wait_writes_finished(self) -> None:
         concurrent.futures.wait(self._write_futures)
 
     def use_read_cache(self, enable: bool) -> bool:
@@ -522,7 +522,8 @@ class ReadCacheStorageBase(StorageBase):
                 logger.warning('Unable to enable disk based read caching. Continuing without it.')
                 self._read_cache = None
             else:
-                logger.debug('Disk based read caching instantiated (cache size {}, shards {}).'.format(read_cache_maximum_size, read_cache_shards))
+                logger.debug('Disk based read caching instantiated (cache size {}, shards {}).'.format(
+                    read_cache_maximum_size, read_cache_shards))
         else:
             self._read_cache = None
         self._use_read_cache = True
