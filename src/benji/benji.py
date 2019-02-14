@@ -203,8 +203,8 @@ class Benji(ReprMixIn):
                 self._process_name, 'Preparing {} of version {} ({:.1f}%)'.format(
                     'deep-scrub' if deep_scrub else 'scrub', version.uid.v_string, (i + 1) / len(blocks) * 100))
             if not block.uid:
-                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format(
-                    'Deep -scrub' if deep_scrub else 'Scrub', block.id, block.uid))
+                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep-scrub' if deep_scrub else 'Scrub',
+                                                                                block.id, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
