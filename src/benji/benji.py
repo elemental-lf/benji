@@ -21,7 +21,7 @@ from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
-from benji.storage.base import InvalidBlockException
+from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.utils import notify, BlockHash
 
 
@@ -988,7 +988,18 @@ class Benji(ReprMixIn):
                     storage = StorageFactory.get_by_storage_id(storage_id)
                     logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name,
                                                                             ', '.join([str(uid) for uid in uids])))
-                    no_del_uids = storage.rm_many(uids)
+                    #no_del_uids = storage.rm_many_blocks(uids)
+
+                    for uid in uids:
+                        storage.rm_block_async(uid)
+
+                    no_del_uids = []
+                    for entry in storage.rm_get_completed():
+                        if isinstance(entry, BlockNotFoundError):
+                            no_del_uids.append(entry.uid)
+                        elif isinstance(uid, Exception):
+                            raise entry
+
                     if no_del_uids:
                         logger.info('Unable to delete these UIDs from storage {}: {}'.format(
                             storage.name, ', '.join([str(uid) for uid in no_del_uids])))
@@ -1382,7 +1393,7 @@ class BenjiStore(ReprMixIn):
             except:
                 # Prevent orphaned blocks
                 if block.uid:
-                    storage.rm(block.uid)
+                    storage.rm_block(block.uid)
 
         self._benji_obj._database_backend.commit()
         self._benji_obj._database_backend.set_version(cow_version.uid, status=VersionStatus.valid, protected=True)

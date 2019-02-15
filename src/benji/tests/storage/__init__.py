@@ -1,7 +1,7 @@
 import random
 
 from benji.database import Block, BlockUid, VersionUid
-from benji.storage.base import InvalidBlockException
+from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.tests.testcase import StorageTestCaseBase
 
 
@@ -38,7 +38,7 @@ class StorageTestCase(StorageTestCaseBase):
             self.assertEqual(data_by_uid[block.uid], data)
 
         for block in blocks:
-            self.storage.rm(block.uid)
+            self.storage.rm_block(block.uid)
         saved_uids = self.storage.list_blocks()
         self.assertEqual(0, len(saved_uids))
 
@@ -82,7 +82,10 @@ class StorageTestCase(StorageTestCaseBase):
         self.assertEqual([], [future for future in self.storage.read_get_completed(timeout=1)])
 
         for block in blocks:
-            self.storage.rm(block.uid)
+            self.storage.rm_block_async(block.uid)
+
+        self.storage.wait_rms_finished()
+
         saved_uids = self.storage.list_blocks()
         self.assertEqual(0, len(saved_uids))
 
@@ -93,7 +96,7 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             self.storage.write_block(block, b'B')
 
-        self.assertEqual([], self.storage.rm_many([block.uid for block in blocks]))
+        self.assertEqual([], self.storage.rm_many_blocks([block.uid for block in blocks]))
 
         saved_uids = self.storage.list_blocks()
         self.assertEqual(0, len(saved_uids))
@@ -115,9 +118,9 @@ class StorageTestCase(StorageTestCaseBase):
         data = self.storage.read_block(block)
         self.assertTrue(len(data) > 0)
 
-        self.storage.rm(block.uid)
+        self.storage.rm_block(block.uid)
 
-        self.assertRaises(FileNotFoundError, lambda: self.storage.rm(block.uid))
+        self.assertRaises(BlockNotFoundError, lambda: self.storage.rm_block(block.uid))
         self.assertRaises(InvalidBlockException, lambda: self.storage.read_block(block))
 
     def test_block_uid_to_key(self):

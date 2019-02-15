@@ -64,7 +64,7 @@ class StorageTestCaseBase(TestCaseBase):
         StorageFactory.initialize(self.config)
 
         self.storage = StorageFactory.get_by_name(default_storage)
-        self.storage.rm_many(self.storage.list_blocks())
+        self.storage.rm_many_blocks(self.storage.list_blocks())
         for version_uid in self.storage.list_versions():
             self.storage.rm_version(version_uid)
 

@@ -37,6 +37,18 @@ class InvalidBlockException(BenjiException, IOError):
         return self._block
 
 
+class BlockNotFoundError(BenjiException, IOError):
+
+    def __init__(self, message: str, uid: BlockUid) -> None:
+        super().__init__(message)
+
+        self._uid = uid
+
+    @property
+    def uid(self) -> BlockUid:
+        return self._uid
+
+
 class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
     _CHECKSUM_KEY = 'checksum'
@@ -288,27 +300,43 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                     cast(str, block.checksum)[:16],  # We know that block.checksum is set
                     metadata[self._CHECKSUM_KEY][:16]))
 
-    def rm(self, uid: BlockUid) -> None:
+    def _rm_block(self, uid: BlockUid) -> BlockUid:
         key = uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         try:
             self._rm_object(key)
+        except FileNotFoundError as exception:
+            raise BlockNotFoundError('Block UID {} not found on storage.'.format(str(uid)), uid) from exception
         finally:
             try:
                 self._rm_object(metadata_key)
             except FileNotFoundError:
                 pass
+        return uid
 
-    def rm_many(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
+    def rm_block_async(self, uid: BlockUid) -> None:
+
+        def job():
+            return self._rm_block(uid)
+
+        self._rm_executor.submit(job)
+
+    def rm_block(self, uid: BlockUid) -> None:
+        self._rm_block(uid)
+
+    def rm_get_completed(self, timeout: int = None) -> Iterator[Union[BlockUid, BaseException]]:
+        return self._rm_executor.get_completed(timeout=timeout)
+
+    def wait_rms_finished(self):
+        self._rm_executor.wait_for_all()
+
+    def rm_many_blocks(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
         keys = [uid.storage_object_to_path() for uid in uids]
         metadata_keys = [key + self._META_SUFFIX for key in keys]
 
         errors = self._rm_many_objects(keys)
         self._rm_many_objects(metadata_keys)
         return [cast(BlockUid, BlockUid.storage_path_to_object(error)) for error in errors]
-
-    def rm_get_completed(self, timeout: int = None) -> Iterator[Union[BlockUid, BaseException]]:
-        return self._rm_executor.get_completed(timeout=timeout)
 
     def list_blocks(self) -> List[BlockUid]:
         keys = self._list_objects(BlockUid.storage_prefix())

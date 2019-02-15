@@ -817,7 +817,7 @@ class DatabaseBackend(ReprMixIn):
                 t1 = time.time()
                 self._session.commit()
                 t2 = time.time()
-                logger.debug('Commited metadata transaction in {:.2f}s'.format(t2 - t1))
+                logger.debug('Commited database transaction in set_block in {:.2f}s'.format(t2 - t1))
                 self._last_blocks_commit = current_clock
         except:
             self._session.rollback()
