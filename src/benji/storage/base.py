@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import base64
-import concurrent
 import datetime
 import json
 import os
 import threading
 import time
 from abc import ABCMeta, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, Future
-from threading import BoundedSemaphore
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, AbstractSet, Iterator
 
 import semantic_version
@@ -24,7 +21,7 @@ from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
-from benji.utils import TokenBucket, future_results_as_completed, derive_key
+from benji.utils import TokenBucket, derive_key
 from benji.versions import VERSIONS
 
 
@@ -98,7 +95,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         self._read_executor = JobExecutor(name='Storage-Read', workers=simultaneous_reads, blocking_submit=False)
         self._write_executor = JobExecutor(name='Storage-Write', workers=simultaneous_writes, blocking_submit=True)
-        self._delete_executor = JobExecutor(name='Storage-Delete', workers=simultaneous_deletes, blocking_submit=True)
+        self._rm_executor = JobExecutor(name='Storage-Remove', workers=simultaneous_deletes, blocking_submit=True)
 
     @property
     def name(self) -> str:
@@ -204,7 +201,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         return block
 
-    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+    def write_block_async(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         block_deref = block.deref() if isinstance(block, Block) else block
 
         def job():
@@ -212,7 +209,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         self._write_executor.submit(job)
 
-    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+    def write_block(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         block_deref = block.deref() if isinstance(block, Block) else block
         self._write(block_deref, data)
 
@@ -257,14 +254,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         return block, data, metadata
 
-    def read(self, block: Block, metadata_only: bool = False) -> None:
+    def read_block_async(self, block: Block, metadata_only: bool = False) -> None:
 
         def job():
             return self._read(block.deref(), metadata_only)
 
         self._read_executor.submit(job)
 
-    def read_sync(self, block: Block, metadata_only: bool = False) -> Optional[bytes]:
+    def read_block(self, block: Block, metadata_only: bool = False) -> Optional[bytes]:
         return self._read(block.deref(), metadata_only)[1]
 
     def read_get_completed(self,
@@ -309,6 +306,9 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         errors = self._rm_many_objects(keys)
         self._rm_many_objects(metadata_keys)
         return [cast(BlockUid, BlockUid.storage_path_to_object(error)) for error in errors]
+
+    def rm_get_completed(self, timeout: int = None) -> Iterator[Union[BlockUid, BaseException]]:
+        return self._rm_executor.get_completed(timeout=timeout)
 
     def list_blocks(self) -> List[BlockUid]:
         keys = self._list_objects(BlockUid.storage_prefix())

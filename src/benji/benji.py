@@ -215,7 +215,7 @@ class Benji(ReprMixIn):
                 logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
                     'Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
             else:
-                storage.read(block, metadata_only=(not deep_scrub))
+                storage.read_block_async(block, metadata_only=(not deep_scrub))
                 read_jobs += 1
         return read_jobs
 
@@ -512,7 +512,7 @@ class Benji(ReprMixIn):
             sparse_data_block = b'\0' * block.size
             for i, block in enumerate(blocks):
                 if block.uid:
-                    storage.read(block)
+                    storage.read_block_async(block)
                     read_jobs += 1
                 elif not sparse:
                     io.write(block, sparse_data_block)
@@ -881,7 +881,7 @@ class Benji(ReprMixIn):
                 else:
                     block.uid = BlockUid(version.uid.integer, block.id + 1)
                     block.checksum = data_checksum
-                    storage.write(block, data)
+                    storage.write_block_async(block, data)
                     write_jobs += 1
                     logger.debug('Queued block {} for write (checksum {}...)'.format(block.id, data_checksum[:16]))
 
@@ -1287,7 +1287,7 @@ class BenjiStore(ReprMixIn):
                 # Block isn't cached already, fetch it
                 if self._block_cache.in_cache(block.uid):
                     storage = StorageFactory.get_by_storage_id(version.storage_id)
-                    data = storage.read_sync(block)
+                    data = storage.read_block(block)
                     self._block_cache.write(block.uid, data)
 
                 data_chunks.append(self._block_cache.read(block.uid, offset_in_block, length_in_block))
@@ -1327,7 +1327,7 @@ class BenjiStore(ReprMixIn):
                 # Read the block from the original
                 if block.uid:
                     storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
-                    write_data = BytesIO(storage.read_sync(block))
+                    write_data = BytesIO(storage.read_block(block))
                 # Was a sparse block
                 else:
                     write_data = BytesIO(b'\0' * cow_version.block_size)
@@ -1368,7 +1368,7 @@ class BenjiStore(ReprMixIn):
                 block.checksum = None
                 block.uid = BlockUid(None, None)
             else:
-                storage.write_sync(block, data)
+                storage.write_block(block, data)
                 self._block_cache.rm(block.uid)
 
             try:

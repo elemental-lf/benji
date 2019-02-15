@@ -21,7 +21,7 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             data = self.random_bytes(BLOB_SIZE)
             self.assertEqual(BLOB_SIZE, len(data))
-            self.storage.write_sync(block, data)
+            self.storage.write_block(block, data)
             data_by_uid[block.uid] = data
 
         saved_uids = self.storage.list_blocks()
@@ -34,7 +34,7 @@ class StorageTestCase(StorageTestCaseBase):
         self.assertEqual(0, len(uids_set.symmetric_difference(saved_uids_set)))
 
         for block in blocks:
-            data = self.storage.read_sync(block)
+            data = self.storage.read_block(block)
             self.assertEqual(data_by_uid[block.uid], data)
 
         for block in blocks:
@@ -56,7 +56,7 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             data = self.random_bytes(BLOB_SIZE)
             self.assertEqual(BLOB_SIZE, len(data))
-            self.storage.write(block, data)
+            self.storage.write_block_async(block, data)
             data_by_uid[block.uid] = data
 
         self.storage.wait_writes_finished()
@@ -74,7 +74,7 @@ class StorageTestCase(StorageTestCaseBase):
         self.assertEqual(0, len(uids_set.symmetric_difference(saved_uids_set)))
 
         for block in blocks:
-            self.storage.read(block)
+            self.storage.read_block_async(block)
 
         for block, data, metadata in self.storage.read_get_completed(timeout=1):
             self.assertEqual(data_by_uid[block.uid], data)
@@ -91,7 +91,7 @@ class StorageTestCase(StorageTestCaseBase):
 
         blocks = [Block(uid=BlockUid(i + 1, i + 100), size=1, checksum='0000000000000000') for i in range(NUM_BLOBS)]
         for block in blocks:
-            self.storage.write_sync(block, b'B')
+            self.storage.write_block(block, b'B')
 
         self.assertEqual([], self.storage.rm_many([block.uid for block in blocks]))
 
@@ -110,15 +110,15 @@ class StorageTestCase(StorageTestCaseBase):
 
     def test_not_exists(self):
         block = Block(uid=BlockUid(1, 2), size=15, checksum='00000000000000000000')
-        self.storage.write_sync(block, b'test_not_exists')
+        self.storage.write_block(block, b'test_not_exists')
 
-        data = self.storage.read_sync(block)
+        data = self.storage.read_block(block)
         self.assertTrue(len(data) > 0)
 
         self.storage.rm(block.uid)
 
         self.assertRaises(FileNotFoundError, lambda: self.storage.rm(block.uid))
-        self.assertRaises(InvalidBlockException, lambda: self.storage.read_sync(block))
+        self.assertRaises(InvalidBlockException, lambda: self.storage.read_block(block))
 
     def test_block_uid_to_key(self):
         for i in range(100):
