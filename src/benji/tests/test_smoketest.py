@@ -238,7 +238,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
                 path: {testpath}/data
                 consistencyCheckWrites: True
                 simultaneousWrites: 5
-                simultaneousReads: 5                    
+                simultaneousReads: 5
                 activeTransforms:
                   - zstd
                   - k1
@@ -253,7 +253,7 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
                 path: {testpath}/data-2
                 consistencyCheckWrites: True
                 simultaneousWrites: 5
-                simultaneousReads: 5                    
+                simultaneousReads: 5
                 activeTransforms:
                   - zstd
                   - k1
@@ -298,8 +298,9 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
               configuration:
                 path: {testpath}/data
                 consistencyCheckWrites: True
-                simultaneousWrites: 5
-                simultaneousReads: 5                    
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -313,8 +314,9 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
               configuration:
                 path: {testpath}/data-2
                 consistencyCheckWrites: True
-                simultaneousWrites: 5
-                simultaneousReads: 5                    
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -366,7 +368,10 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True                 
+                consistencyCheckWrites: True
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -385,7 +390,10 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True                 
+                consistencyCheckWrites: True
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -437,7 +445,10 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True                 
+                consistencyCheckWrites: True
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -460,7 +471,10 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
-                consistencyCheckWrites: True                 
+                consistencyCheckWrites: True
+                simultaneousReads: 3
+                simultaneousWrites: 3
+                simultaneousDeletes: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -535,7 +549,7 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
                 writeObjectAttempts: 3
                 readObjectAttempts: 3
                 uploadAttempts: 5
-                consistencyCheckWrites: True              
+                consistencyCheckWrites: True
                 activeTransforms:
                   - zstd
                   - k1
