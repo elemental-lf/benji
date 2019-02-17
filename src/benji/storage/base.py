@@ -465,6 +465,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     def close(self) -> None:
         self._read_executor.shutdown()
         self._write_executor.shutdown()
+        self._rm_executor.shutdown()
 
     @abstractmethod
     def _write_object(self, key: str, data: bytes):
