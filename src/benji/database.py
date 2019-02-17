@@ -535,10 +535,10 @@ class DatabaseBackend(ReprMixIn):
                 # Increase the timeout (5 seconds is the default). This will make "database is locked" errors
                 # due to concurrent database access less likely.
                 connect_args['timeout'] = 3 * self._BLOCKS_COMMIT_INTERVAL
-            self.engine = sqlalchemy.create_engine(url, connect_args=connect_args)
+            self._engine = sqlalchemy.create_engine(url, connect_args=connect_args)
         else:
             logger.info('Running with ephemeral in-memory database.')
-            self.engine = sqlalchemy.create_engine('sqlite://')
+            self._engine = sqlalchemy.create_engine('sqlite://')
 
     def _alembic_config(self):
         return alembic_config_Config(
@@ -546,10 +546,10 @@ class DatabaseBackend(ReprMixIn):
 
     def _database_tables(self) -> List[str]:
         # Need to ignore internal SQLite table here
-        return [table for table in self.engine.table_names() if table != 'sqlite_sequence']
+        return [table for table in self._engine.table_names() if table != 'sqlite_sequence']
 
     def _migration_needed(self, alembic_config: alembic_config_Config) -> Tuple[bool, str, str]:
-        with self.engine.begin() as connection:
+        with self._engine.begin() as connection:
             alembic_config.attributes['connection'] = connection
             script = ScriptDirectory.from_config(alembic_config)
             with EnvironmentContext(alembic_config, script) as env_context:
@@ -575,7 +575,7 @@ class DatabaseBackend(ReprMixIn):
         migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
         if migration_needed:
             logger.info('Migrating from database schema revision {} to {}.'.format(current_revision, head_revision))
-            with self.engine.begin() as connection:
+            with self._engine.begin() as connection:
                 alembic_config.attributes['connection'] = connection
                 alembic_command.upgrade(alembic_config, "head")
         else:
@@ -599,7 +599,7 @@ class DatabaseBackend(ReprMixIn):
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
 
-        Session = sessionmaker(bind=self.engine)
+        Session = sessionmaker(bind=self._engine)
         self._session = Session()
         self._locking = DatabaseBackendLocking(self._session)
         self._last_blocks_commit = time.monotonic()
@@ -608,21 +608,21 @@ class DatabaseBackend(ReprMixIn):
     def init(self, _destroy: bool = False) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
         if _destroy:
-            Base.metadata.drop_all(self.engine)
+            Base.metadata.drop_all(self._engine)
             # Drop alembic_version table
-            if self.engine.has_table('alembic_version'):
-                with self.engine.begin() as connection:
+            if self._engine.has_table('alembic_version'):
+                with self._engine.begin() as connection:
                     connection.execute(DropTable(Table('alembic_version', MetaData())))  # type: ignore
 
         table_names = self._database_tables()
         if not table_names:
-            Base.metadata.create_all(self.engine, checkfirst=False)
+            Base.metadata.create_all(self._engine, checkfirst=False)
         else:
             logger.debug('Existing tables: {}'.format(', '.join(sorted(table_names))))
             raise FileExistsError('Database schema contains tables already. Not touching anything.')
 
         alembic_config = self._alembic_config()
-        with self.engine.begin() as connection:
+        with self._engine.begin() as connection:
             alembic_config.attributes['connection'] = connection
             alembic_command.stamp(alembic_config, "head")
 
@@ -1172,6 +1172,8 @@ class DatabaseBackend(ReprMixIn):
         self._locking.unlock_all()
         self._locking = None
         self._session.close()
+        self._session = None
+        self._engine.dispose()
 
 
 class DatabaseBackendLocking:
