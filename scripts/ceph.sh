@@ -81,8 +81,8 @@ function benji::backup::ceph::differential {
 
     trap "{ rm -f \"$CEPH_RBD_DIFF_FILE\" \"$BENJI_BACKUP_STDERR_FILE\"; }" RETURN EXIT
 
-    echo "Performing differential backup of $VERSION_NAME:$CEPH_POOL/$CEPH_RBD_IMAGE from RBD snapshot \
-        $CEPH_RBD_SNAPSHOT_LAST and Benji version $(benji::version::uid::format <<<"$BENJI_VERSION_UID_LAST")."
+    echo "Performing differential backup of $VERSION_NAME:$CEPH_POOL/$CEPH_RBD_IMAGE from RBD snapshot" \
+        "$CEPH_RBD_SNAPSHOT_LAST and Benji version $(benji::version::uid::format <<<"$BENJI_VERSION_UID_LAST")."
 
     benji::backup::ceph::snapshot::create "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
         || return $?
