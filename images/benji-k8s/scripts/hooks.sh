@@ -3,6 +3,7 @@
 function _k8s_create_pvc_event {
     local TYPE="$1"
     local REASON="$2"
+    shift 2
     local MESSAGE="$*"
 
     local POD_NAME="$POD_NAME"
