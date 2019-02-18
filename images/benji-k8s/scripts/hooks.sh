@@ -12,8 +12,9 @@ function _k8s_create_pvc_event {
     local K8S_PVC_UID="$(kubectl get pvc --namespace "$K8S_PVC_NAMESPACE" "$K8S_PVC_NAME" -o json | jq -r '.metadata.uid')"
     local EC=$?; [[ $EC == 0 ]] || return $EC
 
-    # Setting uid is required so that kubectl describe finds the events.
-    # And setting firstTimestamp is required so that kubectl shows a proper age for the event.
+    # Setting uid is required so that kubectl describe finds the event.
+    # And setting firstTimestamp is required so that kubectl shows a proper age for it.
+    # See: https://github.com/kubernetes/kubernetes/blob/a92729a301c8928d8e108418e6e4625a9e0d6733/pkg/kubectl/describe/versioned/describe.go#L3281
     kubectl create -f - <<EOF
 apiVersion: v1
 kind: Event
@@ -35,10 +36,12 @@ firstTimestamp: "$(date --utc '+%FT%T.%6NZ')"
 lastTimestamp: "$(date --utc '+%FT%T.%6NZ')"
 type: "$TYPE"
 reason: "$REASON"
-message: "Benji - $MESSAGE"
+message: "$MESSAGE"
 action: None
 reportingComponent: benji-backup-pvc
 reportingInstance: "$POD_NAME"
+source:
+  component: benji-backup-pvc
 EOF
 }
 
