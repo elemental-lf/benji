@@ -910,6 +910,7 @@ class Benji(ReprMixIn):
     def cleanup(self, dt: int = 3600) -> None:
         with self._locking.with_lock(
                 lock_name='cleanup', reason='Cleanup', locked_msg='Another cleanup is already running.'):
+            notify(self._process_name, 'Cleanup')
             for hit_list in self._database_backend.get_delete_candidates(dt):
                 for storage_id, uids in hit_list.items():
                     storage = StorageFactory.get_by_storage_id(storage_id)
@@ -919,6 +920,7 @@ class Benji(ReprMixIn):
                     if no_del_uids:
                         logger.info('Unable to delete these UIDs from storage {}: {}'.format(
                             storage.name, ', '.join([str(uid) for uid in no_del_uids])))
+            notify(self._process_name)
 
     def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
         self._database_backend.add_label(version_uid, key, value)
