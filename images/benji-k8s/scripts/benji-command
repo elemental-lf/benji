@@ -4,11 +4,9 @@ exec > >(logger -i -t "benji-$1") 2>&1
 
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 
-. defaults.sh
-. prometheus.sh
-. metrics.sh
-. tryCatch.sh
 . common.sh
+. prometheus.sh
+. hooks.sh
 
 benji::command "$@"
-benji::push_metrics
+benji::prometheus::push

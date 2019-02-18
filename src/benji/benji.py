@@ -864,6 +864,7 @@ class Benji(ReprMixIn):
                 pass
 
         except:
+            self._locking.unlock_version(version.uid)
             raise
         finally:
             # This will also cancel any outstanding read jobs

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+exec > >(logger -i -t "benji-backup-pvc") 2>&1
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+if [ $# -lt 1 ]; then
+    echo "usage: $0 KUBECTL-GET-PVC-ARGS" 1>&2
+    exit 1
+fi
+
+. common.sh
+. prometheus.sh
+. ceph.sh
+. hooks.sh
+
+# Get a list of persistent volumes
+# Rook uses "rook.io/block"
+# ".items ?// [.]": kubectl returns a single dict and no list if there is only one entry
+K8S_PVS=$(kubectl get pvc "$@" -o json | jq -r '
+	.items ?// [.]  | map(select(.metadata.annotations."volume.beta.kubernetes.io/storage-provisioner" as $prov | ["ceph.com/rbd"] | index($prov))
+               | .spec.volumeName)
+               | .[]
+')
+EC=$?; [[ $EC == 0 ]] || exit $EC
+
+for pv in $K8S_PVS
+do
+	# Rook uses .spec.flexVolume.options.pool and .spec.flexVolume.options.image to store the pool and image name
+	set -- $(kubectl get pv "$pv" -o jsonpath='{.spec.claimRef.namespace}{" "}{.spec.claimRef.name}{" "}{.spec.rbd.pool}{" "}{.spec.rbd.image}')
+	[[ $? == 0 ]] || continue
+	K8S_PVC_NAMESPACE="$1"
+	K8S_PVC_NAME="$2"
+	CEPH_POOL="$3"
+	CEPH_RBD_IMAGE="$4"
+	VERSION_NAME="$K8S_PVC_NAMESPACE/$K8S_PVC_NAME"
+
+    K8S_PV_HOST_IP="$(kubectl -n "$K8S_PVC_NAMESPACE" get pod -o json | \
+        jq -r '[.items[] | . as $top | (.spec.volumes[] | select(.persistentVolumeClaim.claimName == "'"$K8S_PVC_NAME"'") | $top.status.hostIP)] | .[0] ?// ""')"
+    [[ $? == 0 ]] || continue
+
+    # Rook uses other directory
+    CEPH_RBD_IMAGE_MOUNTPOINT="/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-$CEPH_RBD_IMAGE"
+
+	benji::backup::ceph "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" \
+            "benji-backup.me/instance=$BENJI_INSTANCE" \
+            "benji-backup.me/ceph-pool=$CEPH_POOL" \
+            "benji-backup.me/ceph-rbd-image=$CEPH_RBD_IMAGE" \
+            "benji-backup.me/k8s-pvc-namespace=$K8S_PVC_NAMESPACE" \
+            "benji-backup.me/k8s-pvc-name=$K8S_PVC_NAME" \
+            "benji-backup.me/k8s-pv=$pv"
+done
+
+benji::prometheus::push

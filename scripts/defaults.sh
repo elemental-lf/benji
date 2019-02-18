@@ -1,3 +1,0 @@
-: "${PROM_PUSH_GATEWAY:=:9091}"
-: "${BENJI_INSTANCE:=benji-k8s}"
-: "${BENJI_LOG_LEVEL:=INFO}"

@@ -9,9 +9,6 @@ benji:
 
   resources: {}
   
-  rook:
-    enabled: false
-
   configuration:
     configurationVersion: '1'
     databaseEngine: sqlite:////tmp/benji.sqlite
@@ -29,8 +26,8 @@ benji:
   crontab: |
     #PROM_PUSH_GATEWAY=:9091
     #BENJI_INSTANCE:-benji-k8s
-    # 00  * * * * root benji-pvc-backup --all-namespaces -l 'release in (prod)'
-    # 03  * * * * root benji-pvc-backup --namespace staging
+    # 00  * * * * root benji-backup-pvc --all-namespaces -l 'release in (prod)'
+    # 03  * * * * root benji-backup-pvc --namespace staging
     # 00 04 * * * root benji-command enforce latest3,hours24,days30,months3 'labels["benji-backup.me/instance"] == "benji-k8s"'
     # 00 05 * * * root benji-command cleanup
     

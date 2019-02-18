@@ -13,10 +13,17 @@ rules:
   resources:
   - persistentvolumes
   - persistentvolumeclaims
+  - pods
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+    - ""
+  resources:
+    - events
+  verbs:
+    - create
 - apiGroups:
   - storage.k8s.io
   resources:
