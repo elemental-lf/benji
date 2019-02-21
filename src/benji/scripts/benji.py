@@ -770,7 +770,7 @@ def main():
     p.set_defaults(func='metadata_import')
 
     # METADATA-BACKUP
-    p = subparsers_root.add_parser('netadata-backup', help='Back up the metadata of one or more versions')
+    p = subparsers_root.add_parser('metadata-backup', help='Back up the metadata of one or more versions')
     p.add_argument('filter_expression', help="Version filter expression")
     p.add_argument('-f', '--force', action='store_true', help='Overwrite existing metadata backups')
     p.set_defaults(func='metadata_backup')
