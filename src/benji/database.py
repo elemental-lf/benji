@@ -1131,7 +1131,8 @@ class DatabaseBackend(ReprMixIn):
             except KeyError:
                 pass  # does not exist
             else:
-                raise FileExistsError('Version {} already exists and cannot be imported.'.format(version_dict['uid']))
+                raise FileExistsError('Version {} already exists and so cannot be imported.'.format(
+                    version_uid.v_string))
 
             version = Version(
                 uid=version_uid,
