@@ -584,8 +584,9 @@ class Benji(ReprMixIn):
            version_uid: VersionUid,
            force: bool = True,
            disallow_rm_when_younger_than_days: int = 0,
-           keep_metadata_backup: bool = False) -> None:
-        with self._locking.with_version_lock(version_uid, reason='Removing version'):
+           keep_metadata_backup: bool = False,
+           override_lock: bool = False) -> None:
+        with self._locking.with_version_lock(version_uid, reason='Removing version', override_lock=override_lock):
             version = self._database_backend.get_version(version_uid)
 
             if version.protected:
@@ -907,9 +908,12 @@ class Benji(ReprMixIn):
         logger.info('New version {} created, backup successful.'.format(version.uid.v_string))
         return version
 
-    def cleanup(self, dt: int = 3600) -> None:
+    def cleanup(self, dt: int = 3600, override_lock: bool = False) -> None:
         with self._locking.with_lock(
-                lock_name='cleanup', reason='Cleanup', locked_msg='Another cleanup is already running.'):
+                lock_name='cleanup',
+                reason='Cleanup',
+                locked_msg='Another cleanup is already running.',
+                override_lock=override_lock):
             notify(self._process_name, 'Cleanup')
             for hit_list in self._database_backend.get_delete_candidates(dt):
                 for storage_id, uids in hit_list.items():

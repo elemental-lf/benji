@@ -1,13 +1,14 @@
 import datetime
 import time
 import timeit
+import uuid
 from unittest import TestCase
 
 import sqlalchemy
 from dateutil import tz
 
 from benji.database import BlockUid, VersionUid, VersionStatus
-from benji.exception import InternalError, UsageError
+from benji.exception import InternalError, UsageError, AlreadyLocked
 from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
 
@@ -203,6 +204,22 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 locking.lock(lock_name='test', reason='locking test')
         locking.lock(lock_name='test', reason='locking test')
         locking.unlock(lock_name='test')
+
+    def test_lock_override(self):
+        locking = self.database_backend.locking()
+        locking.lock_version(VersionUid(1), reason='locking test')
+        self.assertRaises(InternalError, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
+        old_uuid = locking._uuid
+        new_uuid = uuid.uuid1().hex
+        # This fakes the appearance of another instance
+        locking._uuid = new_uuid
+        self.assertRaises(AlreadyLocked, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
+        locking.lock_version(VersionUid(1), reason='locking test', override_lock=True)
+        self.assertRaises(InternalError, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
+        locking._uuid = old_uuid
+        self.assertRaises(AlreadyLocked, lambda: locking.lock_version(VersionUid(1), reason='locking test'))
+        locking._uuid = new_uuid
+        locking.unlock_version(VersionUid(1))
 
     def test_version_uid_string(self):
         self.assertEqual(VersionUid(1), VersionUid('V1'))

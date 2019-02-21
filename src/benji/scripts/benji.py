@@ -118,7 +118,7 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def rm(self, version_uids: List[str], force: bool, keep_metadata_backup: bool) -> None:
+    def rm(self, version_uids: List[str], force: bool, keep_metadata_backup: bool, override_lock: bool) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         disallow_rm_when_younger_than_days = self.config.get('disallowRemoveWhenYounger', types=int)
         benji_obj = None
@@ -129,7 +129,8 @@ class Commands:
                     version_uid,
                     force=force,
                     disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
-                    keep_metadata_backup=keep_metadata_backup)
+                    keep_metadata_backup=keep_metadata_backup,
+                    override_lock=override_lock)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -357,11 +358,11 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def cleanup(self) -> None:
+    def cleanup(self, override_lock: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            benji_obj.cleanup()
+            benji_obj.cleanup(override_lock=override_lock)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -655,6 +656,7 @@ def main():
     p = subparsers_root.add_parser('rm', help='Remove one or more versions')
     p.add_argument('-f', '--force', action='store_true', help='Force removal (overrides protection of recent versions)')
     p.add_argument('-k', '--keep-metadata-backup', action='store_true', help='Keep version metadata backup')
+    p.add_argument('--override-locks', action='store_true', help='Override and release any held locks (dangerous)')
     p.add_argument('version_uids', metavar='version_uid', nargs='+', help='Version UID')
     p.set_defaults(func='rm')
 
@@ -669,6 +671,7 @@ def main():
 
     # CLEANUP
     p = subparsers_root.add_parser('cleanup', help='Cleanup no longer referenced blocks')
+    p.add_argument('--override-locks', action='store_true', help='Override and release any held locks (dangerous)')
     p.set_defaults(func='cleanup')
 
     # PROTECT

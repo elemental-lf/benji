@@ -32,7 +32,7 @@ from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, LargeBin
     DateTime, UniqueConstraint, and_, or_, not_, MetaData, Table, CheckConstraint
 from sqlalchemy import distinct
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.orm import sessionmaker, composite, CompositeProperty
@@ -1183,7 +1183,7 @@ class DatabaseBackendLocking:
         self._host = platform.node()
         self._uuid = uuid.uuid1().hex
 
-    def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None):
+    def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False):
         try:
             lock = self._session.query(Lock).filter_by(
                 host=self._host, lock_name=lock_name, process_id=self._uuid).first()
@@ -1196,14 +1196,18 @@ class DatabaseBackendLocking:
                 reason=reason,
                 date=datetime.datetime.utcnow(),
             )
-            self._session.add(lock)
+            if override_lock:
+                logger.warn('Will override any existing lock.')
+                self._session.merge(lock, load=True)
+            else:
+                self._session.add(lock)
             self._session.commit()
-        except SQLAlchemyError:  # this is actually too broad and will also include other errors
+        except IntegrityError:
             self._session.rollback()
             if locked_msg is not None:
-                raise AlreadyLocked(locked_msg)
+                raise AlreadyLocked(locked_msg) from None
             else:
-                raise AlreadyLocked('Lock {} is already taken.'.format(lock_name))
+                raise AlreadyLocked('Lock {} is already taken.'.format(lock_name)) from None
         except:
             self._session.rollback()
             raise
@@ -1251,11 +1255,12 @@ class DatabaseBackendLocking:
         except:
             pass
 
-    def lock_version(self, version_uid: VersionUid, reason: str = None) -> None:
+    def lock_version(self, version_uid: VersionUid, reason: str = None, override_lock: bool = False) -> None:
         self.lock(
             lock_name=version_uid.v_string,
             reason=reason,
-            locked_msg='Version {} is already locked.'.format(version_uid.v_string))
+            locked_msg='Version {} is already locked.'.format(version_uid.v_string),
+            override_lock=override_lock)
 
     def is_version_locked(self, version_uid: VersionUid) -> bool:
         return self.is_locked(lock_name=version_uid.v_string)
@@ -1267,9 +1272,14 @@ class DatabaseBackendLocking:
         self.unlock(lock_name=version_uid.v_string)
 
     @contextmanager
-    def with_lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None,
-                  unlock: bool = True) -> Iterator[None]:
-        self.lock(lock_name=lock_name, reason=reason, locked_msg=locked_msg)
+    def with_lock(self,
+                  *,
+                  lock_name: str,
+                  reason: str = None,
+                  locked_msg: str = None,
+                  unlock: bool = True,
+                  override_lock: bool = False) -> Iterator[None]:
+        self.lock(lock_name=lock_name, reason=reason, locked_msg=locked_msg, override_lock=override_lock)
         try:
             yield
         except:
@@ -1280,8 +1290,12 @@ class DatabaseBackendLocking:
                 self.unlock(lock_name=lock_name)
 
     @contextmanager
-    def with_version_lock(self, version_uid: VersionUid, reason: str = None, unlock: bool = True) -> Iterator[None]:
-        self.lock_version(version_uid, reason=reason)
+    def with_version_lock(self,
+                          version_uid: VersionUid,
+                          reason: str = None,
+                          unlock: bool = True,
+                          override_lock: bool = False) -> Iterator[None]:
+        self.lock_version(version_uid, reason=reason, override_lock=override_lock)
         try:
             yield
         except:
