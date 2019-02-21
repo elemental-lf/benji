@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
-: "${PROM_PUSH_GATEWAY:=:9091}"
-
 . prometheus-lib.sh
 . prometheus-metrics.sh
 
 function benji::prometheus::push {
     echo
     io::prometheus::ExportAsText | grep -v '^#'
-    io::prometheus::PushAdd job="$BENJI_INSTANCE" gateway="$PROM_PUSH_GATEWAY"
+    if [[ $PROM_PUSH_GATEWAY ]]; then
+        io::prometheus::PushAdd job="$BENJI_INSTANCE" gateway="$PROM_PUSH_GATEWAY"
+    else
+        echo "Not pushing Prometheus metrics, PROM_PUSH_GATEWAY is not set."
+    fi
 }
 
 function benji::prometheus::versions_status {
