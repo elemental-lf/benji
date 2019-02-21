@@ -967,7 +967,7 @@ class Benji(ReprMixIn):
                     self._database_backend.export([version.uid], metadata_export)
                     storage = StorageFactory.get_by_storage_id(version.storage_id)
                     storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
-                logger.info('Backed up version {} metadata.'.format(version.uid.v_string))
+                logger.info('Backed up metadata of version {}.'.format(version.uid.v_string))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -978,8 +978,8 @@ class Benji(ReprMixIn):
     def metadata_import(self, f: TextIO) -> None:
         # TODO: Find a good way to lock here
         version_uids = self._database_backend.import_(f)
-        for version_uid in version_uids:
-            logger.info('Imported version {} metadata.'.format(version_uid.v_string))
+        logger.info('Imported metadata of version(s): {}.'.format(', '.join(
+            [version_uid.v_string for version_uid in version_uids])))
 
     def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
         if storage_name is not None:
@@ -993,11 +993,10 @@ class Benji(ReprMixIn):
                 locked_version_uids.append(version_uid)
 
             for version_uid in version_uids:
-
                 metadata_import_data = storage.read_version(version_uid)
                 with StringIO(metadata_import_data) as metadata_import:
                     self._database_backend.import_(metadata_import)
-                logger.info('Restored version {} metadata.'.format(version_uid.v_string))
+                logger.info('Restored metadata of version {}.'.format(version_uid.v_string))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
