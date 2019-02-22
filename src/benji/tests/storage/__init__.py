@@ -89,28 +89,6 @@ class StorageTestCase(StorageTestCaseBase):
         saved_uids = self.storage.list_blocks()
         self.assertEqual(0, len(saved_uids))
 
-    def _test_rm_many(self):
-        NUM_BLOBS = 15
-
-        blocks = [Block(uid=BlockUid(i + 1, i + 100), size=1, checksum='0000000000000000') for i in range(NUM_BLOBS)]
-        for block in blocks:
-            self.storage.write_block(block, b'B')
-
-        self.assertEqual([], self.storage.rm_many_blocks([block.uid for block in blocks]))
-
-        saved_uids = self.storage.list_blocks()
-        self.assertEqual(0, len(saved_uids))
-
-    def test_rm_many(self):
-        self._test_rm_many()
-
-    def test_rm_many_wo_multidelete(self):
-        if hasattr(self.storage, '_multi_delete') and self.storage._multi_delete:
-            self.storage.multi_delete = False
-            self._test_rm_many()
-        else:
-            self.skipTest('not applicable to this storage')
-
     def test_not_exists(self):
         block = Block(uid=BlockUid(1, 2), size=15, checksum='00000000000000000000')
         self.storage.write_block(block, b'test_not_exists')

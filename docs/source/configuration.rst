@@ -553,14 +553,6 @@ If not set, the default of the underlying ``boto3`` library is used. Valid
 values are ``s3`` for version 2 signatures and  ``s3v4`` for version 4
 signatures.
 
-* name: **multiDelete**
-* type: bool
-* default: True
-
-Some S3 compatible endpoints don't support the batch delete operation. This
-settings disabled its use. This needs to be set to ``true`` when connecting
-to a Google Storage bucket.
-
 * name: **disableEncodingType**
 * type: bool
 * default: False

@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import os
-from typing import List, Sequence
+from typing import List
 
 from benji.config import Config, ConfigDict
 from benji.storage.base import StorageBase
@@ -61,15 +61,6 @@ class Storage(StorageBase):
         if not os.path.exists(filename):
             raise FileNotFoundError('File {} not found.'.format(filename))
         os.unlink(filename)
-
-    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
-        errors = []
-        for key in keys:
-            try:
-                self._rm_object(key)
-            except FileNotFoundError:
-                errors.append(key)
-        return errors
 
     def _list_objects(self, prefix: str) -> List[str]:
         matches = []

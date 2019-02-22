@@ -223,7 +223,6 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji
-                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
                 consistencyCheckWrites: True

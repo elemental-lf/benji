@@ -42,14 +42,12 @@ storages:
 #      signatureVersion:
 #      useSsl:
 #      bucketName:
-#      multiDelete: true
 #      addressingStyle:
 #      disableEncodingType: false
 #
 # For Google S3 API use:
 #
 #      endpointUrl: https://storage.googleapis.com/
-#      multiDelete: false
 #      addressingStyle: path
 #      disableEncodingType: true
 #

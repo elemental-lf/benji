@@ -988,7 +988,6 @@ class Benji(ReprMixIn):
                     storage = StorageFactory.get_by_storage_id(storage_id)
                     logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name,
                                                                             ', '.join([str(uid) for uid in uids])))
-                    #no_del_uids = storage.rm_many_blocks(uids)
 
                     for uid in uids:
                         storage.rm_block_async(uid)

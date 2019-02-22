@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import threading
-from itertools import islice
-from typing import List, Sequence
+from typing import List
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
@@ -37,7 +36,6 @@ class Storage(ReadCacheStorageBase):
         signature_version = Config.get_from_dict(module_configuration, 'signatureVersion', None, types=str)
 
         self._bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
-        self._multi_delete = Config.get_from_dict(module_configuration, 'multiDelete', types=bool)
         self._disable_encoding_type = Config.get_from_dict(module_configuration, 'disableEncodingType', types=bool)
 
         self._resource_config = {
@@ -123,30 +121,6 @@ class Storage(ReadCacheStorageBase):
                 raise
         else:
             object.delete()
-
-    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
-        self._init_connection()
-        errors: List[str] = []
-        if self._multi_delete:
-            # Amazon (at least) only handles 1000 deletes at a time
-            # Split list into parts of at most 1000 elements
-            keys_parts = [islice(keys, i, i + 1000) for i in range(0, len(keys), 1000)]
-            for part in keys_parts:
-                response = self._local.resource.meta.client.delete_objects(
-                    Bucket=self._local.bucket.name, Delete={
-                        'Objects': [{
-                            'Key': key
-                        } for key in part],
-                    })
-                if 'Errors' in response:
-                    errors += list(map(lambda object: object['Key'], response['Errors']))
-        else:
-            for key in keys:
-                try:
-                    self._local.bucket.Object(key).delete()
-                except ClientError:
-                    errors.append(key)
-        return errors
 
     def _list_objects(self, prefix: str) -> List[str]:
         self._init_connection()

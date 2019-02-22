@@ -3,7 +3,7 @@
 import logging
 import random
 import time
-from typing import List, Any, Sequence
+from typing import List, Any
 
 import b2
 import b2.api
@@ -13,6 +13,7 @@ from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
 from b2.download_dest import DownloadDestBytes
 from b2.exception import B2Error, FileNotPresent, B2ConnectionError
+
 from benji.config import Config, ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
@@ -143,18 +144,6 @@ class Storage(ReadCacheStorageBase):
                 raise FileNotFoundError('Object {} not found.'.format(key)) from None
             else:
                 raise
-
-    def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
-        """ Deletes many keys from the storage and returns a list of keys that couldn't be deleted.
-        """
-        errors = []
-        for key in keys:
-            try:
-                file_version_info = self._file_info(key)
-                self.bucket.delete_file_version(file_version_info.id_, file_version_info.file_name)
-            except (B2Error, FileNotFoundError):
-                errors.append(key)
-        return errors
 
     def _list_objects(self, prefix: str) -> List[str]:
         return [

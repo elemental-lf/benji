@@ -47,10 +47,6 @@ configuration:
       type: string
       empty: False
       required: True
-    multiDelete:
-      type: boolean
-      empty: False
-      default: True
     disableEncodingType:
       type: boolean
       empty: False

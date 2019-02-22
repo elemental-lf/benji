@@ -365,7 +365,6 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji
-                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
                 consistencyCheckWrites: True
@@ -387,7 +386,6 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji-2
-                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
                 consistencyCheckWrites: True
@@ -442,7 +440,6 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji
-                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
                 consistencyCheckWrites: True
@@ -468,7 +465,6 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 awsSecretAccessKey: minio123
                 endpointUrl: http://127.0.0.1:9901/
                 bucketName: benji-2
-                multiDelete: true
                 addressingStyle: path
                 disableEncodingType: false
                 consistencyCheckWrites: True

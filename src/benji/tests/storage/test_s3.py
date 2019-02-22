@@ -22,7 +22,6 @@ class test_s3(StorageTestCase, TestCase):
             awsSecretAccessKey: minio123
             endpointUrl: http://127.0.0.1:9901/
             bucketName: benji
-            multiDelete: true
             addressingStyle: path
             disableEncodingType: true
             consistencyCheckWrites: True
