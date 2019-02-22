@@ -19,12 +19,12 @@ disasters happen.
 Metadata Redundancy
 ~~~~~~~~~~~~~~~~~~~
 
-Benji already exports the version metadata to the *data backend*, too. You
+Benji already exports the version metadata to the storage, too. You
 can restore this information with ``benji metadata-restore``:
 
 .. command-output::benji metadata-restore --help
 
-The metadata-backend-less uses this import from the *data backend* to
+The metadata-backend-less uses this import from the storage to
 populate an in-memory database to enable restores when the metadata
 backend is unavailable, please see section :ref:`metadata_backend_less`.
 
@@ -64,9 +64,9 @@ backup in place.
 Secure your block data
 ----------------------
 
-Your *data backend* should be redundant in some way, too. Most cloud
+Your storage should be redundant in some way, too. Most cloud
 providers have an SLA which guarantees a certain level of availability.
-If you manage your *data backend* yourself, then you should look into
+If you manage your storage yourself, then you should look into
 redundancy and high-availability technologies like:
 
 - RAID 1, 5 and 6
@@ -75,7 +75,7 @@ redundancy and high-availability technologies like:
 - Filesystem specific data redundancy and replication mechanisms in filesystems
   like Btrs or ZFS
 
-If your *data backend* fails or has corruptions, at best corrupted restores will
+If your storage fails or has corruptions, at best corrupted restores will
 be possible. Benji doesn't store any redundant data and it cannot  restore
 data from stored checksums alone.
 

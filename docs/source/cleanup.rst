@@ -33,16 +33,16 @@ You can force the removal of a version by using ``--force``.
 ``benji rm`` removes the version metadata and corresponding blocks from the
 database backend. It also adds the removed block entries into a deletion
 candidate list. By default it also removes the backup of the metadata on
-the *data backend*. If you want to keep this data, you can use the ``-k``
+the storage. If you want to keep this data, you can use the ``-k``
 or ``--keep-backend-metadata`` option.
 
-In order to really delete blocks from the *data backend*, you'll need ``benji
+In order to really delete blocks from the storage, you'll need ``benji
 cleanup``.
 
 Cleanup
 -------
 
-To free up space on the *data backend*, you need to cleanup.
+To free up space on the storage, you need to cleanup.
 There are two different cleanup methods, but you'll usually only need the
 so-called *fast-cleanup*.
 
@@ -54,7 +54,7 @@ Fast Cleanup
 ``benji cleanup`` will go through the list of deletion candidates and check if
 there are blocks which aren't referenced from any other version anymore.
 
-These blocks are then deleted from the *data backend*. The still-in-use blocks
+These blocks are then deleted from the storage. The still-in-use blocks
 are removed from the list of candidates.
 
 In order to provide parallelism (i.e. multiple Benji processes at the same
@@ -70,11 +70,11 @@ Full Cleanup
 
 There are times (e.g. when your database is corrupted or when you create a new
 database based on export/import) when Benji does not know if the blocks in the
-*data backend* are all known by the metadata store.
+storage are all known by the metadata store.
 
 Then the ``-full`` option of cleanup comes into play. With this option, Benji will
 read all block UIDs from the backend storage (which can take *very* long) and
 compare it to the list of known block UIDs in the database backend
 
-Blocks unknown to the database backend are then deleted from the *data backend*.
+Blocks unknown to the database backend are then deleted from the storage.
 

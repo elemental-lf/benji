@@ -53,8 +53,8 @@ Benji and its dependencies::
     python3.6 -m venv /usr/local/benji
     # Activate it (your shell prompt should change)
     . /usr/local/benji/bin/activate
-    # Alternative A: Install a released version from PyPI (0.1.1 in this case)
-    pip install benji==0.1.1
+    # Alternative A: Install a released version from PyPI (0.2.0 in this case)
+    pip install benji==0.2.0
     # Alternative B: Install the latest released version from PyPI
     pip install benji
     # Alternative C: Install the latest version from the master branch of the Git repository
@@ -70,7 +70,7 @@ dependencies:
 
 You can do this be specifying a comma delimited list of extra features in square brackets after the package URL::
 
-    pip install 'benji==0.1.1[compression,s3,readcache,b2]'
+    pip install 'benji==0.2.0[compression,s3,readcache,b2]'
 
 To upgrade an existing installation use the same command line but add the ``--upgrade`` option.
 
