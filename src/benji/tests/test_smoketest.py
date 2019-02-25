@@ -177,20 +177,29 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.close()
             logger.debug('Deep scrub with history successful')
 
-            restore_filename_1 = os.path.join(testpath, 'restore.{}'.format(i + 1))
-            restore_filename_2 = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
+            restore_filename = os.path.join(testpath, 'restore.{}'.format(i + 1))
+            restore_filename_mdl = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
+            restore_filename_sparse = os.path.join(testpath, 'restore-sparse.{}'.format(i + 1))
             benji_obj = self.benjiOpen()
-            benji_obj.restore(version_uid, 'file://' + restore_filename_1, sparse=False, force=False)
+            benji_obj.restore(version_uid, 'file://' + restore_filename, sparse=False, force=False)
             benji_obj.close()
-            self.assertTrue(self.same(image_filename, restore_filename_1))
+            self.assertTrue(self.same(image_filename, restore_filename))
             logger.debug('Restore successful')
 
             benji_obj = self.benjiOpen(in_memory_database=True)
             benji_obj.metadata_restore([version_uid], storage_name)
-            benji_obj.restore(version_uid, 'file://' + restore_filename_2, sparse=False, force=False)
+            benji_obj.restore(version_uid, 'file://' + restore_filename_mdl, sparse=False, force=False)
             benji_obj.close()
-            self.assertTrue(self.same(image_filename, restore_filename_2))
+            self.assertTrue(self.same(image_filename, restore_filename_mdl))
             logger.debug('Metadata-backend-less restore successful')
+
+            benji_obj = self.benjiOpen(in_memory_database=True)
+            benji_obj.metadata_restore([version_uid], storage_name)
+            benji_obj.restore(version_uid, 'file://' + restore_filename_sparse, sparse=True, force=False)
+            benji_obj.close()
+            self.assertTrue(self.same(image_filename, restore_filename_sparse))
+            logger.debug('Sparse restore successful')
+
             base_version_uid = version_uid
 
             # delete old versions
