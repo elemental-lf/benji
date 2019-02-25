@@ -330,6 +330,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     def wait_rms_finished(self):
         self._rm_executor.wait_for_all()
 
+    # def rm_many_blocks(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
+    #     keys = [uid.storage_object_to_path() for uid in uids]
+    #     metadata_keys = [key + self._META_SUFFIX for key in keys]
+    #
+    #     errors = self._rm_many_objects(keys)
+    #     self._rm_many_objects(metadata_keys)
+    #     return [cast(BlockUid, BlockUid.storage_path_to_object(error)) for error in errors]
+
     def list_blocks(self) -> List[BlockUid]:
         keys = self._list_objects(BlockUid.storage_prefix())
         block_uids: List[BlockUid] = []

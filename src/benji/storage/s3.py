@@ -122,6 +122,30 @@ class Storage(ReadCacheStorageBase):
         else:
             object.delete()
 
+    # def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
+    #     self._init_connection()
+    #     errors: List[str] = []
+    #     if self._multi_delete:
+    #         # Amazon (at least) only handles 1000 deletes at a time
+    #         # Split list into parts of at most 1000 elements
+    #         keys_parts = [islice(keys, i, i + 1000) for i in range(0, len(keys), 1000)]
+    #         for part in keys_parts:
+    #             response = self._local.resource.meta.client.delete_objects(
+    #                 Bucket=self._local.bucket.name, Delete={
+    #                     'Objects': [{
+    #                         'Key': key
+    #                     } for key in part],
+    #                 })
+    #             if 'Errors' in response:
+    #                 errors += list(map(lambda object: object['Key'], response['Errors']))
+    #     else:
+    #         for key in keys:
+    #             try:
+    #                 self._local.bucket.Object(key).delete()
+    #             except ClientError:
+    #                 errors.append(key)
+    #     return errors
+
     def _list_objects(self, prefix: str) -> List[str]:
         self._init_connection()
         return [object.key for object in self._local.bucket.objects.filter(Prefix=prefix)]

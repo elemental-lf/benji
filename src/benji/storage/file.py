@@ -62,6 +62,15 @@ class Storage(StorageBase):
             raise FileNotFoundError('File {} not found.'.format(filename))
         os.unlink(filename)
 
+    # def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
+    #     errors = []
+    #     for key in keys:
+    #         try:
+    #             self._rm_object(key)
+    #         except FileNotFoundError:
+    #             errors.append(key)
+    #     return errors
+
     def _list_objects(self, prefix: str) -> List[str]:
         matches = []
         for root, dirnames, filenames in os.walk(os.path.join(self.path, prefix)):

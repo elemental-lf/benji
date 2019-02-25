@@ -145,6 +145,18 @@ class Storage(ReadCacheStorageBase):
             else:
                 raise
 
+    # def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
+    #     """ Deletes many keys from the storage and returns a list of keys that couldn't be deleted.
+    #     """
+    #     errors = []
+    #     for key in keys:
+    #         try:
+    #             file_version_info = self._file_info(key)
+    #             self.bucket.delete_file_version(file_version_info.id_, file_version_info.file_name)
+    #         except (B2Error, FileNotFoundError):
+    #             errors.append(key)
+    #     return errors
+
     def _list_objects(self, prefix: str) -> List[str]:
         return [
             file_version_info.file_name
