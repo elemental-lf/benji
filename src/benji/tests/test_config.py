@@ -30,6 +30,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
             configuration:
               cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
+              simultaneousWrites: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
                 - RBD_FEATURE_EXCLUSIVE_LOCK
@@ -57,6 +58,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
             configuration:
               cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
+              simultaneousWrites: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
                 - RBD_FEATURE_EXCLUSIVE_LOCK
@@ -84,6 +86,7 @@ class ConfigTestCase(TestCaseBase, TestCase):
             configuration:
               cephConfigFile: /etc/ceph/ceph.conf
               simultaneousReads: 10
+              simultaneousWrites: 10
               newImageFeatures:
                 - RBD_FEATURE_LAYERING
                 - RBD_FEATURE_EXCLUSIVE_LOCK
@@ -143,8 +146,9 @@ class ConfigTestCase(TestCaseBase, TestCase):
             'bandwidthWrite': 0,
             'consistencyCheckWrites': False,
             'path': '/var/tmp',
-            'simultaneousReads': 1,
-            'simultaneousWrites': 1
+            'simultaneousReads': 3,
+            'simultaneousWrites': 3,
+            'simultaneousRemovals': 5,
         }, config.validate(module='benji.storage.file', config=module_configuration))
         module_configuration = {'asdasdas': 'dasdasd'}
         self.assertRaises(ConfigurationError,
@@ -167,7 +171,8 @@ class ConfigTestCase(TestCaseBase, TestCase):
             'cephConfigFile': '/etc/ceph/ceph.conf',
             'clientIdentifier': 'admin',
             'newImageFeatures': ['RBD_FEATURE_LAYERING', 'RBD_FEATURE_EXCLUSIVE_LOCK'],
-            'simultaneousReads': 10
+            'simultaneousReads': 10,
+            'simultaneousWrites': 10,
         }, config.validate(module='benji.io.rbd', config=module_configuration))
         module_configuration['newImageFeatures'] = ['ASASA', 'DDASAD']
         self.assertRaises(ConfigurationError,
