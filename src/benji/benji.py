@@ -511,7 +511,7 @@ class Benji(ReprMixIn):
             read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
-            log_every_jobs = read_jobs // 200 + 1  # about every half percent
+            log_every_jobs = (sparse_blocks if not sparse else read_blocks) // 200 + 1  # about every half percent
             sparse_data_block = b'\0' * block.size
             for block in blocks:
                 if block.uid:
@@ -569,6 +569,7 @@ class Benji(ReprMixIn):
             done_read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
+            log_every_jobs = read_jobs // 200 + 1  # about every half percent
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
