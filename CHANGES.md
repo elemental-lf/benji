@@ -1,3 +1,7 @@
+## v0.3.1, 25.02.2019
+
+Fixes a naming problem with the `--override-lock` CLI option of `benji rm` and `benji cleanup`
+
 ## v0.3.0, 25.02.2019
 
 Notable changes:
