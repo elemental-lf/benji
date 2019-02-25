@@ -10,6 +10,8 @@ services:
 branches:
   only:
     - master
+    # Build commits tagged with release version
+    - /^v\d+\.\d+\.\d+$/
 
 env:
   global:
