@@ -300,7 +300,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -316,7 +316,7 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -370,7 +370,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -391,7 +391,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -445,7 +445,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1
@@ -470,7 +470,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                 consistencyCheckWrites: True
                 simultaneousReads: 3
                 simultaneousWrites: 3
-                simultaneousDeletes: 3
+                simultaneousRemoves: 3
                 activeTransforms:
                   - zstd
                   - k1

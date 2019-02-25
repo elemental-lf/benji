@@ -77,7 +77,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         simultaneous_writes = Config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
         simultaneous_reads = Config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
-        simultaneous_deletes = Config.get_from_dict(module_configuration, 'simultaneousDeletes', types=int)
+        simultaneous_removes = Config.get_from_dict(module_configuration, 'simultaneousRemoves', types=int)
         bandwidth_read = Config.get_from_dict(module_configuration, 'bandwidthRead', types=int)
         bandwidth_write = Config.get_from_dict(module_configuration, 'bandwidthWrite', types=int)
 
@@ -107,7 +107,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         self._read_executor = JobExecutor(name='Storage-Read', workers=simultaneous_reads, blocking_submit=False)
         self._write_executor = JobExecutor(name='Storage-Write', workers=simultaneous_writes, blocking_submit=True)
-        self._rm_executor = JobExecutor(name='Storage-Remove', workers=simultaneous_deletes, blocking_submit=True)
+        self._remove_executor = JobExecutor(name='Storage-Remove', workers=simultaneous_removes, blocking_submit=True)
 
     @property
     def name(self) -> str:
@@ -319,16 +319,16 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         def job():
             return self._rm_block(uid)
 
-        self._rm_executor.submit(job)
+        self._remove_executor.submit(job)
 
     def rm_block(self, uid: BlockUid) -> None:
         self._rm_block(uid)
 
     def rm_get_completed(self, timeout: int = None) -> Iterator[Union[BlockUid, BaseException]]:
-        return self._rm_executor.get_completed(timeout=timeout)
+        return self._remove_executor.get_completed(timeout=timeout)
 
     def wait_rms_finished(self):
-        self._rm_executor.wait_for_all()
+        self._remove_executor.wait_for_all()
 
     # def rm_many_blocks(self, uids: Union[Sequence[BlockUid], AbstractSet[BlockUid]]) -> List[BlockUid]:
     #     keys = [uid.storage_object_to_path() for uid in uids]
@@ -465,7 +465,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     def close(self) -> None:
         self._read_executor.shutdown()
         self._write_executor.shutdown()
-        self._rm_executor.shutdown()
+        self._remove_executor.shutdown()
 
     @abstractmethod
     def _write_object(self, key: str, data: bytes):
