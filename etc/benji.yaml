@@ -14,6 +14,7 @@ storages:
 #
 #      simultaneousReads: 1
 #      simultaneousWrites: 1
+#      simultaneousRemovals: 1
 #      bandwidthRead: 0
 #      bandwidthWrite: 0
 #      consistencyCheckWrites: false

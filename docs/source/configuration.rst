@@ -355,7 +355,7 @@ recommended to increase this number to increase this number to get better concur
 Number of writer threads when writing to a storage. Also affects the internal write queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.
 
-* name: **simultaneousRemoves**
+* name: **simultaneousRemovals**
 * type: integer
 * default: ``1``
 

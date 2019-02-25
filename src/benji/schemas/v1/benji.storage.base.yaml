@@ -18,7 +18,7 @@ configuration:
       empty: False
       min: 1
       default: 3
-    simultaneousRemoves:
+    simultaneousRemovals:
       type: integer
       empty: False
       min: 1

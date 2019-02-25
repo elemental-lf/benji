@@ -77,7 +77,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         simultaneous_writes = Config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
         simultaneous_reads = Config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
-        simultaneous_removes = Config.get_from_dict(module_configuration, 'simultaneousRemoves', types=int)
+        simultaneous_removals = Config.get_from_dict(module_configuration, 'simultaneousRemovals', types=int)
         bandwidth_read = Config.get_from_dict(module_configuration, 'bandwidthRead', types=int)
         bandwidth_write = Config.get_from_dict(module_configuration, 'bandwidthWrite', types=int)
 
@@ -107,7 +107,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         self._read_executor = JobExecutor(name='Storage-Read', workers=simultaneous_reads, blocking_submit=False)
         self._write_executor = JobExecutor(name='Storage-Write', workers=simultaneous_writes, blocking_submit=True)
-        self._remove_executor = JobExecutor(name='Storage-Remove', workers=simultaneous_removes, blocking_submit=True)
+        self._remove_executor = JobExecutor(name='Storage-Remove', workers=simultaneous_removals, blocking_submit=True)
 
     @property
     def name(self) -> str:
