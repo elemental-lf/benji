@@ -73,7 +73,7 @@ Benji only backups changed blocks. It can do this in two different ways:
 
 1. **It can read the whole image**: Checksum each block and look the checksum up
    in the database backend. If it is found, only a reference to the existing
-   block will be stored, thus there's no write action on the *data backend*.
+   block will be stored, thus there's no write action on the storage.
 
 2. **It can receive a hints file**: The hints file is a JSON formatted list of
    (offset, size) tuples (see :ref:`hints_file` for an example) which indicate
@@ -83,7 +83,7 @@ Benji only backups changed blocks. It can do this in two different ways:
    at by the *hints file*, checksum each block and look the checksum up in the
    database backend. If it is found (which may rarely happen for file copies
    or when blocks are all zeros), only a reference to the existing block will
-   be stored. Otherwise the block is written to the *data backend*.
+   be stored. Otherwise the block is written to the storage.
    The hints file is passed via the  ``-r`` or ``--rbd`` option to
    ``benji backup``.
 
@@ -244,15 +244,15 @@ will need this information to get the blocks back in the correct order and
 restore your image.
 
 This information is stored in the database backend. Additionally Benji will
-save the metadata on the *data backend* automatically. Should you lose your
+save the metadata on the storage automatically. Should you lose your
 database backend, you can restore these metadata backups by using
 ``benji metadata-restore``.
 
 .. command-output:: benji metadata-restore --help
 
 There is currently no mechanism to import the backup of all version's
-metadata from the *data backend*, but you could get a list of all versions
-manually from the *data backend*.
+metadata from the storage, but you could get a list of all versions
+manually from the storage.
 
 .. NOTE:: This metadata backup is compressed and encrypted like the blocks
     if you have these features enabled.

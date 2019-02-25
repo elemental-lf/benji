@@ -15,13 +15,13 @@ Backup source
     or multiple files. The source must not be modified during backup, so either
     stop all writes or create a snapshot.
 
-Backup target
-    A data storage (currently supported: filesystem, S3 and B2) to which the
-    backed up data will be saved. Also referred to as the *data backend*.
+Storages
+    One or more data storage (currently supported: filesystem, S3 and B2) to which the
+    backed up data will be saved.
 
-Backup Metadata
-    A SQL database containing information on how to reassemble the stored blocks
-    to get the original data back. Also referred to as the database backend.
+Database backend
+    An SQL database containing information on how to reassemble the stored blocks
+    to get the original data back.
     For restores the database backend is not compulsory. See :ref:`metadata_backend_less`.
 
 Version
@@ -35,15 +35,20 @@ Backup
 
 0. Minimal configuration:
 
-This represents a minimal configuration mit SQLite3 backend and file-based block storage::
+This represents a minimal configuration with SQLite3 database backend and file-based block storage::
 
     configurationVersion: '1'
-    dataBackend:
-      type: file
-      file:
-        path: /tmp
-    metadataBackend:
-      engine: sqlite:///tmp/benji.sqlite
+    databaseEngine: sqlite:////tmp/benji.sqlite
+    defaultStorage: storage-1
+    storages:
+      - name: storage-1
+        storageId: 1
+        module: file
+        configuration:
+          path: /tmp/benji-data
+    ios:
+      - name: file
+        module: file
 
 You might want to change the above paths. Benji will run as a normal user
 without problems, but it will probably need root privileges to access most
@@ -54,7 +59,7 @@ Please see :ref:`configuration` for a full list of configuration options.
 1. Initialize the database::
 
     $ benji init
-        INFO: $ benji init
+        INFO: $ benji database-init
 
    .. NOTE:: Initializing the database multiple times does **not** destroy any
        data. Instead it will fail because it finds already existing tables.
@@ -125,7 +130,7 @@ errors. Please see section :ref:`machine_output` for details.
 Deep Scrub and Scrub
 --------------------
 
-Deep scrubbing reads all the blocks of a particular *version* from the *data backend*
+Deep scrubbing reads all the blocks of a particular *version* from the storage
 (or some of them if you use the ``-p`` option) and compares the checksums of these
 blocks to the checksums recorded in the database backend. If you pass the
 source option (``-s``) the blocks will also be compared to the original source data.

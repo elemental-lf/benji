@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Cleanup &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Cleanup &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -315,14 +315,14 @@ than this value, Benji exists with an error:</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
 database backend. It also adds the removed block entries into a deletion
 candidate list. By default it also removes the backup of the metadata on
-the <em>data backend</em>. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
+the storage. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
 or <code class="docutils literal notranslate"><span class="pre">--keep-backend-metadata</span></code> option.</p>
-<p>In order to really delete blocks from the <em>data backend</em>, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
+<p>In order to really delete blocks from the storage, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
 <span class="pre">cleanup</span></code>.</p>
 </div>
 <div class="section" id="id1">
 <h2>Cleanup<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>To free up space on the <em>data backend</em>, you need to cleanup.
+<p>To free up space on the storage, you need to cleanup.
 There are two different cleanup methods, but you’ll usually only need the
 so-called <em>fast-cleanup</em>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji cleanup --help
@@ -336,7 +336,7 @@ optional arguments:
 <h3>Fast Cleanup<a class="headerlink" href="#fast-cleanup" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> will go through the list of deletion candidates and check if
 there are blocks which aren’t referenced from any other version anymore.</p>
-<p>These blocks are then deleted from the <em>data backend</em>. The still-in-use blocks
+<p>These blocks are then deleted from the storage. The still-in-use blocks
 are removed from the list of candidates.</p>
 <p>In order to provide parallelism (i.e. multiple Benji processes at the same
 time), Benji needs to prevent race-conditions between removing a block
@@ -348,11 +348,11 @@ deletion condidates for more than one hour.</p>
 <span id="id2"></span><h3>Full Cleanup<a class="headerlink" href="#full-cleanup" title="Permalink to this headline">¶</a></h3>
 <p>There are times (e.g. when your database is corrupted or when you create a new
 database based on export/import) when Benji does not know if the blocks in the
-<em>data backend</em> are all known by the metadata store.</p>
+storage are all known by the metadata store.</p>
 <p>Then the <code class="docutils literal notranslate"><span class="pre">-full</span></code> option of cleanup comes into play. With this option, Benji will
 read all block UIDs from the backend storage (which can take <em>very</em> long) and
 compare it to the list of known block UIDs in the database backend</p>
-<p>Blocks unknown to the database backend are then deleted from the <em>data backend</em>.</p>
+<p>Blocks unknown to the database backend are then deleted from the storage.</p>
 </div>
 </div>
 </div>

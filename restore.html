@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -347,7 +347,7 @@ in there before the restore will remain.</p>
 <span id="metadata-backend-less"></span><h3>With Unavailable Metadata Backend<a class="headerlink" href="#with-unavailable-metadata-backend" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode (<code class="docutils literal notranslate"><span class="pre">-M</span></code> or <code class="docutils literal notranslate"><span class="pre">--metadata-backend-less</span></code>)
 where it doesn’t require its database backend to be up und running. In this mode
-Benji will import the backup of the <em>version’s</em> metadata from the <em>data backend</em>
+Benji will import the backup of the <em>version’s</em> metadata from the storage
 into an ad-hoc in-memory database and then restore the image normally. This is
 for failure scenarios where the database is unavailable and you still need to
 restore a <em>version</em>. But because of the database unavailability you can’t just

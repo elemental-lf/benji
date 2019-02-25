@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Administration &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -287,9 +287,9 @@ of data storages need to meet your availability requirements.</p>
 disasters happen.</p>
 <div class="section" id="metadata-redundancy">
 <h3>Metadata Redundancy<a class="headerlink" href="#metadata-redundancy" title="Permalink to this headline">¶</a></h3>
-<p>Benji already exports the version metadata to the <em>data backend</em>, too. You
+<p>Benji already exports the version metadata to the storage, too. You
 can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>:</p>
-<p>The metadata-backend-less uses this import from the <em>data backend</em> to
+<p>The metadata-backend-less uses this import from the storage to
 populate an in-memory database to enable restores when the metadata
 backend is unavailable, please see section <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</p>
 <p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>
@@ -324,9 +324,9 @@ are the only reliable options for long-term data safety.</p>
 </div>
 <div class="section" id="secure-your-block-data">
 <h2>Secure your block data<a class="headerlink" href="#secure-your-block-data" title="Permalink to this headline">¶</a></h2>
-<p>Your <em>data backend</em> should be redundant in some way, too. Most cloud
+<p>Your storage should be redundant in some way, too. Most cloud
 providers have an SLA which guarantees a certain level of availability.
-If you manage your <em>data backend</em> yourself, then you should look into
+If you manage your storage yourself, then you should look into
 redundancy and high-availability technologies like:</p>
 <ul class="simple">
 <li>RAID 1, 5 and 6</li>
@@ -335,7 +335,7 @@ redundancy and high-availability technologies like:</p>
 <li>Filesystem specific data redundancy and replication mechanisms in filesystems
 like Btrs or ZFS</li>
 </ul>
-<p>If your <em>data backend</em> fails or has corruptions, at best corrupted restores will
+<p>If your storage fails or has corruptions, at best corrupted restores will
 be possible. Benji doesn’t store any redundant data and it cannot  restore
 data from stored checksums alone.</p>
 </div>

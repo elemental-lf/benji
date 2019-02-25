@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -327,8 +327,8 @@ Benji and its dependencies:</p>
 python3.6 -m venv /usr/local/benji
 <span class="c1"># Activate it (your shell prompt should change)</span>
 . /usr/local/benji/bin/activate
-<span class="c1"># Alternative A: Install a released version from PyPI (0.1.1 in this case)</span>
-pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.1.1
+<span class="c1"># Alternative A: Install a released version from PyPI (0.2.0 in this case)</span>
+pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.2.0
 <span class="c1"># Alternative B: Install the latest released version from PyPI</span>
 pip install benji
 <span class="c1"># Alternative C: Install the latest version from the master branch of the Git repository</span>
@@ -344,7 +344,7 @@ dependencies:</p>
 <li><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</li>
 </ul>
 <p>You can do this be specifying a comma delimited list of extra features in square brackets after the package URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.1.1[compression,s3,readcache,b2]&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.2.0[compression,s3,readcache,b2]&#39;</span>
 </pre></div>
 </div>
 <p>To upgrade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>

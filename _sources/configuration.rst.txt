@@ -207,6 +207,13 @@ affects the internal read queue length. It is highly recommended to
 increase this number to increase this number to get better concurrency
 and performance.
 
+* name: **simultaneousWrites**
+* type: integer
+* default: ``1``
+
+Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
+
 I/O Module file
 ~~~~~~~~~~~~~~~~
 
@@ -338,19 +345,22 @@ All storage modules support the following configuration directives:
 * type: integer
 * default: ``1``
 
-Number of reader threads when reading from a backup source. Also
-affects the internal read queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
-and performance.
+Number of reader threads when reading from a storage. Also affects the internal read queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
 
 * name: **simultaneousWrites**
 * type: integer
 * default: ``1``
 
-Number of writer threads when reading from a backup source. Also
-affects the internal write queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
-and performance.
+Number of writer threads when writing to a storage. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
+
+* name: **simultaneousRemovals**
+* type: integer
+* default: ``1``
+
+Number of removal threads when removing blocks from a storage. Also affects the internal queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
 
 * name: **bandwidthRead**
 * type: integer
@@ -552,14 +562,6 @@ when connecting to a Google Storage bucket.
 If not set, the default of the underlying ``boto3`` library is used. Valid
 values are ``s3`` for version 2 signatures and  ``s3v4`` for version 4
 signatures.
-
-* name: **multiDelete**
-* type: bool
-* default: True
-
-Some S3 compatible endpoints don't support the batch delete operation. This
-settings disabled its use. This needs to be set to ``true`` when connecting
-to a Google Storage bucket.
 
 * name: **disableEncodingType**
 * type: bool

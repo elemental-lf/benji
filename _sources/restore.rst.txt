@@ -63,7 +63,7 @@ With Unavailable Metadata Backend
 
 ``benji restore`` also supports a mode (``-M`` or ``--metadata-backend-less``)
 where it doesn't require its database backend to be up und running. In this mode
-Benji will import the backup of the *version's* metadata from the *data backend*
+Benji will import the backup of the *version's* metadata from the storage
 into an ad-hoc in-memory database and then restore the image normally. This is
 for failure scenarios where the database is unavailable and you still need to
 restore a *version*. But because of the database unavailability you can't just

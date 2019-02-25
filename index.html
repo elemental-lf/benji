@@ -10,7 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -195,11 +195,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -309,24 +309,22 @@ drives or the cloud</li>
 for your persistent volumes.</p>
 <div class="section" id="status">
 <h2>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
-<p><strong>The current master branch is not compatible with the old master branch of 10/05/2018
-and earlier and there is no migration path. The last commit supporting the old data
-structures is available under the tag master-20181005 if you need it. I’m sorry for
-any inconveniences this may cause but please also remember that Benji is still in its
-infancy.</strong></p>
 <p>Benji is currently somewhere between alpha and beta quality I think. It passes all
 included tests. The documentation isn’t completely up-to-date, especially in regard
-to the new unified filter syntax. The Helm chart is currently work in progress.</p>
+to the new unified filter syntax.</p>
 <p>Benji requires <strong>Python 3.6.5 or newer</strong> because older Python versions
 have some shortcomings in the <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> implementation which lead to an
 excessive memory usage.</p>
 <p>Older versions contained a Docker image for integrating with <a class="reference external" href="https://rook.io/">Rook</a>.
 As I no longer have access to a Rook installation and Rook changed its Docker base
 image in the meantime I’ve dropped this support for the time being. The new generic
-Kubernetes image (<code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code>) can be used instead, but it will be more work to get
+Kubernetes image (<code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code>) can be used instead, but it will require some work to get
 the Ceph credentials into the container. I’d accept patches for a third Docker
 image (resurrecting the old <code class="docutils literal notranslate"><span class="pre">benji-rook</span></code> image) or maybe it’s also possible to integrate
 the changes into the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image without too much fuss.</p>
+<p><strong>The current master branch is not compatible with the old master branch of 10/05/2018
+and earlier and there is no migration path. The last commit supporting the old data
+structures is available under the tag master-20181005 if you need it.</strong></p>
 </div>
 <div class="section" id="main-features">
 <h2>Main Features<a class="headerlink" href="#main-features" title="Permalink to this headline">¶</a></h2>
@@ -341,7 +339,7 @@ more effective if images are clones of a common ancestor.</dd>
 <dd>With the help of Ceph’s <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code>, Benji will only read the blocks
 that have changed since the last backup. Even when this information
 is not available (like with LVM) Benji will still only backup
-changed blocks of course.</dd>
+changed blocks.</dd>
 <dt><strong>Fast restores</strong></dt>
 <dd>With supporting block storage (like Ceph’s RBD), a sparse restore is
 possible. This means, sparse blocks (i.e. blocks which are holes or are
@@ -412,7 +410,7 @@ morning.</dd>
 <dd><p class="first">By providing a configuration value for how old backups need to be in order to
 be able to remove them, you can’t accidentally remove very young backups. An
 exception to this is the enforcement of retention policies which will also
-remove young backups if configured.</p>
+remove recent backups if configured.</p>
 <p>With <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code> you can protect versions from being removed.
 This is important when you plan to restore a version which according to the
 retention policy may be removed soon. During restore a lock will also prevent

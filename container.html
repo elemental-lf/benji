@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Containerised Benji &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Containerised Benji &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -281,133 +281,64 @@
 <h2>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="benji">
 <h3>benji<a class="headerlink" href="#benji" title="Permalink to this headline">¶</a></h3>
-<p>This image is based on the Debian 9 (Slim Stretch) variant of
-<a class="reference external" href="https://hub.docker.com/_/python/">library/python</a>. It includes
-Benji and its dependencies. Ceph support as well kubectl for Kubernetes
-integration are also present.</p>
-<p>The Benji configuration should be put into <code class="docutils literal notranslate"><span class="pre">/etc/benji/benji.yaml</span></code>.
-Either by inheriting from this image and overwriting it or by mounting
-it directly into the container. By default a minimal test configuration
-is provided by the image.</p>
+<p>This image is based on CentOS 7 but uses the newer Python versions provided by IUS. It includes Benji and its
+dependencies. Ceph support is also present.</p>
+<p>The Benji configuration should be put into <code class="docutils literal notranslate"><span class="pre">/etc/benji/benji.yaml</span></code>. Either by inheriting from this image and
+overwriting it or by mounting it directly into the container. By default a minimal test configuration is provided
+by the image.</p>
 <p>The default Docker entry point is just <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>.</p>
-<p>The first use case for this image is to simply test Benji:</p>
+<p>One use case for this image is for testing Benji:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker run --interactive --tty --rm elementalnet/benji
 </pre></div>
 </div>
 <p>After that you can directly proceed with step 1 of the instructions
 in section <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a>.</p>
-<p>The second use case would be to get some real work done without
-directly installing Benji on the host. A series of scripts to
-facilitate the calling of Benji are provided under <code class="docutils literal notranslate"><span class="pre">/scripts</span></code>
-inside of the container. They can also be found in the <code class="docutils literal notranslate"><span class="pre">scripts</span></code>
-directory of the source distribution. For an example of how to
-use these scripts please see <code class="docutils literal notranslate"><span class="pre">images/benji-rook/scripts/backup.sh</span></code>.</p>
+<p>The second use case would be to get some real work done without directly installing Benji on the host. A series of
+scripts to facilitate the calling of Benji are provided under <code class="docutils literal notranslate"><span class="pre">/scripts</span></code> inside the container. They can also be found
+in the <code class="docutils literal notranslate"><span class="pre">scripts</span></code> directory of the source distribution. For an example of how to use these scripts please see
+<code class="docutils literal notranslate"><span class="pre">images/benji-k8s/scripts/benji-backup-pvc</span></code>.</p>
 </div>
-<div class="section" id="benji-rook">
-<h3>benji-rook<a class="headerlink" href="#benji-rook" title="Permalink to this headline">¶</a></h3>
-<p>This image is based on the <a class="reference external" href="https://rook.io/docs/rook/master/toolbox.html">Rook Toolbox</a>
-image and additionally includes Benji of course and all of its dependencies.
-<code class="docutils literal notranslate"><span class="pre">/usr/local/bin/toolbox.sh</span></code> is still run in the background to update and
-create <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code> so that a direct access to the Ceph RBD images
-is possible. It also includes <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> which is used to find RBD volumes
-to include in the backup from PersistentVolumeClaim resources.</p>
-<p>A container from this image can be parametrised with three enviroment variables:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="32%" />
-<col width="28%" />
-<col width="40%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Name</th>
-<th class="head">Default</th>
-<th class="head">Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>BACKUP_SCHEDULE</td>
-<td>0 33 0 * * *</td>
-<td>Backup interval as a Go cron expression</td>
-</tr>
-<tr class="row-odd"><td>BACKUP_RETENTION</td>
-<td>latest3,hours24,days30,months3</td>
-<td>Retention policy like with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code></td>
-</tr>
-<tr class="row-even"><td>BACKUP_SELECTOR</td>
-<td>nomatch==matchnot</td>
-<td>Kubernetes label selector applied to PVCs</td>
-</tr>
-<tr class="row-odd"><td>DEEP_SCRUBBING_ENABLED</td>
-<td>1</td>
-<td>Enable batch deep scrubbing</td>
-</tr>
-<tr class="row-even"><td>DEEP_SCRUBBING_VERSIONS_PERCENTAGE</td>
-<td>6</td>
-<td>Percentage of versions to check</td>
-</tr>
-<tr class="row-odd"><td>DEEP_SCRUBBING_BLOCKS_PERCENTAGE</td>
-<td>50</td>
-<td>Percentage of blocks to check</td>
-</tr>
-<tr class="row-even"><td>SCRUBBING_ENABLED</td>
-<td>0</td>
-<td>Enable batch scrubbing</td>
-</tr>
-<tr class="row-odd"><td>SCRUBBING_VERSIONS_PERCENTAGE</td>
-<td>6</td>
-<td>Percentage of versions to check</td>
-</tr>
-<tr class="row-even"><td>SCRUBBING_BLOCKS_PERCENTAGE</td>
-<td>50</td>
-<td>Percentage of blocks to check</td>
-</tr>
-<tr class="row-odd"><td>PROM_PUSH_GATEWAY</td>
-<td>:9091</td>
-<td>Address of Prometheus push gateway</td>
-</tr>
-</tbody>
-</table>
-<p>The BACKUP_SCHEDULE environment variable determines how often the actual backup
-scripts is called. This is a <a class="reference external" href="https://godoc.org/github.com/robfig/cron">Go cron expression</a>.
-There currently is no support for more advanced scheduling options.</p>
-<p>The backup scripts first  searches for PersistemtVolumeClaims matching the
-BACKUP_SELECTOR. By default there should be no matching PVCs, so you must
-specify a different BACKUP_SELECTOR to get any backups. You can either use
-an existing label or you can augment your PVCs with a new one. If you
-specify an empty string as the BACKUP_SELECTOR all PVCs will be backed up.</p>
+<div class="section" id="benji-k8s">
+<h3>benji-k8s<a class="headerlink" href="#benji-k8s" title="Permalink to this headline">¶</a></h3>
+<p>This image is directly derived from the <code class="docutils literal notranslate"><span class="pre">benji</span></code> image above. It includes a framework to do periodic backups of
+Kubernetes  persistent volumes backed by Ceph RBD. To access Kubernetes <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> is used.</p>
+<p>When the image is started a regular <code class="docutils literal notranslate"><span class="pre">crond</span></code> is launched. All periodic actions can be configured via
+<code class="docutils literal notranslate"><span class="pre">/benji/etc/crontab</span></code>. By default this file is empty but here is one possible example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">PROM_PUSH_GATEWAY</span><span class="o">=</span>:9091
+BENJI_INSTANCE:-benji-k8s
+<span class="m">00</span>  * * * * root benji-backup-pvc --all-namespaces -l <span class="s1">&#39;release in (prod)&#39;</span>
+<span class="m">03</span>  * * * * root benji-backup-pvc --namespace staging
+<span class="m">00</span> <span class="m">04</span> * * * root benji-command enforce latest3,hours24,days30,months3 <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
+<span class="m">00</span> <span class="m">05</span> * * * root benji-command cleanup
+<span class="m">30</span> <span class="m">05</span> * * * root benji-versions-status
+<span class="m">00</span> <span class="m">06</span> * * * root benji-command batch-deep-scrub --version-percentage <span class="m">10</span> --block-percentage <span class="m">33</span> <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
+</pre></div>
+</div>
+<p>When the environment variables <code class="docutils literal notranslate"><span class="pre">PROM_PUSH_GATEWAY</span></code> and <code class="docutils literal notranslate"><span class="pre">BENJI_INSTANCE</span></code> are not set, they default to the above
+listed values.</p>
+<p>The backup script <code class="docutils literal notranslate"><span class="pre">benji-backup-pvc</span></code> first searches for <code class="docutils literal notranslate"><span class="pre">PersistemtVolumeClaims</span></code> matching the selector supplied on
+the command line. Direct backups of <code class="docutils literal notranslate"><span class="pre">PersistentVolumes</span></code> are currently not supported by this script.</p>
 <div class="admonition tip">
 <p class="first admonition-title">Tip</p>
 <p class="last">See <a class="reference external" href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors</a>
 for possible ways to construct your selector.</p>
 </div>
-<p>After each volume backup <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> is called for the volume with
-the retention policy specified in BACKUP_RETENTION. Currently the same
-retention policy is applied to all PVCs. BACKUP_RETENTION and BACKUP_SCHEDULE
-have to be considered together.</p>
-<p>The next step is to call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> to remove blocks on the
-data backend and free the space of deleted <em>versions</em>.</p>
-<p>The two last steps are deep scrubbing and scrubbing of <em>versions</em> if enabled.
-A random sample of <em>versions</em> is picked according to the configured
-DEEP_SCRUBBING_VERSIONS_PERCENTAGE (or SCRUBBING_VERSIONS_PERCENTAGE
-respectively). Of these <em>versions</em> a randomly sampled selection of blocks
-will be checked. The number of blocks checked from each <em>version</em> is
-determined by DEEP_SCRUBBING_BLOCKS_PERCENTAGE (or SCRUBBING_BLOCKS_PERCENTAGE
-in the case of metadata only scrubbing).</p>
-<p>At the end a number of different <a class="reference external" href="https://prometheus.io/">Prometheus</a> is pushed
-to the configured <a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>.</p>
-<p>The backup script uses Ceph’s and Benji’s differential backup features if
-possible. Normally only the initial backup is a full backup. RBD snapshots
-names are generated with a prefix of <em>b-</em>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">enforce</span></code> should be called regularly to expire old backup versions. Also <code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">cleanup</span></code> needs
+to be executed once in a while to actually remove blocks that are no longer used from the storages.</p>
+<p>At the end of each command related <a class="reference external" href="https://prometheus.io/">Prometheus</a> metrics are pushed to the configured
+<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. If <code class="docutils literal notranslate"><span class="pre">PROM_PUSH_GATEWAY</span></code> is not set, this step is skipped.</p>
+<p>The backup script uses Ceph’s and Benji’s differential backup features if possible. Normally only the initial backu
+is a full backup. RBD snapshots names are generated with a prefix of <code class="docutils literal notranslate"><span class="pre">b-</span></code>.</p>
 </div>
 </div>
 <div class="section" id="helm-charts">
 <h2>Helm Charts<a class="headerlink" href="#helm-charts" title="Permalink to this headline">¶</a></h2>
-<p>Helm charts are the preferred way to deploy Benji’s Docker images.</p>
+<p>Helm charts are the preferred way to deploy the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image.</p>
 <div class="section" id="id1">
-<h3>benji-rook<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<h3>benji-k8s<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
 <p>Benji includes a Helm chart to use the Docker image of the same name. It consists
 of a Deployment and supporting resources and assumes that you have RBAC in place.
-The deployment is composed a two containers: One running the benji-rook Docker image
+The deployment is composed a two containers: One running the benji-k8s Docker image
 and another one running a <a class="reference external" href="https://prometheus.io/">Prometheus</a>
 <a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. These can be scraped
 by a Prometheus server and the Pod generated by the Deployment has annotations
@@ -420,8 +351,8 @@ so that it can be detected automatically:</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">The deployed resources create a service account which has the right to <em>get</em>,
-<em>list</em> and <em>watch</em> all PersistentVolume and PersistentVolumeClaim resources in all
-namespaces.</p>
+<em>list</em> and <em>watch</em> all PersistentVolume, PersistentVolumeClaim, Storageclasses and Pod resources in all
+namespaces. Additionally it is able to <em>create</em> Events.</p>
 </div>
 </div>
 </div>

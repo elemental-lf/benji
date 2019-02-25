@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Quick Start &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -286,12 +286,12 @@ cycle.</p>
 <dd>A block device or image file to be backed up. Benji can’t backup folders
 or multiple files. The source must not be modified during backup, so either
 stop all writes or create a snapshot.</dd>
-<dt>Backup target</dt>
-<dd>A data storage (currently supported: filesystem, S3 and B2) to which the
-backed up data will be saved. Also referred to as the <em>data backend</em>.</dd>
-<dt>Backup Metadata</dt>
-<dd>A SQL database containing information on how to reassemble the stored blocks
-to get the original data back. Also referred to as the database backend.
+<dt>Storages</dt>
+<dd>One or more data storage (currently supported: filesystem, S3 and B2) to which the
+backed up data will be saved.</dd>
+<dt>Database backend</dt>
+<dd>An SQL database containing information on how to reassemble the stored blocks
+to get the original data back.
 For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
 <dt>Version</dt>
 <dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
@@ -303,14 +303,19 @@ A <em>version</em> is identified by a unique id.</dd>
 <ol class="arabic simple" start="0">
 <li>Minimal configuration:</li>
 </ol>
-<p>This represents a minimal configuration mit SQLite3 backend and file-based block storage:</p>
+<p>This represents a minimal configuration with SQLite3 database backend and file-based block storage:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1&#39;</span>
-dataBackend:
-  type: file
-  file:
-    path: /tmp
-metadataBackend:
-  engine: sqlite:///tmp/benji.sqlite
+databaseEngine: sqlite:////tmp/benji.sqlite
+defaultStorage: storage-1
+storages:
+  - name: storage-1
+    storageId: <span class="m">1</span>
+    module: file
+    configuration:
+      path: /tmp/benji-data
+ios:
+  - name: file
+    module: file
 </pre></div>
 </div>
 <p>You might want to change the above paths. Benji will run as a normal user
@@ -320,7 +325,7 @@ backup sources.</p>
 <ol class="arabic">
 <li><p class="first">Initialize the database:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji init
-    INFO: $ benji init
+    INFO: $ benji database-init
 </pre></div>
 </div>
 <div class="admonition note">
@@ -405,7 +410,7 @@ errors. Please see section <a class="reference internal" href="administration.ht
 </div>
 <div class="section" id="deep-scrub-and-scrub">
 <h2>Deep Scrub and Scrub<a class="headerlink" href="#deep-scrub-and-scrub" title="Permalink to this headline">¶</a></h2>
-<p>Deep scrubbing reads all the blocks of a particular <em>version</em> from the <em>data backend</em>
+<p>Deep scrubbing reads all the blocks of a particular <em>version</em> from the storage
 (or some of them if you use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option) and compares the checksums of these
 blocks to the checksums recorded in the database backend. If you pass the
 source option (<code class="docutils literal notranslate"><span class="pre">-s</span></code>) the blocks will also be compared to the original source data.</p>

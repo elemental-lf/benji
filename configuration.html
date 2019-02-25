@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.1.1.dev72+g1bdcfc6 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.3.0 documentation</title>
   
 
   
@@ -194,11 +194,11 @@
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
-<li class="toctree-l3"><a class="reference internal" href="container.html#benji-rook">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-rook</a></li>
+<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
 </ul>
@@ -471,6 +471,13 @@ options:</p>
 affects the internal read queue length. It is highly recommended to
 increase this number to increase this number to get better concurrency
 and performance.</p>
+<ul class="simple">
+<li>name: <strong>simultaneousWrites</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <div class="section" id="i-o-module-file">
 <h3>I/O Module file<a class="headerlink" href="#i-o-module-file" title="Permalink to this headline">¶</a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> I/O module currently supports no additional configuration
@@ -590,19 +597,22 @@ cannot be decrypted anymore.</p>
 <li>type: integer</li>
 <li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
 </ul>
-<p>Number of reader threads when reading from a backup source. Also
-affects the internal read queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
-and performance.</p>
+<p>Number of reader threads when reading from a storage. Also affects the internal read queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
 <li>name: <strong>simultaneousWrites</strong></li>
 <li>type: integer</li>
 <li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
 </ul>
-<p>Number of writer threads when reading from a backup source. Also
-affects the internal write queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
-and performance.</p>
+<p>Number of writer threads when writing to a storage. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
+<ul class="simple">
+<li>name: <strong>simultaneousRemovals</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of removal threads when removing blocks from a storage. Also affects the internal queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
 <li>name: <strong>bandwidthRead</strong></li>
 <li>type: integer</li>
@@ -797,14 +807,6 @@ when connecting to a Google Storage bucket.</p>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used. Valid
 values are <code class="docutils literal notranslate"><span class="pre">s3</span></code> for version 2 signatures and  <code class="docutils literal notranslate"><span class="pre">s3v4</span></code> for version 4
 signatures.</p>
-<ul class="simple">
-<li>name: <strong>multiDelete</strong></li>
-<li>type: bool</li>
-<li>default: True</li>
-</ul>
-<p>Some S3 compatible endpoints don’t support the batch delete operation. This
-settings disabled its use. This needs to be set to <code class="docutils literal notranslate"><span class="pre">true</span></code> when connecting
-to a Google Storage bucket.</p>
 <ul class="simple">
 <li>name: <strong>disableEncodingType</strong></li>
 <li>type: bool</li>
