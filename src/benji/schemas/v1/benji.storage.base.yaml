@@ -12,17 +12,17 @@ configuration:
       type: integer
       empty: False
       min: 1
-      default: 1
+      default: 3
     simultaneousReads:
       type: integer
       empty: False
       min: 1
-      default: 1
+      default: 3
     simultaneousRemoves:
       type: integer
       empty: False
       min: 1
-      default: 1
+      default: 5
     bandwidthRead:
       type: integer
       empty: False
