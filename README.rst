@@ -31,15 +31,9 @@ for your persistent volumes.
 Status
 ------
 
-**The current master branch is not compatible with the old master branch of 10/05/2018
-and earlier and there is no migration path. The last commit supporting the old data
-structures is available under the tag master-20181005 if you need it. I'm sorry for
-any inconveniences this may cause but please also remember that Benji is still in its
-infancy.**
-
 Benji is currently somewhere between alpha and beta quality I think. It passes all
 included tests. The documentation isn't completely up-to-date, especially in regard
-to the new unified filter syntax. The Helm chart is currently work in progress.
+to the new unified filter syntax.
 
 Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
@@ -48,10 +42,14 @@ excessive memory usage.
 Older versions contained a Docker image for integrating with `Rook <https://rook.io/>`_.
 As I no longer have access to a Rook installation and Rook changed its Docker base
 image in the meantime I've dropped this support for the time being. The new generic
-Kubernetes image (``benji-k8s``) can be used instead, but it will be more work to get
+Kubernetes image (``benji-k8s``) can be used instead, but it will require some work to get
 the Ceph credentials into the container. I'd accept patches for a third Docker
 image (resurrecting the old ``benji-rook`` image) or maybe it's also possible to integrate
 the changes into the ``benji-k8s`` image without too much fuss.
+
+**The current master branch is not compatible with the old master branch of 10/05/2018
+and earlier and there is no migration path. The last commit supporting the old data
+structures is available under the tag master-20181005 if you need it.**
 
 Main Features
 -------------
@@ -67,7 +65,7 @@ Main Features
     With the help of Ceph's ``rbd diff``, Benji will only read the blocks
     that have changed since the last backup. Even when this information
     is not available (like with LVM) Benji will still only backup
-    changed blocks of course.
+    changed blocks.
 
 **Fast restores**
     With supporting block storage (like Ceph's RBD), a sparse restore is
@@ -151,7 +149,7 @@ Main Features
     By providing a configuration value for how old backups need to be in order to
     be able to remove them, you can't accidentally remove very young backups. An
     exception to this is the enforcement of retention policies which will also
-    remove young backups if configured.
+    remove recent backups if configured.
 
     With ``benji protect`` you can protect versions from being removed.
     This is important when you plan to restore a version which according to the
