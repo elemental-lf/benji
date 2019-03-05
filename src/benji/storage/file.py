@@ -29,12 +29,14 @@ class Storage(StorageBase):
         filename = os.path.join(self.path, key)
 
         try:
-            with open(filename, 'wb') as f:
+            with open(filename, 'wb', buffering=0) as f:
                 f.write(data)
+                os.fdatasync(f.fileno())
         except FileNotFoundError:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
-            with open(filename, 'wb') as f:
+            with open(filename, 'wb', buffering=0) as f:
                 f.write(data)
+                os.fdatasync(f.fileno())
 
     def _read_object(self, key: str) -> bytes:
         filename = os.path.join(self.path, key)
