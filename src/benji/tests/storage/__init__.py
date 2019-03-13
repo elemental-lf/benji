@@ -1,6 +1,7 @@
 import random
 
 from benji.database import Block, BlockUid, VersionUid
+from benji.logging import logger
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.tests.testcase import StorageTestCaseBase
 
@@ -76,10 +77,10 @@ class StorageTestCase(StorageTestCaseBase):
         for block in blocks:
             self.storage.read_block_async(block)
 
-        for block, data, metadata in self.storage.read_get_completed(timeout=1):
+        for block, data, metadata in self.storage.read_get_completed(timeout=5):
             self.assertEqual(data_by_uid[block.uid], data)
 
-        self.assertEqual([], [future for future in self.storage.read_get_completed(timeout=1)])
+        self.assertEqual([], [future for future in self.storage.read_get_completed(timeout=5)])
 
         for block in blocks:
             self.storage.rm_block_async(block.uid)
