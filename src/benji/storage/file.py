@@ -22,9 +22,9 @@ class Storage(StorageBase):
 
         self.path = Config.get_from_dict(module_configuration, 'path', types=str)
 
-        # Ensure that self.path ends in a slash
-        if not self.path.endswith('/'):
-            self.path = self.path + '/'
+        # Ensure that self.path ends in os.path.sep
+        if not self.path.endswith(os.path.sep):
+            self.path = os.path.join(self.path, '')
 
     def _write_object(self, key: str, data: bytes) -> None:
         filename = os.path.join(self.path, key)
