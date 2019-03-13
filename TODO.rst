@@ -12,7 +12,6 @@ Unsorted collection
 
 * Finish key rotation support
 * Reintroduce Debian packaging
-* Write a new Makefile for build, test and release
 * Write more tests
 * Readd documentation for development setup
 * Add tests for anything where scrub marks blocks as invalid (source changed,
