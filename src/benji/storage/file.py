@@ -80,7 +80,13 @@ class Storage(StorageBase):
             for filename in filenames:
                 key = (os.path.join(root, filename))[len(self.path):]
                 if include_size:
-                    size = getsize(os.path.join(root, filename))
-                    yield key, size
+                    try:
+                        size = getsize(os.path.join(root, filename))
+                    except OSError:
+                        # The file might be gone (due to benji cleanup for example) when we get to the getsize().
+                        # Just move on to the next filename...
+                        continue
+                    else:
+                        yield key, size
                 else:
                     yield key
