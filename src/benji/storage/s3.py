@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import threading
-from typing import List
+from typing import Iterable, Union, Tuple
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
@@ -146,6 +146,17 @@ class Storage(ReadCacheStorageBase):
     #                 errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str) -> List[str]:
+    def _list_objects(self, prefix: str = None,
+                      include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
         self._init_connection()
-        return [object.key for object in self._local.bucket.objects.filter(Prefix=prefix)]
+
+        if prefix is None:
+            objects_iterable = self._local.bucket.objects.all()
+        else:
+            objects_iterable = self._local.bucket.objects.filter(Prefix=prefix)
+
+        for object_summary in objects_iterable:
+            if include_size:
+                yield object_summary.key, object_summary.size
+            else:
+                yield object_summary.key

@@ -1150,6 +1150,13 @@ class Benji(ReprMixIn):
 
         return sorted(dismissed_versions)
 
+    def storage_stats(self, storage_name: str = None) -> Tuple[int, int]:
+        if storage_name is not None:
+            storage = StorageFactory.get_by_name(storage_name)
+        else:
+            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
+        return storage.storage_stats()
+
 
 class _BlockCache:
 

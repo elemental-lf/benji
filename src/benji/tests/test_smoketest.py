@@ -200,6 +200,13 @@ class SmokeTestCase(BenjiTestCaseBase):
             self.assertTrue(self.same(image_filename, restore_filename_sparse))
             logger.debug('Sparse restore successful')
 
+            benji_obj = self.benjiOpen()
+            objects_count, objects_size = benji_obj.storage_stats(storage_name)
+            benji_obj.close()
+            self.assertGreater(objects_count, 0)
+            self.assertGreater(objects_size, 0)
+            logger.debug(f'Storage stats: {objects_count} objects using {objects_size} bytes.')
+
             base_version_uid = version_uid
 
             # delete old versions

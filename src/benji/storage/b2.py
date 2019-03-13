@@ -3,7 +3,7 @@
 import logging
 import random
 import time
-from typing import List, Any
+from typing import Any, Union, Iterable, Tuple
 
 import b2
 import b2.api
@@ -157,8 +157,11 @@ class Storage(ReadCacheStorageBase):
     #             errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str) -> List[str]:
-        return [
-            file_version_info.file_name
-            for (file_version_info, folder_name) in self.bucket.ls(folder_to_list=prefix, recursive=True)
-        ]
+    def _list_objects(self, prefix: str = None,
+                      include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
+        for file_version_info, folder_name in self.bucket.ls(
+                folder_to_list=prefix if prefix is not None else '', recursive=True):
+            if include_size:
+                yield file_version_info.file_name, file_version_info.size
+            else:
+                yield file_version_info.file_name

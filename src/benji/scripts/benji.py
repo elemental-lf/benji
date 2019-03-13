@@ -567,6 +567,39 @@ class Commands:
             }
             print(json.dumps(versions, indent=4))
 
+    @classmethod
+    def _ls_storage_stats_table_output(cls, objects_count: int, objects_size: int) -> None:
+        tbl = PrettyTable()
+        tbl.field_names = [
+            'objects_count',
+            'objects_size',
+        ]
+        tbl.align['objects_count'] = 'r'
+        tbl.align['objects_size'] = 'r'
+        row = [
+            objects_count,
+            PrettyPrint.bytes(objects_size),
+        ]
+        tbl.add_row(row)
+        print(tbl)
+
+    def storage_stats(self, storage_name: str = None) -> None:
+        benji_obj = None
+        try:
+            benji_obj = Benji(self.config)
+            objects_count, objects_size = benji_obj.storage_stats(storage_name)
+
+            if self.machine_output:
+                benji_obj.export_any({
+                    'objects_count': objects_count,
+                    'objects_size': objects_size,
+                }, sys.stdout)
+            else:
+                self._ls_storage_stats_table_output(objects_count, objects_size)
+        finally:
+            if benji_obj:
+                benji_obj.close()
+
 
 def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
     if arg is None:
@@ -796,6 +829,11 @@ def main():
         type=partial(integer_range, 1, None),
         help='Limit output to this number of entries')
     p.set_defaults(func='stats')
+
+    # STORAGE-STATS
+    p = subparsers_root.add_parser('storage-stats', help='Show storage statistics')
+    p.add_argument('storage_name', nargs='?', default=None, help='Storage')
+    p.set_defaults(func='storage_stats')
 
     # VERSION-INFO
     p = subparsers_root.add_parser('version-info', help='Program version information')

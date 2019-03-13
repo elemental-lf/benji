@@ -7,7 +7,7 @@ import os
 import threading
 import time
 from abc import ABCMeta, abstractmethod
-from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, Iterator
+from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, Iterator, Iterable
 
 import semantic_version
 from diskcache import FanoutCache
@@ -338,31 +338,29 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     #     self._rm_many_objects(metadata_keys)
     #     return [cast(BlockUid, BlockUid.storage_path_to_object(error)) for error in errors]
 
-    def list_blocks(self) -> List[BlockUid]:
+    def list_blocks(self) -> Iterable[BlockUid]:
         keys = self._list_objects(BlockUid.storage_prefix())
-        block_uids: List[BlockUid] = []
         for key in keys:
+            assert isinstance(key, str)
             if key.endswith(self._META_SUFFIX):
                 continue
             try:
-                block_uids.append(cast(BlockUid, BlockUid.storage_path_to_object(key)))
+                yield cast(BlockUid, BlockUid.storage_path_to_object(key))
             except (RuntimeError, ValueError):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
-        return block_uids
 
-    def list_versions(self) -> List[VersionUid]:
+    def list_versions(self) -> Iterable[VersionUid]:
         keys = self._list_objects(VersionUid.storage_prefix())
-        version_uids: List[VersionUid] = []
         for key in keys:
+            assert isinstance(key, str)
             if key.endswith(self._META_SUFFIX):
                 continue
             try:
-                version_uids.append(cast(VersionUid, VersionUid.storage_path_to_object(key)))
+                yield cast(VersionUid, VersionUid.storage_path_to_object(key))
             except (RuntimeError, ValueError):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
-        return version_uids
 
     def read_version(self, version_uid: VersionUid) -> str:
         key = version_uid.storage_object_to_path()
@@ -425,6 +423,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
 
+    def storage_stats(self) -> Tuple[int, int]:
+        objects_count = 0
+        objects_size = 0
+        for key, size in cast(Iterable[Tuple[str, int]], self._list_objects(include_size=True)):
+            objects_count += 1
+            objects_size += size
+        return objects_count, objects_size
+
     def _encapsulate(self, data: bytes) -> Tuple[bytes, List]:
         if self._active_transforms is not None:
             transforms_metadata = []
@@ -484,7 +490,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def _list_objects(self, prefix: str) -> List[str]:
+    def _list_objects(self, prefix: str = None,
+                      include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
         raise NotImplementedError
 
 

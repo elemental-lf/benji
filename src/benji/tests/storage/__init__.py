@@ -12,7 +12,7 @@ class StorageTestCase(StorageTestCaseBase):
         NUM_BLOBS = 15
         BLOB_SIZE = 4096
 
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(0, len(saved_uids))
 
         blocks = [
@@ -25,7 +25,7 @@ class StorageTestCase(StorageTestCaseBase):
             self.storage.write_block(block, data)
             data_by_uid[block.uid] = data
 
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(NUM_BLOBS, len(saved_uids))
 
         uids_set = set([block.uid for block in blocks])
@@ -40,14 +40,14 @@ class StorageTestCase(StorageTestCaseBase):
 
         for block in blocks:
             self.storage.rm_block(block.uid)
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(0, len(saved_uids))
 
     def test_write_rm_async(self):
         NUM_BLOBS = 15
         BLOB_SIZE = 4096
 
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(0, len(saved_uids))
 
         blocks = [
@@ -65,7 +65,7 @@ class StorageTestCase(StorageTestCaseBase):
         for _ in self.storage.write_get_completed(timeout=1):
             pass
 
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(NUM_BLOBS, len(saved_uids))
 
         uids_set = set([block.uid for block in blocks])
@@ -87,7 +87,7 @@ class StorageTestCase(StorageTestCaseBase):
 
         self.storage.wait_rms_finished()
 
-        saved_uids = self.storage.list_blocks()
+        saved_uids = list(self.storage.list_blocks())
         self.assertEqual(0, len(saved_uids))
 
     def test_not_exists(self):
@@ -123,9 +123,34 @@ class StorageTestCase(StorageTestCaseBase):
         self.storage.write_version(version_uid, 'Hallo')
         data = self.storage.read_version(version_uid)
         self.assertEqual('Hallo', data)
-        version_uids = self.storage.list_versions()
+        version_uids = list(self.storage.list_versions())
         self.assertTrue(len(version_uids) == 1)
         self.assertEqual(version_uid, version_uids[0])
         self.storage.rm_version(version_uid)
-        version_uids = self.storage.list_versions()
+        version_uids = list(self.storage.list_versions())
         self.assertTrue(len(version_uids) == 0)
+
+    def test_storage_stats(self):
+        NUM_BLOBS = 15
+        BLOB_SIZE = 4096
+
+        saved_uids = list(self.storage.list_blocks())
+        self.assertEqual(0, len(saved_uids))
+
+        blocks = [
+            Block(uid=BlockUid(i + 1, i + 100), size=BLOB_SIZE, checksum='0000000000000000') for i in range(NUM_BLOBS)
+        ]
+        for block in blocks:
+            data = self.random_bytes(BLOB_SIZE)
+            self.assertEqual(BLOB_SIZE, len(data))
+            self.storage.write_block(block, data)
+
+        objects_count, objects_size = self.storage.storage_stats()
+
+        logger.debug(f'Storage stats: {objects_count} objects using {objects_size} bytes.')
+
+        self.assertEqual(NUM_BLOBS * 2, objects_count)  # Also counts the metadata objects
+        self.assertGreater(objects_size, 0)
+
+        for block in blocks:
+            self.storage.rm_block(block.uid)

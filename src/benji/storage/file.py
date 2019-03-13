@@ -2,7 +2,8 @@
 # -*- encoding: utf-8 -*-
 
 import os
-from typing import List
+from os.path import getsize
+from typing import Union, Iterable, Tuple
 
 from benji.config import Config, ConfigDict
 from benji.storage.base import StorageBase
@@ -73,10 +74,13 @@ class Storage(StorageBase):
     #             errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str) -> List[str]:
-        matches = []
-        for root, dirnames, filenames in os.walk(os.path.join(self.path, prefix)):
+    def _list_objects(self, prefix: str = None,
+                      include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
+        for root, dirnames, filenames in os.walk(os.path.join(self.path, prefix) if prefix is not None else self.path):
             for filename in filenames:
                 key = (os.path.join(root, filename))[len(self.path):]
-                matches.append(key)
-        return matches
+                if include_size:
+                    size = getsize(os.path.join(root, filename))
+                    yield key, size
+                else:
+                    yield key

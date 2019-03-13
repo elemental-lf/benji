@@ -70,7 +70,7 @@ class StorageTestCaseBase(TestCaseBase):
             self.storage.rm_version(version_uid)
 
     def tearDown(self):
-        uids = self.storage.list_blocks()
+        uids = list(self.storage.list_blocks())
         self.assertEqual(0, len(uids))
         StorageFactory.close()
         super().tearDown()
