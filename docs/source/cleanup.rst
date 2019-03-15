@@ -3,8 +3,7 @@
 Cleanup
 =======
 
-In order to remove of old backup versions, Benji uses a two step garbage
-collection algorithm.
+In order to remove of old backup versions, Benji uses a two step process.
 
 Removing old versions
 ---------------------
@@ -20,24 +19,21 @@ Example::
         INFO: Removed version V0000000001 metadata from backend storage.
         INFO: Removed backup version V0000000001 with 10 blocks.
 
-There is a config option called ``disallowRemoveWhenYounger`` which
-defaults to 6. If you request the removal of a backup version that is younger
-than this value, Benji exists with an error::
+Versions can only be removed if they are older than the number of days configured with the ``disallowRemoveWhenYounger``
+option::
 
     $ benji rm V1
            INFO: $ benji rm V1
           ERROR: Version V0000000001 is too young. Will not delete.
 
-You can force the removal of a version by using ``--force``.
+It is possible to force the removal of a version by using ``--force``.
 
-``benji rm`` removes the version metadata and corresponding blocks from the
-database backend. It also adds the removed block entries into a deletion
-candidate list. By default it also removes the backup of the metadata on
-the storage. If you want to keep this data, you can use the ``-k``
-or ``--keep-backend-metadata`` option.
+``benji rm`` removes the version's metadata and corresponding block list from the database. It also adds the removed
+block entries into a deletion candidate list. By default it also removes the backup of the version's metadata on
+the storage. If you want to keep this data, you can use the ``-k`` or ``--keep-metadata-backup`` option.
 
-In order to really delete blocks from the storage, you'll need ``benji
-cleanup``.
+``benji rm`` only affects the database. To actually delete unused blocks on the storages a ``benji cleanup`` is
+required.
 
 Cleanup
 -------
@@ -48,33 +44,10 @@ so-called *fast-cleanup*.
 
 .. command-output:: benji cleanup --help
 
-Fast Cleanup
-~~~~~~~~~~~~
-
 ``benji cleanup`` will go through the list of deletion candidates and check if
 there are blocks which aren't referenced from any other version anymore.
 
-These blocks are then deleted from the storage. The still-in-use blocks
-are removed from the list of candidates.
-
-In order to provide parallelism (i.e. multiple Benji processes at the same
-time), Benji needs to prevent race-conditions between removing a block
-completely and referencing this block from another version. That is why
-a cleanup will only remove data blocks once they're on the list of
-deletion condidates for more than one hour.
-
-.. _full_cleanup:
-
-Full Cleanup
-~~~~~~~~~~~~
-
-There are times (e.g. when your database is corrupted or when you create a new
-database based on export/import) when Benji does not know if the blocks in the
-storage are all known by the metadata store.
-
-Then the ``-full`` option of cleanup comes into play. With this option, Benji will
-read all block UIDs from the backend storage (which can take *very* long) and
-compare it to the list of known block UIDs in the database backend
-
-Blocks unknown to the database backend are then deleted from the storage.
-
+These blocks are then deleted from the storage. The still-in-use blocks are removed from the list of candidates.
+Due to fact that Benji needs to prevent a race-conditions between removing a block completely and referencing this
+block from another version ``benji cleanup`` will only remove data blocks once they're on the list of deletion
+candidates for more than one hour.

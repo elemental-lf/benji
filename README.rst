@@ -32,8 +32,9 @@ Status
 ------
 
 Benji is currently somewhere between alpha and beta quality I think. It passes all
-included tests. The documentation isn't completely up-to-date, especially in regard
-to the new unified filter syntax.
+included tests. The documentation isn't completely up-to-date. Please open an
+issue on GitHub if you have a usage question that is not or incorrectly covered
+by the documentation.
 
 Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
