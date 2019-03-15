@@ -50,7 +50,8 @@ the changes into the ``benji-k8s`` image without too much fuss.
 
 **The current master branch is not compatible with the old master branch of 10/05/2018
 and earlier and there is no migration path. The last commit supporting the old data
-structures is available under the tag master-20181005 if you need it.**
+structures and configuration file format is available under the tag master-20181005
+if you need it.**
 
 Main Features
 -------------

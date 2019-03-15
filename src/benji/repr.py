@@ -9,8 +9,7 @@ import io
 from inspect import getmro
 from typing import List, Set, Any
 
-from sqlalchemy import inspect
-from sqlalchemy.ext.declarative import DeclarativeMeta
+import sqlalchemy
 from reprlib import Repr as _Repr
 
 
@@ -19,7 +18,7 @@ class Repr(_Repr):
     def repr1(self, obj, level: int) -> str:
         if level <= 0:
             return '<...>'
-        elif isinstance(obj.__class__, DeclarativeMeta):
+        elif isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
             return self.repr_Base(obj, level)
         # Test if this is an object from one of our own modules
         elif hasattr(obj, '__module__') and obj.__module__.startswith(self.__module__.split('.')[0] + '.'):
@@ -46,7 +45,7 @@ class Repr(_Repr):
         attr_name, attr_value = obj
         if hasattr(attr_value, 'isoformat'):
             return '%s=%r' % (attr_name, attr_value.isoformat())
-        elif isinstance(obj.__class__, DeclarativeMeta):
+        elif isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
             return self.repr_Base(obj, level)
         else:
             return '%s=%s' % (attr_name, self.repr1(attr_value, level - 1))
@@ -59,7 +58,7 @@ class Repr(_Repr):
 
     @staticmethod
     def _iter_attrs(obj, sort_first: List[str] = []):
-        attr_names = sorted(inspect(obj.__class__).columns.keys())
+        attr_names = sorted(sqlalchemy.inspect(obj.__class__).columns.keys())
         for attr_name in reversed(sort_first):
             if attr_name in attr_names:
                 attr_names.remove(attr_name)

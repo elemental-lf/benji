@@ -26,12 +26,6 @@ from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 from benji.versions import VERSIONS
 
 
-class _ExceptionMapping(NamedTuple):
-    exception: Type[BaseException]
-    message: str
-    exit_code: int
-
-
 class Commands:
     """Proxy between CLI calls and actual backup code."""
 
@@ -885,25 +879,27 @@ def main():
     del func_args['no_color']
 
     # From most specific to least specific
+    class _ExceptionMapping(NamedTuple):
+        exception: Type[BaseException]
+        exit_code: int
+
     exception_mappings = [
-        _ExceptionMapping(exception=benji.exception.UsageError, message='Usage error', exit_code=os.EX_USAGE),
-        _ExceptionMapping(
-            exception=benji.exception.AlreadyLocked, message='Already locked error', exit_code=os.EX_NOPERM),
-        _ExceptionMapping(exception=benji.exception.InternalError, message='Internal error', exit_code=os.EX_SOFTWARE),
-        _ExceptionMapping(
-            exception=benji.exception.ConfigurationError, message='Configuration error', exit_code=os.EX_CONFIG),
-        _ExceptionMapping(
-            exception=benji.exception.InputDataError, message='Input data error', exit_code=os.EX_DATAERR),
-        _ExceptionMapping(exception=benji.exception.ScrubbingError, message='Scrubbing error', exit_code=os.EX_DATAERR),
-        _ExceptionMapping(exception=PermissionError, message='Already locked error', exit_code=os.EX_NOPERM),
-        _ExceptionMapping(exception=FileExistsError, message='Already exists', exit_code=os.EX_CANTCREAT),
-        _ExceptionMapping(exception=FileNotFoundError, message='Not found', exit_code=os.EX_NOINPUT),
-        _ExceptionMapping(exception=EOFError, message='I/O error', exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=IOError, message='I/O error', exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=OSError, message='Not found', exit_code=os.EX_OSERR),
-        _ExceptionMapping(exception=ConnectionError, message='I/O error', exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=LookupError, message='Not found', exit_code=os.EX_NOINPUT),
-        _ExceptionMapping(exception=BaseException, message='Other exception', exit_code=os.EX_SOFTWARE),
+        _ExceptionMapping(exception=benji.exception.UsageError, exit_code=os.EX_USAGE),
+        _ExceptionMapping(exception=benji.exception.AlreadyLocked, exit_code=os.EX_NOPERM),
+        _ExceptionMapping(exception=benji.exception.InternalError, exit_code=os.EX_SOFTWARE),
+        _ExceptionMapping(exception=benji.exception.ConfigurationError, exit_code=os.EX_CONFIG),
+        _ExceptionMapping(exception=benji.exception.InputDataError, exit_code=os.EX_DATAERR),
+        _ExceptionMapping(exception=benji.exception.ScrubbingError, exit_code=os.EX_DATAERR),
+        _ExceptionMapping(exception=PermissionError, exit_code=os.EX_NOPERM),
+        _ExceptionMapping(exception=FileExistsError, exit_code=os.EX_CANTCREAT),
+        _ExceptionMapping(exception=FileNotFoundError, exit_code=os.EX_NOINPUT),
+        _ExceptionMapping(exception=EOFError, exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=IOError, exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=OSError, exit_code=os.EX_OSERR),
+        _ExceptionMapping(exception=ConnectionError, exit_code=os.EX_IOERR),
+        _ExceptionMapping(exception=LookupError, exit_code=os.EX_NOINPUT),
+        _ExceptionMapping(exception=KeyboardInterrupt, exit_code=os.EX_NOINPUT),
+        _ExceptionMapping(exception=BaseException, exit_code=os.EX_SOFTWARE),
     ]
 
     try:
@@ -915,8 +911,13 @@ def main():
     except BaseException as exception:
         for case in exception_mappings:
             if isinstance(exception, case.exception):
-                logger.debug(case.message, exc_info=True)
-                logger.error(str(exception))
+                message = str(exception)
+                if message:
+                    message = 'An exception of type {} occurred: {}'.format(exception.__class__.__name__, message)
+                else:
+                    message = 'An exception of type {} occurred.'.format(exception.__class__.__name__)
+                logger.debug(message, exc_info=True)
+                logger.error(message)
                 exit(case.exit_code)
 
 
