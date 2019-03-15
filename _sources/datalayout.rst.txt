@@ -35,11 +35,10 @@ All timestamps in the database are in UTC.
 
 .. todo:: Document all tables
 
-Object Storages
----------------
+Block Storages
+--------------
 
-The object storage backend is pluggable and there are currently three different
-implementations from which you can choose:
+The block storage backends are pluggable and there are currently three different implementations:
 
 - file: File based storage
 - s3: S3 compatible storage like AWS S3, Google Storage, Ceph's RADOS Gateway

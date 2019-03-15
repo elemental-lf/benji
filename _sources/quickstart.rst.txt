@@ -4,25 +4,26 @@
 Quick Start
 ===========
 
-This guide will show you how to do a *backup* - *scrub* - *restore* - *cleanup*
-cycle.
+This guide will show you how to do a *backup* - *scrub* - *restore* - *cleanup* cycle.
 
 Some Vocabulary
 ---------------
 
 Backup source
-    A block device or image file to be backed up. Benji can't backup folders
-    or multiple files. The source must not be modified during backup, so either
-    stop all writes or create a snapshot.
+    A block device or image file to be backed up. Benji can't backup folders or multiple files. The source should not
+    be modified during backup, so it is best to either stop all writes or to create a snapshot.
 
 Storages
-    One or more data storage (currently supported: filesystem, S3 and B2) to which the
+    One or more data storages (currently supported: filesystem, S3 and B2) to which the
     backed up data will be saved.
 
 Database backend
     An SQL database containing information on how to reassemble the stored blocks
     to get the original data back.
-    For restores the database backend is not compulsory. See :ref:`metadata_backend_less`.
+    For restores the database backend is not compulsory. See :ref:`database_less_restore`.
+
+.. CAUTION:: Benji has been tested successfully with PostgreSQL and SQLite3. While support for MySQL and MariaDB
+    has been kept in mind during development, it is untested- Reports are welcome.
 
 Version
     A *version* is a backup of a specific backup source at a specific point in time.
@@ -58,7 +59,7 @@ Please see :ref:`configuration` for a full list of configuration options.
 
 1. Initialize the database::
 
-    $ benji init
+    $ benji database-init
         INFO: $ benji database-init
 
    .. NOTE:: Initializing the database multiple times does **not** destroy any
@@ -256,38 +257,26 @@ However, instead of changing this option, you can simply use ``--force``::
         INFO: Removed version V0000000001 metadata from backend storage.
         INFO: Removed backup version V0000000001 with 10 blocks.
 
-Benji stores each block in the backup target (i.e. filesystem, S3, etc.) once.
-If it encounters another block on the backup source with the same checksum [1]_,
-it will only write metadata which refers to the same backup target block. So if
-a version is deleted, Benji needs to check if there aren't any other references
-to any of the blocks referenced by this version. This may be resource intensive
-but may also introduce race conditions due to other backup sessions running
-in parallel. This is why there is a separate command to cleanup unreferenced
-blocks::
+Benji stores each distinct block (identified by its checksum and size) only once. If it encounters another block on
+the backup source with the same checksum [1]_, it will only write metadata which refers to the same backup target block.
+So if a *version* is deleted, Benji needs to check if there aren't any other references to the blocks referenced
+by this *version*. This may be resource intensive but also introduces race conditions due to other backup sessions
+running in parallel. This is why there is a separate command to cleanup unreferenced blocks::
 
     $ benji cleanup
         INFO: $ benji cleanup
-        INFO: Cleanup-fast: Cleanup finished. 0 false positives, 0 data deletions.
+        INFO: Cleanup: Cleanup finished. 0 false positives, 0 data deletions.
 
-As you can see, nothing has been deleted. The reason for this is that only
-blocks  which have been on the candidate list for a certain time (1h) are considered
-for deletion to prevent race conditions. If we would have waited on hour after
-removing the version, we'd get a slightly different output which indicated that
-ten blocks have been permanently deleted::
+As you can see, nothing has been deleted. The reason for this is that only blocks  which have been on the candidate list
+for a certain time (1h) are considered for deletion to prevent race conditions. If we would have waited on hour after
+removing the version, we'd get a slightly different output which indicated that ten blocks have been permanently
+deleted::
 
     $ benji cleanup
         INFO: $ benji cleanup
-        INFO: Cleanup-fast: Cleanup finished. 0 false positives, 10 data deletions.
+        INFO: Cleanup: Cleanup finished. 0 false positives, 10 data deletions.
 
-There is also the option (``-f`` or ``--full``) to do a full cleanup which iterates
-through all the blocks in the backend storage. This should only be used when an
-inconsistency is suspected as it can take a very long time to complete.
 
-.. NOTE:: A full cleanup must run in parallel to any other Benji jobs.
-    Benji will prevent you from doing this by creating a global lock.
-
-.. CAUTION:: Parallelism has been tested successfully with PostgreSQL. It might
-    not work reliably with other DBMS.
 
 .. [1] Benji uses blake2b with a 32 byte digest size but this can be configured
     in ``benji.yaml``. blake2b is the recommended hash function as it is very

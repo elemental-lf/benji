@@ -3,133 +3,95 @@
 Administration
 ==============
 
-Benji is an important tool when it's responsible for keeping backups of your
-important data. Backups, scrubs, restores and cleanups must run smoothly and
-need to be monitored closely. Also, the database backend and the collection
-of data storages need to meet your availability requirements.
+Benji is an important tool when it's responsible for keeping backups of your important data. Backups, scrubs,
+restores and cleanups must run smoothly and need to be monitored closely. Also, the database backend and the
+collection of data storages need to meet your availability requirements.
 
-.. _administration-meta-backend:
+Securing Version Metadata
+-------------------------
 
-Secure your Metadata
---------------------
+This section shows methods of how to keep version metadata safe even when disaster happens.
 
-This section shows methods of how to keep your metadata safe even when
-disasters happen.
-
-Metadata Redundancy
+Backups and Exports
 ~~~~~~~~~~~~~~~~~~~
 
-Benji already exports the version metadata to the storage, too. You
-can restore this information with ``benji metadata-restore``:
+Benji already writes a backup of a *version*'s metadata to the same storage as the block data automatically.
+This backup can be restored with ``benji metadata-restore``:
 
 .. command-output::benji metadata-restore --help
 
-The metadata-backend-less uses this import from the storage to
-populate an in-memory database to enable restores when the metadata
-backend is unavailable, please see section :ref:`metadata_backend_less`.
+The database-less restore option also uses this backup to facilitate restores even when the database is unavailable.
+Please see section :ref:`database_less_restore`.
 
-You can also make further copies of the metadata with ``benji metadata-export``
-and store them somewhere safe to increase your redundancy even more. It is
-advisable to compress them as the JSON export format is quite redundant.
+Further copies of the *version* metadata can be made with ``benji metadata-export``. These exports can be stored
+somewhere safe and later be restored with ``benji metadata-import``.
 
 .. command-output::benji metadata-export --help
 
-You can import these exports again with:
-
 .. command-output::benji metadata-import --help
 
-If the imported *version* already exists in the database backend Benji
-terminates with an error and doesn't proceed with the import.
+.. NOTE:: It is advisable to compress the exports as the  JSON export format is quite redundant.
 
-So now, even if your backup database server crashes, you'll still be able
-to reimport all existing versions again!
+.. NOTE:: A *version*'s metadata can only be imported if a *version* with the same *version* UID  does not exist
+    in the database, yet.
 
-.. ATTENTION:: When you remove (``benji rm``) versions from the database and
-    then call ``benji cleanup``, the blocks containing the backed up data will
-    be removed. No ``benji metadata-import`` can bring them back, because
-    Benji's export format *only* contains metadata information.
+.. ATTENTION:: When you remove (``benji rm``) *versions* from the database and then call ``benji cleanup``,
+    the blocks containing the backed up data will be removed from storage. No ``benji metadata-import`` can
+    bring them back, because Benji's metadata exports only contain information on how to assemble the blocks
+    and not the block data themselves.
 
 Database High-Availability
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An additional option against data loss is to replicate the SQL database. Please
-refer to the database documentation. You should also have a regular database
-backup in place.
+An additional option against data loss is to replicate the SQL database. Please refer to the database documentation.
+You should also have a regular database backup in place.
 
-.. CAUTION:: DBMS replication only helps when one server crashes or has a
-    failure. It does not help against software-bug related data loss, human
-    error and more. So the automatic metadata backup and ``benji metadata-export``
-    are the only reliable options for long-term data safety.
+.. CAUTION:: DBMS replication only helps in the case when one server crashes or has a failure. It does not help
+    against software-bug related data loss or human error. So the automatic metadata backup and
+    ``benji metadata-export`` are the only reliable options for long-term data safety.
 
-Secure your block data
-----------------------
+Securing Block Data on Storages
+-------------------------------
 
-Your storage should be redundant in some way, too. Most cloud
-providers have an SLA which guarantees a certain level of availability.
-If you manage your storage yourself, then you should look into
-redundancy and high-availability technologies like:
+It is advisable for a storage to be redundant and highly available. Most cloud providers have an SLA which
+guarantees a certain level of availability. If the storage is self-managed, look into the redundancy and
+high-availability options it provides like:
 
 - RAID 1, 5 and 6
-- Redundancy provided by a distributed objected store like Ceph or Minio
+- Redundancy options provided by distributed object stores like Ceph or Minio
 - DRBD
-- Filesystem specific data redundancy and replication mechanisms in filesystems
-  like Btrs or ZFS
+- Data redundancy and replication mechanisms in filesystems like Btrfs or ZFS
 
-If your storage fails or has corruptions, at best corrupted restores will
-be possible. Benji doesn't store any redundant data and it cannot  restore
-data from stored checksums alone.
+If a storage fails or is affected by data corruption, at best corrupted or incomplete restores are possible.
+
+Benji also supports multiple storages so a backup can be made to more then one storage, so providing a level
+of redundancy.
 
 Monitoring
 ----------
 
-Tips & tricks
-~~~~~~~~~~~~~
+General Advise
+~~~~~~~~~~~~~~
 
-You should monitor exit codes of Benji closely. Anything != 0 means that there
-was a problem.
+* If anything goes wrong Benji exists with a non-zero exit code. Make sure to catch and report this is your scripts.
 
-Benji writes all output including possible tracebacks and command lines to
-the configured logfile (see :ref:`configuration`).
-If anything goes wrong, you'll be able to visit this logfile and get
-enough information to troubleshoot the problem, even if Benji was called
-from an automated script.
+* Benji writes all output including possible stack traces and command lines to the configured logfile
+  (see :ref:`configuration`). If anything goes wrong, you'll be able to visit this logfile and hopefully get enough
+  information to troubleshoot the problem.
 
-You should also monitor the success of the backups. In addition to checking the
-exit code, you can do this with ``benji ls`` and see if the column ``valid``
-is True. For a currently running backup this column is False but it will change
-to True on successful completion of the backup.
+* Starting Benji with ``--log-level DEBUG`` will increase the log level on the console as well.
 
-You can also monitor the progress of the backups either by looking at the
-logfile or by checking your process-tree::
+* You should also monitor the status of existing backups with commands like ``benji ls 'status != "valid"'``.
+  *Versions* with a status of ``incomplete`` are normal while a backup is in progress.
 
-    $ ps axfu|grep "[b]acky2"
-    …  \_ benji [Scrubbing Version V00000001 (0.1%)]
-
-To know which backup took how long and to see how many blocks/bytes have been
-read and written, you can use the ``benji stats`` command:
-
-.. command-output:: benji stats --help
-
-Example::
-
-    $ benji stats
-        INFO: $ benji stats
-    +---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
-    |         date        | uid         | name | snapshot_name |   size  | block_size |    read | written |   dedup | sparse | duration (s) |
-    +---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
-    | 2018-06-13T15:21:55 | V0000000001 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB | 40.0MiB |    0.0B |   0.0B |          00s |
-    | 2018-06-13T15:21:57 | V0000000002 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-    | 2018-06-13T15:21:58 | V0000000003 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-    | 2018-06-13T15:21:59 | V0000000004 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-    +---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
+* Benji also changes to process name to indicate what it is currently doing.
 
 .. _machine_output:
 
 Machine output
 ~~~~~~~~~~~~~~
 
-Some commands can also produce machine readable JSON output for usage in
-scripts::
+Some commands can produce machine readable JSON output for usage in scripts::
 
     $ benji -m ls
     {
@@ -151,20 +113,14 @@ scripts::
 
 .. NOTE:: Take care to put the ``-m`` between ``benji`` and ``ls``.
 
-All messages emitted by Benji are written to STDERR. In contrast
-the machine readable output is written to STDOUT. Also, when using ``-m`` the
-logging level is adjusted to only output errors. The Benji logfile still gets
-the whole output.
+All messages emitted by Benji are written to STDERR. In contrast the machine readable output is written to STDOUT.
 
-Here's a table of commands supporting machine readable output and their
-output:
+Here's a table of commands supporting machine readable output and their output:
 
 +------------------+-----------------------------------------------------------+
 | Command          | Description of output                                     |
 +==================+===========================================================+
 | ls               | List of matching *versions*                               |
-+------------------+-----------------------------------------------------------+
-| stats            | List of matching statistics                               |
 +------------------+-----------------------------------------------------------+
 | backup           | List of newly create *version*                            |
 +------------------+-----------------------------------------------------------+
@@ -179,27 +135,8 @@ output:
 | batch-deep-scrub | List of scrubbed *versions* and of *versions* with errors |
 +------------------+-----------------------------------------------------------+
 
-All other commands also accept the ``-m`` switch. But for them only the logging
-level is turned down.
-
-`jq <https://stedolan.github.io/jq/>`_ is an excellent tool for parsing this data
-and filtering out the bits you want. Here's a short example, but see the ``scripts/``
-and ``images/benji-rook/scripts/`` directories for more::
+`jq <https://stedolan.github.io/jq/>`_ is an excellent tool for parsing this data and filtering out the bits you want.
+Here's a short example, but see the ``scripts/`` and ``images/benji-k8s/scripts/`` directories for more::
 
     $ benji -m ls | jq -r '.versions[0].date'
     2018-06-07T12:51:19
-
-With machine readable output you can use the option ``--include-blocks``
-to ``ls`` which includes all blocks of this version in the output.
-
-Version UIDs will be represented as simple integers without the V prefix
-and being zero-filled. All Benji commands are able to take this
-representation as well, so you can use such UIDs in further commands as-is.
-
-All timestamps are in UTC and without timezone information.
-
-Debugging
-~~~~~~~~~
-
-In case something goes wrong, you can use the ``-v`` switch to increase the
-logging verbosity. This outputs much more information.

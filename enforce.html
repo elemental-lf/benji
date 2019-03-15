@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Retention Policy Enforcement &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Retention Policy Enforcement &mdash; Benji Backup 0.3.1.dev14+g3c3be86 documentation</title>
   
 
   
@@ -147,7 +147,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
@@ -155,7 +155,7 @@
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Retention Policy Enforcement</a><ul>
@@ -168,21 +168,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-version-metadata">Securing Version Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#backups-and-exports">Backups and Exports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-block-data-on-storages">Securing Block Data on Storages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#general-advise">General Advise</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerized Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
@@ -197,7 +196,7 @@
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#block-storages">Block Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -291,22 +290,20 @@ optional arguments:
                         Label to find related versions to remove
 </pre></div>
 </div>
-<p>Benji supports a simple but flexible mechanism for retention policy enforcement.
-Enforcement is done per <em>version</em> name, i.e. a specific policy is applied to all
-<em>versions</em> with the same name. Enforcement is not automatic and has to be
-initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> for each <em>version</em> name. This is normally done
-as part of a script for example right after creating a new <em>version</em> with
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> or as a separate cronjob.</p>
-<p>This Benji command is just for policy enforcement (i.e. thinning out <em>versions</em> by
-removal over time). You have to adjust your schedule to match your policy. If you
-want to keep hourly backups for the last 72 hours (hours72) you have to create
-a new <em>version</em> at least every hour for example.</p>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>).
-All removed versions are listed and could be aggregated into a report for example.</p>
+<p>Benji supports a simple but flexible mechanism for retention policy enforcement. Enforcement is done per <em>version</em> name,
+i.e. a specific policy is applied to all <em>versions</em> with the same name. Enforcement is not automatic and has to be
+initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code>.</p>
+<p>This Benji command is just for policy enforcement (i.e. thinning out <em>versions</em> by removal over time). You have to adjust
+your schedule to match your policy. For example, if you want to keep hourly backups for the last 72 hours (hours72)
+you have to create a new <em>version</em> at least every hour.</p>
+<p>Filter expressions (see section <a class="reference internal" href="filter_expressions.html#filter-expressions"><span class="std std-ref">Filter Expressions</span></a>) are used to select the <em>versions</em> the specified policy
+is applied to.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>). All removed versions are listed
+and could be aggregated into a report for example.</p>
 <div class="admonition attention">
 <p class="first admonition-title">Attention</p>
-<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy.
-To exclude versions from enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
+<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy. To exclude versions from
+enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
 </div>
 <div class="section" id="policy-specification">
 <h2>Policy Specification<a class="headerlink" href="#policy-specification" title="Permalink to this headline">¶</a></h2>
@@ -346,16 +343,13 @@ allowed.</p>
 </ul>
 </li>
 </ul>
-<p>Even when you specify the time categories in a different order, they are always
-considered from youngest to oldest (see the second example).</p>
-<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version
-currently falls into a specified category the oldest version of the category
-below it is always kept, so that it has a chance to get old enough. So if in
-the third example there is one version which is older than 24 hours but younger
-than one year it will be kept till it is old enough even though it falls out
-of the first specified category.</p>
-<p>If there is overlap between two categories the younger category always takes
-precedence.</p>
+<p>Even when you specify the time categories in a different order, they are always considered from youngest to oldest
+(see the second example).</p>
+<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version currently falls into a specified category
+the oldest version of the category below it is always kept, so that it has a chance to get old enough. So if in the
+third example there is one version which is older than 24 hours but younger than one year it will be kept till it is
+old enough even though it falls out of the first specified category.</p>
+<p>If there is overlap between two categories the younger category always takes precedence.</p>
 </div>
 </div>
 

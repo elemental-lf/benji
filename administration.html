@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Administration &mdash; Benji Backup 0.3.1.dev14+g3c3be86 documentation</title>
   
 
   
@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Containerised Benji" href="container.html" />
+    <link rel="next" title="Containerized Benji" href="container.html" />
     <link rel="prev" title="Cleanup" href="cleanup.html" /> 
 
   
@@ -147,7 +147,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
@@ -155,7 +155,7 @@
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
@@ -168,21 +168,20 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Administration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#secure-your-metadata">Secure your Metadata</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#securing-version-metadata">Securing Version Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#backups-and-exports">Backups and Exports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#database-high-availability">Database High-Availability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#securing-block-data-on-storages">Securing Block Data on Storages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#monitoring">Monitoring</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#general-advise">General Advise</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#machine-output">Machine output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#debugging">Debugging</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerized Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
@@ -197,7 +196,7 @@
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#block-storages">Block Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -274,121 +273,82 @@
             
   <div class="section" id="administration">
 <span id="id1"></span><h1>Administration<a class="headerlink" href="#administration" title="Permalink to this headline">¶</a></h1>
-<p>Benji is an important tool when it’s responsible for keeping backups of your
-important data. Backups, scrubs, restores and cleanups must run smoothly and
-need to be monitored closely. Also, the database backend and the collection
-of data storages need to meet your availability requirements.</p>
-<div class="section" id="secure-your-metadata">
-<span id="administration-meta-backend"></span><h2>Secure your Metadata<a class="headerlink" href="#secure-your-metadata" title="Permalink to this headline">¶</a></h2>
-<p>This section shows methods of how to keep your metadata safe even when
-disasters happen.</p>
-<div class="section" id="metadata-redundancy">
-<h3>Metadata Redundancy<a class="headerlink" href="#metadata-redundancy" title="Permalink to this headline">¶</a></h3>
-<p>Benji already exports the version metadata to the storage, too. You
-can restore this information with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>:</p>
-<p>The metadata-backend-less uses this import from the storage to
-populate an in-memory database to enable restores when the metadata
-backend is unavailable, please see section <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</p>
-<p>You can also make further copies of the metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>
-and store them somewhere safe to increase your redundancy even more. It is
-advisable to compress them as the JSON export format is quite redundant.</p>
-<p>You can import these exports again with:</p>
-<p>If the imported <em>version</em> already exists in the database backend Benji
-terminates with an error and doesn’t proceed with the import.</p>
-<p>So now, even if your backup database server crashes, you’ll still be able
-to reimport all existing versions again!</p>
+<p>Benji is an important tool when it’s responsible for keeping backups of your important data. Backups, scrubs,
+restores and cleanups must run smoothly and need to be monitored closely. Also, the database backend and the
+collection of data storages need to meet your availability requirements.</p>
+<div class="section" id="securing-version-metadata">
+<h2>Securing Version Metadata<a class="headerlink" href="#securing-version-metadata" title="Permalink to this headline">¶</a></h2>
+<p>This section shows methods of how to keep version metadata safe even when disaster happens.</p>
+<div class="section" id="backups-and-exports">
+<h3>Backups and Exports<a class="headerlink" href="#backups-and-exports" title="Permalink to this headline">¶</a></h3>
+<p>Benji already writes a backup of a <em>version</em>’s metadata to the same storage as the block data automatically.
+This backup can be restored with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>:</p>
+<p>The database-less restore option also uses this backup to facilitate restores even when the database is unavailable.
+Please see section <a class="reference internal" href="restore.html#database-less-restore"><span class="std std-ref">Restoring without a database</span></a>.</p>
+<p>Further copies of the <em>version</em> metadata can be made with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>. These exports can be stored
+somewhere safe and later be restored with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is advisable to compress the exports as the  JSON export format is quite redundant.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A <em>version</em>’s metadata can only be imported if a <em>version</em> with the same <em>version</em> UID  does not exist
+in the database, yet.</p>
+</div>
 <div class="admonition attention">
 <p class="first admonition-title">Attention</p>
-<p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) versions from the database and
-then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>, the blocks containing the backed up data will
-be removed. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code> can bring them back, because
-Benji’s export format <em>only</em> contains metadata information.</p>
+<p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) <em>versions</em> from the database and then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>,
+the blocks containing the backed up data will be removed from storage. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code> can
+bring them back, because Benji’s metadata exports only contain information on how to assemble the blocks
+and not the block data themselves.</p>
 </div>
 </div>
 <div class="section" id="database-high-availability">
 <h3>Database High-Availability<a class="headerlink" href="#database-high-availability" title="Permalink to this headline">¶</a></h3>
-<p>An additional option against data loss is to replicate the SQL database. Please
-refer to the database documentation. You should also have a regular database
-backup in place.</p>
+<p>An additional option against data loss is to replicate the SQL database. Please refer to the database documentation.
+You should also have a regular database backup in place.</p>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
-<p class="last">DBMS replication only helps when one server crashes or has a
-failure. It does not help against software-bug related data loss, human
-error and more. So the automatic metadata backup and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>
-are the only reliable options for long-term data safety.</p>
+<p class="last">DBMS replication only helps in the case when one server crashes or has a failure. It does not help
+against software-bug related data loss or human error. So the automatic metadata backup and
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code> are the only reliable options for long-term data safety.</p>
 </div>
 </div>
 </div>
-<div class="section" id="secure-your-block-data">
-<h2>Secure your block data<a class="headerlink" href="#secure-your-block-data" title="Permalink to this headline">¶</a></h2>
-<p>Your storage should be redundant in some way, too. Most cloud
-providers have an SLA which guarantees a certain level of availability.
-If you manage your storage yourself, then you should look into
-redundancy and high-availability technologies like:</p>
+<div class="section" id="securing-block-data-on-storages">
+<h2>Securing Block Data on Storages<a class="headerlink" href="#securing-block-data-on-storages" title="Permalink to this headline">¶</a></h2>
+<p>It is advisable for a storage to be redundant and highly available. Most cloud providers have an SLA which
+guarantees a certain level of availability. If the storage is self-managed, look into the redundancy and
+high-availability options it provides like:</p>
 <ul class="simple">
 <li>RAID 1, 5 and 6</li>
-<li>Redundancy provided by a distributed objected store like Ceph or Minio</li>
+<li>Redundancy options provided by distributed object stores like Ceph or Minio</li>
 <li>DRBD</li>
-<li>Filesystem specific data redundancy and replication mechanisms in filesystems
-like Btrs or ZFS</li>
+<li>Data redundancy and replication mechanisms in filesystems like Btrfs or ZFS</li>
 </ul>
-<p>If your storage fails or has corruptions, at best corrupted restores will
-be possible. Benji doesn’t store any redundant data and it cannot  restore
-data from stored checksums alone.</p>
+<p>If a storage fails or is affected by data corruption, at best corrupted or incomplete restores are possible.</p>
+<p>Benji also supports multiple storages so a backup can be made to more then one storage, so providing a level
+of redundancy.</p>
 </div>
 <div class="section" id="monitoring">
 <h2>Monitoring<a class="headerlink" href="#monitoring" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="tips-tricks">
-<h3>Tips &amp; tricks<a class="headerlink" href="#tips-tricks" title="Permalink to this headline">¶</a></h3>
-<p>You should monitor exit codes of Benji closely. Anything != 0 means that there
-was a problem.</p>
-<p>Benji writes all output including possible tracebacks and command lines to
-the configured logfile (see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a>).
-If anything goes wrong, you’ll be able to visit this logfile and get
-enough information to troubleshoot the problem, even if Benji was called
-from an automated script.</p>
-<p>You should also monitor the success of the backups. In addition to checking the
-exit code, you can do this with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> and see if the column <code class="docutils literal notranslate"><span class="pre">valid</span></code>
-is True. For a currently running backup this column is False but it will change
-to True on successful completion of the backup.</p>
-<p>You can also monitor the progress of the backups either by looking at the
-logfile or by checking your process-tree:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ps axfu|grep &quot;[b]acky2&quot;
-…  \_ benji [Scrubbing Version V00000001 (0.1%)]
-</pre></div>
-</div>
-<p>To know which backup took how long and to see how many blocks/bytes have been
-read and written, you can use the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">stats</span></code> command:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji stats --help
-usage: benji stats [-h] [-l LIMIT] [filter_expression]
-
-positional arguments:
-  filter_expression     Statistics filter expression
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -l LIMIT, --limit LIMIT
-                        Limit output to this number of entries
-</pre></div>
-</div>
-<p>Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji stats
-    INFO: $ benji stats
-+---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
-|         date        | uid         | name | snapshot_name |   size  | block_size |    read | written |   dedup | sparse | duration (s) |
-+---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
-| 2018-06-13T15:21:55 | V0000000001 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB | 40.0MiB |    0.0B |   0.0B |          00s |
-| 2018-06-13T15:21:57 | V0000000002 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-| 2018-06-13T15:21:58 | V0000000003 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-| 2018-06-13T15:21:59 | V0000000004 | test |               | 40.0MiB |   4.0MiB   | 40.0MiB |    0.0B | 40.0MiB |   0.0B |          00s |
-+---------------------+-------------+------+---------------+---------+------------+---------+---------+---------+--------+--------------+
-</pre></div>
-</div>
+<div class="section" id="general-advise">
+<h3>General Advise<a class="headerlink" href="#general-advise" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>If anything goes wrong Benji exists with a non-zero exit code. Make sure to catch and report this is your scripts.</li>
+<li>Benji writes all output including possible stack traces and command lines to the configured logfile
+(see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a>). If anything goes wrong, you’ll be able to visit this logfile and hopefully get enough
+information to troubleshoot the problem.</li>
+<li>Starting Benji with <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">DEBUG</span></code> will increase the log level on the console as well.</li>
+<li>You should also monitor the status of existing backups with commands like <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span> <span class="pre">'status</span> <span class="pre">!=</span> <span class="pre">&quot;valid&quot;'</span></code>.
+<em>Versions</em> with a status of <code class="docutils literal notranslate"><span class="pre">incomplete</span></code> are normal while a backup is in progress.</li>
+<li>Benji also changes to process name to indicate what it is currently doing.</li>
+</ul>
 </div>
 <div class="section" id="machine-output">
 <span id="id2"></span><h3>Machine output<a class="headerlink" href="#machine-output" title="Permalink to this headline">¶</a></h3>
-<p>Some commands can also produce machine readable JSON output for usage in
-scripts:</p>
+<p>Some commands can produce machine readable JSON output for usage in scripts:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji -m ls
 {
   &quot;metadataVersion&quot;: &quot;1.0.0&quot;,
@@ -412,12 +372,8 @@ scripts:</p>
 <p class="first admonition-title">Note</p>
 <p class="last">Take care to put the <code class="docutils literal notranslate"><span class="pre">-m</span></code> between <code class="docutils literal notranslate"><span class="pre">benji</span></code> and <code class="docutils literal notranslate"><span class="pre">ls</span></code>.</p>
 </div>
-<p>All messages emitted by Benji are written to STDERR. In contrast
-the machine readable output is written to STDOUT. Also, when using <code class="docutils literal notranslate"><span class="pre">-m</span></code> the
-logging level is adjusted to only output errors. The Benji logfile still gets
-the whole output.</p>
-<p>Here’s a table of commands supporting machine readable output and their
-output:</p>
+<p>All messages emitted by Benji are written to STDERR. In contrast the machine readable output is written to STDOUT.</p>
+<p>Here’s a table of commands supporting machine readable output and their output:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="23%" />
@@ -432,49 +388,32 @@ output:</p>
 <tr class="row-even"><td>ls</td>
 <td>List of matching <em>versions</em></td>
 </tr>
-<tr class="row-odd"><td>stats</td>
-<td>List of matching statistics</td>
-</tr>
-<tr class="row-even"><td>backup</td>
+<tr class="row-odd"><td>backup</td>
 <td>List of newly create <em>version</em></td>
 </tr>
-<tr class="row-odd"><td>enforce</td>
+<tr class="row-even"><td>enforce</td>
 <td>List of removed <em>versions</em></td>
 </tr>
-<tr class="row-even"><td>scrub</td>
+<tr class="row-odd"><td>scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
-<tr class="row-odd"><td>deep-scrub</td>
+<tr class="row-even"><td>deep-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
-<tr class="row-even"><td>batch-scrub</td>
+<tr class="row-odd"><td>batch-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
-<tr class="row-odd"><td>batch-deep-scrub</td>
+<tr class="row-even"><td>batch-deep-scrub</td>
 <td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
 </tr>
 </tbody>
 </table>
-<p>All other commands also accept the <code class="docutils literal notranslate"><span class="pre">-m</span></code> switch. But for them only the logging
-level is turned down.</p>
-<p><a class="reference external" href="https://stedolan.github.io/jq/">jq</a> is an excellent tool for parsing this data
-and filtering out the bits you want. Here’s a short example, but see the <code class="docutils literal notranslate"><span class="pre">scripts/</span></code>
-and <code class="docutils literal notranslate"><span class="pre">images/benji-rook/scripts/</span></code> directories for more:</p>
+<p><a class="reference external" href="https://stedolan.github.io/jq/">jq</a> is an excellent tool for parsing this data and filtering out the bits you want.
+Here’s a short example, but see the <code class="docutils literal notranslate"><span class="pre">scripts/</span></code> and <code class="docutils literal notranslate"><span class="pre">images/benji-k8s/scripts/</span></code> directories for more:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji -m ls | jq -r &#39;.versions[0].date&#39;
 2018-06-07T12:51:19
 </pre></div>
 </div>
-<p>With machine readable output you can use the option <code class="docutils literal notranslate"><span class="pre">--include-blocks</span></code>
-to <code class="docutils literal notranslate"><span class="pre">ls</span></code> which includes all blocks of this version in the output.</p>
-<p>Version UIDs will be represented as simple integers without the V prefix
-and being zero-filled. All Benji commands are able to take this
-representation as well, so you can use such UIDs in further commands as-is.</p>
-<p>All timestamps are in UTC and without timezone information.</p>
-</div>
-<div class="section" id="debugging">
-<h3>Debugging<a class="headerlink" href="#debugging" title="Permalink to this headline">¶</a></h3>
-<p>In case something goes wrong, you can use the <code class="docutils literal notranslate"><span class="pre">-v</span></code> switch to increase the
-logging verbosity. This outputs much more information.</p>
 </div>
 </div>
 </div>
@@ -487,7 +426,7 @@ logging verbosity. This outputs much more information.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="container.html" class="btn btn-neutral float-right" title="Containerised Benji" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="container.html" class="btn btn-neutral float-right" title="Containerized Benji" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="cleanup.html" class="btn btn-neutral" title="Cleanup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

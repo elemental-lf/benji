@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Quick Start &mdash; Benji Backup 0.3.1.dev14+g3c3be86 documentation</title>
   
 
   
@@ -147,7 +147,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
@@ -155,7 +155,7 @@
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
@@ -168,21 +168,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-version-metadata">Securing Version Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#backups-and-exports">Backups and Exports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-block-data-on-storages">Securing Block Data on Storages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#general-advise">General Advise</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerized Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
@@ -197,7 +196,7 @@
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#block-storages">Block Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -274,22 +273,27 @@
             
   <div class="section" id="quick-start">
 <span id="quickstart"></span><h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
-<p>This guide will show you how to do a <em>backup</em> - <em>scrub</em> - <em>restore</em> - <em>cleanup</em>
-cycle.</p>
+<p>This guide will show you how to do a <em>backup</em> - <em>scrub</em> - <em>restore</em> - <em>cleanup</em> cycle.</p>
 <div class="section" id="some-vocabulary">
 <h2>Some Vocabulary<a class="headerlink" href="#some-vocabulary" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt>Backup source</dt>
-<dd>A block device or image file to be backed up. Benji can’t backup folders
-or multiple files. The source must not be modified during backup, so either
-stop all writes or create a snapshot.</dd>
+<dd>A block device or image file to be backed up. Benji can’t backup folders or multiple files. The source should not
+be modified during backup, so it is best to either stop all writes or to create a snapshot.</dd>
 <dt>Storages</dt>
-<dd>One or more data storage (currently supported: filesystem, S3 and B2) to which the
+<dd>One or more data storages (currently supported: filesystem, S3 and B2) to which the
 backed up data will be saved.</dd>
 <dt>Database backend</dt>
 <dd>An SQL database containing information on how to reassemble the stored blocks
 to get the original data back.
-For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#metadata-backend-less"><span class="std std-ref">With Unavailable Metadata Backend</span></a>.</dd>
+For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#database-less-restore"><span class="std std-ref">Restoring without a database</span></a>.</dd>
+</dl>
+<div class="admonition caution">
+<p class="first admonition-title">Caution</p>
+<p class="last">Benji has been tested successfully with PostgreSQL and SQLite3. While support for MySQL and MariaDB
+has been kept in mind during development, it is untested- Reports are welcome.</p>
+</div>
+<dl class="docutils">
 <dt>Version</dt>
 <dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
 A <em>version</em> is identified by a unique id.</dd>
@@ -321,7 +325,7 @@ backup sources.</p>
 <p>Please see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for a full list of configuration options.</p>
 <ol class="arabic">
 <li><p class="first">Initialize the database:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji init
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji database-init
     INFO: $ benji database-init
 </pre></div>
 </div>
@@ -528,41 +532,24 @@ section <a class="reference internal" href="restore.html#restore"><span class="s
     INFO: Removed backup version V0000000001 with <span class="m">10</span> blocks.
 </pre></div>
 </div>
-<p>Benji stores each block in the backup target (i.e. filesystem, S3, etc.) once.
-If it encounters another block on the backup source with the same checksum <a class="footnote-reference" href="#id3" id="id2">[1]</a>,
-it will only write metadata which refers to the same backup target block. So if
-a version is deleted, Benji needs to check if there aren’t any other references
-to any of the blocks referenced by this version. This may be resource intensive
-but may also introduce race conditions due to other backup sessions running
-in parallel. This is why there is a separate command to cleanup unreferenced
-blocks:</p>
+<p>Benji stores each distinct block (identified by its checksum and size) only once. If it encounters another block on
+the backup source with the same checksum <a class="footnote-reference" href="#id3" id="id2">[1]</a>, it will only write metadata which refers to the same backup target block.
+So if a <em>version</em> is deleted, Benji needs to check if there aren’t any other references to the blocks referenced
+by this <em>version</em>. This may be resource intensive but also introduces race conditions due to other backup sessions
+running in parallel. This is why there is a separate command to cleanup unreferenced blocks:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji cleanup
     INFO: $ benji cleanup
-    INFO: Cleanup-fast: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">0</span> data deletions.
+    INFO: Cleanup: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">0</span> data deletions.
 </pre></div>
 </div>
-<p>As you can see, nothing has been deleted. The reason for this is that only
-blocks  which have been on the candidate list for a certain time (1h) are considered
-for deletion to prevent race conditions. If we would have waited on hour after
-removing the version, we’d get a slightly different output which indicated that
-ten blocks have been permanently deleted:</p>
+<p>As you can see, nothing has been deleted. The reason for this is that only blocks  which have been on the candidate list
+for a certain time (1h) are considered for deletion to prevent race conditions. If we would have waited on hour after
+removing the version, we’d get a slightly different output which indicated that ten blocks have been permanently
+deleted:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji cleanup
     INFO: $ benji cleanup
-    INFO: Cleanup-fast: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">10</span> data deletions.
+    INFO: Cleanup: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">10</span> data deletions.
 </pre></div>
-</div>
-<p>There is also the option (<code class="docutils literal notranslate"><span class="pre">-f</span></code> or <code class="docutils literal notranslate"><span class="pre">--full</span></code>) to do a full cleanup which iterates
-through all the blocks in the backend storage. This should only be used when an
-inconsistency is suspected as it can take a very long time to complete.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">A full cleanup must run in parallel to any other Benji jobs.
-Benji will prevent you from doing this by creating a global lock.</p>
-</div>
-<div class="admonition caution">
-<p class="first admonition-title">Caution</p>
-<p class="last">Parallelism has been tested successfully with PostgreSQL. It might
-not work reliably with other DBMS.</p>
 </div>
 <table class="docutils footnote" frame="void" id="id3" rules="none">
 <colgroup><col class="label" /><col /></colgroup>

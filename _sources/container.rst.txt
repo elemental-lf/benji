@@ -1,7 +1,7 @@
 .. include:: global.rst.inc
 .. _container:
 
-Containerised Benji
+Containerized Benji
 ===================
 
 Images

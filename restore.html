@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Restore &mdash; Benji Backup 0.3.1.dev14+g3c3be86 documentation</title>
   
 
   
@@ -147,7 +147,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#full-restore">Full Restore</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#nbd-server">NBD Server</a><ul>
@@ -155,7 +155,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
@@ -168,21 +168,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-version-metadata">Securing Version Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#backups-and-exports">Backups and Exports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-block-data-on-storages">Securing Block Data on Storages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#general-advise">General Advise</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerized Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
@@ -197,7 +196,7 @@
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#block-storages">Block Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -292,80 +291,48 @@ optional arguments:
 <p>There are two possible restore options with Benji.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">If you determined which <em>version</em> you want to restore it is a
-good idea to protect this <em>version</em> to prevent any accidental
-or automatic removal by any retention policy enforcement that you
-might have configure.</p>
+<p class="last">If you determined the <em>version</em> you want to restore it is a good idea to protect this <em>version</em> to prevent
+any accidental or automatic removal by any retention policy enforcement that you might have configured.</p>
 </div>
 <div class="section" id="full-restore">
 <h2>Full Restore<a class="headerlink" href="#full-restore" title="Permalink to this headline">¶</a></h2>
-<p>A full restore either saves the image into a file (i.e. an image file),
-to a device (e.g. /dev/hda) or to a Ceph RBD volume.</p>
+<p>A full restore either saves the image into a file (i.e. an image file), to a device (e.g. /dev/hda) or to a Ceph RBD
+volume.</p>
 <p>The target is specified by the URI scheme. Examples:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore &lt;version_uid&gt; file:///var/lib/vms/myvm.img
-$ benji restore -f &lt;version_uid&gt; file:///dev/hdm
-$ benji restore &lt;version_uid&gt; rbd://pool/myvm_restore
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore --sparse <span class="nv">$VERSION_UID</span> file:///var/lib/vms/myvm.qcow2
+$ benji restore --sparse --force <span class="nv">$VERSION_UID</span> file:///dev/sda1
+$ benji restore --sparse <span class="nv">$VERSION_UID</span> rbd://pool/myvm_restore
 </pre></div>
 </div>
 <p>If the target already exists, i.e.</p>
 <ul class="simple">
 <li>it is a device file</li>
-<li>the Ceph RBD volume exists</li>
-<li>the image file exists</li>
+<li>an existing Ceph RBD volume</li>
+<li>or an existing image file</li>
 </ul>
-<p>you need to <code class="docutils literal notranslate"><span class="pre">--force</span></code> the restore. Without <code class="docutils literal notranslate"><span class="pre">--force</span></code> Benji will throw
-an error and give you a hint:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore V1  file://RESTORE
-    INFO: $ benji restore V1 file://RESTORE
-   ERROR: Restore target RESTORE already exists. Force the restore <span class="k">if</span> you want to overwrite it.
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">When restoring to a Ceph RBD volume, Benji will create this RBD
-volume for you if it does not exist.</p>
-</div>
-<p>If the restore target is full of zeros (or holes will read as zeros which is normally
-the case), you can use the <code class="docutils literal notranslate"><span class="pre">-s</span></code> or <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> option for faster restores.
-With <code class="docutils literal notranslate"><span class="pre">-s</span></code> Benji will not write (i.e. skip) empty blocks or blocks that contain
-only zeros. This will also normally lead to less space usage on the restore target.</p>
-<p>Usually you can use <code class="docutils literal notranslate"><span class="pre">-s</span></code> if your restore target is</p>
-<ul class="simple">
-<li>a new/non-existing Ceph RBD volume</li>
-<li>a new/non-existing image file (Benji will then create a sparse file)</li>
-</ul>
+<p>you need to <code class="docutils literal notranslate"><span class="pre">--force</span></code> the restore. Benji will create an Ceph RBD volume or file if it does not exist, yet.</p>
+<p>In most cases <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> should be used to skip the restore of sparse (empty) blocks. This increases restore
+performance and in the case of Ceph RBD or thinly provisioned LVM volumes also decreases space usage. When <code class="docutils literal notranslate"><span class="pre">--sparse</span></code>
+is not specified sparse blocks are written as blocks full of zeros.</p>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
-<p class="last">If you use <code class="docutils literal notranslate"><span class="pre">-s</span></code> on existing images, devices or files, restoreed
-blocks which are sparse will not be written, so whatever random data was
-in there before the restore will remain.</p>
+<p class="last">If you use <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> to restore to an existing device or file, sparse blocks will not be written,
+so whatever random data was in the location of the sparse block before the restore will remain. This is not
+the case with Ceph RBD as <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> will discard all currently used blocks before beginning the restore.</p>
 </div>
-<div class="section" id="with-unavailable-metadata-backend">
-<span id="metadata-backend-less"></span><h3>With Unavailable Metadata Backend<a class="headerlink" href="#with-unavailable-metadata-backend" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode (<code class="docutils literal notranslate"><span class="pre">-M</span></code> or <code class="docutils literal notranslate"><span class="pre">--metadata-backend-less</span></code>)
-where it doesn’t require its database backend to be up und running. In this mode
-Benji will import the backup of the <em>version’s</em> metadata from the storage
-into an ad-hoc in-memory database and then restore the image normally. This is
-for failure scenarios where the database is unavailable and you still need to
-restore a <em>version</em>. But because of the database unavailability you can’t just
-execute <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> to determine the right <em>version</em> to restore, you need to
-generate some reports beforehand and save them somewhere to be able to chose
-the right <em>version</em>!</p>
+<div class="section" id="restoring-without-a-database">
+<span id="database-less-restore"></span><h3>Restoring without a database<a class="headerlink" href="#restoring-without-a-database" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode to restore a <em>version</em> even when the database backend is not available. This
+mode is activated by passing the <code class="docutils literal notranslate"><span class="pre">--database-backend-less</span></code> switch to <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code>. Benji will import the
+metadata backup of the specified <em>version</em> from the storage into an ad-hoc in-memory database  and then restore the
+image normally.</p>
+<p>This is for failure scenarios where the database is unavailable and you still need to restore a <em>version</em>. But because
+of the database unavailability you can’t just execute <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> to determine the right <em>version</em> to restore, you
+need to generate some reports beforehand and save them somewhere to be able to chose the right <em>version</em>!</p>
 </div>
 </div>
 <div class="section" id="nbd-server">
 <h2>NBD Server<a class="headerlink" href="#nbd-server" title="Permalink to this headline">¶</a></h2>
-<p>Benji comes with its own NBD server which when started exports all known <em>versions</em>.
-These <em>versions</em> can then be mounted on any Linux host. The requirements on the
-Linux host are:</p>
-<ul class="simple">
-<li>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</li>
-<li>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</li>
-</ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to
-a NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>) on the Linux host. After that your image data is
-available as a block device. If the image contains a filesystem it can be mounted
-normally. You can then search for the relevant files and restore them.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji nbd --help
 usage: benji nbd [-h] [-a BIND_ADDRESS] [-p BIND_PORT] [-r]
 
@@ -378,6 +345,26 @@ optional arguments:
   -r, --read-only       NBD device is read-only (default: False)
 </pre></div>
 </div>
+<p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. These <em>versions</em> can then be
+mounted on any Linux host. The requirements on the Linux host are:</p>
+<ul class="simple">
+<li>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</li>
+<li>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to am NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>)
+on the Linux host. If the image contains a filesystem it can be mounted normally. You can then search for the relevant
+files and restore them.</p>
+<p>There are some known issues with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code>:</p>
+<ul class="simple">
+<li>Some problems have been reported with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> 3.18. Please see <a class="reference external" href="https://github.com/elemental-lf/benji/issues/12">https://github.com/elemental-lf/benji/issues/12</a>.</li>
+<li>Some versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> use a timeout value of zero which also leads to problems. Please explicit specify
+a timeout with <code class="docutils literal notranslate"><span class="pre">-t</span></code> in these cases.</li>
+<li>If the image has a partition table the Linux kernel will have problems parsing the partition table
+when the device block size used by <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> is different from the one used during creation of the partition
+table. Please use the <code class="docutils literal notranslate"><span class="pre">-b</span></code> option of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> to specify the original device block size which normally
+will be 512. Newer versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> already changed the default block size from 1024 to 512 because of
+this. See <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64">https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64</a>.</li>
+</ul>
 <div class="section" id="read-only-mount">
 <h3>Read-Only Mount<a class="headerlink" href="#read-only-mount" title="Permalink to this headline">¶</a></h3>
 <p>This command will run the NBD server in read-only mode and wait for incoming connections:</p>
@@ -385,22 +372,28 @@ optional arguments:
     INFO: Starting to serve nbd on <span class="m">127</span>.0.0.1:10809
 </pre></div>
 </div>
-<p>You can then create a new NBD block device (as root):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># modprobe nbd</span>
-<span class="c1"># nbd-client -N V0000000001 127.0.0.1 -p 10809 /dev/nbd0</span>
-Negotiation: ..size <span class="o">=</span> 10MB
-<span class="nv">bs</span><span class="o">=</span><span class="m">1024</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
+<p>Benji’s NBD server will serve all available <em>versions</em> and it is possible to access each one of them as a block device
+by using <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> und the in-kernel <code class="docutils literal notranslate"><span class="pre">nbd</span></code> driver:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load the nbd kernel module</span>
+$ sudo modprobe nbd
 
-<span class="c1"># partprobe might throw a few WARNINGs because we&#39;re read-only</span>
+<span class="c1"># Connect a Benji version to a free NBD block device</span>
+$ sudo nbd-client -N V0000000001 <span class="m">127</span>.0.0.1 -p <span class="m">10809</span> -b <span class="m">512</span> -t <span class="m">10</span> /dev/nbd0
+Negotiation: ..size <span class="o">=</span> 10MB
+<span class="nv">bs</span><span class="o">=</span><span class="m">512</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
+
+<span class="c1"># Detect partitions</span>
+<span class="c1"># (partprobe might throw a few WARNINGs because we&#39;re read-only)</span>
 partprobe /dev/nbd0
-mount -o ro,norecovery /dev/nbd0p1 /mnt
+
+<span class="c1"># Mount the filesystem</span>
+mount -o ro /dev/nbd0p1 /mnt
 </pre></div>
 </div>
-<p>If the image directly contains a filesystem you can skip the partprobe command
-and mount the <code class="docutils literal notranslate"><span class="pre">/dev/nbd0</span></code> device directly. The <code class="docutils literal notranslate"><span class="pre">norecovery</span></code> mount option
-is required as Benji  blocks all writes because of the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option.</p>
-<p>When the NBD server receives an incoming connection it will output something
-like this:</p>
+<p>If the image just contains a filesystem without a partition table the <code class="docutils literal notranslate"><span class="pre">partprobe</span></code> command can be skipped and
+the <code class="docutils literal notranslate"><span class="pre">/dev/nbd0</span></code> device can be mounted directly. Some filesystem will require additional mount options as they try
+to write to the device even when <code class="docutils literal notranslate"><span class="pre">ro</span></code> is specified.</p>
+<p>The NBD server will signal an incoming connection:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span> INFO: Incoming connection from <span class="m">127</span>.0.0.1:33714
 DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">7</span>, <span class="nv">len</span><span class="o">=</span><span class="m">17</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;\x00\x00\x00\x0bV0000000001\x00\x00&#39;</span>
 DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">1</span>, <span class="nv">len</span><span class="o">=</span><span class="m">11</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;V0000000001&#39;</span>
@@ -408,68 +401,42 @@ DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class
  INFO: nbd is <span class="nb">read</span> only.
 </pre></div>
 </div>
-<p>When you’re done:</p>
+<p>After you’re done using the filesystem you need to unmount it and disconnect the NBD device:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>umount /mnt
 nbd-client -d /dev/nbd0
 </pre></div>
 </div>
-<p>In the other console, benji will tell you that nbd has disconnected:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:38316<span class="o">]</span> disconnecting
-</pre></div>
-</div>
-<p>You can then either reconnect or press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> to end Benji’s NBD server.</p>
-<p>You may also mount the volume from another server. Benji by default binds the
-NBD server to 127.0.0.1 (i.e. localhost). For this server to be reachable from
-the outside bind to 0.0.0.0:</p>
+<p>You can then either reconnect to this or another <em>version</em> or terminate Benji’s NBD server. The server is also able to
+serve multiple <em>versions</em> at once.</p>
+<p>Benji’s NBD server by default listens on 127.0.0.1 (i.e. localhost) for incoming connections. For the server to be
+reachable from the outside bind it to 0.0.0.0 or the specific address of another interface:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd -a <span class="m">0</span>.0.0.0 -r
 </pre></div>
 </div>
-<p>You can also chose an appropriate port with the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option.</p>
 </div>
 <div class="section" id="read-write-mount">
 <h3>Read-Write Mount<a class="headerlink" href="#read-write-mount" title="Permalink to this headline">¶</a></h3>
-<p>In addition to providing read-only access, Benji also allows read-write access
-in a safe way. This means, the backup <strong>will not be modified</strong>.
-The command sequence is mostly the same (but note the missing <code class="docutils literal notranslate"><span class="pre">-r</span></code>):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji nbd
-    INFO: Starting to serve nbd on <span class="m">127</span>.0.0.1:10809
-</pre></div>
-</div>
-<p>Of course you can then mount the volume read/write and fix all potential
-filesystem errors or database files or you can modify data in any way you want:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># modprobe nbd</span>
-<span class="c1"># nbd-client -N V0000000001 127.0.0.1 -p 10809 /dev/nbd0</span>
-Negotiation: ..size <span class="o">=</span> 10MB
-<span class="nv">bs</span><span class="o">=</span><span class="m">1024</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
-
-<span class="c1"># partprobe /dev/nbd0</span>
-<span class="c1"># mount /dev/nbd0p1 /mnt</span>
-<span class="c1"># echo &#39;test&#39; &gt; /mnt/tmp/test  # example!</span>
-</pre></div>
-</div>
-<p>Any writes to the device will initiate a copy-on-write (COW) of the
-original blocks to a new version that Benji will dynamically create for you.</p>
-<p>After you disconnect from the nbd-client via:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>umount /mnt
-nbd-client -d /dev/nbd0
-</pre></div>
-</div>
-<p>Benji will start to finalise the COW version. Depending on how many changes
-have been done to the original image this will take some time!</p>
+<p>In addition to providing read-only access, Benji also allows read-write access in a safe way. This means, the original
+<em>version</em> <strong>will not be modified</strong>. To access the available <em>versions</em> in read-write mode start the NBD server
+without the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option.</p>
+<p>After connecting the NBD device you can initiate any repair procedures required like <code class="docutils literal notranslate"><span class="pre">fsck</span></code>.  Any writes to the
+device will initiate a copy-on-write (COW) of the original blocks to a new <em>version</em> which is dynamically created
+by Benji.</p>
+<p>After disconnecting the NBD device Benji will start to fixate the COW <em>version</em>. Depending on how many changes
+have been done to the original <em>version</em> this will take some time!:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:46526<span class="o">]</span> disconnecting
 INFO: Fixating version V0000000002 with <span class="m">1024</span> blocks, please wait!
 INFO: Fixation <span class="k">done</span>. Deleting temporary data, please wait!
 INFO: Finished.
 </pre></div>
 </div>
-<p>You can then safely press <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> in order to end the NBD server.</p>
 <div class="admonition caution">
 <p class="first admonition-title">Caution</p>
-<p class="last">If you <code class="docutils literal notranslate"><span class="pre">ctrl+c</span></code> before the last “INFO: Finished.” is reported,
-your copy-on-write clone will not be written completely and thus be invalid.
-However, the original backup <em>version</em> <strong>will be untouched in any case</strong>.</p>
+<p class="last">If you end the NBD server before the last “INFO: Finished.” is reported, your copy-on-write clone will not
+be written completely and thus be incomplete. However, the original backup <em>version</em>
+<strong>will be untouched in any case</strong>.</p>
 </div>
-<p>You can see the created COW <em>version</em> with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>:</p>
+<p>The newly created <em>version</em> can be seen in the output of <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
     INFO: $ benji ls
 +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
@@ -480,40 +447,30 @@ However, the original backup <em>version</em> <strong>will be untouched in any c
 +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
 </pre></div>
 </div>
-<p>The name will be the same as the original <em>version</em>. The snapshot_name will start
-with the prefix <em>nbd-cow-</em> followed by the <em>version</em> UID followed by a timestamp.</p>
-<p>The COW <em>version</em> will automatically be marked as protected by Benji to prevent
-removal by any automatic retention policy enforcement that you might have
-configured. This makes sure that your repair work won’t be destroyed. You will
-have to unprotect the <em>version</em> manually when it is no longer needed. After
-that you can remove it normally or wait for your retention policy enforcement
-to clean it up.</p>
+<p>The name will be the same as the original <em>version</em>. The snapshot_name will start with the prefix <em>nbd-cow-</em> followed
+by the <em>version</em> UID followed by a timestamp.</p>
+<p>The COW <em>version</em> will automatically be marked as protected by Benji to prevent removal by any automatic retention
+policy enforcement configured. This ensures the new <em>version</em> won’t be destroyed accidentally. To be able to remove
+the <em>version</em> the protection needs to be lifted with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">unprotect</span></code>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">You can of course also restore the COW <em>version</em> like any other
-<em>version</em> with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">retore</span></code>.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">You may safely delete the original <em>version</em> and the COW <em>version</em>
-independently of each other.</p>
+<p class="last">The new created COW <em>version</em> can be restored just like any other <em>version</em>. Both the original and the
+COW <em>version</em> are independent from each other and each can be removed without affecting the other.</p>
 </div>
 </div>
 </div>
-<div class="section" id="restore-of-invalid-versions">
-<h2>Restore of Invalid Versions<a class="headerlink" href="#restore-of-invalid-versions" title="Permalink to this headline">¶</a></h2>
-<p>During a restore Benji will compare each restored block’s checksum to the
-stored checksum in the database backend <strong>no matter if the block has been
-marked as invalid previously</strong>. If it encounters a difference, the block
-and all versions containing this block will be marked as invalid and a
-warning will be given:</p>
+<div class="section" id="restoring-invalid-versions">
+<h2>Restoring Invalid <em>Versions</em><a class="headerlink" href="#restoring-invalid-versions" title="Permalink to this headline">¶</a></h2>
+<p>During a restore Benji will compare each restored block’s checksum to the one stored in the database.
+This even happens when the block has been marked as invalid previously. If it encounters a difference, the block
+and all <em>versions</em> also referencing this block will be marked as invalid and a warning will be given:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ERROR: Checksum mismatch during restore <span class="k">for</span> block <span class="m">9</span> <span class="o">(</span>UID <span class="m">1</span>-a<span class="o">)</span> <span class="o">(</span>is: e36cee7fd34ae637... should-be: dea186672147e1e3..., block.valid: True<span class="o">)</span>. Block restored is invalid.
  INFO: Marked block invalid <span class="o">(</span>UID <span class="m">1</span>-a, Checksum dea186672147e1e3. Affected versions: V0000000001, V0000000002
  INFO: Marked version invalid <span class="o">(</span>UID V0000000001<span class="o">)</span>
  INFO: Marked version invalid <span class="o">(</span>UID V0000000002<span class="o">)</span>
 </pre></div>
 </div>
-<p>Even when encountering such an error, Benji will continue to restore.</p>
+<p>Even when encountering such an error, Benji will continue the restore.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">The philosophy behind this is that restores should always succeed, even if there

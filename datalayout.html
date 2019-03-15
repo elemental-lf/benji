@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Data Layout &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Data Layout &mdash; Benji Backup 0.3.1.dev14+g3c3be86 documentation</title>
   
 
   
@@ -147,7 +147,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="restore.html#with-unavailable-metadata-backend">With Unavailable Metadata Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
@@ -155,7 +155,7 @@
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#restore-of-invalid-versions">Restore of Invalid Versions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
@@ -168,21 +168,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-metadata">Secure your Metadata</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#metadata-redundancy">Metadata Redundancy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-version-metadata">Securing Version Metadata</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#backups-and-exports">Backups and Exports</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#database-high-availability">Database High-Availability</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="administration.html#secure-your-block-data">Secure your block data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="administration.html#securing-block-data-on-storages">Securing Block Data on Storages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#tips-tricks">Tips &amp; tricks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="administration.html#general-advise">General Advise</a></li>
 <li class="toctree-l3"><a class="reference internal" href="administration.html#machine-output">Machine output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="administration.html#debugging">Debugging</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="container.html">Containerized Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
@@ -197,7 +196,7 @@
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#object-storages">Object Storages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#block-storages">Block Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -301,10 +300,9 @@ for options and format.</p>
 <p class="last">Document all tables</p>
 </div>
 </div>
-<div class="section" id="object-storages">
-<h2>Object Storages<a class="headerlink" href="#object-storages" title="Permalink to this headline">¶</a></h2>
-<p>The object storage backend is pluggable and there are currently three different
-implementations from which you can choose:</p>
+<div class="section" id="block-storages">
+<h2>Block Storages<a class="headerlink" href="#block-storages" title="Permalink to this headline">¶</a></h2>
+<p>The block storage backends are pluggable and there are currently three different implementations:</p>
 <ul class="simple">
 <li>file: File based storage</li>
 <li>s3: S3 compatible storage like AWS S3, Google Storage, Ceph’s RADOS Gateway

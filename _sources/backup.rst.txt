@@ -142,7 +142,7 @@ Automation
 
 Benji includes a number of Bash scripts to automate the process outlined in the last section.
 
-.. TODO:: Explain the Bash scripts and how to use them!
+.. todo:: Explain the Bash scripts and how to use them!
 
 The general workflow of these scripts is:
 
