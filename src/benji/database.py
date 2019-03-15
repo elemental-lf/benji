@@ -606,8 +606,8 @@ class DatabaseBackend(ReprMixIn):
             if self._engine.has_table('alembic_version'):
                 with self._engine.begin() as connection:
                     connection.execute(
-                        sqlalchemy.sql.ddl.DropTable(sqlalchemy.Table('alembic_version',
-                                                                      sqlalchemy.MetaData())))  # type: ignore
+                        sqlalchemy.sql.ddl.DropTable(  # type: ignore
+                            sqlalchemy.Table('alembic_version', sqlalchemy.MetaData())))
 
         table_names = self._database_tables()
         if not table_names:

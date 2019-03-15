@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import concurrent
-import importlib
 import json
 import re
 import setproctitle

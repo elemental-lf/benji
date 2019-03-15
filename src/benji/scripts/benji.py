@@ -26,6 +26,11 @@ from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 from benji.versions import VERSIONS
 
 
+class _ExceptionMapping(NamedTuple):
+    exception: Type[BaseException]
+    exit_code: int
+
+
 class Commands:
     """Proxy between CLI calls and actual backup code."""
 
@@ -879,10 +884,6 @@ def main():
     del func_args['no_color']
 
     # From most specific to least specific
-    class _ExceptionMapping(NamedTuple):
-        exception: Type[BaseException]
-        exit_code: int
-
     exception_mappings = [
         _ExceptionMapping(exception=benji.exception.UsageError, exit_code=os.EX_USAGE),
         _ExceptionMapping(exception=benji.exception.AlreadyLocked, exit_code=os.EX_NOPERM),
