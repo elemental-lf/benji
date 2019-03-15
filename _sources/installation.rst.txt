@@ -43,6 +43,11 @@ Almost the some procedure as on CentOS::
 
 .. NOTE:: For more information about the IOS Community Project please see https://ius.io/.
 
+Fedora 27 and up
+----------------
+
+The distribution includes a supported version of Python 3. Make sure to install the latest available update.
+
 Common to All Distributions
 ---------------------------
 
@@ -53,8 +58,8 @@ Benji and its dependencies::
     python3.6 -m venv /usr/local/benji
     # Activate it (your shell prompt should change)
     . /usr/local/benji/bin/activate
-    # Alternative A: Install a released version from PyPI (0.2.0 in this case)
-    pip install benji==0.2.0
+    # Alternative A: Install a specific released version from PyPI (0.4.0)
+    pip install benji==0.4.0
     # Alternative B: Install the latest released version from PyPI
     pip install benji
     # Alternative C: Install the latest version from the master branch of the Git repository

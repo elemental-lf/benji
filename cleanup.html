@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Cleanup &mdash; Benji Backup 0.3.0 documentation</title>
+  <title>Cleanup &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -121,15 +122,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -164,11 +164,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id1">Cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#fast-cleanup">Fast Cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#full-cleanup">Full Cleanup</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Cleanup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -186,11 +182,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
@@ -201,6 +192,12 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -277,13 +274,12 @@
             
   <div class="section" id="cleanup">
 <h1>Cleanup<a class="headerlink" href="#cleanup" title="Permalink to this headline">¶</a></h1>
-<p>In order to remove of old backup versions, Benji uses a two step garbage
-collection algorithm.</p>
+<p>In order to remove of old backup versions, Benji uses a two step process.</p>
 <div class="section" id="removing-old-versions">
 <h2>Removing old versions<a class="headerlink" href="#removing-old-versions" title="Permalink to this headline">¶</a></h2>
 <p>In order to remove an old version, use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji rm --help
-usage: benji rm [-h] [-f] [-k] version_uid [version_uid ...]
+usage: benji rm [-h] [-f] [-k] [--override-lock] version_uid [version_uid ...]
 
 positional arguments:
   version_uid           Version UID
@@ -294,6 +290,7 @@ optional arguments:
                         versions)
   -k, --keep-metadata-backup
                         Keep version metadata backup
+  --override-lock       Override and release any held locks (dangerous)
 </pre></div>
 </div>
 <p>Example:</p>
@@ -303,22 +300,19 @@ optional arguments:
     INFO: Removed backup version V0000000001 with <span class="m">10</span> blocks.
 </pre></div>
 </div>
-<p>There is a config option called <code class="docutils literal notranslate"><span class="pre">disallowRemoveWhenYounger</span></code> which
-defaults to 6. If you request the removal of a backup version that is younger
-than this value, Benji exists with an error:</p>
+<p>Versions can only be removed if they are older than the number of days configured with the <code class="docutils literal notranslate"><span class="pre">disallowRemoveWhenYounger</span></code>
+option:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm V1
        INFO: $ benji rm V1
       ERROR: Version V0000000001 is too young. Will not delete.
 </pre></div>
 </div>
-<p>You can force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version metadata and corresponding blocks from the
-database backend. It also adds the removed block entries into a deletion
-candidate list. By default it also removes the backup of the metadata on
-the storage. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code>
-or <code class="docutils literal notranslate"><span class="pre">--keep-backend-metadata</span></code> option.</p>
-<p>In order to really delete blocks from the storage, you’ll need <code class="docutils literal notranslate"><span class="pre">benji</span>
-<span class="pre">cleanup</span></code>.</p>
+<p>It is possible to force the removal of a version by using <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> removes the version’s metadata and corresponding block list from the database. It also adds the removed
+block entries into a deletion candidate list. By default it also removes the backup of the version’s metadata on
+the storage. If you want to keep this data, you can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code> or <code class="docutils literal notranslate"><span class="pre">--keep-metadata-backup</span></code> option.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code> only affects the database. To actually delete unused blocks on the storages a <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> is
+required.</p>
 </div>
 <div class="section" id="id1">
 <h2>Cleanup<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
@@ -326,34 +320,19 @@ or <code class="docutils literal notranslate"><span class="pre">--keep-backend-m
 There are two different cleanup methods, but you’ll usually only need the
 so-called <em>fast-cleanup</em>.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji cleanup --help
-usage: benji cleanup [-h]
+usage: benji cleanup [-h] [--override-lock]
 
 optional arguments:
-  -h, --help  show this help message and exit
+  -h, --help       show this help message and exit
+  --override-lock  Override and release any held lock (dangerous)
 </pre></div>
 </div>
-<div class="section" id="fast-cleanup">
-<h3>Fast Cleanup<a class="headerlink" href="#fast-cleanup" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> will go through the list of deletion candidates and check if
 there are blocks which aren’t referenced from any other version anymore.</p>
-<p>These blocks are then deleted from the storage. The still-in-use blocks
-are removed from the list of candidates.</p>
-<p>In order to provide parallelism (i.e. multiple Benji processes at the same
-time), Benji needs to prevent race-conditions between removing a block
-completely and referencing this block from another version. That is why
-a cleanup will only remove data blocks once they’re on the list of
-deletion condidates for more than one hour.</p>
-</div>
-<div class="section" id="full-cleanup">
-<span id="id2"></span><h3>Full Cleanup<a class="headerlink" href="#full-cleanup" title="Permalink to this headline">¶</a></h3>
-<p>There are times (e.g. when your database is corrupted or when you create a new
-database based on export/import) when Benji does not know if the blocks in the
-storage are all known by the metadata store.</p>
-<p>Then the <code class="docutils literal notranslate"><span class="pre">-full</span></code> option of cleanup comes into play. With this option, Benji will
-read all block UIDs from the backend storage (which can take <em>very</em> long) and
-compare it to the list of known block UIDs in the database backend</p>
-<p>Blocks unknown to the database backend are then deleted from the storage.</p>
-</div>
+<p>These blocks are then deleted from the storage. The still-in-use blocks are removed from the list of candidates.
+Due to fact that Benji needs to prevent a race-conditions between removing a block completely and referencing this
+block from another version <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> will only remove data blocks once they’re on the list of deletion
+candidates for more than one hour.</p>
 </div>
 </div>
 

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>For Backy² Users &mdash; Benji Backup 0.3.0 documentation</title>
+  <title>For Backy² Users &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -30,7 +30,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Support" href="support.html" />
-    <link rel="prev" title="Containerised Benji" href="container.html" /> 
+    <link rel="prev" title="Data Layout" href="datalayout.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -121,15 +122,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -164,11 +164,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -186,11 +182,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
@@ -201,6 +192,12 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">For Backy² Users</a></li>
@@ -338,7 +335,7 @@ S3 implementations (Google Storage for example)</li>
         <a href="support.html" class="btn btn-neutral float-right" title="Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="container.html" class="btn btn-neutral" title="Containerised Benji" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="datalayout.html" class="btn btn-neutral" title="Data Layout" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

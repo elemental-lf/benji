@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Support &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Filter Expressions &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -29,8 +29,8 @@
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Licenses" href="licenses.html" />
-    <link rel="prev" title="For Backy² Users" href="backy2.html" /> 
+    <link rel="next" title="Data Layout" href="datalayout.html" />
+    <link rel="prev" title="Containerised Benji" href="container.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -194,17 +194,17 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Filter Expressions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Support</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#issue-tracker">Issue Tracker</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
@@ -253,13 +253,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Support</li>
+      <li>Filter Expressions</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/support.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/filter_expressions.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -272,28 +272,55 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="support">
-<h1>Support<a class="headerlink" href="#support" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="issue-tracker">
-<h2>Issue Tracker<a class="headerlink" href="#issue-tracker" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="https://github.com/elemental-lf/benji/issues">https://github.com/elemental-lf/benji/issues</a></p>
-</div>
-<div class="section" id="documentation">
-<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="https://benji-backup.me/">https://benji-backup.me/</a></p>
-</div>
-<div class="section" id="security">
-<h2>Security<a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h2>
-<p>In case that you discover a security issue, please use this contact for
-reporting it privately:</p>
-<p>Lars Fenneberg &lt;<a class="reference external" href="mailto:lf&#37;&#52;&#48;elemental&#46;net">lf<span>&#64;</span>elemental<span>&#46;</span>net</a>&gt;</p>
-<p>A PGP key for encrypted communication is available on the usual key servers.
-The key id is 0xCAF0E5281F46FD85.</p>
-<p>While a lot has changed any security vulnerability found in Benji might also
-be present in backy² from which Benji was originally derived. So you might
-want to take a look at <a class="reference external" href="https://github.com/wamdam/backy2">https://github.com/wamdam/backy2</a> to see if backy² is
-also affected. If that is the case please contact Daniel privately, too.</p>
-</div>
+  <div class="section" id="filter-expressions">
+<span id="id1"></span><h1>Filter Expressions<a class="headerlink" href="#filter-expressions" title="Permalink to this headline">¶</a></h1>
+<p>A number of CLI command accept a filter expression to select the <em>versions</em> to display or act on:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-scrub</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code>: The expression selects the <em>versions</em> to scrub. When no filter is
+specified all <em>versions</em> are scrubbed.</li>
+<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code>: The expression selects the <em>versions</em> to which the retention policy is applied.</li>
+<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>: The filter expression selects which <em>versions</em> to list. When no filter is specified all <em>versions</em> are
+listed.</li>
+<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-backup</span></code>: The expression selects the <em>versions</em> to export or to backup
+respectively.</li>
+</ul>
+<p>The filter expression syntax is a subset of Python’s expression syntax. The following tokens are recognized:</p>
+<ul class="simple">
+<li>Identifiers: These reference version metadata columns and are named <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">uid</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot_name</span></code>,
+<code class="docutils literal notranslate"><span class="pre">size</span></code>, <code class="docutils literal notranslate"><span class="pre">block_size</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">protected</span></code> and <code class="docutils literal notranslate"><span class="pre">storage</span></code>, <code class="docutils literal notranslate"><span class="pre">read</span></code>, <code class="docutils literal notranslate"><span class="pre">written</span></code>, <code class="docutils literal notranslate"><span class="pre">dedup</span></code>, <code class="docutils literal notranslate"><span class="pre">sparse</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">duration</span></code>.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">uid</span></code> identifier can either be compared to a string like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> (leading zeros after the <code class="docutils literal notranslate"><span class="pre">V</span></code> are
+not necessary) or directly to an integer like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code>.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">status</span></code> identifier should be compared to a string representing the status like <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code>.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">date</span></code> identifier should be compared to a string representing an absolute or relative time reference. To parse
+this reference <a class="reference external" href="https://pypi.org/project/dateparser/">dateparser</a> with a locale of <code class="docutils literal notranslate"><span class="pre">en</span></code> (english) is used. The
+date and time format output by Benji is also accepted.</li>
+<li>In addition labels can be referenced via a special dictionary named <code class="docutils literal notranslate"><span class="pre">labels</span></code>. The syntax is <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code>.
+The string literal between the square brackets can be enclosed in either single or double quotes. Labels only
+supported comparisons with <code class="docutils literal notranslate"><span class="pre">==</span></code> and <code class="docutils literal notranslate"><span class="pre">!=</span></code>. It is possible to test for label existence by using
+<code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code> as a stand-alone expression.</li>
+<li>Strings literals either enclosed in single or double quotes</li>
+<li>Integers</li>
+<li>Comparison operators: The normal set of operators is supported: <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>.
+Benji (actually Python and SQLAlchemy) will try to adapt types when possible.</li>
+<li>Logical operators: <code class="docutils literal notranslate"><span class="pre">not</span></code>, <code class="docutils literal notranslate"><span class="pre">and</span></code>, and <code class="docutils literal notranslate"><span class="pre">or</span></code> (in order of precendence). <code class="docutils literal notranslate"><span class="pre">not</span></code> can be applied to other expressions
+and directly to identifiers (<code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">protected</span></code> for example, but also <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">labels[&quot;label-name&quot;]</span></code> to test for label
+absence).</li>
+<li>Boolean constants: <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code></li>
+<li>Brackets are supported to control precedence.</li>
+</ul>
+<p>Examples:</p>
+<ul class="simple">
+<li>Version named <code class="docutils literal notranslate"><span class="pre">V0000000001</span></code>: <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V0000000001&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code></li>
+<li>All <code class="docutils literal notranslate"><span class="pre">invalid</span></code> <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;invalid&quot;</span></code></li>
+<li>All <em>versions</em> older than one week: <code class="docutils literal notranslate"><span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">week</span> <span class="pre">ago&quot;</span></code></li>
+<li>All <em>versions</em> which have a label named <code class="docutils literal notranslate"><span class="pre">label-1</span></code> and are <code class="docutils literal notranslate"><span class="pre">valid</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">and</span> <span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code></li>
+<li>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code>: <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;</span></code></li>
+<li>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code> that are older than one month:
+<code class="docutils literal notranslate"><span class="pre">(name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;)</span> <span class="pre">and</span> <span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">month</span> <span class="pre">ago&quot;</span></code></li>
+<li>All <em>versions</em> that have a label of <code class="docutils literal notranslate"><span class="pre">label-1</span></code> with value <code class="docutils literal notranslate"><span class="pre">example-1</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;example-1&quot;</span></code></li>
+<li>All protected <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">protected</span> <span class="pre">==</span> <span class="pre">True</span></code></li>
+</ul>
 </div>
 
 
@@ -304,10 +331,10 @@ also affected. If that is the case please contact Daniel privately, too.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="licenses.html" class="btn btn-neutral float-right" title="Licenses" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="datalayout.html" class="btn btn-neutral float-right" title="Data Layout" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="backy2.html" class="btn btn-neutral" title="For Backy² Users" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="container.html" class="btn btn-neutral" title="Containerised Benji" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

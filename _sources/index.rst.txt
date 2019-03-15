@@ -34,8 +34,9 @@ See section :ref:`installation` for installation instructions.
     enforce
     cleanup
     administration
-    datalayout
     container
+    filter_expressions
+    datalayout
     backy2
     support
     licenses

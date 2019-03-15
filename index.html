@@ -10,7 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.3.0 documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -82,6 +82,7 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -122,15 +123,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -165,11 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -187,11 +183,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
@@ -202,6 +193,12 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -310,8 +307,9 @@ for your persistent volumes.</p>
 <div class="section" id="status">
 <h2>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
 <p>Benji is currently somewhere between alpha and beta quality I think. It passes all
-included tests. The documentation isn’t completely up-to-date, especially in regard
-to the new unified filter syntax.</p>
+included tests. The documentation isn’t completely up-to-date. Please open an
+issue on GitHub if you have a usage question that is not or incorrectly covered
+by the documentation.</p>
 <p>Benji requires <strong>Python 3.6.5 or newer</strong> because older Python versions
 have some shortcomings in the <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> implementation which lead to an
 excessive memory usage.</p>
@@ -429,6 +427,7 @@ for a full list of licenses.</dd>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -454,12 +453,11 @@ for a full list of licenses.</dd>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -491,14 +489,15 @@ for a full list of licenses.</dd>
 <li class="toctree-l2"><a class="reference internal" href="administration.html#monitoring">Monitoring</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>

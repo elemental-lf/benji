@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Support &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
+  <title>Version Metadata &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -28,9 +28,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Licenses" href="licenses.html" />
-    <link rel="prev" title="For Backy² Users" href="backy2.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -76,7 +74,7 @@
               
             
             
-              <ul class="current">
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
@@ -201,10 +199,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Support</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#issue-tracker">Issue Tracker</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="support.html#security">Security</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="licenses.html">Licenses</a></li>
@@ -253,13 +251,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Support</li>
+      <li><em>Version</em> Metadata</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/support.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/version_metadata.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -272,28 +270,91 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="support">
-<h1>Support<a class="headerlink" href="#support" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="issue-tracker">
-<h2>Issue Tracker<a class="headerlink" href="#issue-tracker" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="https://github.com/elemental-lf/benji/issues">https://github.com/elemental-lf/benji/issues</a></p>
+  <div class="section" id="version-metadata">
+<h1><em>Version</em> Metadata<a class="headerlink" href="#version-metadata" title="Permalink to this headline">¶</a></h1>
+<p>At this stage Benji has backed up all image data to a (hopefully) safe place. However, the blocks are of no use without
+the corresponding metadata. Benji will need this information to get the blocks back in the correct order and
+restore the image.</p>
+<p>This information is stored in the database backend. Additionally Benji will backup the metadata itself to the storage
+automatically. Should you lose your database backend, you can restore these metadata backups by using
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-restore --help
+usage: benji metadata-restore [-h] [-S STORAGE] VERSION_UID [VERSION_UID ...]
+
+positional arguments:
+  VERSION_UID           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -S STORAGE, --storage STORAGE
+                        Source storage (if unspecified the default is used)
+</pre></div>
 </div>
-<div class="section" id="documentation">
-<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="https://benji-backup.me/">https://benji-backup.me/</a></p>
+<p>There is currently no mechanism to import the backup of all version’s
+metadata from the storage, but you could get a list of all versions
+manually from the storage.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This metadata backup is compressed and encrypted like the blocks
+if you have these features enabled.</p>
 </div>
-<div class="section" id="security">
-<h2>Security<a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h2>
-<p>In case that you discover a security issue, please use this contact for
-reporting it privately:</p>
-<p>Lars Fenneberg &lt;<a class="reference external" href="mailto:lf&#37;&#52;&#48;elemental&#46;net">lf<span>&#64;</span>elemental<span>&#46;</span>net</a>&gt;</p>
-<p>A PGP key for encrypted communication is available on the usual key servers.
-The key id is 0xCAF0E5281F46FD85.</p>
-<p>While a lot has changed any security vulnerability found in Benji might also
-be present in backy² from which Benji was originally derived. So you might
-want to take a look at <a class="reference external" href="https://github.com/wamdam/backy2">https://github.com/wamdam/backy2</a> to see if backy² is
-also affected. If that is the case please contact Daniel privately, too.</p>
+<p>If you want to make your own copies of your metadata you can do so by using
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-export --help
+usage: benji metadata-export [-h] [-f] [-o OUTPUT_FILE] [filter_expression]
+
+positional arguments:
+  filter_expression     Version filter expression
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f, --force           Overwrite an existing output file
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Output file (standard output if missing)
+</pre></div>
 </div>
+<p>If you’re doing this programmatically and are exporting to STDOUT you should
+probably add <code class="docutils literal notranslate"><span class="pre">-m</span></code> to your export command to reduce the logging level of Benji.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m metadata-export V1
+<span class="o">{</span>
+  <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
+  <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">&quot;uid&quot;</span>: <span class="m">1</span>,
+      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T12:51:19&quot;</span>,
+      <span class="s2">&quot;name&quot;</span>: <span class="s2">&quot;test&quot;</span>,
+      <span class="s2">&quot;snapshot_name&quot;</span>: <span class="s2">&quot;&quot;</span>,
+      <span class="s2">&quot;size&quot;</span>: <span class="m">41943040</span>,
+      <span class="s2">&quot;block_size&quot;</span>: <span class="m">4194304</span>,
+      <span class="s2">&quot;valid&quot;</span>: true,
+      <span class="s2">&quot;protected&quot;</span>: false,
+      <span class="s2">&quot;tags&quot;</span>: <span class="o">[]</span>,
+      <span class="s2">&quot;blocks&quot;</span>: <span class="o">[</span>
+        <span class="o">{</span>
+          <span class="s2">&quot;uid&quot;</span>: <span class="o">{</span>
+            <span class="s2">&quot;left&quot;</span>: <span class="m">1</span>,
+            <span class="s2">&quot;right&quot;</span>: <span class="m">1</span>
+          <span class="o">}</span>,
+          <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T14:51:20&quot;</span>,
+          <span class="s2">&quot;id&quot;</span>: <span class="m">0</span>,
+          <span class="s2">&quot;size&quot;</span>: <span class="m">4194304</span>,
+          <span class="s2">&quot;valid&quot;</span>: true,
+          <span class="s2">&quot;checksum&quot;</span>: <span class="s2">&quot;aed3116b4e7fad9a3188f5ba7c8e73bf158dabec387ef1a7bca84c58fe72f319&quot;</span>
+        <span class="o">}</span>,
+<span class="o">[</span>...<span class="o">]</span>
+</pre></div>
+</div>
+<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-import --help
+usage: benji metadata-import [-h] [-i INPUT_FILE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Input file (standard input if missing)
+</pre></div>
+</div>
+<p>You can’t import versions that already exist in the database backend.</p>
 </div>
 
 
@@ -301,15 +362,6 @@ also affected. If that is the case please contact Daniel privately, too.</p>
            
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="licenses.html" class="btn btn-neutral float-right" title="Licenses" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="backy2.html" class="btn btn-neutral" title="For Backy² Users" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>

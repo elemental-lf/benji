@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.3.0 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -121,15 +122,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backup.html">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#differential-backup">Differential Backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="backup.html#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="backup.html#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="backup.html#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -164,11 +164,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -186,11 +182,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
@@ -201,6 +192,12 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -319,6 +316,10 @@ yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
 <p class="last">For more information about the IOS Community Project please see <a class="reference external" href="https://ius.io/">https://ius.io/</a>.</p>
 </div>
 </div>
+<div class="section" id="fedora-27-and-up">
+<h2>Fedora 27 and up<a class="headerlink" href="#fedora-27-and-up" title="Permalink to this headline">¶</a></h2>
+<p>The distribution includes a supported version of Python 3. Make sure to install the latest available update.</p>
+</div>
 <div class="section" id="common-to-all-distributions">
 <h2>Common to All Distributions<a class="headerlink" href="#common-to-all-distributions" title="Permalink to this headline">¶</a></h2>
 <p>After installing a recent Python version, it is now time to install
@@ -327,8 +328,8 @@ Benji and its dependencies:</p>
 python3.6 -m venv /usr/local/benji
 <span class="c1"># Activate it (your shell prompt should change)</span>
 . /usr/local/benji/bin/activate
-<span class="c1"># Alternative A: Install a released version from PyPI (0.2.0 in this case)</span>
-pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.2.0
+<span class="c1"># Alternative A: Install a specific released version from PyPI (0.4.0)</span>
+pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.4.0
 <span class="c1"># Alternative B: Install the latest released version from PyPI</span>
 pip install benji
 <span class="c1"># Alternative C: Install the latest version from the master branch of the Git repository</span>

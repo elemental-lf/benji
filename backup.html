@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Backup &mdash; Benji Backup 0.3.0 documentation</title>
+  <title>Backup &mdash; Benji Backup 0.3.1.dev13+g5645f02.dirty documentation</title>
   
 
   
@@ -81,6 +81,7 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -121,15 +122,14 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Backup</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#simple-backup">Simple backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#simple-backup">Simple Backup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#versions">Versions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#differential-backup">Differential Backup</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#specifying-a-block-size">Specifying a Block Size</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#tag-backups">Tag Backups</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#export-metadata">Export Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-a-block-size">Specifying a block size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#labeling-versions">Labeling <em>Versions</em></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#the-hints-file">The Hints File</a></li>
 </ul>
 </li>
@@ -164,11 +164,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#removing-old-versions">Removing old versions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#fast-cleanup">Fast Cleanup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="cleanup.html#full-cleanup">Full Cleanup</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -186,11 +182,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="container.html">Containerised Benji</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="container.html#images">Images</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji">benji</a></li>
@@ -201,6 +192,12 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datalayout.html">Data Layout</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#database-backend">Database Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="datalayout.html#object-storages">Object Storages</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
@@ -277,7 +274,6 @@
             
   <div class="section" id="backup">
 <h1>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h1>
-<p>In this chapter you will learn all possibilities and options for backup.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
 usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD_HINTS]
                     [-f BASE_VERSION_UID] [-b BLOCK_SIZE] [-l label]
@@ -306,22 +302,15 @@ optional arguments:
 </pre></div>
 </div>
 <div class="section" id="simple-backup">
-<h2>Simple backup<a class="headerlink" href="#simple-backup" title="Permalink to this headline">¶</a></h2>
-<p>This is how you can create a normal backup:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup <span class="nb">source</span> name
+<h2>Simple Backup<a class="headerlink" href="#simple-backup" title="Permalink to this headline">¶</a></h2>
+<p>A backup can be initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup <span class="nv">$BACKUP_SOURCE</span> <span class="nv">$BACKUP_NAME</span>
 </pre></div>
 </div>
-<p>where source is a URI and name is the name for the backup, which may contain any
-quotable character.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The name and all other identifiers are stored in SQL VARCHAR
-columns which are created by SQLAlchemy’s String type. Please refer to
-<a class="reference external" href="http://docs.sqlalchemy.org/en/latest/core/type_basics.html#sqlalchemy.types.String">http://docs.sqlalchemy.org/en/latest/core/type_basics.html#sqlalchemy.types.String</a>
-for reference.</p>
-</div>
-<p>The supported schemes for source are <strong>file</strong> and <strong>rbd</strong>. So these are
-realistic examples:</p>
+<p><code class="docutils literal notranslate"><span class="pre">$BACKUP_SOURCE</span></code> should be replaced by a URI specifying the backup source.``$BACKUP_NAME`` specifies the name
+given to the backup of this specific source and normally does not change when doing multiple backups of the same
+source. Different backups of the same source are differentiated by their <em>version</em> UID.</p>
+<p>Currently supported schemes for backup sources are <strong>file</strong> and <strong>rbd</strong>. So real-world examples would look like this:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup file:///var/lib/vms/database.img database
 $ benji backup rbd://poolname/database@snapshot1 database
 </pre></div>
@@ -329,21 +318,20 @@ $ benji backup rbd://poolname/database@snapshot1 database
 </div>
 <div class="section" id="versions">
 <h2>Versions<a class="headerlink" href="#versions" title="Permalink to this headline">¶</a></h2>
-<p>An instance of a backup is called a <em>version</em>. A version contains these metadata
-fields:</p>
+<p>A backup at a specific point-in-time is called a <em>version</em>. Apart from a list of blocks a <em>version</em> has a number of
+fields describing it:</p>
 <ul class="simple">
-<li><strong>date</strong>: date and time of the backup, this is created by Benji.</li>
-<li><strong>uid</strong>: unique identifier for this version, this is created by Benji</li>
-<li><strong>name</strong>: name from the command line</li>
-<li><strong>snapshot_name</strong>: snapshot name (option <code class="docutils literal notranslate"><span class="pre">-s</span></code>) from the command line</li>
-<li><strong>size</strong>: size of the backuped image in bytes</li>
-<li><strong>block_size</strong>: block size in bytes</li>
-<li><strong>valid</strong>: validity of this version (True or False)
-This is False while the backup for this version is running and will be set to True
-as soon as the backup has finished and all writers have flushed their data.
-Scrubbing may set this to False if the backup is found invalid for any reason.</li>
-<li><strong>protected</strong>: indication if the version may be deleted (True or False)</li>
-<li><strong>tags</strong>: list of (string) tags for this version</li>
+<li><strong>date</strong>: Date and time of the backup</li>
+<li><strong>uid</strong>: Unique identifier for this version (always starts with the letter <code class="docutils literal notranslate"><span class="pre">V</span></code> followed by a number with optional
+leading zeros)</li>
+<li><strong>name</strong>: Name as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line</li>
+<li><strong>snapshot_name</strong>: Snapshot name as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line with the <code class="docutils literal notranslate"><span class="pre">--snapshot-name</span></code> option</li>
+<li><strong>size</strong>: Size of the backed up image in bytes</li>
+<li><strong>block_size</strong>: Block size in bytes</li>
+<li><strong>valid</strong>: Validity of this version (either <code class="docutils literal notranslate"><span class="pre">valid</span></code>, <code class="docutils literal notranslate"><span class="pre">invalid</span></code>, or <code class="docutils literal notranslate"><span class="pre">incomplete</span></code>)</li>
+<li><strong>protected</strong>: Boolean flag indicating if this version is protected from removal</li>
+<li><strong>labels</strong>: List of label name, value pairs as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line with the <code class="docutils literal notranslate"><span class="pre">--label</span></code>
+option or by using <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">label</span></code></li>
 </ul>
 <p>You can output this data with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
@@ -357,61 +345,47 @@ Scrubbing may set this to False if the backup is found invalid for any reason.</
 </div>
 <div class="admonition hint">
 <p class="first admonition-title">Hint</p>
-<p>You can filter the output with various parameters:</p>
-<div class="last highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji ls --help
-usage: benji ls [-h] [-l] [filter_expression]
-
-positional arguments:
-  filter_expression     Version filter expression
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -l, --include-labels  Include labels in output
-</pre></div>
-</div>
+<p class="last">It is possible to filter the output of <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> with a filter expression. See <a class="reference internal" href="filter_expressions.html#filter-expressions"><span class="std std-ref">Filter Expressions</span></a>.</p>
 </div>
 </div>
 <div class="section" id="differential-backup">
 <span id="id1"></span><h2>Differential Backup<a class="headerlink" href="#differential-backup" title="Permalink to this headline">¶</a></h2>
 <p>Benji only backups changed blocks. It can do this in two different ways:</p>
 <ol class="arabic simple">
-<li><strong>It can read the whole image</strong>: Checksum each block and look the checksum up
-in the database backend. If it is found, only a reference to the existing
-block will be stored, thus there’s no write action on the storage.</li>
-<li><strong>It can receive a hints file</strong>: The hints file is a JSON formatted list of
-(offset, size) tuples (see <a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a> for an example) which indicate
-the status (used or changed) of each region of the image.
-Fortunately the format matches exactly the output of
-<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>.  In this case it will only read blocks hinted
-at by the <em>hints file</em>, checksum each block and look the checksum up in the
-database backend. If it is found (which may rarely happen for file copies
-or when blocks are all zeros), only a reference to the existing block will
-be stored. Otherwise the block is written to the storage.
-The hints file is passed via the  <code class="docutils literal notranslate"><span class="pre">-r</span></code> or <code class="docutils literal notranslate"><span class="pre">--rbd</span></code> option to
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>.</li>
+<li><strong>By reading the whole image</strong>: Benji reads and calculates a checksum for each block. The checksum is then looked
+up in the database. If a block with the same checksum is found, only a reference to this block is saved. Otherwise
+a new block is created and saved to the storage.</li>
+<li><strong>By using a hints file</strong>: The hints file is a JSON formatted list of (offset, size, usage) tuples (see
+<a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a>). Each tuple indicates if a specific region of the image is used at all or if it has changed
+since the last backup. The format of the hints file understood by Benji matches the output of
+<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>. If a hints file is specified Benji only reads and checksums blocks hinted at by the
+hints file. The checksum is then again looked up in the database. If a block with the same checksum is found, only
+a reference to this block is saved. Otherwise a new block is created and saved to the storage.
+The hints file is passed via the <code class="docutils literal notranslate"><span class="pre">--rbd-hints</span></code> option to <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>. It is not Ceph RBD specific per se and
+could also be used in other scenarios like the backup of LVM snapshots.</li>
 </ol>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Benji does <strong>forward-incremental backups</strong>. So in contrast to
-backward-incremental backups, there will never be any need to create another
-full backup after the first full backup.
-If you don’t trust Benji, you are encouraged to use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">deep-scrub</span></code>,
-possibly with the <code class="docutils literal notranslate"><span class="pre">[-s]</span></code> parameter to see if the backup matches the source.</p>
+<p class="last">Benji does <strong>forward-incremental backups</strong>. In contrast to other backup modes, there is no need to create
+another full backup after the first one. From a restore standpoint all versions are full backups (sometimes
+called a synthetic full backup).</p>
 </div>
-<p>In any case, if the backup source changes size, Benji will assume that
-the size change has happened at the end of the volume, which is the case if you
-resize partitions, logical volumes or Ceph RBD images.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If Benji detects that a backup source’s size has changed, Benji will assume that the image was extended at the
+end. This is normally the case when you resize partitions or when extending logical volumes or Ceph RBD images.</p>
+</div>
 <div class="section" id="examples">
 <h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="lvm-and-other-images">
-<h4>LVM and other Images<a class="headerlink" href="#lvm-and-other-images" title="Permalink to this headline">¶</a></h4>
-<p>Day 1 (initial backup):</p>
+<h4>LVM and other images<a class="headerlink" href="#lvm-and-other-images" title="Permalink to this headline">¶</a></h4>
+<p>Day 1 (Initial Backup):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ lvcreate --size 1G --snapshot --name snap /dev/vg00/lvol1
 $ benji backup file:///dev/vg00/snap lvol1
 $ lvremove -y /dev/vg00/snap
 </pre></div>
 </div>
-<p>Day 2..n (differential backups):</p>
+<p>Day 2..n (Differential Backups):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ lvcreate --size 1G --snapshot --name snap /dev/vg00/lvol1
 $ benji backup file:///dev/vg00/snap lvol1
 $ lvremove -y /dev/vg00/snap
@@ -419,30 +393,26 @@ $ lvremove -y /dev/vg00/snap
 </div>
 <div class="admonition important">
 <p class="first admonition-title">Important</p>
-<p>With LVM snapshots, the snapshot increases in size as the origin
-volume changes. If the snapshot is 100% full, it is lost and invalid.
-It is important to monitor the snapshot usage with the <code class="docutils literal notranslate"><span class="pre">lvs</span></code> command
-to make sure the snapshot doesn’t fill up completely.
-The <code class="docutils literal notranslate"><span class="pre">--size</span></code> parameter defines the space reserved for changes during the
-snapshot’s existence.</p>
-<p class="last">Also note that LVM does read-write-write for any overwritten block while a
-snapshot exists. This may hurt your performance.</p>
+<p class="last">With LVM snapshots, the snapshot volume increases in size as the origin volume changes. If the snapshot
+is 100% full, it is lost and invalid. It is important to monitor the snapshot usage with the <code class="docutils literal notranslate"><span class="pre">lvs</span></code> command
+to make sure the snapshot does not fill up completely. The <code class="docutils literal notranslate"><span class="pre">--size</span></code> parameter defines the space reserved for
+changes during the snapshot’s existence. Snapshots of thin volumes don’t need the <code class="docutils literal notranslate"><span class="pre">--size</span></code> parameter, they use
+the space available in the pool to keep track of changes. Also note that LVM does read-write-write for any
+overwritten block while a snapshot exists. This may hurt your performance.</p>
 </div>
 </div>
 <div class="section" id="ceph-rbd">
 <h4>Ceph RBD<a class="headerlink" href="#ceph-rbd" title="Permalink to this headline">¶</a></h4>
-<p>With Ceph RBD it’s possible to let Ceph calculate the changes between two snapshots.
-Since the <em>jewel</em> version of Ceph this is a very fast process if the <em>fast-diff</em>
-feature is enabled. In this case only metadata has to be compared.</p>
+<p>With Ceph RBD Ceph itself is able to calculate the changes between two snapshots. Since the <em>jewel</em> version of Ceph
+this is a very fast process if the <em>fast-diff</em> feature is enabled. In this case only metadata has to be compared.</p>
 <div class="section" id="manually">
 <h5>Manually<a class="headerlink" href="#manually" title="Permalink to this headline">¶</a></h5>
-<p>In this example, we will backup an RBD image called <code class="docutils literal notranslate"><span class="pre">vm1</span></code> which is in the
-pool <code class="docutils literal notranslate"><span class="pre">pool</span></code>.</p>
+<p>In this example, we will backup an RBD image called <code class="docutils literal notranslate"><span class="pre">vm1</span></code> which is in the pool <code class="docutils literal notranslate"><span class="pre">pool</span></code>.</p>
 <ol class="arabic">
 <li><p class="first">Create an initial backup:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup1
 $ rbd diff --whole-object pool/vm1@backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
-$ benji backup -s backup1 -r /tmp/vm1.diff rbd://pool/vm1@backup1 vm1
+$ benji backup --snapshot-name backup1 --rbd-hints /tmp/vm1.diff rbd://pool/vm1@backup1 vm1
 </pre></div>
 </div>
 </li>
@@ -450,15 +420,14 @@ $ benji backup -s backup1 -r /tmp/vm1.diff rbd://pool/vm1@backup1 vm1
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup2
 $ rbd diff --whole-object pool/vm1@backup2 --from-snap backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
 
-<span class="c1"># delete old snapshot</span>
+<span class="c1"># Delete old snapshot</span>
 $ rbd snap rm pool/vm1@backup1
 
-<span class="c1"># get the uid of the version corrosponding to the old rbd snapshot. This</span>
-<span class="c1"># looks like &quot;V001234567&quot;. Copy it.</span>
-$ benji ls vm1 -s backup1
+<span class="c1"># Identify the UID of the version corresponding to the last RBD snapshot</span>
+$ benji ls <span class="s1">&#39;name == &quot;vm1&quot; and snapshot_name == &quot;backup1&quot;&#39;</span>
 
-<span class="c1"># and backup</span>
-$ benji backup -s backup2 -r /tmp/vm1.diff -f V001234567 rbd://pool/vm1@backup2 vm1
+<span class="c1"># And backup (replace V001234567 with the version UID you identified in the last step)</span>
+$ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd://pool/vm1@backup2 vm1
 </pre></div>
 </div>
 </li>
@@ -466,319 +435,70 @@ $ benji backup -s backup2 -r /tmp/vm1.diff -f V001234567 rbd://pool/vm1@backup2 
 </div>
 <div class="section" id="automation">
 <h5>Automation<a class="headerlink" href="#automation" title="Permalink to this headline">¶</a></h5>
-<p>This is how you can automate forward differential backups including automatic
-initial backups where necessary:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env bash</span>
-
-<span class="k">function</span> _extract_version_uid <span class="o">{</span>
-    jq -r <span class="s1">&#39;.versions[0].uid&#39;</span>
-<span class="o">}</span>
-
-<span class="k">function</span> benji::backup::ceph::snapshot::create <span class="o">{</span>
-    <span class="nb">local</span> <span class="nv">VERSION_NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_SNAPSHOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
-
-    benji::hook::execute benji::backup::ceph::snapshot::create::pre <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-
-    rbd snap create <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-
-    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-        benji::hook::execute benji::backup::ceph::snapshot::create::post::success <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="se">\</span>
-            <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-            <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-        <span class="k">return</span> <span class="m">0</span>
-    <span class="k">else</span>
-        benji::hook::execute benji::backup::ceph::snapshot::create::post::error <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="se">\</span>
-            <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-            <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-        <span class="k">return</span> <span class="m">1</span>
-    <span class="k">fi</span>
-<span class="o">}</span>
-
-<span class="c1"># Returns:</span>
-<span class="c1"># - version uid in global variable VERSION_UID (empty string on error)</span>
-<span class="c1"># - stderr output of benji backup in BENJI_BACKUP_STDERR</span>
-<span class="k">function</span> benji::backup::ceph::initial <span class="o">{</span>
-    <span class="nb">local</span> <span class="nv">VERSION_NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-    <span class="nb">shift</span> <span class="m">3</span>
-    <span class="nb">local</span> <span class="nv">VERSION_LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
-
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_SNAPSHOT</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-19T11:33:23</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_DIFF_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
-    <span class="nb">local</span> <span class="nv">BENJI_BACKUP_STDERR_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir benji-backup-tmp.XXXXXXXXXX<span class="k">)</span>
-
-    <span class="nb">trap</span> <span class="s2">&quot;{ rm -f \&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">\&quot; \&quot;</span><span class="nv">$BENJI_BACKUP_STDERR_FILE</span><span class="s2">\&quot;; }&quot;</span> RETURN EXIT
-
-    <span class="nb">echo</span> <span class="s2">&quot;Performing initial backup of </span><span class="nv">$VERSION_NAME</span><span class="s2">:</span><span class="nv">$CEPH_POOL</span><span class="s2">/</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">.&quot;</span>
-
-    benji::backup::ceph::snapshot::create <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-    rbd diff --whole-object <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> --format<span class="o">=</span>json &gt;<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-
-    <span class="nv">VERSION_UID</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>benji -m --log-level <span class="s2">&quot;</span><span class="nv">$BENJI_LOG_LEVEL</span><span class="s2">&quot;</span> backup -s <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="k">$(</span><span class="nb">printf</span> -- <span class="s2">&quot;-l %s &quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION_LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span> rbd://<span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="m">2</span>&gt; &gt;<span class="o">(</span>tee <span class="s2">&quot;</span><span class="nv">$BENJI_BACKUP_STDERR_FILE</span><span class="s2">&quot;</span> &gt;<span class="p">&amp;</span><span class="m">2</span><span class="k">)</span><span class="s2"> | _extract_version_uid | benji::version::uid::format)&quot;</span>
-    <span class="nb">local</span> <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-    <span class="nv">BENJI_BACKUP_STDERR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>&lt;<span class="si">${</span><span class="nv">BENJI_BACKUP_STDERR_FILE</span><span class="si">}</span><span class="k">)</span><span class="s2">&quot;</span>
-    <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span> <span class="o">||</span> <span class="k">return</span> <span class="nv">$EC</span>
-
-    <span class="k">return</span> <span class="m">0</span>
-<span class="o">}</span>
-
-<span class="c1"># Returns:</span>
-<span class="c1"># - version uid in global variable VERSION_UID (empty string on error)</span>
-<span class="c1"># - stderr output of benji backup in BENJI_BACKUP_STDERR</span>
-<span class="k">function</span> benji::backup::ceph::differential <span class="o">{</span>
-    <span class="nb">local</span> <span class="nv">VERSION_NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_SNAPSHOT_LAST</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">BENJI_VERSION_UID_LAST</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$5</span><span class="s2">&quot;</span>
-    <span class="nb">shift</span> <span class="m">5</span>
-    <span class="nb">local</span> <span class="nv">VERSION_LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
-
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_SNAPSHOT</span><span class="o">=</span><span class="s2">&quot;b-</span><span class="k">$(</span>date <span class="s1">&#39;+%Y-%m-%dT%H:%M:%S&#39;</span><span class="k">)</span><span class="s2">&quot;</span>  <span class="c1"># b-2017-04-20T11:33:23</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_DIFF_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir ceph-rbd-diff-tmp.XXXXXXXXXX<span class="k">)</span>
-    <span class="nb">local</span> <span class="nv">BENJI_BACKUP_STDERR_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp --tmpdir benji-backup-tmp.XXXXXXXXXX<span class="k">)</span>
-
-    <span class="nb">trap</span> <span class="s2">&quot;{ rm -f \&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">\&quot; \&quot;</span><span class="nv">$BENJI_BACKUP_STDERR_FILE</span><span class="s2">\&quot;; }&quot;</span> RETURN EXIT
-
-    <span class="nb">echo</span> <span class="s2">&quot;Performing differential backup of </span><span class="nv">$VERSION_NAME</span><span class="s2">:</span><span class="nv">$CEPH_POOL</span><span class="s2">/</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2"> from RBD snapshot&quot;</span> <span class="se">\</span>
-        <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2"> and Benji version </span><span class="k">$(</span>benji::version::uid::format <span class="o">&lt;&lt;&lt;</span><span class="s2">&quot;</span><span class="nv">$BENJI_VERSION_UID_LAST</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">.&quot;</span>
-
-    benji::backup::ceph::snapshot::create <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-    rbd diff --whole-object <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> --from-snap <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">&quot;</span> <span class="se">\</span>
-        --format<span class="o">=</span>json &gt;<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-    rbd snap rm <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-
-    <span class="nv">VERSION_UID</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>benji -m --log-level <span class="s2">&quot;</span><span class="nv">$BENJI_LOG_LEVEL</span><span class="s2">&quot;</span> backup -s <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> -r <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_DIFF_FILE</span><span class="s2">&quot;</span> -f <span class="s2">&quot;</span><span class="nv">$BENJI_VERSION_UID_LAST</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="k">$(</span><span class="nb">printf</span> -- <span class="s2">&quot;-l %s &quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION_LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="k">)</span> rbd://<span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT</span><span class="s2">&quot;</span> <span class="se">\</span>
-        <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="m">2</span>&gt; &gt;<span class="o">(</span>tee <span class="s2">&quot;</span><span class="nv">$BENJI_BACKUP_STDERR_FILE</span><span class="s2">&quot;</span> &gt;<span class="p">&amp;</span><span class="m">2</span><span class="k">)</span><span class="s2"> | _extract_version_uid  | benji::version::uid::format)&quot;</span>
-    <span class="nb">local</span> <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-    <span class="nv">BENJI_BACKUP_STDERR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>&lt;<span class="si">${</span><span class="nv">BENJI_BACKUP_STDERR_FILE</span><span class="si">}</span><span class="k">)</span><span class="s2">&quot;</span>
-    <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span> <span class="o">||</span> <span class="k">return</span> <span class="nv">$EC</span>
-
-    <span class="k">return</span> <span class="m">0</span>
-<span class="o">}</span>
-
-<span class="k">function</span> benji::backup::ceph <span class="o">{</span>
-    <span class="nb">local</span> <span class="nv">VERSION_NAME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_POOL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_IMAGE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-    <span class="nb">shift</span> <span class="m">3</span>
-    <span class="nb">local</span> <span class="nv">VERSION_LABELS</span><span class="o">=(</span><span class="s2">&quot;</span><span class="nv">$@</span><span class="s2">&quot;</span><span class="o">)</span>
-
-    benji::hook::execute benji::backup::pre <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span>
-
-    <span class="c1"># find the latest snapshot name from rbd</span>
-    <span class="nb">local</span> <span class="nv">CEPH_RBD_SNAPSHOT_LAST</span><span class="o">=</span><span class="k">$(</span>rbd snap ls <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> --format<span class="o">=</span>json <span class="p">|</span> jq -r <span class="s1">&#39;[.[].name] | map(select(test(&quot;^b-&quot;))) | sort | .[-1] // &quot;&quot;&#39;</span><span class="k">)</span>
-    <span class="nb">local</span> <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span><span class="p">;</span> <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span> <span class="o">||</span> <span class="k">return</span> <span class="nv">$EC</span>
-    <span class="nb">echo</span> <span class="s2">&quot;Snapshot found for </span><span class="nv">$CEPH_POOL</span><span class="s2">/</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2"> is </span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">.&quot;</span>
-
-    <span class="k">if</span> <span class="o">[[</span> ! <span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-        <span class="nb">echo</span> <span class="s1">&#39;No previous RBD snapshot found, reverting to initial backup.&#39;</span>
-        benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION_LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-    <span class="k">else</span>
-        <span class="c1"># check if a valid version of this RBD snapshot exists</span>
-        <span class="nv">BENJI_SNAP_VERSION_UID</span><span class="o">=</span><span class="k">$(</span>benji -m ls <span class="s1">&#39;name == &quot;&#39;</span><span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span><span class="s1">&#39;&quot; and snapshot_name == &quot;&#39;</span><span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">&quot;</span><span class="s1">&#39;&quot;&#39;</span> <span class="p">|</span> jq -r <span class="s1">&#39;.versions[0] | select(.status == &quot;valid&quot;) | .uid // &quot;&quot;&#39;</span><span class="k">)</span>
-        <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-
-        <span class="k">if</span> <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-            <span class="k">if</span> <span class="o">[[</span> ! <span class="nv">$BENJI_SNAP_VERSION_UID</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-                <span class="nb">echo</span> <span class="s1">&#39;Existing RBD snapshot not found in Benji, deleting it and reverting to initial backup.&#39;</span>
-                rbd snap rm <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span>/<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span>@<span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">&quot;</span>
-                <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-                <span class="k">if</span> <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-                    benji::backup::ceph::initial <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION_LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-                <span class="k">fi</span>
-            <span class="k">else</span>
-                    benji::backup::ceph::differential <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_POOL</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_IMAGE</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$CEPH_RBD_SNAPSHOT_LAST</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_SNAP_VERSION_UID</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="si">${</span><span class="nv">VERSION_LABELS</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="nv">EC</span><span class="o">=</span><span class="nv">$?</span>
-            <span class="k">fi</span>
-        <span class="k">fi</span>
-    <span class="k">fi</span>
-
-    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$EC</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-        benji::hook::execute benji::backup::post::success <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_BACKUP_STDERR</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$VERSION_UID</span><span class="s2">&quot;</span> <span class="se">\</span>
-            <span class="o">||</span> <span class="k">return</span> <span class="nv">$?</span>
-        <span class="k">return</span> <span class="m">0</span>
-    <span class="k">else</span>
-        benji::hook::execute benji::backup::post::error <span class="s2">&quot;</span><span class="nv">$VERSION_NAME</span><span class="s2">&quot;</span> <span class="s2">&quot;</span><span class="nv">$BENJI_BACKUP_STDERR</span><span class="s2">&quot;</span>
-        <span class="k">return</span> <span class="nv">$EC</span>
-    <span class="k">fi</span>
-<span class="o">}</span>
-</pre></div>
+<p>Benji includes a number of Bash scripts to automate the process outlined in the last section.</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Explain the Bash scripts and how to use them!</p>
 </div>
-<p>This is what it does:</p>
+<p>The general workflow of these scripts is:</p>
 <ul class="simple">
-<li>When the backup::ceph is called, it searches for the latest RBD
-snapshot. As RBD snapshots have no date assigned, it’s the last one from
-a sorted output of <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">snap</span> <span class="pre">ls</span></code>.</li>
+<li>When the backup of an RBD image is initiated, the latest RBD snapshot is looked up.</li>
 </ul>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Only RBD snapshots that begin the prefix <em>b-</em> are considered. All
-other snapshots are left alone. This makes it possible to have manual
-snapshots that aren’t touched by Benji.</p>
+<p class="last">Only RBD snapshots that begin the prefix <em>b-</em> are considered. All other snapshots are left alone. This makes
+it possible to have other snapshots that will not be touched by Benji.</p>
 </div>
 <ul class="simple">
 <li>If no RBD snapshot is found, an initial backup is performed.</li>
-<li>If there is an RBD snapshot, Benji is asked if it has a <em>version</em> of this
-snapshot. If not, an initial_backup is performed.</li>
-<li>If Benji has a <em>version</em> of this snapshot, a <em>hints file</em> is created via
+<li>If there is an RBD snapshot, Benji is asked if it has corresponding <em>version</em> of this snapshot. If not, an initial
+backup is performed.</li>
+<li>If Benji has a <em>version</em> of the snapshot, a hints file is created via
 <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">--whole-object</span> <span class="pre">&lt;new</span> <span class="pre">snapshot&gt;</span> <span class="pre">--from-snap</span> <span class="pre">&lt;old</span> <span class="pre">snapshot&gt;</span> <span class="pre">--format=json</span></code>.</li>
-<li>Benji then only backups changes as listed in the <em>hints file</em>.</li>
+<li>After that Benji only backups the changes as listed in the hints file.</li>
 </ul>
-<p>These functions could be called each day by a small script (or even multiple
-times a day) and will automatically keep only one snapshot and create
-forward-differential backups.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This alone won’t be enough to be on the safe side. You will have to
-check the validity of the backup data regularly. Please refer to section
-<a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
+<p class="last">This alone won’t be enough to be on the safe side. The validity of the backup data needs to checked
+regularly. Please refer to section <a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
 </div>
 </div>
 </div>
 </div>
 </div>
 <div class="section" id="specifying-a-block-size">
-<h2>Specifying a Block Size<a class="headerlink" href="#specifying-a-block-size" title="Permalink to this headline">¶</a></h2>
+<h2>Specifying a block size<a class="headerlink" href="#specifying-a-block-size" title="Permalink to this headline">¶</a></h2>
 <p>To perform a backup Benji splits up the image into equal sized blocks. <a class="footnote-reference" href="#id3" id="id2">[1]</a></p>
-<p>By default the block size specified in the configuration file is used.
-But the block size can also be changed on the command line on a version by version
-basis, but be aware that this will affect deduplication and increase the space
+<p>By default the block size specified in the configuration file is used. But the block size can also be set on the
+command line on a <em>version</em> by <em>version</em> basis, but be aware that this will affect deduplication and increase space
 usage.</p>
-<p>One possible use case for different block sizes would be backing up LVM
-volumes and Ceph images with the same Benji installation. While for Ceph 4MB
-is usually the best size, LVM volumes might profit from a smaller block size.</p>
-<p>If you want to base a new version on an old version (as it can be the case when
-doing a differential backup) the block size of the old and new version
-have to match. Benji will terminate with an error if that is not the case.</p>
+<p>One possible use case for different block sizes is backing up LVM volumes and Ceph images with the same Benji
+installation. While for Ceph RBD four megabytes is usually the best size, LVM volumes might profit from a smaller
+block size.</p>
+<p>If you want to base a new version on an old version (as it can be the case when doing a differential backup) the block
+size of the old and new version must match. Benji will terminate with an error if this is not the case.</p>
 </div>
-<div class="section" id="tag-backups">
-<h2>Tag Backups<a class="headerlink" href="#tag-backups" title="Permalink to this headline">¶</a></h2>
-<p>A <em>version</em> can have multiple tags. They are just for use by the administrator
-and have no function in Benji. To specify a tag the <code class="docutils literal notranslate"><span class="pre">backup</span></code> command provides
-the command line switch <code class="docutils literal notranslate"><span class="pre">-t</span></code> or <code class="docutils literal notranslate"><span class="pre">--tag</span></code>:</p>
+<div class="section" id="labeling-versions">
+<h2>Labeling <em>Versions</em><a class="headerlink" href="#labeling-versions" title="Permalink to this headline">¶</a></h2>
+<p>A <em>version</em> can have zero or more associated labels. A label consists of a label name and an optional label value. To
+specify a label the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command provides the command line switch <code class="docutils literal notranslate"><span class="pre">--label</span></code> which can be repeated
+multiple times to set multiple labels at once.</p>
 <blockquote>
-<div>$ benji backup -t mytag rbd://cephstorage/test_vm test_vm</div></blockquote>
-<p>You can also use multiple tags for one revision:</p>
-<blockquote>
-<div>$ benji backup -t mytag -t anothertag rbd://cephstorage/test_vm test_vm</div></blockquote>
-<p>Later on you can modify tags with the commands ‘add-tag’ and ‘remove-tag’:</p>
-<blockquote>
-<div>$ benji add-tag V0000000001 mytag
-$ benji rm-tag V0000000001 anothertag</div></blockquote>
-<p>In the case of <code class="docutils literal notranslate"><span class="pre">add-tag</span></code> and <code class="docutils literal notranslate"><span class="pre">rm-tag</span></code> you can also specify multiple tags,
-just list them after the first one. It is no error to add or remove tags which
-already exist or which don’t exist anymore respectively, Benji just emits a
-warning in these cases.</p>
-</div>
-<div class="section" id="export-metadata">
-<h2>Export Metadata<a class="headerlink" href="#export-metadata" title="Permalink to this headline">¶</a></h2>
-<p>Benji has now backed up all image data to a (hopefully) safe place. However,
-the blocks are of no use without the corresponding metadata. Benji
-will need this information to get the blocks back in the correct order and
-restore your image.</p>
-<p>This information is stored in the database backend. Additionally Benji will
-save the metadata on the storage automatically. Should you lose your
-database backend, you can restore these metadata backups by using
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-restore --help
-usage: benji metadata-restore [-h] [-S STORAGE] VERSION_UID [VERSION_UID ...]
-
-positional arguments:
-  VERSION_UID           Version UID
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -S STORAGE, --storage STORAGE
-                        Source storage (if unspecified the default is used)
+<div>$ benji backup –label example.com/label=value –label example.com/label-2 rbd://cephstorage/test_vm test_vm</div></blockquote>
+<p>If no label value is specified it is set to an empty string.</p>
+<p>Later on it is possible to add, change or remove labels with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">label</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji label V0000000001 example.com/label-1<span class="o">=</span>value-1 example.com/label-2
 </pre></div>
 </div>
-<p>There is currently no mechanism to import the backup of all version’s
-metadata from the storage, but you could get a list of all versions
-manually from the storage.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This metadata backup is compressed and encrypted like the blocks
-if you have these features enabled.</p>
-</div>
-<p>If you want to make your own copies of your metadata you can do so by using
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-export --help
-usage: benji metadata-export [-h] [-f] [-o OUTPUT_FILE] [filter_expression]
-
-positional arguments:
-  filter_expression     Version filter expression
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -f, --force           Overwrite an existing output file
-  -o OUTPUT_FILE, --output-file OUTPUT_FILE
-                        Output file (standard output if missing)
+<p>To remove a label specify its name followed by a dash (<code class="docutils literal notranslate"><span class="pre">-</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji label V0000000001 example.com/label-1-
 </pre></div>
 </div>
-<p>If you’re doing this programmatically and are exporting to STDOUT you should
-probably add <code class="docutils literal notranslate"><span class="pre">-m</span></code> to your export command to reduce the logging level of Benji.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m metadata-export V1
-<span class="o">{</span>
-  <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
-  <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
-    <span class="o">{</span>
-      <span class="s2">&quot;uid&quot;</span>: <span class="m">1</span>,
-      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T12:51:19&quot;</span>,
-      <span class="s2">&quot;name&quot;</span>: <span class="s2">&quot;test&quot;</span>,
-      <span class="s2">&quot;snapshot_name&quot;</span>: <span class="s2">&quot;&quot;</span>,
-      <span class="s2">&quot;size&quot;</span>: <span class="m">41943040</span>,
-      <span class="s2">&quot;block_size&quot;</span>: <span class="m">4194304</span>,
-      <span class="s2">&quot;valid&quot;</span>: true,
-      <span class="s2">&quot;protected&quot;</span>: false,
-      <span class="s2">&quot;tags&quot;</span>: <span class="o">[]</span>,
-      <span class="s2">&quot;blocks&quot;</span>: <span class="o">[</span>
-        <span class="o">{</span>
-          <span class="s2">&quot;uid&quot;</span>: <span class="o">{</span>
-            <span class="s2">&quot;left&quot;</span>: <span class="m">1</span>,
-            <span class="s2">&quot;right&quot;</span>: <span class="m">1</span>
-          <span class="o">}</span>,
-          <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T14:51:20&quot;</span>,
-          <span class="s2">&quot;id&quot;</span>: <span class="m">0</span>,
-          <span class="s2">&quot;size&quot;</span>: <span class="m">4194304</span>,
-          <span class="s2">&quot;valid&quot;</span>: true,
-          <span class="s2">&quot;checksum&quot;</span>: <span class="s2">&quot;aed3116b4e7fad9a3188f5ba7c8e73bf158dabec387ef1a7bca84c58fe72f319&quot;</span>
-        <span class="o">}</span>,
-<span class="o">[</span>...<span class="o">]</span>
-</pre></div>
-</div>
-<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-import --help
-usage: benji metadata-import [-h] [-i INPUT_FILE]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -i INPUT_FILE, --input-file INPUT_FILE
-                        Input file (standard input if missing)
-</pre></div>
-</div>
-<p>You can’t import versions that already exist in the database backend.</p>
+<p>It is no error to change or remove a label which already exists or which does not exist anymore respectively.</p>
 </div>
 <div class="section" id="the-hints-file">
 <span id="hints-file"></span><h2>The Hints File<a class="headerlink" href="#the-hints-file" title="Permalink to this headline">¶</a></h2>
-<p>Example of a hints-file:</p>
+<p>Example of a hints file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[{</span><span class="s2">&quot;offset&quot;</span>:0,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
 <span class="o">{</span><span class="s2">&quot;offset&quot;</span>:4194304,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
 <span class="o">{</span><span class="s2">&quot;offset&quot;</span>:8388608,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
@@ -788,13 +508,6 @@ optional arguments:
 <span class="o">{</span><span class="s2">&quot;offset&quot;</span>:25165824,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>,
 <span class="o">{</span><span class="s2">&quot;offset&quot;</span>:952107008,<span class="s2">&quot;length&quot;</span>:4194304,<span class="s2">&quot;exists&quot;</span>:<span class="s2">&quot;true&quot;</span><span class="o">}</span>
 </pre></div>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The length may vary, however it’s nicely aligned to 4MB when using
-<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">--whole-object</span></code>. As Benji by default also uses 4MB blocks,
-it will not have to recalculate which 4MB blocks are affected by more
-and smaller offset+length tuples (not that that’d take very long).</p>
 </div>
 <table class="docutils footnote" frame="void" id="id3" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
