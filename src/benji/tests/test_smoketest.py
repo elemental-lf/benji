@@ -10,8 +10,8 @@ from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.logging import logger
-from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
+from benji.utils import hints_from_rbd_diff
 
 kB = 1024
 MB = kB * 1024

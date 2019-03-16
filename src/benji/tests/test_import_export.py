@@ -8,8 +8,8 @@ from unittest import TestCase
 
 from benji.database import VersionUid, VersionStatus
 from benji.logging import logger
-from benji.scripts.benji import hints_from_rbd_diff
 from benji.tests.testcase import BenjiTestCaseBase
+from benji.utils import hints_from_rbd_diff
 from benji.versions import VERSIONS
 
 kB = 1024
