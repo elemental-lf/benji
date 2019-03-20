@@ -10,11 +10,17 @@ function benji::backup::ceph::snapshot::create {
     local CEPH_RBD_IMAGE="$3"
     local CEPH_RBD_SNAPSHOT="$4"
 
+    # We need this to run through, so ignore termination and stop attempts for a time.
+    # A trap for RETURN is not inherited by default, which is exactly what we need.
+    trap -- 'trap - SIGINT SIGTERM SIGTSTP RETURN' RETURN
+    trap -- '' SIGINT SIGTERM SIGTSTP
+
     benji::hook::execute benji::backup::ceph::snapshot::create::pre "$VERSION_NAME" "$CEPH_POOL" \
         "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
         || return $?
 
-    rbd snap create "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT"
+    # Start rbd with a timeout to increase the likelihood that we don't hang with signals off...
+    timeout --kill-after=10 30 rbd snap create "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT"
     local EC=$?
 
     if [[ $EC == 0 ]]; then
@@ -23,10 +29,14 @@ function benji::backup::ceph::snapshot::create {
             || return $?
         return 0
     else
+        if [[ $EC == 124 ]]; then
+            echo "Warning: Snapshot creation timed out for $CEPH_POOL/$CEPH_RBD_IMAGE."
+        fi
+
         benji::hook::execute benji::backup::ceph::snapshot::create::post::error "$VERSION_NAME" "$CEPH_POOL" \
             "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
             || return $?
-        return 1
+        return $EC
     fi
 }
 
@@ -114,13 +124,13 @@ function benji::backup::ceph {
     # find the latest snapshot name from rbd
     local CEPH_RBD_SNAPSHOT_LAST=$(rbd snap ls "$CEPH_POOL"/"$CEPH_RBD_IMAGE" --format=json | jq -r '[.[].name] | map(select(test("^b-"))) | sort | .[-1] // ""')
     local EC=$?; [[ $EC == 0 ]] || return $EC
-    echo "Snapshot found for $CEPH_POOL/$CEPH_RBD_IMAGE is $CEPH_RBD_SNAPSHOT_LAST."
 
     if [[ ! $CEPH_RBD_SNAPSHOT_LAST ]]; then
         echo 'No previous RBD snapshot found, reverting to initial backup.'
         benji::backup::ceph::initial "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "${VERSION_LABELS[@]}"
         EC=$?
     else
+        echo "Snapshot found for $CEPH_POOL/$CEPH_RBD_IMAGE is $CEPH_RBD_SNAPSHOT_LAST."
         # check if a valid version of this RBD snapshot exists
         BENJI_SNAP_VERSION_UID=$(benji -m ls 'name == "'"$VERSION_NAME"'" and snapshot_name == "'"$CEPH_RBD_SNAPSHOT_LAST"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
         EC=$?

@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 
+function _determine_fsfreeze_pod {
+    local HOST_IP="$1"
+    kubectl get pod -l benji-backup.me/component=fsfreeze -o json \
+        | jq -r '.items ?// [.] | .[] | select(.status.hostIP=="'"$HOST_IP"'" and .status.phase == "Running") | .metadata.name'
+}
+
 function benji::backup::ceph::snapshot::create::pre {
     local VERSION_NAME="$1"
     local CEPH_POOL="$2"
     local CEPH_RBD_IMAGE="$3"
     local CEPH_RBD_SNAPSHOT="$4"
 
-    echo "Not implemented yet: Freezeing filesystem $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP."
-    # FIXME: Implement optional fsfreeze --freeze (switch on/off by label on PVC)
+    [[ $FSFREEZE == "no" ]] && return 0
 
+    echo "Freezing filesystem $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP."
+
+    FSFREEZE_POD="$(_determine_fsfreeze_pod "$K8S_PV_HOST_IP")"
+    if [[ $FSFREEZE_POD ]]; then
+        if ! kubectl exec -c fsfreeze "$FSFREEZE_POD" -- fsfreeze --freeze "$CEPH_RBD_IMAGE_MOUNTPOINT"; then
+            echo "Freezing filesystem failed."
+            return 1
+        fi
+    else
+        echo "Unable to determine fsfreeze pod name."
+        return 1
+    fi
+
+    echo "Freezing $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP succeeded."
     return 0
 }
 
@@ -18,10 +37,31 @@ function benji::backup::ceph::snapshot::create::post::error {
     local CEPH_RBD_IMAGE="$3"
     local CEPH_RBD_SNAPSHOT="$4"
 
-    echo "Not implemented yet: Unfreezing filesystem $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP."
-    # FIXME: Implement optional fsfreeze --unfreeze (switch on/off by label on PVC)
+    [[ $FSFREEZE == "no" ]] && return 0
 
-    return 0
+    echo "Unfreezing filesystem $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP."
+
+    # Retry three times in rapid succession and then wait a bit for the last two retries
+    for try in 0 1 1 1 15 30; do
+        sleep "$try"
+
+        # We try to determine the pod name at each iteration so that we'll detect a newly started pod and use it
+        FSFREEZE_POD="$(_determine_fsfreeze_pod "$K8S_PV_HOST_IP")"
+        if [[ $FSFREEZE_POD ]]; then
+            if kubectl exec -c fsfreeze "$FSFREEZE_POD" -- fsfreeze --unfreeze "$CEPH_RBD_IMAGE_MOUNTPOINT"; then
+                echo "Unfreezing $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP succeeded."
+                return 0
+            else
+                echo "Unfreezing filesystem failed, retrying."
+            fi
+        else
+            echo "Unable to determine fsfreeze pod name, retrying."
+        fi
+    done
+
+    # We reach this point when we've exhausted all tries
+    echo "Giving up on unfreezing $CEPH_RBD_IMAGE_MOUNTPOINT on host $K8S_PV_HOST_IP."
+    return 1
 }
 
 function benji::backup::ceph::snapshot::create::post::success {

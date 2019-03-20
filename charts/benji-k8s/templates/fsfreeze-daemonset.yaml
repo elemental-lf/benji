@@ -1,0 +1,72 @@
+{{- if .Values.fsfreeze.enabled }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "benji.fullname" . }}-fsfreeze
+  labels:
+      app.kubernetes.io/name: {{ include "benji.name" . }}
+      helm.sh/chart: {{ include "benji.chart" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "benji.name" . }}-fsfreeze
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "benji.name" . }}-fsfreeze
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        benji-backup.me/component: fsfreeze
+    spec:
+      serviceAccountName: {{ template "benji.fullname" . }}
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: fsfreeze
+          image: "{{ .Values.fsfreeze.image.registry }}/{{ .Values.fsfreeze.image.repository }}:{{ .Values.fsfreeze.image.tag }}"
+          imagePullPolicy: {{ .Values.fsfreeze.image.pullPolicy }}
+          securityContext:
+            privileged: true
+          command:
+            - sleep
+            - 365d
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: rbd-mounts
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+            - name: tz-config
+              mountPath: /etc/localtime
+          resources:
+            {{ toYaml .Values.fsfreeze.resources | nindent 12 }}
+      hostNetwork: false
+      volumes:
+        - name: rbd-mounts
+          hostPath:
+            path: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+            type: Directory
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/{{ .Values.timeZone }}
+{{- with .Values.fsfreeze.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.fsfreeze.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.fsfreeze.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+{{- end }}
+{{- end }}

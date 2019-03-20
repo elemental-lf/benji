@@ -3,10 +3,10 @@ kind: ClusterRole
 metadata:
   name: {{ template "benji.fullname" . }}
   labels:
-    app: {{ template "benji.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "benji.name" . }}
+    helm.sh/chart: {{ include "benji.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 rules:
 - apiGroups:
   - ""
@@ -32,3 +32,11 @@ rules:
   - get
   - list
   - watch
+{{- if .Values.fsfreeze.enabled }}
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+{{- end}}

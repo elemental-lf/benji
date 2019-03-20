@@ -1,21 +1,25 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "benji.fullname" . }}
   labels:
-    app: {{ template "benji.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "benji.name" . }}
+    helm.sh/chart: {{ include "benji.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "benji.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
-      name: {{ template "benji.fullname" . }}
       labels:
-        app: {{ template "benji.name" . }}
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ include "benji.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        benji-backup.me/component: benji
       annotations:
         prometheus.io/port: "{{ .Values.pushgateway.port }}"
         prometheus.io/scrape: "true"
@@ -53,7 +57,7 @@ spec:
               readOnly: true
             # Ceph volumes end
           resources:
-{{ toYaml .Values.benji.resources | indent 12 }}
+            {{ toYaml .Values.benji.resources | nindent 12 }}
         - name: pushgateway
           image: "{{ .Values.pushgateway.image.registry }}/{{ .Values.pushgateway.image.repository }}:{{ .Values.pushgateway.image.tag }}"
           imagePullPolicy: {{ .Values.pushgateway.image.pullPolicy }}
@@ -67,6 +71,8 @@ spec:
               name: pushgateway
             - name: tz-config
               mountPath: /etc/localtime
+          resources:
+            {{ toYaml .Values.pushgateway.resources | nindent 12 }}
       hostNetwork: false
       volumes:
         - name: benji-config
@@ -86,7 +92,15 @@ spec:
           secret:
             secretName: ceph-client-admin-keyring
         # Ceph end
-    {{- if .Values.nodeSelector }}
+{{- with .Values.fsfreeze.nodeSelector }}
       nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
-    {{- end }}
+        {{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.fsfreeze.affinity }}
+      affinity:
+        {{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.fsfreeze.tolerations }}
+      tolerations:
+        {{ toYaml . | nindent 8 }}
+{{- end }}
