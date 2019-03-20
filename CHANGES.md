@@ -1,3 +1,15 @@
+## v0.4.0, 20.03.2019
+
+Notable changes:
+
+* Documentation updates
+* Added new CLI command `benji storage-stats` to get storage usage information
+* Fixed backup progress reporting on console
+* Added `fdatasync()` calls to the `file` module to ensure backup integrity in case of a system crash or a 
+  power failure (will impact performance when using the `file` I/O module)
+* Speed up command line completion
+* Added `benji completion` CLI command
+
 ## v0.3.1, 25.02.2019
 
 Fixes a naming problem with the `--override-lock` CLI option of `benji rm` and `benji cleanup`
