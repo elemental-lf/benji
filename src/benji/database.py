@@ -318,26 +318,6 @@ metadata = sqlalchemy.MetaData(
 Base: Any = sqlalchemy.ext.declarative.declarative_base(metadata=metadata)
 
 
-# This mirrors Version with some extra fields
-class VersionStatistic(Base):
-    __tablename__ = 'version_statistics'
-    # No foreign key references here, so that we can keep the stats around even when the version is deleted
-    uid = sqlalchemy.Column(VersionUidType, primary_key=True, autoincrement=False)
-    base_uid = sqlalchemy.Column(VersionUidType, nullable=True)
-    hints_supplied = sqlalchemy.Column(sqlalchemy.Boolean(name='hints_supplied'), nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
-    date = sqlalchemy.Column(BenjiDateTime, nullable=False)
-    snapshot_name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
-    size = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    storage_id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
-    block_size = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    bytes_read = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    bytes_written = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    bytes_dedup = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-    duration = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
-
-
 @total_ordering
 class Version(Base):
     __tablename__ = 'versions'
@@ -359,6 +339,13 @@ class Version(Base):
             'status >= {} AND status <= {}'.format(VersionStatus.min.value, VersionStatus.max.value), name='status'),
         nullable=False)
     protected = sqlalchemy.Column(sqlalchemy.Boolean(name='protected'), nullable=False)
+
+    # Statistics
+    bytes_read = sqlalchemy.Column(sqlalchemy.BigInteger)
+    bytes_written = sqlalchemy.Column(sqlalchemy.BigInteger)
+    bytes_dedup = sqlalchemy.Column(sqlalchemy.BigInteger)
+    bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger)
+    duration = sqlalchemy.Column(sqlalchemy.BigInteger)
 
     labels = sqlalchemy.orm.relationship(
         'Label',
@@ -652,44 +639,19 @@ class DatabaseBackend(ReprMixIn):
 
         return version
 
-    def set_stats(self, *, uid: VersionUid, base_uid: Optional[VersionUid], hints_supplied: bool,
-                  date: datetime.datetime, name: str, snapshot_name: str, size: int, storage_id: int, block_size: int,
-                  bytes_read: int, bytes_written: int, bytes_dedup: int, bytes_sparse: int, duration: int) -> None:
-        stats = VersionStatistic(
-            uid=uid,
-            base_uid=base_uid,
-            hints_supplied=hints_supplied,
-            date=date,
-            name=name,
-            snapshot_name=snapshot_name,
-            size=size,
-            storage_id=storage_id,
-            block_size=block_size,
-            bytes_read=bytes_read,
-            bytes_written=bytes_written,
-            bytes_dedup=bytes_dedup,
-            bytes_sparse=bytes_sparse,
-            duration=duration,
-        )
+    def set_version_stats(self, *, version_uid: VersionUid, bytes_read: int, bytes_written: int, bytes_dedup: int,
+                          bytes_sparse: int, duration: int) -> None:
         try:
-            self._session.add(stats)
+            version = self.get_version(version_uid)
+            version.bytes_read = bytes_read
+            version.bytes_written = bytes_written
+            version.bytes_dedup = bytes_dedup
+            version.bytes_sparse = bytes_sparse
+            version.duration = duration
             self._session.commit()
         except:
             self._session.rollback()
             raise
-
-    def get_stats_with_filter(self, filter_expression: str = None, limit: int = None) -> List[VersionStatistic]:
-        builder = _QueryBuilder(self._session, VersionStatistic)
-        try:
-            stats = builder.build(filter_expression)
-            if limit:
-                stats = stats.limit(limit)
-            stats_result = stats.all()
-        except:
-            self._session.rollback()
-            raise
-
-        return list(reversed(stats_result))
 
     def set_version(self, version_uid: VersionUid, *, status: VersionStatus = None, protected: bool = None):
         try:
@@ -738,7 +700,7 @@ class DatabaseBackend(ReprMixIn):
         return query.order_by(Version.name, Version.date).all()
 
     def get_versions_with_filter(self, filter_expression: str = None):
-        builder = _QueryBuilder(self._session, Version)
+        builder = _QueryBuilder(self._session)
         return builder.build(filter_expression).order_by(Version.name, Version.date).all()
 
     def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
@@ -1037,7 +999,7 @@ class DatabaseBackend(ReprMixIn):
             raise InputDataError('Unsupported metadata version (2): "{}".'.format(metadata_version))
 
         try:
-            version_uids = import_method(json_input)
+            version_uids = import_method(metadata_version_obj, json_input)
             self._session.commit()
         except:
             self._session.rollback()
@@ -1045,7 +1007,7 @@ class DatabaseBackend(ReprMixIn):
 
         return version_uids
 
-    def import_v1(self, json_input: Dict) -> List[VersionUid]:
+    def import_v1(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
@@ -1057,18 +1019,24 @@ class DatabaseBackend(ReprMixIn):
             # Will raise ValueError when invalid
             version_uid = VersionUid(version_dict['uid'])
 
-            for attribute in [
-                    'date',
-                    'name',
-                    'snapshot_name',
-                    'size',
-                    'storage_id',
-                    'block_size',
-                    'status',
-                    'protected',
-                    'blocks',
-                    'labels',
-            ]:
+            attributes_to_check = [
+                'date',
+                'name',
+                'snapshot_name',
+                'size',
+                'storage_id',
+                'block_size',
+                'status',
+                'protected',
+                'blocks',
+                'labels',
+            ]
+
+            # Starting with 1.1.0 the statistics where folded into the versions table
+            if metadata_version.minor >= 1:
+                attributes_to_check.extend(['bytes_read', 'bytes_written', 'bytes_dedup', 'bytes_sparse', 'duration'])
+
+            for attribute in attributes_to_check:
                 if attribute not in version_dict:
                     raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
 
@@ -1129,6 +1097,12 @@ class DatabaseBackend(ReprMixIn):
                 status=VersionStatus[version_dict['status']],
                 protected=version_dict['protected'],
             )
+            if metadata_version.minor >= 1:
+                version.bytes_read = version_dict['bytes_read']
+                version.bytes_written = version_dict['bytes_written']
+                version.bytes_dedup = version_dict['bytes_dedup']
+                version.bytes_sparse = version_dict['bytes_sparse']
+                version.duration = version_dict['duration']
             self._session.add(version)
             self._session.flush()
 
@@ -1293,13 +1267,12 @@ class DatabaseBackendLocking:
 
 class _QueryBuilder:
 
-    def __init__(self, session, orm_class: Base) -> None:
+    def __init__(self, session) -> None:
         self._session = session
-        self._orm_class = orm_class
-        self._parser = self._define_parser(session, orm_class)
+        self._parser = self._define_parser(session)
 
     @staticmethod
-    def _define_parser(session, orm_class: Base) -> Any:
+    def _define_parser(session) -> Any:
 
         pyparsing.ParserElement.enablePackrat()
 
@@ -1320,11 +1293,11 @@ class _QueryBuilder:
             def op(self, op: Callable[[Any, Any], sqlalchemy.sql.elements.BinaryExpression],
                    other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 if isinstance(other, IdentifierToken):
-                    return op(getattr(orm_class, self.name), getattr(orm_class, other.name))
+                    return op(getattr(Version, self.name), getattr(Version, other.name))
                 elif isinstance(other, Token):
                     raise TypeError('Comparing identifiers to labels is not supported.')
                 else:
-                    return op(getattr(orm_class, self.name), other)
+                    return op(getattr(Version, self.name), other)
 
             # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
             def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
@@ -1347,7 +1320,7 @@ class _QueryBuilder:
 
             # This is called when the token is not part of a comparison and tests for a non-empty identifier
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
-                return getattr(orm_class, self.name) != ''
+                return getattr(Version, self.name) != ''
 
         class LabelToken(Token):
 
@@ -1359,7 +1332,7 @@ class _QueryBuilder:
                     raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
                 label_query = session.query(
                     Label.version_uid).filter((Label.name == self.name) & op(Label.value, str(other)))
-                return getattr(orm_class, 'uid').in_(label_query)
+                return Version.uid.in_(label_query)
 
             # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
             def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
@@ -1371,13 +1344,13 @@ class _QueryBuilder:
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
                 label_query = session.query(Label.version_uid).filter(Label.name == self.name)
-                return getattr(orm_class, 'uid').in_(label_query)
+                return Version.uid.in_(label_query)
 
         attributes = []
-        for attribute in sqlalchemy.inspect(orm_class).mapper.composites:
+        for attribute in sqlalchemy.inspect(Version).mapper.composites:
             attributes.append(attribute.key)
 
-        for attribute in sqlalchemy.inspect(orm_class).mapper.column_attrs:
+        for attribute in sqlalchemy.inspect(Version).mapper.column_attrs:
             attributes.append(attribute.key)
 
         identifier = pyparsing.Regex('|'.join(attributes)).setParseAction(lambda s, l, t: IdentifierToken(t[0]))
@@ -1385,13 +1358,8 @@ class _QueryBuilder:
         string = pyparsing.quotedString().setParseAction(pyparsing.removeQuotes)
         bool_true = pyparsing.Keyword('True').setParseAction(pyparsing.replaceWith(True))
         bool_false = pyparsing.Keyword('False').setParseAction(pyparsing.replaceWith(False))
-
-        if 'labels' in sqlalchemy.inspect(orm_class).mapper.relationships:
-            label = (pyparsing.Literal('labels') + pyparsing.Literal('[') + string +
-                     pyparsing.Literal(']')).setParseAction(lambda s, l, t: LabelToken(t[2]))
-        else:
-            label = pyparsing.NoMatch()
-
+        label = (pyparsing.Literal('labels') + pyparsing.Literal('[') + string +
+                 pyparsing.Literal(']')).setParseAction(lambda s, l, t: LabelToken(t[2]))
         atom = identifier | integer | string | bool_true | bool_false | label
 
         class BinaryOp(Buildable):
@@ -1469,7 +1437,7 @@ class _QueryBuilder:
         ])
 
     def build(self, filter_expression: Optional[str]):
-        query = self._session.query(self._orm_class)
+        query = self._session.query(Version)
         if filter_expression:
             try:
                 parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]
