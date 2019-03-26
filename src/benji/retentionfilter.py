@@ -24,6 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import datetime
 import re
 import time
 from collections import OrderedDict
@@ -95,7 +96,7 @@ class RetentionFilter(ReprMixIn):
         dismissed_versions = []
         for version in versions:
             try:
-                td = _Timedelta(version.date.timestamp(), self.reference_time)
+                td = _Timedelta(version.date.replace(tzinfo=datetime.timezone.utc).timestamp(), self.reference_time)
             except _TimedeltaError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)
                 logger.warning('Version {}: {}'.format(version.uid.v_string, exception))
