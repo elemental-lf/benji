@@ -614,7 +614,7 @@ class DatabaseBackend(ReprMixIn):
             Base.metadata.create_all(self._engine, checkfirst=False)
         else:
             logger.debug('Existing tables: {}'.format(', '.join(sorted(table_names))))
-            raise FileExistsError('Database schema contains tables already. Not touching anything.')
+            raise FileExistsError('Database schema already contains tables. Not touching anything.')
 
         alembic_config = self._alembic_config()
         with self._engine.begin() as connection:

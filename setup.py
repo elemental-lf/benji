@@ -7,14 +7,15 @@ except ImportError:
 with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
+
 def get_version_and_cmdclass(package_path):
     import os
     from importlib.util import module_from_spec, spec_from_file_location
-    spec = spec_from_file_location('version',
-                                   os.path.join('src', package_path, '_version.py'))
+    spec = spec_from_file_location('version', os.path.join('src', package_path, '_version.py'))
     module = module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.__version__, module.cmdclass
+
 
 version, cmdclass = get_version_and_cmdclass('benji')
 
@@ -57,12 +58,13 @@ Topic :: System :: Archiving :: Backup
         'psycopg2-binary>=2.7.4,<3',
         'argcomplete>=1.9.4,<2',
         'sparsebitfield>=0.2.2,<1',
-        'colorlog>=4.0.0,<5',
         'cerberus>=1.2,<2',
         'pycryptodome>=3.6.1,<4',
         'pyparsing>=2.3.0,<3',
         'semantic_version>=2.6.0,<3',
-        'dateparser>=0.7.0,<=1',
+        'dateparser>=0.7.0,<1',
+        'structlog>=19.1.0',
+        'colorama>=0.4.1,<1',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
@@ -72,7 +74,8 @@ Topic :: System :: Archiving :: Backup
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
         # possible packages names include: python-rados, python-rbd or python3-rados, python3-rbd
         #'RBD support': ['rados', 'rbd'],
-        'dev': ['parameterized']
+        'dev': ['parameterized'],
+        'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
     },
     python_requires='~=3.6',
     entry_points="""
