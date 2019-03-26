@@ -58,12 +58,12 @@ _logging_config: Dict = {
     "formatters": {
         "console-plain": {
             "()": structlog.stdlib.ProcessorFormatter,
-            "processor": FormatRenderer(colors=False, fmt='{log_color}{level_uc:8s}: {event:s}'),
+            "processor": FormatRenderer(colors=False, fmt='{log_color}{level_uc:>8s}: {event:s}'),
             "foreign_pre_chain": _sl_foreign_pre_chain,
         },
         "console-colored": {
             "()": structlog.stdlib.ProcessorFormatter,
-            "processor": FormatRenderer(colors=True, fmt='{log_color}{level_uc:8s}: {event:s}'),
+            "processor": FormatRenderer(colors=True, fmt='{log_color}{level_uc:>8s}: {event:s}'),
             "foreign_pre_chain": _sl_foreign_pre_chain,
         },
         "legacy": {
