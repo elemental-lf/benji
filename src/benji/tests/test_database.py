@@ -2,6 +2,7 @@ import datetime
 import time
 import timeit
 import uuid
+from typing import List, Dict, Any
 from unittest import TestCase
 
 import sqlalchemy
@@ -101,16 +102,21 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         checksums = []
         uids = []
         num_blocks = 256
+        blocks: List[Dict[str, Any]] = []
         for id in range(num_blocks):
             checksums.append(self.random_hex(64))
             uids.append(BlockUid(1, id))
-            self.database_backend.set_block(
-                id=id,
-                version_uid=version.uid,
-                block_uid=uids[id],
-                checksum=checksums[id],
-                size=1024 * 4096,
-                valid=True)
+            blocks.append({
+                'id': id,
+                'version_uid': version.uid,
+                'uid_left': uids[id].left,
+                'uid_right': uids[id].right,
+                'checksum': checksums[id],
+                'size': 1024 * 4096,
+                'valid': True
+            })
+
+        self.database_backend.create_blocks(blocks=blocks)
         self.database_backend.commit()
 
         for id, checksum in enumerate(checksums):

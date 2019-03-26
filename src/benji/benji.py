@@ -118,6 +118,7 @@ class Benji(ReprMixIn):
             checksum: Optional[str]
             block_size: int
             valid: bool
+            blocks: List[Dict[str, Any]] = []
             for id in range(num_blocks):
                 if old_blocks:
                     try:
@@ -149,18 +150,20 @@ class Benji(ReprMixIn):
                     checksum = None
                     valid = False
 
-                self._database_backend.set_block(
-                    id=id,
-                    version_uid=version.uid,
-                    block_uid=uid,
-                    checksum=checksum,
-                    size=block_size,
-                    valid=valid,
-                    upsert=False)
+                blocks.append({
+                    'id': id,
+                    'version_uid': version.uid,
+                    'uid_left': uid.left if uid is not None else None,
+                    'uid_right': uid.right if uid is not None else None,
+                    'checksum': checksum,
+                    'size': block_size,
+                    'valid': valid
+                })
+
                 notify(self._process_name, 'Preparing version {} ({:.1f}%)'.format(version.uid.v_string,
                                                                                    (id + 1) / num_blocks * 100))
 
-            self._database_backend.commit()
+            self._database_backend.create_blocks(blocks=blocks)
         except:
             if self._locking.is_version_locked(version.uid):
                 self._locking.unlock_version(version.uid)

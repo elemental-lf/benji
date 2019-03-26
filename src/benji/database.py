@@ -16,12 +16,12 @@ from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
+import pyparsing
 import semantic_version
 import sqlalchemy
-import sqlalchemy.orm
-import sqlalchemy.ext.mutable
 import sqlalchemy.ext.declarative
-import pyparsing
+import sqlalchemy.ext.mutable
+import sqlalchemy.orm
 from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
@@ -777,35 +777,18 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def set_block(self,
-                  *,
-                  id: int,
-                  version_uid: VersionUid,
-                  block_uid: Optional[BlockUid],
-                  checksum: Optional[str],
-                  size: int,
-                  valid: bool,
-                  upsert: bool = True) -> None:
+    def set_block(self, *, id: int, version_uid: VersionUid, block_uid: Optional[BlockUid], checksum: Optional[str],
+                  size: int, valid: bool) -> None:
         try:
-            block = None
-            if upsert:
-                block = self._session.query(Block).filter_by(id=id, version_uid=version_uid).first()
+            block = self._session.query(Block).filter_by(id=id, version_uid=version_uid).first()
+            if not block:
+                raise InternalError('Block {} of version {} does not exist when it should.'.format(
+                    id, version_uid.v_string))
 
-            if block:
-                block.uid = block_uid
-                block.checksum = checksum
-                block.size = size
-                block.valid = valid
-            else:
-                block = Block(
-                    id=id,
-                    version_uid=version_uid,
-                    uid=block_uid,
-                    checksum=checksum,
-                    size=size,
-                    valid=valid,
-                )
-                self._session.add(block)
+            block.uid = block_uid
+            block.checksum = checksum
+            block.size = size
+            block.valid = valid
 
             current_clock = time.monotonic()
             if current_clock - self._last_blocks_commit > self._BLOCKS_COMMIT_INTERVAL:
@@ -814,6 +797,17 @@ class DatabaseBackend(ReprMixIn):
                 t2 = time.time()
                 logger.debug('Commited database transaction in set_block in {:.2f}s'.format(t2 - t1))
                 self._last_blocks_commit = current_clock
+        except:
+            self._session.rollback()
+            raise
+
+    def create_blocks(self, *, blocks: List[Dict[str, Any]]) -> None:
+        try:
+            t1 = time.time()
+            self._session.bulk_insert_mappings(Block, blocks)
+            self._session.commit()
+            t2 = time.time()
+            logger.debug('Inserted and committed all blocks in {:.2f}s'.format(t2 - t1))
         except:
             self._session.rollback()
             raise
