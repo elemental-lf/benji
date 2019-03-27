@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 import datetime
 import enum
+import inspect
 import json
 import operator
 import os
@@ -777,6 +778,16 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
+    def _conditional_blocks_commit(self):
+        caller = inspect.stack()[1].function
+        current_clock = time.monotonic()
+        if current_clock - self._last_blocks_commit > self._BLOCKS_COMMIT_INTERVAL:
+            t1 = time.time()
+            self._session.commit()
+            t2 = time.time()
+            logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
+            self._last_blocks_commit = current_clock
+
     def set_block(self, *, id: int, version_uid: VersionUid, block_uid: Optional[BlockUid], checksum: Optional[str],
                   size: int, valid: bool) -> None:
         try:
@@ -790,24 +801,16 @@ class DatabaseBackend(ReprMixIn):
             block.size = size
             block.valid = valid
 
-            current_clock = time.monotonic()
-            if current_clock - self._last_blocks_commit > self._BLOCKS_COMMIT_INTERVAL:
-                t1 = time.time()
-                self._session.commit()
-                t2 = time.time()
-                logger.debug('Commited database transaction in set_block in {:.2f}s'.format(t2 - t1))
-                self._last_blocks_commit = current_clock
+            self._conditional_blocks_commit()
         except:
             self._session.rollback()
             raise
 
     def create_blocks(self, *, blocks: List[Dict[str, Any]]) -> None:
         try:
-            t1 = time.time()
             self._session.bulk_insert_mappings(Block, blocks)
-            self._session.commit()
-            t2 = time.time()
-            logger.debug('Inserted and committed all blocks in {:.2f}s'.format(t2 - t1))
+
+            self._conditional_blocks_commit()
         except:
             self._session.rollback()
             raise
@@ -851,14 +854,26 @@ class DatabaseBackend(ReprMixIn):
 
         return block
 
-    def get_blocks_by_version(self, version_uid: VersionUid) -> List[Block]:
-        try:
-            blocks = self._session.query(Block).filter_by(version_uid=version_uid).order_by(Block.id).all()
-        except:
-            self._session.rollback()
-            raise
+    # Our own version of yield_per without using a cursor
+    # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
+    def _yield_blocks(self, version_uid: VersionUid, yield_per: int):
+        last_id = None
+        while True:
+            query = self._session.query(Block).filter_by(version_uid=version_uid)
+            if last_id is not None:
+                query = query.filter(Block.id > last_id)
+            block = None
+            for block in query.order_by(Block.id).limit(yield_per):
+                yield block
+            if block is None:
+                break
+            last_id = block.id if block else None
 
-        return blocks
+    def get_blocks_by_version(self, version_uid: VersionUid, yield_per: int = 10000) -> Iterator[Block]:
+        yield from self._yield_blocks(version_uid, yield_per)
+
+    def get_blocks_count_by_version(self, version_uid: VersionUid) -> int:
+        return self._session.query(Block).filter_by(version_uid=version_uid).count()
 
     def rm_version(self, version_uid: VersionUid) -> int:
         try:

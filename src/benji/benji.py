@@ -10,7 +10,7 @@ import time
 from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
-    Sequence, Any
+    Sequence, Any, Iterator
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
@@ -26,6 +26,10 @@ from benji.utils import notify, BlockHash
 
 
 class Benji(ReprMixIn):
+
+    # This is in number of blocks (i.e. database rows in the blocks table)
+    _BLOCKS_CREATE_WORK_PACKAGE = 10000
+    _BLOCKS_READ_WORK_PACKAGE = 10000
 
     def __init__(self,
                  config: Config,
@@ -75,7 +79,7 @@ class Benji(ReprMixIn):
         a pure sparse version is created.
         """
         storage_id = StorageFactory.name_to_storage_id(storage_name) if storage_name else None
-        old_blocks: Optional[List[Block]] = None
+        old_blocks_iter: Optional[Iterator[Block]] = None
         if base_version_uid:
             if not base_version_locking and not self._locking.is_version_locked(base_version_uid):
                 raise InternalError('Base version is not locked.')
@@ -87,7 +91,10 @@ class Benji(ReprMixIn):
             if storage_id is not None and old_version.storage_id != storage_id:
                 raise UsageError('Base version and new version have to be in the same storage.')
             new_storage_id = old_version.storage_id
-            old_blocks = self._database_backend.get_blocks_by_version(base_version_uid)
+
+            old_blocks_iter = self._database_backend.get_blocks_by_version(
+                base_version_uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+
             if size is not None:
                 new_size = size
             else:
@@ -101,7 +108,7 @@ class Benji(ReprMixIn):
         num_blocks = int(math.ceil(new_size / self._block_size))
 
         try:
-            if base_version_locking and old_blocks:
+            if base_version_locking and base_version_uid:
                 self._locking.lock_version(base_version_uid, reason='Base version cloning')
 
             # We always start with invalid versions, then mark them valid after the backup succeeds.
@@ -119,21 +126,23 @@ class Benji(ReprMixIn):
             block_size: int
             valid: bool
             blocks: List[Dict[str, Any]] = []
+            old_version_exhausted = old_blocks_iter is None
             for id in range(num_blocks):
-                if old_blocks:
-                    try:
-                        old_block = old_blocks[id]
-                    except IndexError:
-                        uid = None
-                        checksum = None
-                        block_size = self._block_size
-                        valid = True
-                    else:
+                if not old_version_exhausted:
+                    assert old_blocks_iter is not None
+                    old_block = next(old_blocks_iter, None)
+                    if old_block is not None:
                         assert old_block.id == id
                         uid = old_block.uid
                         checksum = old_block.checksum
                         block_size = old_block.size
                         valid = old_block.valid
+                    else:
+                        old_version_exhausted = True
+                        uid = None
+                        checksum = None
+                        block_size = self._block_size
+                        valid = True
                 else:
                     uid = None
                     checksum = None
@@ -163,13 +172,17 @@ class Benji(ReprMixIn):
                 notify(self._process_name, 'Preparing version {} ({:.1f}%)'.format(version.uid.v_string,
                                                                                    (id + 1) / num_blocks * 100))
 
+                if len(blocks) == self._BLOCKS_CREATE_WORK_PACKAGE:
+                    self._database_backend.create_blocks(blocks=blocks)
+                    blocks = []
             self._database_backend.create_blocks(blocks=blocks)
+            self._database_backend.commit()
         except:
             if self._locking.is_version_locked(version.uid):
                 self._locking.unlock_version(version.uid)
             raise
         finally:
-            if base_version_locking and old_blocks and self._locking.is_version_locked(base_version_uid):
+            if base_version_locking and base_version_uid and self._locking.is_version_locked(base_version_uid):
                 self._locking.unlock_version(base_version_uid)
             notify(self._process_name)
 
@@ -195,16 +208,18 @@ class Benji(ReprMixIn):
     def _scrub_prepare(self,
                        *,
                        version: Version,
-                       blocks: List[Block],
                        history: BlockUidHistory = None,
                        block_percentage: int,
                        deep_scrub: bool) -> int:
         storage = StorageFactory.get_by_storage_id(version.storage_id)
         read_jobs = 0
-        for i, block in enumerate(blocks):
+        blocks_count = self._database_backend.get_blocks_count_by_version(version.uid)
+        blocks_iter = self._database_backend.get_blocks_by_version(
+            version.uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+        for i, block in enumerate(blocks_iter):
             notify(
                 self._process_name, 'Preparing {} of version {} ({:.1f}%)'.format(
-                    'deep-scrub' if deep_scrub else 'scrub', version.uid.v_string, (i + 1) / len(blocks) * 100))
+                    'deep-scrub' if deep_scrub else 'scrub', version.uid.v_string, (i + 1) / blocks_count * 100))
             if not block.uid:
                 logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep-scrub' if deep_scrub else 'Scrub',
                                                                                 block.id, block.uid))
@@ -241,7 +256,7 @@ class Benji(ReprMixIn):
             if not version.status.is_scrubbable():
                 raise ScrubbingError('Version {} cannot be scrubbed, it has a status of {}.'.format(
                     version_uid.v_string, version.status.name))
-            blocks = self._database_backend.get_blocks_by_version(version_uid)
+
         except:
             self._locking.unlock_version(version_uid)
             raise
@@ -251,7 +266,7 @@ class Benji(ReprMixIn):
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = self._scrub_prepare(
-                version=version, blocks=blocks, history=history, block_percentage=block_percentage, deep_scrub=False)
+                version=version, history=history, block_percentage=block_percentage, deep_scrub=False)
 
             done_read_jobs = 0
             for entry in storage.read_get_completed():
@@ -324,7 +339,6 @@ class Benji(ReprMixIn):
                     version_uid.v_string, version.status.name))
             if not version.status.is_valid():
                 logger.warn('Version {} has a status of {}.'.format(version_uid.v_string, version.status.name))
-            blocks = self._database_backend.get_blocks_by_version(version_uid)
 
             if source:
                 io = IOFactory.get(source, version.block_size)
@@ -340,7 +354,7 @@ class Benji(ReprMixIn):
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             old_use_read_cache = storage.use_read_cache(False)
             read_jobs = self._scrub_prepare(
-                version=version, blocks=blocks, history=history, block_percentage=block_percentage, deep_scrub=True)
+                version=version, history=history, block_percentage=block_percentage, deep_scrub=True)
 
             done_read_jobs = 0
             for entry in storage.read_get_completed():
@@ -490,7 +504,6 @@ class Benji(ReprMixIn):
             version = self._database_backend.get_version(version_uid)  # raise if version not exists
             notify(self._process_name, 'Restoring version {} to {}: Getting blocks'.format(
                 version_uid.v_string, target))
-            blocks = self._database_backend.get_blocks_by_version(version_uid)
 
             self._storage = version.storage_id
 
@@ -505,7 +518,9 @@ class Benji(ReprMixIn):
 
             read_blocks = 0
             sparse_blocks = 0
-            for block in blocks:
+            blocks_iter = self._database_backend.get_blocks_by_version(
+                version_uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+            for block in blocks_iter:
                 if block.uid:
                     read_blocks += 1
                 else:
@@ -516,7 +531,9 @@ class Benji(ReprMixIn):
             done_write_jobs = 0
             log_every_jobs = (sparse_blocks if not sparse else read_blocks) // 200 + 1  # about every half percent
             sparse_data_block = b'\0' * block.size
-            for block in blocks:
+            blocks_iter = self._database_backend.get_blocks_by_version(
+                version_uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+            for block in blocks_iter:
                 if block.uid:
                     storage.read_block_async(block)
                     read_jobs += 1
@@ -775,7 +792,6 @@ class Benji(ReprMixIn):
             base_version_uid=base_version_uid,
             storage_name=storage_name)
         self._locking.update_version_lock(version.uid, reason='Backing up')
-        blocks = self._database_backend.get_blocks_by_version(version.uid)
 
         if base_version_uid and hints is not None:
             # SANITY CHECK:
@@ -793,7 +809,9 @@ class Benji(ReprMixIn):
             # and 50% from random locations
             check_block_ids = check_block_ids.union(random.sample(ignore_blocks, num_check_blocks // 2))
             num_reading = 0
-            for block in blocks:
+            blocks_iter = self._database_backend.get_blocks_by_version(
+                version.uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+            for block in blocks_iter:
                 if block.id in check_block_ids and block.uid and block.valid:  # no uid = sparse block in backup. Can't check.
                     io.read(block)
                     num_reading += 1
@@ -818,7 +836,10 @@ class Benji(ReprMixIn):
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = 0
-            for i, block in enumerate(blocks):
+            blocks_count = self._database_backend.get_blocks_count_by_version(version.uid)
+            blocks_iter = self._database_backend.get_blocks_by_version(
+                version.uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
+            for i, block in enumerate(blocks_iter):
                 if block.id in read_blocks or not block.valid:
                     io.read(block)
                     read_jobs += 1
@@ -846,7 +867,7 @@ class Benji(ReprMixIn):
                     logger.debug('Keeping block {}'.format(block.id))
                 notify(
                     self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
-                        version.uid.v_string, source, (i + 1) / len(blocks) * 100))
+                        version.uid.v_string, source, (i + 1) / blocks_count * 100))
 
             # precompute checksum of a sparse block
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
@@ -1249,7 +1270,10 @@ class BenjiStore(ReprMixIn):
     def _block_list(self, version: Version, offset: int, length: int) -> List[Tuple[Optional[Block], int, int]]:
         # Get version's blocks if they aren't in the cache already
         if version.uid not in self._blocks:
-            self._blocks[version.uid] = self._benji_obj._database_backend.get_blocks_by_version(version.uid)
+            # FIXME: This will be a problem for large versions with many blocks
+            self._blocks[version.uid] = list(
+                self._benji_obj._database_backend.get_blocks_by_version(
+                    version.uid, yield_per=self._benji_obj._BLOCKS_READ_WORK_PACKAGE))
         blocks = self._blocks[version.uid]
 
         block_number = offset // version.block_size

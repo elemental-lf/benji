@@ -137,9 +137,9 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        blocks = self.database_backend.get_blocks_by_version(version.uid)
-        self.assertEqual(num_blocks, len(blocks))
-        for id, block in enumerate(blocks):
+        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        self.assertEqual(num_blocks, len(list(blocks_iter)))
+        for id, block in enumerate(blocks_iter):
             self.assertEqual(id, block.id)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uids[id], block.uid)
@@ -147,7 +147,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        for id, block in enumerate(blocks):
+        for id, block in enumerate(blocks_iter):
             dereferenced_block = block.deref()
             self.assertEqual(id, dereferenced_block.id)
             self.assertEqual(version.uid, dereferenced_block.version_uid)
@@ -159,8 +159,8 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         self.database_backend.rm_version(version.uid)
         self.database_backend.commit()
-        blocks = self.database_backend.get_blocks_by_version(version.uid)
-        self.assertEqual(0, len(blocks))
+        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        self.assertEqual(0, len(list(blocks_iter)))
 
         count = 0
         for uids_deleted in self.database_backend.get_delete_candidates(-1):

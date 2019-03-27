@@ -118,7 +118,7 @@ class ImportExportTestCase():
         self.assertIsInstance(version.blocks, list)
         self.assertIsInstance(version.labels, list)
         self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
-        blocks = benji_obj._database_backend.get_blocks_by_version(VersionUid(1))
+        blocks = list(benji_obj._database_backend.get_blocks_by_version(VersionUid(1)))
         self.assertTrue(len(blocks) > 0)
         block = blocks[0]
         self.assertEqual(VersionUid(1), block.version_uid)
