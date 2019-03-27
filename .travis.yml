@@ -7,11 +7,11 @@ cache:
 services:
   - docker
 
-branches:
-  only:
-    - master
-    # Build commits tagged with release version
-    - /^v\d+\.\d+\.\d+$/
+#branches:
+#  only:
+#    - master
+#    # Build commits tagged with release version
+#    - /^v\d+\.\d+\.\d+$/
 
 env:
   global:
