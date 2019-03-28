@@ -258,11 +258,11 @@ class Commands:
 
             if include_stats:
                 row.extend([
-                    PrettyPrint.bytes(version.bytes_read),
-                    PrettyPrint.bytes(version.bytes_written),
-                    PrettyPrint.bytes(version.bytes_dedup),
-                    PrettyPrint.bytes(version.bytes_sparse),
-                    PrettyPrint.duration(version.duration),
+                    PrettyPrint.bytes(version.bytes_read) if version.bytes_read is not None else '',
+                    PrettyPrint.bytes(version.bytes_written) if version.bytes_written is not None else '',
+                    PrettyPrint.bytes(version.bytes_dedup) if version.bytes_dedup is not None else '',
+                    PrettyPrint.bytes(version.bytes_sparse) if version.bytes_sparse is not None else '',
+                    PrettyPrint.duration(version.duration) if version.duration is not None else '',
                 ])
 
             if include_labels:
