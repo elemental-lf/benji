@@ -35,10 +35,10 @@ stages:
   - push
 
 before_install:
-  - uname -a
-  - lsb_release -a
-  - virtualenv --version
-  - python --version
+  - curl --retry 5 -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - travis_retry sudo apt-get update
+  - travis_retry sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
   - docker version
 
 install:
@@ -60,9 +60,10 @@ jobs:
       install:
         - travis_retry pip install --upgrade setuptools pip
       script:
-        - SKIP_DOCKER_PUSH=1 GIT_PEP440_VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
-        - SKIP_DOCKER_PUSH=1 GIT_PEP440_VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
+        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
     - stage: test
+      before_install: skip
       install:
         - HELM_VERSION=2.12.3
         - curl --retry 5 -sLO https://storage.googleapis.com/kubernetes-helm/helm-v$HELM_VERSION-linux-amd64.tar.gz
@@ -78,5 +79,5 @@ jobs:
       install: skip
       script:
         - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-        - GIT_PEP440_VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
-        - GIT_PEP440_VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+        - DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
+        - DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build

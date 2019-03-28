@@ -4,25 +4,25 @@ id -a
 pwd
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-if [[ $GIT_PEP440_VERSION_VARIANT ]]; then
-    GIT_PEP440_VERSION="$REPO_ROOT/maint-scripts/git-pep440-version-$GIT_PEP440_VERSION_VARIANT"
+if [[ $VERSION_VARIANT ]]; then
+    GET_VERSION="$REPO_ROOT/maint-scripts/get-version-$VERSION_VARIANT"
 else
-    GIT_PEP440_VERSION_VARIANT=''
-    GIT_PEP440_VERSION="$REPO_ROOT/maint-scripts/git-pep440-version"
+    VERSION_VARIANT=''
+    GET_VERSION="$REPO_ROOT/maint-scripts/get-version-git"
 fi
 
 if [[ $COMMIT_MSG ]]; then
     # Docker Cloud
     BUILD_ENV=docker
 
-    if [[ $GIT_PEP440_VERSION_VARIANT == miniver ]]; then
+    if [[ $VERSION_VARIANT == miniver ]]; then
         # Install pip (globally) which includes setuptools which are needed by
-        # git-pep440-version-miniver
+        # get-version-miniver
         curl https://bootstrap.pypa.io/get-pip.py -o ./get-pip.py
         python3 ./get-pip.py
     fi
 
-    VERSION="$($GIT_PEP440_VERSION)"
+    VERSION="$($GET_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
     else
@@ -38,7 +38,7 @@ elif [[ $TRAVIS_COMMIT_MESSAGE ]]; then
     DOCKER_REPO="elementalnet/${DOCKER_REPO##*/}"
     SOURCE_BRANCH="$TRAVIS_BRANCH"
 
-    VERSION="$($GIT_PEP440_VERSION)"
+    VERSION="$($GET_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
         TAG="$VERSION"
@@ -54,7 +54,7 @@ else
     DOCKER_REPO="$(cd $(dirname $DOCKERFILE_PATH) && pwd)"
     DOCKER_REPO="elementalnet/${DOCKER_REPO##*/}"
 
-    VERSION="$($GIT_PEP440_VERSION)"
+    VERSION="$($GET_VERSION)"
     if [[ $VERSION =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
         BASE_TAG="$VERSION"
         TAG="$VERSION"
@@ -65,6 +65,11 @@ else
     IMAGE_NAME="$DOCKER_REPO:$TAG"
 fi
 
+DOCKER_BUILD_ARGS=''
+export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-0}
+if [[ $DOCKER_BUILDKIT == 1 ]]; then
+    DOCKER_BUILD_ARGS='--quiet'
+fi
 # BASE_TAG is only used by derived images
 docker build \
   --build-arg BASE_TAG="$BASE_TAG" \
@@ -73,7 +78,9 @@ docker build \
   --build-arg VCS_URL="$(git config --get remote.origin.url)" \
   --build-arg VERSION="$VERSION" \
   -f $DOCKERFILE_PATH \
-  -t $IMAGE_NAME .
+  -t $IMAGE_NAME \
+  $DOCKER_BUILD_ARGS \
+  .
 
 # Docker Cloud will push $IMAGE_NAME automatically after this script,
 # for the Travis CI case push here
