@@ -16,5 +16,4 @@ Unsorted collection
 * Update and republish website (the thing in the website subdirectory)
 * Add script to generate hints from LVM usage bitmaps for classic and thin snapshots
 * Write an version metadata overview (listing of all versions) to the storage to facilitate disaster recovery
-* Structured logging
 * Kubernetes operator
