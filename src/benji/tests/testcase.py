@@ -3,7 +3,6 @@ import os
 import random
 import shutil
 import string
-import warnings
 from binascii import hexlify
 
 from benji.benji import Benji
@@ -43,12 +42,10 @@ class TestCaseBase:
 
     def setUp(self):
         self.testpath = self.TestPath()
-        init_logging(None, logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG)
-        # This disables ResourceWarnings from boto3 which are normal
-        # See: https://github.com/boto/boto3/issues/454
-        warnings.filterwarnings(
-            "ignore", category=ResourceWarning, message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
-
+        init_logging(
+            None,
+            logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
+            console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 
     def tearDown(self):

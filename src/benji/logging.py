@@ -1,38 +1,145 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-
 import logging
+import logging.config
+import os
+import threading
+import warnings
+
+import structlog
+from structlog._frames import _find_first_app_frame_and_name
 import sys
-from logging.handlers import WatchedFileHandler
-from typing import Optional
+from typing import Optional, Dict
 
-import colorlog
+from benji.exception import UsageError
+from benji.formatrenderer import FormatRenderer
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
-def init_logging(logfile: Optional[str], level: str, no_color: bool = False):
-    handlers = []
+def _sl_processor_add_source_context(_, __, event_dict: Dict) -> Dict:
+    frame, name = _find_first_app_frame_and_name([__name__, 'logging'])
+    event_dict['file'] = frame.f_code.co_filename
+    event_dict['line'] = frame.f_lineno
+    event_dict['function'] = frame.f_code.co_name
+    return event_dict
 
-    if no_color:
-        console = logging.StreamHandler(stream=sys.stderr)
-        console.setFormatter(logging.Formatter('%(levelname)8s: %(message)s'))
-    else:
-        console = colorlog.StreamHandler(stream=sys.stderr)
-        console.setFormatter(
-            colorlog.TTYColoredFormatter('%(log_color)s%(levelname)8s: %(message)s', stream=sys.stderr))
-    console.setLevel(level)
-    handlers.append(console)
+
+def _sl_processor_add_process_context(_, __, event_dict: Dict) -> Dict:
+    event_dict['process'] = os.getpid()
+    event_dict['thread_name'] = threading.current_thread().name
+    event_dict['thread_id'] = threading.get_ident()
+    return event_dict
+
+
+_sl_processor_timestamper = structlog.processors.TimeStamper(utc=True)
+
+_sl_foreign_pre_chain = [
+    structlog.stdlib.add_log_level,
+    _sl_processor_timestamper,
+    _sl_processor_add_source_context,
+    _sl_processor_add_process_context,
+]
+
+_sl_processors = [
+    structlog.stdlib.add_log_level,
+    structlog.stdlib.PositionalArgumentsFormatter(),
+    _sl_processor_timestamper,
+    _sl_processor_add_source_context,
+    _sl_processor_add_process_context,
+    structlog.processors.StackInfoRenderer(),
+    structlog.processors.format_exc_info,
+    structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+]
+
+_logging_config: Dict = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console-plain": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": FormatRenderer(colors=False, fmt='{log_color}{level_uc:>8s}: {event:s}'),
+            "foreign_pre_chain": _sl_foreign_pre_chain,
+        },
+        "console-colored": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": FormatRenderer(colors=True, fmt='{log_color}{level_uc:>8s}: {event:s}'),
+            "foreign_pre_chain": _sl_foreign_pre_chain,
+        },
+        "legacy": {
+            "()":
+            structlog.stdlib.ProcessorFormatter,
+            "processor":
+            FormatRenderer(
+                colors=False,
+                fmt='{timestamp_local_ctime} {process:d}/{thread_name:s} {file:s}:{line:d} {level_uc:s} {event:s}'),
+            "foreign_pre_chain":
+            _sl_foreign_pre_chain,
+        },
+        "json": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.processors.JSONRenderer(),
+            "foreign_pre_chain": _sl_foreign_pre_chain,
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": None,  # Filled in
+            "class": "logging.StreamHandler",
+            "formatter": None,  # Filled in
+            "stream": "ext://sys.stderr",
+        },
+        "file": {
+            "level": None,  # Filled in
+            "class": "logging.handlers.WatchedFileHandler",
+            "filename": None,  # Filled in
+            "formatter": None,  # Filled in
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": None,  # Filled in
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    }
+}
+
+structlog.configure(
+    processors=_sl_processors,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+
+def init_logging(logfile: Optional[str],
+                 console_level: str,
+                 console_formatter: str = "console-plain",
+                 logfile_formatter: str = 'legacy') -> None:
+
+    if console_formatter not in _logging_config['formatters'].keys():
+        raise UsageError('Event formatter {} is unknown.'.format(console_formatter))
+
+    if logfile_formatter not in _logging_config['formatters'].keys():
+        raise UsageError('Event formatter {} is unknown.'.format(logfile_formatter))
+
+    _logging_config['handlers']['console']['formatter'] = console_formatter
+    _logging_config['handlers']['console']['level'] = console_level
 
     if logfile is not None:
-        logfile_handler = WatchedFileHandler(logfile)
-        # Always log at least at level INFO
-        logfile_handler.setLevel(min(logging.getLevelName(level), logging.INFO))  # type: ignore
-        logfile_handler.setFormatter(
-            logging.Formatter('%(asctime)s %(process)d/%(threadName)s %(filename)s:%(lineno)d %(levelname)s %(message)s'))
-        handlers.append(logfile_handler)  # type: ignore # Expects StreamHandler and not WatchedFileHandler, but works...
+        _logging_config['handlers']['file']['filename'] = logfile
+        _logging_config['handlers']['file']['level'] = min(
+            logging.getLevelName(console_level),  # type: ignore
+            logging.INFO)
+        _logging_config['handlers']['file']['formatter'] = logfile_formatter
+    else:
+        del (_logging_config['handlers']['file'])
 
-    logging.basicConfig(handlers=handlers, level=logging.DEBUG)
+    _logging_config['loggers']['']['handlers'] = _logging_config['handlers'].keys()
+
+    logging.config.dictConfig(_logging_config)
 
     # silence alembic
     logging.getLogger('alembic').setLevel(logging.WARN)
@@ -41,6 +148,10 @@ def init_logging(logfile: Optional[str], level: str, no_color: bool = False):
     logging.getLogger('boto3').setLevel(logging.WARN)
     logging.getLogger('botocore').setLevel(logging.WARN)
     logging.getLogger('nose').setLevel(logging.WARN)
+    # This disables ResourceWarnings from boto3 which are normal
+    # See: https://github.com/boto/boto3/issues/454
+    warnings.filterwarnings(
+        "ignore", category=ResourceWarning, message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
     # silence b2
     logging.getLogger('b2').setLevel(logging.WARN)
 

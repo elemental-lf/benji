@@ -170,7 +170,7 @@ class Config:
 
         self._config_version = version_obj
         self._config = ConfigDict(self.validate(module=__name__, config=config))
-        logger.debug('Loaded configuration: {}'.format(self._config))
+        logger.debug('Loaded configuration.')
 
     def _get_sources(self) -> List[str]:
         sources = []

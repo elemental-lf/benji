@@ -296,7 +296,10 @@ def main():
     else:
         config = Config()
 
-    init_logging(config.get('logFile', types=(str, type(None))), args.log_level, no_color=args.no_color)
+    init_logging(
+        config.get('logFile', types=(str, type(None))),
+        console_level=args.log_level,
+        console_formatter='console-plain' if args.no_color else 'console-colored')
 
     if sys.hexversion < 0x030604F0:
         logger.warning('The installed Python version will use excessive amounts of memory when used with Benji. Upgrade Python to at least 3.6.4.')
@@ -344,9 +347,9 @@ def main():
             if isinstance(exception, case.exception):
                 message = str(exception)
                 if message:
-                    message = 'An exception of type {} occurred: {}'.format(exception.__class__.__name__, message)
+                    message = '{}: {}'.format(exception.__class__.__name__, message)
                 else:
-                    message = 'An exception of type {} occurred.'.format(exception.__class__.__name__)
+                    message = '{} exception occurred.'.format(exception.__class__.__name__)
                 logger.debug(message, exc_info=True)
                 logger.error(message)
                 exit(case.exit_code)
