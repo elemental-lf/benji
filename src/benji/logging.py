@@ -3,13 +3,13 @@
 import logging
 import logging.config
 import os
+import sys
 import threading
 import warnings
+from typing import Optional, Dict
 
 import structlog
 from structlog._frames import _find_first_app_frame_and_name
-import sys
-from typing import Optional, Dict
 
 from benji.exception import UsageError
 from benji.formatrenderer import FormatRenderer
@@ -52,59 +52,6 @@ _sl_processors = [
     structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
 ]
 
-_logging_config: Dict = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "console-plain": {
-            "()": structlog.stdlib.ProcessorFormatter,
-            "processor": FormatRenderer(colors=False, fmt='{log_color}{level_uc:>8s}: {event:s}'),
-            "foreign_pre_chain": _sl_foreign_pre_chain,
-        },
-        "console-colored": {
-            "()": structlog.stdlib.ProcessorFormatter,
-            "processor": FormatRenderer(colors=True, fmt='{log_color}{level_uc:>8s}: {event:s}'),
-            "foreign_pre_chain": _sl_foreign_pre_chain,
-        },
-        "legacy": {
-            "()":
-            structlog.stdlib.ProcessorFormatter,
-            "processor":
-            FormatRenderer(
-                colors=False,
-                fmt='{timestamp_local_ctime} {process:d}/{thread_name:s} {file:s}:{line:d} {level_uc:s} {event:s}'),
-            "foreign_pre_chain":
-            _sl_foreign_pre_chain,
-        },
-        "json": {
-            "()": structlog.stdlib.ProcessorFormatter,
-            "processor": structlog.processors.JSONRenderer(),
-            "foreign_pre_chain": _sl_foreign_pre_chain,
-        },
-    },
-    "handlers": {
-        "console": {
-            "level": None,  # Filled in
-            "class": "logging.StreamHandler",
-            "formatter": None,  # Filled in
-            "stream": "ext://sys.stderr",
-        },
-        "file": {
-            "level": None,  # Filled in
-            "class": "logging.handlers.WatchedFileHandler",
-            "filename": None,  # Filled in
-            "formatter": None,  # Filled in
-        },
-    },
-    "loggers": {
-        "": {
-            "handlers": None,  # Filled in
-            "level": "DEBUG",
-            "propagate": True,
-        },
-    }
-}
-
 structlog.configure(
     processors=_sl_processors,
     context_class=dict,
@@ -119,27 +66,80 @@ def init_logging(logfile: Optional[str],
                  console_formatter: str = "console-plain",
                  logfile_formatter: str = 'legacy') -> None:
 
-    if console_formatter not in _logging_config['formatters'].keys():
+    logging_config: Dict = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "console-plain": {
+                "()": structlog.stdlib.ProcessorFormatter,
+                "processor": FormatRenderer(colors=False, fmt='{log_color}{level_uc:>8s}: {event:s}'),
+                "foreign_pre_chain": _sl_foreign_pre_chain,
+            },
+            "console-colored": {
+                "()": structlog.stdlib.ProcessorFormatter,
+                "processor": FormatRenderer(colors=True, fmt='{log_color}{level_uc:>8s}: {event:s}'),
+                "foreign_pre_chain": _sl_foreign_pre_chain,
+            },
+            "legacy": {
+                "()":
+                structlog.stdlib.ProcessorFormatter,
+                "processor":
+                FormatRenderer(
+                    colors=False,
+                    fmt='{timestamp_local_ctime} {process:d}/{thread_name:s} {file:s}:{line:d} {level_uc:s} {event:s}'),
+                "foreign_pre_chain":
+                _sl_foreign_pre_chain,
+            },
+            "json": {
+                "()": structlog.stdlib.ProcessorFormatter,
+                "processor": structlog.processors.JSONRenderer(),
+                "foreign_pre_chain": _sl_foreign_pre_chain,
+            },
+        },
+        "handlers": {
+            "console": {
+                "level": None,  # Filled in
+                "class": "logging.StreamHandler",
+                "formatter": None,  # Filled in
+                "stream": "ext://sys.stderr",
+            },
+            "file": {
+                "level": None,  # Filled in
+                "class": "logging.handlers.WatchedFileHandler",
+                "filename": None,  # Filled in
+                "formatter": None,  # Filled in
+            },
+        },
+        "loggers": {
+            "": {
+                "handlers": None,  # Filled in
+                "level": "DEBUG",
+                "propagate": True,
+            },
+        }
+    }
+
+    if console_formatter not in logging_config['formatters'].keys():
         raise UsageError('Event formatter {} is unknown.'.format(console_formatter))
 
-    if logfile_formatter not in _logging_config['formatters'].keys():
+    if logfile_formatter not in logging_config['formatters'].keys():
         raise UsageError('Event formatter {} is unknown.'.format(logfile_formatter))
 
-    _logging_config['handlers']['console']['formatter'] = console_formatter
-    _logging_config['handlers']['console']['level'] = console_level
+    logging_config['handlers']['console']['formatter'] = console_formatter
+    logging_config['handlers']['console']['level'] = console_level
 
     if logfile is not None:
-        _logging_config['handlers']['file']['filename'] = logfile
-        _logging_config['handlers']['file']['level'] = min(
+        logging_config['handlers']['file']['filename'] = logfile
+        logging_config['handlers']['file']['level'] = min(
             logging.getLevelName(console_level),  # type: ignore
             logging.INFO)
-        _logging_config['handlers']['file']['formatter'] = logfile_formatter
+        logging_config['handlers']['file']['formatter'] = logfile_formatter
     else:
-        del (_logging_config['handlers']['file'])
+        del (logging_config['handlers']['file'])
 
-    _logging_config['loggers']['']['handlers'] = _logging_config['handlers'].keys()
+    logging_config['loggers']['']['handlers'] = logging_config['handlers'].keys()
 
-    logging.config.dictConfig(_logging_config)
+    logging.config.dictConfig(logging_config)
 
     # silence alembic
     logging.getLogger('alembic').setLevel(logging.WARN)
