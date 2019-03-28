@@ -710,11 +710,7 @@ class DatabaseBackend(ReprMixIn):
             raise
 
     def get_version(self, version_uid: VersionUid) -> Version:
-        version = None
-        try:
-            version = self._session.query(Version).filter_by(uid=version_uid).first()
-        except:
-            self._session.rollback()
+        version = self._session.query(Version).filter_by(uid=version_uid).first()
 
         if version is None:
             raise KeyError('Version {} not found.'.format(version_uid))
@@ -726,35 +722,24 @@ class DatabaseBackend(ReprMixIn):
                      version_name: str = None,
                      version_snapshot_name: str = None,
                      version_labels: List[Tuple[str, str]] = None) -> List[Version]:
-        try:
-            query = self._session.query(Version)
-            if version_uid:
-                query = query.filter_by(uid=version_uid)
-            if version_name:
-                query = query.filter_by(name=version_name)
-            if version_snapshot_name:
-                query = query.filter_by(snapshot_name=version_snapshot_name)
-            if version_labels:
-                for version_label in version_labels:
-                    label_query = self._session.query(
-                        Label.version_uid).filter((Label.name == version_label[0]) & (Label.value == version_label[1]))
-                    query = query.filter(Version.uid.in_(label_query))
-            versions = query.order_by(Version.name, Version.date).all()
-        except:
-            self._session.rollback()
-            raise
+        query = self._session.query(Version)
+        if version_uid:
+            query = query.filter_by(uid=version_uid)
+        if version_name:
+            query = query.filter_by(name=version_name)
+        if version_snapshot_name:
+            query = query.filter_by(snapshot_name=version_snapshot_name)
+        if version_labels:
+            for version_label in version_labels:
+                label_query = self._session.query(
+                    Label.version_uid).filter((Label.name == version_label[0]) & (Label.value == version_label[1]))
+                query = query.filter(Version.uid.in_(label_query))
 
-        return versions
+        return query.order_by(Version.name, Version.date).all()
 
     def get_versions_with_filter(self, filter_expression: str = None):
         builder = _QueryBuilder(self._session, Version)
-        try:
-            versions = builder.build(filter_expression).order_by(Version.name, Version.date).all()
-        except:
-            self._session.rollback()
-            raise
-
-        return versions
+        return builder.build(filter_expression).order_by(Version.name, Version.date).all()
 
     def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
         try:
@@ -836,23 +821,14 @@ class DatabaseBackend(ReprMixIn):
         return affected_version_uids
 
     def get_block(self, block_uid: BlockUid) -> Block:
-        try:
-            block = self._session.query(Block).filter_by(uid=block_uid).first()
-        except:
-            self._session.rollback()
-            raise
+        return self._session.query(Block).filter_by(uid=block_uid).first()
 
-        return block
+    def get_block_by_id(self, version_uid: VersionUid, block_id: int) -> Block:
+        return self._session.query(Block).filter_by(version_uid=version_uid, id=block_id).first()
 
     def get_block_by_checksum(self, checksum, storage_id):
-        try:
-            block = self._session.query(Block).filter_by(
-                checksum=checksum, valid=True).join(Version).filter_by(storage_id=storage_id).first()
-        except:
-            self._session.rollback()
-            raise
-
-        return block
+        return self._session.query(Block).filter_by(
+            checksum=checksum, valid=True).join(Version).filter_by(storage_id=storage_id).first()
 
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
@@ -872,8 +848,11 @@ class DatabaseBackend(ReprMixIn):
     def get_blocks_by_version(self, version_uid: VersionUid, yield_per: int = 10000) -> Iterator[Block]:
         yield from self._yield_blocks(version_uid, yield_per)
 
-    def get_blocks_count_by_version(self, version_uid: VersionUid) -> int:
-        return self._session.query(Block).filter_by(version_uid=version_uid).count()
+    def get_blocks_count_by_version(self, version_uid: VersionUid, sparse_only: bool = False) -> int:
+        query = self._session.query(Block).filter_by(version_uid=version_uid)
+        if sparse_only:
+            query = query.filter_by(uid_left=None, uid_right=None)
+        return query.count()
 
     def rm_version(self, version_uid: VersionUid) -> int:
         try:

@@ -97,7 +97,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             size=256 * 1024 * 4096,
             block_size=1024 * 4096,
             storage_id=1)
-        self.database_backend.commit()
 
         checksums = []
         uids = []
@@ -115,7 +114,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 'size': 1024 * 4096,
                 'valid': True
             })
-
         self.database_backend.create_blocks(blocks=blocks)
         self.database_backend.commit()
 
@@ -137,8 +135,23 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
+        for id, uid in enumerate(uids):
+            block = self.database_backend.get_block_by_id(version.uid, id)
+            self.assertEqual(id, block.id)
+            self.assertEqual(version.uid, block.version_uid)
+            self.assertEqual(uid, block.uid)
+            self.assertEqual(checksums[id], block.checksum)
+            self.assertEqual(1024 * 4096, block.size)
+            self.assertTrue(block.valid)
+
         blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        blocks_count = self.database_backend.get_blocks_count_by_version(version.uid)
+        sparse_blocks_count = self.database_backend.get_blocks_count_by_version(version.uid, sparse_only=True)
         self.assertEqual(num_blocks, len(list(blocks_iter)))
+        self.assertEqual(num_blocks, blocks_count)
+        self.assertEqual(0, sparse_blocks_count)
+
+        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
         for id, block in enumerate(blocks_iter):
             self.assertEqual(id, block.id)
             self.assertEqual(version.uid, block.version_uid)
@@ -147,6 +160,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
+        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
         for id, block in enumerate(blocks_iter):
             dereferenced_block = block.deref()
             self.assertEqual(id, dereferenced_block.id)
@@ -158,17 +172,18 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertTrue(dereferenced_block.valid)
 
         self.database_backend.rm_version(version.uid)
-        self.database_backend.commit()
         blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        blocks_count = self.database_backend.get_blocks_count_by_version(version.uid)
         self.assertEqual(0, len(list(blocks_iter)))
+        self.assertEqual(0, blocks_count)
 
-        count = 0
+        deleted_count = 0
         for uids_deleted in self.database_backend.get_delete_candidates(-1):
             for storage in uids_deleted.values():
                 for uid in storage:
                     self.assertIn(uid, uids)
-                    count += 1
-        self.assertEqual(num_blocks, count)
+                    deleted_count += 1
+        self.assertEqual(num_blocks, deleted_count)
 
     def test_lock_version(self):
         locking = self.database_backend.locking()

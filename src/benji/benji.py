@@ -516,21 +516,14 @@ class Benji(ReprMixIn):
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
 
-            read_blocks = 0
-            sparse_blocks = 0
-            blocks_iter = self._database_backend.get_blocks_by_version(
-                version_uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
-            for block in blocks_iter:
-                if block.uid:
-                    read_blocks += 1
-                else:
-                    sparse_blocks += 1
+            sparse_blocks_count = self._database_backend.get_blocks_count_by_version(version_uid, sparse_only=True)
+            read_blocks_count = self._database_backend.get_blocks_count_by_version(version_uid) - sparse_blocks_count
 
             read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
-            log_every_jobs = (sparse_blocks if not sparse else read_blocks) // 200 + 1  # about every half percent
-            sparse_data_block = b'\0' * block.size
+            log_every_jobs = (sparse_blocks_count if not sparse else read_blocks_count) // 200 + 1  # about every half percent
+            sparse_data_block = b'\0' * version.block_size
             blocks_iter = self._database_backend.get_blocks_by_version(
                 version_uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
             for block in blocks_iter:
@@ -547,9 +540,11 @@ class Benji(ReprMixIn):
                     logger.debug('Ignored sparse block {}.'.format(block.id))
 
                 if sparse:
-                    notify(
-                        self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
-                            version_uid.v_string, target, read_jobs / read_blocks * 100))
+                    # Version might be completely sparse
+                    if read_blocks_count > 0:
+                        notify(
+                            self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
+                                version_uid.v_string, target, read_jobs / read_blocks_count * 100))
                 else:
                     try:
                         for written_block in io.write_get_completed(timeout=0):
@@ -559,10 +554,10 @@ class Benji(ReprMixIn):
 
                             notify(
                                 self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                                    version_uid.v_string, target, done_write_jobs / sparse_blocks * 100))
-                            if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks:
+                                    version_uid.v_string, target, done_write_jobs / sparse_blocks_count * 100))
+                            if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
                                 logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
-                                    done_write_jobs, sparse_blocks, done_write_jobs / sparse_blocks * 100))
+                                    done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
                     except (TimeoutError, CancelledError):
                         pass
 
@@ -572,12 +567,13 @@ class Benji(ReprMixIn):
                         raise written_block
                     done_write_jobs += 1
 
+                    assert sparse_blocks_count > 0
                     notify(
                         self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                            version_uid.v_string, target, done_write_jobs / sparse_blocks * 100))
-                    if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks:
-                        logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(done_write_jobs, sparse_blocks,
-                                                                                 done_write_jobs / sparse_blocks * 100))
+                            version_uid.v_string, target, done_write_jobs / sparse_blocks_count * 100))
+                    if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
+                        logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
+                            done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
             except CancelledError:
                 pass
 
@@ -766,7 +762,7 @@ class Benji(ReprMixIn):
         io.open_r()
         source_size = io.size()
 
-        num_blocks = int(math.ceil(source_size / self._block_size))
+        blocks_count = int(math.ceil(source_size / self._block_size))
 
         if hints is not None:
             if len(hints) > 0:
@@ -783,7 +779,7 @@ class Benji(ReprMixIn):
                 read_blocks = set()
         else:
             sparse_blocks = set()
-            read_blocks = set(range(num_blocks))
+            read_blocks = set(range(blocks_count))
 
         version = self._prepare_version(
             version_name=version_name,
@@ -801,20 +797,21 @@ class Benji(ReprMixIn):
             # or source doesn't match. In any case, the resulting backup won't
             # be good.
             logger.info('Starting sanity check with 0.1% of the ignored blocks.')
-            ignore_blocks = sorted(set(range(num_blocks)) - read_blocks - sparse_blocks)
+            notify(self._process_name, 'Sanity checking hints of version {}'.format(version.uid.v_string))
+
+            ignored_blocks = sorted(set(range(blocks_count)) - read_blocks - sparse_blocks)
             # 0.1% but at least ten. If there are less than ten blocks check them all.
-            num_check_blocks = max(min(len(ignore_blocks), 10), len(ignore_blocks) // 1000)
+            check_blocks_count = max(min(len(ignored_blocks), 10), len(ignored_blocks) // 1000)
             # 50% from the start
-            check_block_ids = set(ignore_blocks[:num_check_blocks // 2])
+            check_blocks = set(ignored_blocks[:check_blocks_count // 2])
             # and 50% from random locations
-            check_block_ids = check_block_ids.union(random.sample(ignore_blocks, num_check_blocks // 2))
-            num_reading = 0
-            blocks_iter = self._database_backend.get_blocks_by_version(
-                version.uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
-            for block in blocks_iter:
-                if block.id in check_block_ids and block.uid and block.valid:  # no uid = sparse block in backup. Can't check.
+            check_blocks = check_blocks.union(random.sample(ignored_blocks, check_blocks_count // 2))
+            read_jobs = 0
+            for block in [self._database_backend.get_block_by_id(version.uid, id) for id in check_blocks]:
+                if block.uid and block.valid:  # no uid = sparse block in backup. Can't check.
                     io.read(block)
-                    num_reading += 1
+                    read_jobs += 1
+
             for entry in io.read_get_completed():
                 if isinstance(entry, Exception):
                     raise entry
@@ -826,20 +823,20 @@ class Benji(ReprMixIn):
                 if source_block.checksum != source_data_checksum:
                     logger.error("Source and backup don't match in regions outside of the ones indicated by the hints.")
                     logger.error("Looks like the hints don't match or the source is different.")
-                    logger.error("Found wrong source data at block {}: offset {} with max. length {}".format(
+                    logger.error("Found wrong source data at block {}: offset {}, length {}".format(
                         source_block.id, source_block.id * self._block_size, self._block_size))
                     # remove version
                     self._database_backend.rm_version(version.uid)
+                    self._locking.unlock_version(version.uid)
                     raise InputDataError('Source changed in regions outside of ones indicated by the hints.')
-            logger.info('Finished sanity check. Checked {} blocks: {}.'.format(num_reading, check_block_ids))
+            logger.info('Finished sanity check. Checked {} blocks.'.format(read_jobs))
 
         try:
             storage = StorageFactory.get_by_storage_id(version.storage_id)
             read_jobs = 0
-            blocks_count = self._database_backend.get_blocks_count_by_version(version.uid)
             blocks_iter = self._database_backend.get_blocks_by_version(
                 version.uid, yield_per=self._BLOCKS_READ_WORK_PACKAGE)
-            for i, block in enumerate(blocks_iter):
+            for block in blocks_iter:
                 if block.id in read_blocks or not block.valid:
                     io.read(block)
                     read_jobs += 1
@@ -867,7 +864,7 @@ class Benji(ReprMixIn):
                     logger.debug('Keeping block {}'.format(block.id))
                 notify(
                     self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
-                        version.uid.v_string, source, (i + 1) / blocks_count * 100))
+                        version.uid.v_string, source, (block.id + 1) / blocks_count * 100))
 
             # precompute checksum of a sparse block
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
