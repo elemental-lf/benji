@@ -170,6 +170,7 @@ def main():
     p = subparsers_root.add_parser('ls', help='List versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.add_argument('-l', '--include-labels', action='store_true', help='Include labels in output')
+    p.add_argument('-s', '--include-stats', action='store_true', help='Include statistics in output')
     p.set_defaults(func='ls')
 
     # METADATA-BACKUP
@@ -247,17 +248,6 @@ def main():
         help='Check only a certain percentage of blocks')
     p.add_argument('version_uid', help='Version UID')
     p.set_defaults(func='scrub')
-
-    # STATS
-    p = subparsers_root.add_parser('stats', help='Show backup statistics')
-    p.add_argument('filter_expression', nargs='?', help='Statistics filter expression')
-    p.add_argument(
-        '-l',
-        '--limit',
-        default=None,
-        type=partial(integer_range, 1, None),
-        help='Limit output to this number of entries')
-    p.set_defaults(func='stats')
 
     # STORAGE-STATS
     p = subparsers_root.add_parser('storage-stats', help='Show storage statistics')

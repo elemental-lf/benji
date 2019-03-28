@@ -392,38 +392,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         logger.debug('test_version_filter_issue_9_slowness: t1 {}, t2 {}'.format(t1, t2))
         self.assertLess(t1 - t2, 5)
 
-    def test_version_statistic_filter(self):
-        for i in range(16):
-            self.database_backend.set_stats(
-                uid=VersionUid(i),
-                base_uid=None,
-                hints_supplied=True,
-                date=datetime.datetime.utcnow(),
-                name='backup-name',
-                snapshot_name='snapshot-name.{}'.format(i),
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096,
-                bytes_read=1,
-                bytes_written=2,
-                bytes_dedup=3,
-                bytes_sparse=4,
-                duration=5)
-
-        stats = self.database_backend.get_stats_with_filter()
-        self.assertEqual(16, len(stats))
-
-        stats = self.database_backend.get_stats_with_filter('snapshot_name == "snapshot-name.1"')
-        self.assertEqual(1, len(stats))
-
-        self.assertRaises(UsageError,
-                          lambda: self.database_backend.get_stats_with_filter('labels["label-key"] and "label-value"'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('True'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('10'))
-        self.assertRaises(UsageError, lambda: self.database_backend.get_stats_with_filter('"hallo" == "hey"'))
-        self.assertRaises(UsageError,
-                          lambda: self.database_backend.get_stats_with_filter('labels["label-key"] == "label-value"'))
-
     def test_version_filter_dateparse(self):
         version_uids = set()
         for i in range(3):
@@ -466,11 +434,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('date <= "{}"'.format(
             datetime.datetime.now(tz=tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")))
         self.assertEqual(3, len(versions))
-
-        self.assertRaises(sqlalchemy.exc.StatementError,
-                          lambda: self.database_backend.get_stats_with_filter('date == "asdasdsa asdasd asdasd"'))
-        self.assertRaises(sqlalchemy.exc.StatementError,
-                          lambda: self.database_backend.get_stats_with_filter('date == 10'))
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

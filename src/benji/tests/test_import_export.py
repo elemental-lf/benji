@@ -104,9 +104,10 @@ class ImportExportTestCase():
         self.assertFalse(version['protected'])
         self.assertEqual(1, version['storage_id'])
 
-    def test_import(self):
+    def test_import_1_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
-        benji_obj.metadata_import(StringIO(self.IMPORT))
+
+        benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
         version = benji_obj.ls(version_uid=VersionUid(1))[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(1, version.uid)
@@ -118,6 +119,13 @@ class ImportExportTestCase():
         self.assertIsInstance(version.blocks, list)
         self.assertIsInstance(version.labels, list)
         self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
+
+        self.assertIsNone(version.bytes_read)
+        self.assertIsNone(version.bytes_written)
+        self.assertIsNone(version.bytes_dedup)
+        self.assertIsNone(version.bytes_sparse)
+        self.assertIsNone(version.duration)
+
         blocks = list(benji_obj._database_backend.get_blocks_by_version(VersionUid(1)))
         self.assertTrue(len(blocks) > 0)
         block = blocks[0]
@@ -125,9 +133,42 @@ class ImportExportTestCase():
         self.assertEqual(0, block.id)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
+
         benji_obj.close()
 
-    IMPORT = """
+    def test_import_1_1_0(self):
+        benji_obj = self.benjiOpen(init_database=True)
+
+        benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
+        version = benji_obj.ls(version_uid=VersionUid(1))[0]
+        self.assertTrue(isinstance(version.uid, VersionUid))
+        self.assertEqual(1, version.uid)
+        self.assertEqual('data-backup', version.name)
+        self.assertEqual('snapshot-name', version.snapshot_name)
+        self.assertEqual(4194304, version.block_size)
+        self.assertEqual(version.status, VersionStatus.valid)
+        self.assertFalse(version.protected)
+        self.assertIsInstance(version.blocks, list)
+        self.assertIsInstance(version.labels, list)
+        self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
+
+        self.assertEqual(1, version.bytes_read)
+        self.assertEqual(2, version.bytes_written)
+        self.assertEqual(3, version.bytes_dedup)
+        self.assertEqual(4, version.bytes_sparse)
+        self.assertEqual(5, version.duration)
+
+        blocks = list(benji_obj._database_backend.get_blocks_by_version(VersionUid(1)))
+        self.assertTrue(len(blocks) > 0)
+        block = blocks[0]
+        self.assertEqual(VersionUid(1), block.version_uid)
+        self.assertEqual(0, block.id)
+        self.assertEqual(670293, block.size)
+        self.assertTrue(block.valid)
+
+        benji_obj.close()
+
+    IMPORT_1_0_0 = """
             {
               "versions": [
                 {
@@ -204,6 +245,101 @@ class ImportExportTestCase():
                 }
               ],
               "metadata_version": "1.0.0"
+            }
+            """
+
+    IMPORT_1_1_0 = """
+            {
+              "versions": [
+                {
+                  "uid": 1,
+                  "date": "2018-12-19T20:28:18.123456",
+                  "name": "data-backup",
+                  "snapshot_name": "snapshot-name",
+                  "size": 670293,
+                  "block_size": 4194304,
+                  "storage_id": 1,
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_dedup": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,
+                  "labels": [],
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "id": 0,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    }
+                  ]
+                },
+                {
+                  "uid": 2,
+                  "date": "2018-12-19T20:28:19.123456",
+                  "name": "test",
+                  "snapshot_name": "",
+                  "size": 670293,
+                  "block_size": 4194304,
+                  "storage_id": 1,
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_dedup": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,
+                  "labels": [],
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "id": 0,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    }
+                  ]
+                },
+                {
+                  "uid": 3,
+                  "date": "2018-12-19T20:28:21.123456",
+                  "name": "test",
+                  "snapshot_name": "",
+                  "size": 670293,
+                  "block_size": 4194304,
+                  "storage_id": 1,
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_dedup": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,                  
+                  "labels": [],
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "id": 0,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    }
+                  ]
+                }
+              ],
+              "metadata_version": "1.1.0"
             }
             """
 

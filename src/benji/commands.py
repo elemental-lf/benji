@@ -9,7 +9,7 @@ from prettytable import PrettyTable
 import benji.exception
 from benji import __version__
 from benji.benji import Benji, BenjiStore
-from benji.database import Version, VersionUid, VersionStatistic
+from benji.database import Version, VersionUid
 from benji.factory import StorageFactory
 from benji.logging import logger
 from benji.nbdserver import NbdServer
@@ -219,40 +219,30 @@ class Commands:
         self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @staticmethod
-    def _ls_versions_table_output(versions: List[Version], include_labels: bool) -> None:
+    def _ls_versions_table_output(versions: List[Version], include_labels: bool, include_stats: bool) -> None:
         tbl = PrettyTable()
-        # tbls.field_names.append won't work due to magic inside of PrettyTable
+
+        field_names = ['date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'status', 'protected', 'storage']
+        if include_stats:
+            field_names.extend(['read', 'written', 'dedup', 'sparse', 'duration'])
         if include_labels:
-            tbl.field_names = [
-                'date',
-                'uid',
-                'name',
-                'snapshot_name',
-                'size',
-                'block_size',
-                'status',
-                'protected',
-                'storage',
-                'labels',
-            ]
-        else:
-            tbl.field_names = [
-                'date',
-                'uid',
-                'name',
-                'snapshot_name',
-                'size',
-                'block_size',
-                'status',
-                'protected',
-                'storage',
-            ]
+            field_names.append('labels')
+        tbl.field_names = field_names
+
         tbl.align['name'] = 'l'
         tbl.align['snapshot_name'] = 'l'
         tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
+
+        tbl.align['read'] = 'r'
+        tbl.align['written'] = 'r'
+        tbl.align['dedup'] = 'r'
+        tbl.align['sparse'] = 'r'
+        tbl.align['duration'] = 'r'
+
         tbl.align['labels'] = 'l'
+
         for version in versions:
             row = [
                 PrettyPrint.local_time(version.date),
@@ -265,50 +255,22 @@ class Commands:
                 version.protected,
                 StorageFactory.storage_id_to_name(version.storage_id),
             ]
+
+            if include_stats:
+                row.extend([
+                    PrettyPrint.bytes(version.bytes_read),
+                    PrettyPrint.bytes(version.bytes_written),
+                    PrettyPrint.bytes(version.bytes_dedup),
+                    PrettyPrint.bytes(version.bytes_sparse),
+                    PrettyPrint.duration(version.duration),
+                ])
+
             if include_labels:
                 row.append('\n'.join(sorted(['{}={}'.format(label.name, label.value) for label in version.labels])))
             tbl.add_row(row)
         print(tbl)
 
-    @staticmethod
-    def _stats_table_output(stats: List[VersionStatistic]) -> None:
-        tbl = PrettyTable()
-        tbl.field_names = [
-            'date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'storage', 'read', 'written', 'dedup',
-            'sparse', 'duration'
-        ]
-        tbl.align['uid'] = 'l'
-        tbl.align['name'] = 'l'
-        tbl.align['snapshot_name'] = 'l'
-        tbl.align['storage'] = 'l'
-        tbl.align['size'] = 'r'
-        tbl.align['block_size'] = 'r'
-        tbl.align['read'] = 'r'
-        tbl.align['written'] = 'r'
-        tbl.align['dedup'] = 'r'
-        tbl.align['sparse'] = 'r'
-        tbl.align['duration'] = 'r'
-        for stat in stats:
-            augmented_version_uid = '{}{}{}'.format(
-                stat.uid.v_string, ',\nbase {}'.format(stat.base_uid.v_string) if stat.base_uid else '',
-                ', hints' if stat.hints_supplied else '')
-            tbl.add_row([
-                PrettyPrint.local_time(stat.date),
-                augmented_version_uid,
-                stat.name,
-                stat.snapshot_name,
-                PrettyPrint.bytes(stat.size),
-                PrettyPrint.bytes(stat.block_size),
-                StorageFactory.storage_id_to_name(stat.storage_id),
-                PrettyPrint.bytes(stat.bytes_read),
-                PrettyPrint.bytes(stat.bytes_written),
-                PrettyPrint.bytes(stat.bytes_dedup),
-                PrettyPrint.bytes(stat.bytes_sparse),
-                PrettyPrint.duration(stat.duration),
-            ])
-        print(tbl)
-
-    def ls(self, filter_expression: Optional[str], include_labels: bool) -> None:
+    def ls(self, filter_expression: Optional[str], include_labels: bool, include_stats: bool) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
@@ -323,27 +285,7 @@ class Commands:
                     ignore_relationships=[((Version,), ('blocks',))],
                 )
             else:
-                self._ls_versions_table_output(versions, include_labels)
-        finally:
-            if benji_obj:
-                benji_obj.close()
-
-    def stats(self, filter_expression: Optional[str], limit: Optional[int]) -> None:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self.config)
-            stats = benji_obj.stats(filter_expression, limit)
-
-            if self.machine_output:
-                stats = list(stats)  # resolve iterator, otherwise it's not serializable
-                benji_obj.export_any(
-                    {
-                        'stats': stats
-                    },
-                    sys.stdout,
-                )
-            else:
-                self._stats_table_output(stats)
+                self._ls_versions_table_output(versions, include_labels, include_stats)
         finally:
             if benji_obj:
                 benji_obj.close()

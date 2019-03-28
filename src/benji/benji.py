@@ -202,9 +202,6 @@ class Benji(ReprMixIn):
     def ls_with_filter(self, filter_expression: str = None) -> List[Version]:
         return self._database_backend.get_versions_with_filter(filter_expression)
 
-    def stats(self, filter_expression: str = None, limit: int = None):
-        return self._database_backend.get_stats_with_filter(filter_expression, limit)
-
     def _scrub_prepare(self,
                        *,
                        version: Version,
@@ -982,16 +979,8 @@ class Benji(ReprMixIn):
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
         logger.debug('Stats: {}'.format(stats))
-        self._database_backend.set_stats(
-            uid=version.uid,
-            base_uid=base_version_uid,
-            hints_supplied=hints is not None,
-            date=version.date,
-            name=version_name,
-            snapshot_name=version_snapshot_name,
-            size=source_size,
-            storage_id=version.storage_id,
-            block_size=self._block_size,
+        self._database_backend.set_version_stats(
+            version_uid=version.uid,
             bytes_read=stats['bytes_read'],
             bytes_written=stats['bytes_written'],
             bytes_dedup=stats['bytes_dedup'],
