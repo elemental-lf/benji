@@ -139,8 +139,8 @@ function benji::backup::post::error {
 function _format_version_stats {
     local VERSION_UID="$1"
 
-    benji -m --log-level "$BENJI_LOG_LEVEL" stats "uid == '$VERSION_UID'" | \
-        jq -r '.stats[0] | "(took " + (.duration | tostring) + " seconds, " + (.bytes_written | tostring) + " bytes written)"'
+    benji -m --log-level "$BENJI_LOG_LEVEL" ls "uid == '$VERSION_UID'" | \
+        jq -r '.versions[0] | "(took " + (.duration | tostring) + " seconds, " + (.bytes_written | tostring) + " bytes written)"'
 }
 
 function benji::backup::post::success {
