@@ -974,8 +974,10 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
                     write_jobs, done_write_jobs))
 
+        notify(self._process_name, 'Marking version {} as valid'.format(version.uid.v_string))
         self._database_backend.set_version(version.uid, status=VersionStatus.valid)
 
+        notify(self._process_name, 'Backing up metadata of version {}'.format(version.uid.v_string))
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
         logger.debug('Stats: {}'.format(stats))
@@ -989,6 +991,7 @@ class Benji(ReprMixIn):
         )
 
         self._locking.unlock_version(version.uid)
+        notify(self._process_name)
         logger.info('New version {} created, backup successful.'.format(version.uid.v_string))
         return version
 
