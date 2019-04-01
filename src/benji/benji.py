@@ -487,12 +487,18 @@ class Benji(ReprMixIn):
 
         return sorted(versions), sorted(errors)
 
-    def batch_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
-                    group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+    def batch_scrub(self,
+                    filter_expression: Optional[str],
+                    version_percentage: int,
+                    block_percentage: int,
+                    group_label: Optional[str] = None) -> Tuple[List[Version], List[Version]]:
         return self._batch_scrub('scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def batch_deep_scrub(self, filter_expression: Optional[str], version_percentage: int, block_percentage: int,
-                         group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
+    def batch_deep_scrub(self,
+                         filter_expression: Optional[str],
+                         version_percentage: int,
+                         block_percentage: int,
+                         group_label: Optional[str] = None) -> Tuple[List[Version], List[Version]]:
         return self._batch_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     def restore(self, version_uid: VersionUid, target: str, sparse: bool = False, force: bool = False) -> None:
