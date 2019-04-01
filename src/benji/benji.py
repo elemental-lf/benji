@@ -475,7 +475,9 @@ class Benji(ReprMixIn):
 
         for version in versions:
             try:
-                logger.info('Scrubbing version {} with name {}.'.format(version.uid.v_string, version.name))
+                logger.info('{} {}% of version {} with name {}.'.format(
+                    'Scrubbing' if method == 'scrub' else 'Deep-scrubbing', block_percentage, version.uid.v_string,
+                    version.name))
                 getattr(self, method)(version.uid, block_percentage=block_percentage, history=history)
             except ScrubbingError as exception:
                 logger.error(exception)
