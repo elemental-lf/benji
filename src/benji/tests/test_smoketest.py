@@ -177,6 +177,16 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.close()
             logger.debug('Deep scrub with history successful')
 
+            benji_obj = self.benjiOpen()
+            benji_obj.batch_scrub('uid == {}'.format(version_uid.integer), 100, 100)
+            benji_obj.close()
+            logger.debug('Batch scrub with history successful')
+
+            benji_obj = self.benjiOpen()
+            benji_obj.batch_deep_scrub('uid == {}'.format(version_uid.integer), 100, 100)
+            benji_obj.close()
+            logger.debug('Batch deep scrub with history successful')
+
             restore_filename = os.path.join(testpath, 'restore.{}'.format(i + 1))
             restore_filename_mdl = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
             restore_filename_sparse = os.path.join(testpath, 'restore-sparse.{}'.format(i + 1))
