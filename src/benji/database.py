@@ -433,18 +433,18 @@ class Block(Base):
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
     # id and uid_right are first because they are most likely to go to BigInteger in the future
-    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, nullable=False)  # 4 bytes
+    id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)  # 4 bytes
     uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     uid_left = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     size = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     version_uid = sqlalchemy.Column(
-        VersionUidType, sqlalchemy.ForeignKey('versions.uid', ondelete='CASCADE'), primary_key=True,
-        nullable=False)  # 4 bytes
+        VersionUidType, sqlalchemy.ForeignKey('versions.uid', ondelete='CASCADE'), nullable=False)  # 4 bytes
     valid = sqlalchemy.Column(sqlalchemy.Boolean(name='valid'), nullable=False)  # 1 byte
     checksum = sqlalchemy.Column(ChecksumType(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
     uid = cast(BlockUid, sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
+        sqlalchemy.PrimaryKeyConstraint('version_uid', 'id'),
         sqlalchemy.Index(None, 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
         # Index(None, 'checksum', postgresql_using='hash'),
