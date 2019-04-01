@@ -155,8 +155,8 @@ def init_logging(logfile: Optional[str],
     # silence b2
     logging.getLogger('b2').setLevel(logging.WARN)
 
-    # To enable query logging
-    # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    if os.getenv('BENJI_DEBUG_SQL') == '1':
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
     logger.info('$ ' + ' '.join(sys.argv))
 
