@@ -59,7 +59,7 @@ class SmokeTestCase(BenjiTestCaseBase):
         scrub_history = BlockUidHistory()
         deep_scrub_history = BlockUidHistory()
         storage_name = 's1'
-        for i in range(1, 50):
+        for i in range(1, 40):
             logger.debug('Run {}'.format(i + 1))
             hints = []
             if not os.path.exists(image_filename):
@@ -224,7 +224,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             if (i % 13) == 0:
                 scrub_history = BlockUidHistory()
                 deep_scrub_history = BlockUidHistory()
-            if (i % 23) == 0:
+            if (i % 7) == 0:
                 base_version_uid = None
                 if storage_name == 's1':
                     storage_name = 's2'
