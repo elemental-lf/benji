@@ -26,7 +26,7 @@ Notable changes:
 * Fixed a bug in the time calculation of `benji enforce` which could lead to a late expiration of versions,
   the timing was a few hours off.
 
-I'd like to thank you @olifre and @adambmedent for their testing efforts!
+I'd like to thank @olifre and @adambmedent for their testing efforts!
 
 ## v0.4.0, 20.03.2019
 
