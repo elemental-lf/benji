@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.4.0 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.5.0 documentation</title>
   
 
   
@@ -273,9 +273,21 @@
             
   <div class="section" id="restore">
 <span id="id1"></span><h1>Restore<a class="headerlink" href="#restore" title="Permalink to this headline">¶</a></h1>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<tt class="docutils">/home/lf/src/backy2/benji/docs/source/restore.rst</tt>, line 12)</p>
-Command 'benji restore --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji restore --help
+usage: benji restore [-h] [-s] [-f] [-d] version_uid destination
+
+positional arguments:
+  version_uid           Version UID to restore
+  destination           Destination URL
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s, --sparse          Restore only existing blocks
+  -f, --force           Overwrite an existing file, device or image
+  -d, --database-backend-less
+                        Restore without requiring the database backend
+</pre></div>
+</div>
 <p>There are two possible restore options with Benji.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -321,9 +333,18 @@ need to generate some reports beforehand and save them somewhere to be able to c
 </div>
 <div class="section" id="nbd-server">
 <h2>NBD Server<a class="headerlink" href="#nbd-server" title="Permalink to this headline">¶</a></h2>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<tt class="docutils">/home/lf/src/backy2/benji/docs/source/restore.rst</tt>, line 64)</p>
-Command 'benji nbd --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji nbd --help
+usage: benji nbd [-h] [-a BIND_ADDRESS] [-p BIND_PORT] [-r]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a BIND_ADDRESS, --bind-address BIND_ADDRESS
+                        Bind to the specified IP address (default: 127.0.0.1)
+  -p BIND_PORT, --bind-port BIND_PORT
+                        Bind to the specified port (default: 10809)
+  -r, --read-only       NBD device is read-only (default: False)
+</pre></div>
+</div>
 <p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. These <em>versions</em> can then be
 mounted on any Linux host. The requirements on the Linux host are:</p>
 <ul class="simple">

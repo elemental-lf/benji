@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Backup &mdash; Benji Backup 0.4.0 documentation</title>
+  <title>Backup &mdash; Benji Backup 0.5.0 documentation</title>
   
 
   
@@ -273,9 +273,33 @@
             
   <div class="section" id="backup">
 <h1>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h1>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<tt class="docutils">/home/lf/src/backy2/benji/docs/source/backup.rst</tt>, line 10)</p>
-Command 'benji backup --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
+usage: benji backup [-h] [-s SNAPSHOT_NAME] [-r RBD_HINTS]
+                    [-f BASE_VERSION_UID] [-b BLOCK_SIZE] [-l label]
+                    [-S STORAGE]
+                    source version_name
+
+positional arguments:
+  source                Source URL
+  version_name          Backup version name (e.g. the hostname)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SNAPSHOT_NAME, --snapshot-name SNAPSHOT_NAME
+                        Snapshot name (e.g. the name of the RBD snapshot)
+  -r RBD_HINTS, --rbd-hints RBD_HINTS
+                        Hints in rbd diff JSON format
+  -f BASE_VERSION_UID, --base-version BASE_VERSION_UID
+                        Base version UID
+  -b BLOCK_SIZE, --block-size BLOCK_SIZE
+                        Block size in bytes
+  -l label, --label label
+                        Labels for this version (can be repeated)
+  -S STORAGE, --storage STORAGE
+                        Destination storage (if unspecified the default is
+                        used)
+</pre></div>
+</div>
 <div class="section" id="simple-backup">
 <h2>Simple Backup<a class="headerlink" href="#simple-backup" title="Permalink to this headline">¶</a></h2>
 <p>A backup can be initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>:</p>

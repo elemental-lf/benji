@@ -10,7 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.4.0 documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.5.0 documentation</title>
   
 
   
@@ -319,10 +319,22 @@ Kubernetes image (<code class="docutils literal notranslate"><span class="pre">b
 the Ceph credentials into the container. I’d accept patches for a third Docker
 image (resurrecting the old <code class="docutils literal notranslate"><span class="pre">benji-rook</span></code> image) or maybe it’s also possible to integrate
 the changes into the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image without too much fuss.</p>
-<p><strong>The current master branch is not compatible with the old master branch of 10/05/2018
+</div>
+<div class="section" id="upgrade-notes">
+<h2>Upgrade notes<a class="headerlink" href="#upgrade-notes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Current master drops the version_statistics table and integrates the
+statistics into the versions table.  Statistics for still existing
+versions are moved into the versions table, but statistics for no
+longer existing versions are dropped! If you want to keep this data,
+you have to export it with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">stats</span></code> or <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">-m</span> <span class="pre">stats</span></code>
+before upgrading. Old metadata backups and exports can still be
+imported but the statistics in the versions table will be empty.</li>
+<li>The current master branch is not compatible with the old master branch of 10/05/2018
 and earlier and there is no migration path. The last commit supporting the old data
 structures and configuration file format is available under the tag master-20181005
-if you need it.</strong></p>
+if you need it.</li>
+</ul>
 </div>
 <div class="section" id="main-features">
 <h2>Main Features<a class="headerlink" href="#main-features" title="Permalink to this headline">¶</a></h2>
