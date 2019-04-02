@@ -1,3 +1,33 @@
+## v0.5.0, 02.04.2019
+
+Notable changes:
+
+* Added `fsfreeze` support to the `benji-k8s` Docker image. Just add the `benji-backup.me/fsfreeze: yes` annotation to
+  the PVC. Kubernetes hosts are accessed via pods which are deployed by a DaemonSet, see the Helm chart for details.
+
+* Use bulk inserts to speed up backups of images based on a previous version. This also decreases memory usage.
+  
+* Switched from in-memory block lists to an iterator based approach. This will increase performance and decrease
+  memory usage when backing up large images.
+   
+* Fixed a wrong index on the `blocks` table. This should also increase performance. The database will need to be
+  migrated with `benji database-migrate`.
+
+* Laid the foundation for structured logging.
+
+* Removed database table `stats` and assorted code and commands. Statistics are now kept together with the other
+  version metadata in the `versions` table. This means they are also removed when the version is removed. If
+  you want to keep historic statistics you need to export them beforehand with `benji -m ls` or 
+  `benji metadata-export`. This is a breaking change and you might need adjust your scripts. As statistics
+  are now included in a version's metadata the metadata version is now `1.1.0`. Old metadata backups
+  and exports with a metadata version of `1.0.0` can be imported by the current version. The statistics will
+  be empty in that case. The database will need to be migrated with `benji database-migrate`.
+ 
+* Fixed a bug in the time calculation of `benji enforce` which could lead to a late expiration of versions,
+  the timing was a few hours off.
+
+I'd like to thank you @olifre and @adambmedent for their testing efforts!
+
 ## v0.4.0, 20.03.2019
 
 Notable changes:
