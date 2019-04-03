@@ -31,7 +31,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
 
     @property
     def url(self) -> str:
-        return '{}://{}.'.format(self._name, self._path)
+        return '{}://{}'.format(self._name, self._path)
 
     @abstractmethod
     def size(self) -> int:
