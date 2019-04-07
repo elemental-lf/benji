@@ -81,6 +81,7 @@ class IO(IOBase):
             self._iscsi_block_size = task_data.readcapacity16.block_length
             self._iscsi_num_blocks = task_data.readcapacity16.returned_lba + 1
             self._fully_provisioned = task_data.readcapacity16.lbpme == 0
+            self._unmapped_is_zero = task_data.readcapacity16.lbprz != 0
             self._iscsi_lun = iscsi_url.lun
 
             if self._block_size < self._iscsi_block_size:
@@ -177,7 +178,7 @@ class IO(IOBase):
         with self._iscsi_semaphore:
             task = None
             try:
-                task = libiscsi.iscsi_write16_sync(self._iscsi_context, self._iscsi_lun, lba, data, self._block_size,
+                task = libiscsi.iscsi_write16_sync(self._iscsi_context, self._iscsi_lun, lba, data,
                                                    self._iscsi_block_size, 0, 0, 0, 0, 0)
                 self._iscsi_check_status(task, 'WRITE(16)')
             finally:
