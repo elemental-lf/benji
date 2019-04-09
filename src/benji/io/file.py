@@ -3,24 +3,29 @@
 import os
 import threading
 import time
-from typing import Optional, BinaryIO, Tuple
+from typing import Tuple
 
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock
-from benji.io.base import IOBase
+from benji.exception import UsageError
+from benji.io.base import ThreadedIOBase
 from benji.logging import logger
 
 
-class IO(IOBase):
+class IO(ThreadedIOBase):
 
-    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, path: str,
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, url: str,
                  block_size: int) -> None:
         super().__init__(
-            config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
+            config=config, name=name, module_configuration=module_configuration, url=url, block_size=block_size)
+
+        if self.parsed_url.username or self.parsed_url.password or self.parsed_url.hostname or self.parsed_url.port \
+                or self.parsed_url.params or self.parsed_url.fragment or self.parsed_url.query:
+            raise UsageError('The supplied URL {} is invalid.'.format(self.url))
 
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         super().open_w(size, force, sparse)
-        if os.path.exists(self._path):
+        if os.path.exists(self.parsed_url.path):
             if not force:
                 raise FileExistsError('{} already exists. Force the restore if you want to overwrite it.'.format(
                     self.url))
@@ -29,20 +34,20 @@ class IO(IOBase):
                     raise IOError('{} is too small. Its size is {} bytes, but we need {} bytes for the restore.'.format(
                         self.url, self.size(), size))
         else:
-            with open(self._path, 'wb') as f:
+            with open(self.parsed_url.path, 'wb') as f:
                 f.seek(size - 1)
                 f.write(b'\0')
 
     def size(self) -> int:
-        with open(self._path, 'rb') as f:
+        with open(self.parsed_url.path, 'rb') as f:
             f.seek(0, 2)  # to the end
             size = f.tell()
         return size
 
     def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
-        offset = block.id * self._block_size
+        offset = block.id * self.block_size
         t1 = time.time()
-        with open(self._path, 'rb') as f:
+        with open(self.parsed_url.path, 'rb') as f:
             f.seek(offset)
             data = f.read(block.size)
             os.posix_fadvise(f.fileno(), offset, block.size, os.POSIX_FADV_DONTNEED)
@@ -60,9 +65,9 @@ class IO(IOBase):
         return block, data
 
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
-        offset = block.id * self._block_size
+        offset = block.id * self.block_size
         t1 = time.time()
-        with open(self._path, 'rb+') as f:
+        with open(self.parsed_url.path, 'rb+') as f:
             f.seek(offset)
             written = f.write(data)
             os.posix_fadvise(f.fileno(), offset, len(data), os.POSIX_FADV_DONTNEED)
@@ -76,6 +81,3 @@ class IO(IOBase):
 
         assert written == len(data)
         return block
-
-    def close(self) -> None:
-        super().close()

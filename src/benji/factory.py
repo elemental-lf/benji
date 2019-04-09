@@ -5,7 +5,6 @@ from typing import Dict, NamedTuple, Any
 from urllib import parse
 
 from benji.config import Config, ConfigList
-
 from benji.exception import ConfigurationError, InternalError, UsageError
 from benji.io.base import IOBase
 from benji.repr import ReprMixIn
@@ -233,12 +232,9 @@ class IOFactory(ReprMixIn):
 
     @classmethod
     def get(cls, url: str, block_size: int) -> IOBase:
-        res = parse.urlparse(url)
+        parsed_url = parse.urlparse(url)
 
-        if res.params or res.query or res.fragment:
-            raise UsageError('The supplied URL {} is invalid.'.format(url))
-
-        name = res.scheme
+        name = parsed_url.scheme
         if not name:
             raise UsageError('The supplied URL {} is invalid. You must provide a scheme.'.format(url))
         if name not in cls._modules:
@@ -246,6 +242,6 @@ class IOFactory(ReprMixIn):
 
         module = cls._modules[name].module
         module_arguments = cls._modules[name].arguments.copy()
-        module_arguments['path'] = res.netloc + res.path
+        module_arguments['url'] = url
         module_arguments['block_size'] = block_size
         return module.IO(**module_arguments)

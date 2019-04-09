@@ -11,20 +11,24 @@ import rbd
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock
 from benji.exception import UsageError, ConfigurationError
-from benji.io.base import IOBase
+from benji.io.base import ThreadedIOBase
 from benji.logging import logger
 
 
-class IO(IOBase):
+class IO(ThreadedIOBase):
 
     _pool_name: Optional[str]
     _image_name: Optional[str]
     _snapshot_name: Optional[str]
 
-    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, path: str,
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, url: str,
                  block_size: int) -> None:
         super().__init__(
-            config=config, name=name, module_configuration=module_configuration, path=path, block_size=block_size)
+            config=config, name=name, module_configuration=module_configuration, url=url, block_size=block_size)
+
+        if self.parsed_url.username or self.parsed_url.password or self.parsed_url.hostname or self.parsed_url.port \
+                    or self.parsed_url.params or self.parsed_url.fragment or self.parsed_url.query:
+            raise UsageError('The supplied URL {} is invalid.'.format(self.url))
 
         ceph_config_file = config.get_from_dict(module_configuration, 'cephConfigFile', types=str)
         client_identifier = config.get_from_dict(module_configuration, 'clientIdentifier', types=str)
@@ -45,7 +49,7 @@ class IO(IOBase):
     def open_r(self) -> None:
         super().open_r()
 
-        re_match = re.match('^([^/]+)/([^@]+)@?(.+)?$', self._path)
+        re_match = re.match('^([^/]+)/([^@]+)@?(.+)?$', self.parsed_url.path)
         if not re_match:
             raise UsageError(
                 'URL {} is invalid . Need {}://<pool>/<imagename> or {}://<pool>/<imagename>@<snapshotname>.'.format(
@@ -66,7 +70,7 @@ class IO(IOBase):
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         super().open_w(size, force, sparse)
 
-        re_match = re.match('^([^/]+)/([^@]+)$', self._path)
+        re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
         if not re_match:
             raise UsageError('URL {} is invalid . Need {}://<pool>/<imagename>.'.format(self.url, self.name))
         self._pool_name, self._image_name = re_match.groups()
@@ -116,7 +120,7 @@ class IO(IOBase):
         return size
 
     def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
-        offset = block.id * self._block_size
+        offset = block.id * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
@@ -135,7 +139,7 @@ class IO(IOBase):
         return block, data
 
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
-        offset = block.id * self._block_size
+        offset = block.id * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name) as image:
@@ -150,6 +154,3 @@ class IO(IOBase):
 
         assert written == len(data)
         return block
-
-    def close(self) -> None:
-        super().close()
