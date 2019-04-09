@@ -18,9 +18,9 @@ Notable changes:
 * Removed database table `stats` and assorted code and commands. Statistics are now kept together with the other
   version metadata in the `versions` table. This means they are also removed when the version is removed. If
   you want to keep historic statistics you need to export them beforehand with `benji -m ls` or 
-  `benji metadata-export`. This is a breaking change and you might need adjust your scripts. As statistics
-  are now included in a version's metadata the metadata version is now `1.1.0`. Old metadata backups
-  and exports with a metadata version of `1.0.0` can be imported by the current version. The statistics will
+  `benji metadata-export`. This is a breaking change and you might need to adjust your scripts. As statistics
+  are now included in a version's metadata the metadata version has changed to `1.1.0`. Old metadata backups
+  and exports with a metadata version of `1.0.0` can be imported by the current  version. The statistics will
   be empty in that case. The database will need to be migrated with `benji database-migrate`.
  
 * Fixed a bug in the time calculation of `benji enforce` which could lead to a late expiration of versions,
