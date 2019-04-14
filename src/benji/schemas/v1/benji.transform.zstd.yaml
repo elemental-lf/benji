@@ -1,5 +1,3 @@
-parents:
-  - benji.io.base-v1
 configuration:
   schema:
     level:

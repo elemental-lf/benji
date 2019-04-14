@@ -1,5 +1,5 @@
 parents:
-- benji.io.base-v1
+- benji.io.threaded-v1
 configuration:
   type: dict
   required: True
