@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+import os
 import threading
 import time
 from typing import Tuple, Optional
@@ -73,7 +74,9 @@ class IO(SimpleIOBase):
             if self._user is not None:
                 libiscsi.iscsi_set_initiator_username_pwd(iscsi_context, self._user.encode('ascii'),
                                                           self._password.encode('ascii'))
-            libiscsi.iscsi_full_connect_sync(iscsi_context, iscsi_url.portal, iscsi_url.lun)
+            result = libiscsi.iscsi_full_connect_sync(iscsi_context, iscsi_url.portal, iscsi_url.lun)
+            if result < 0:
+                raise RuntimeError('Connection to {} failed: {}.'.format(url, os.strerror(result)))
 
             task = libiscsi.iscsi_readcapacity16_sync(iscsi_context, iscsi_url.lun)
             self._iscsi_check_status(task, 'READ CAPACITY(16)')
