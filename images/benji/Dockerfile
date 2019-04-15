@@ -12,10 +12,10 @@ COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
 RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
-	yum install -y deltarpm tzdata epel-release https://centos7.iuscommunity.org/ius-release.rpm && \
+	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y git gcc \
-                   python36u-devel python36u-pip python36u-libs python36u-setuptools \
+                   python36-devel python36-pip python36-libs python36-setuptools \
                    librados-devel librbd-devel
 
 RUN python3.6 -m venv $VENV_DIR && \
@@ -56,9 +56,9 @@ LABEL org.label-schema.schema-version="1.0" \
 COPY --from=build /etc/yum.repos.d/ceph.repo /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
-	yum install -y deltarpm tzdata epel-release https://centos7.iuscommunity.org/ius-release.rpm && \
+	yum install -y tzdata epel-release && \
 	yum update -y && \
-	yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools && \
+	yum install -y python36-devel python36-pip python36-libs python36-setuptools && \
 	yum install -y librados2 librbd1 ceph-base && \
 	yum install -y bash-completion joe jq && \
 	yum clean all
