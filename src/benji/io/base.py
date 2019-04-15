@@ -29,7 +29,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         return self._url
 
     @property
-    def parsed_url(self) -> object:
+    def parsed_url(self) -> parse.ParseResult:
         return self._parsed_url
 
     @property
@@ -70,8 +70,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def write_get_completed(
-            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         raise NotImplementedError
 
     @abstractmethod
@@ -129,8 +128,7 @@ class ThreadedIOBase(IOBase):
     def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
         self._write(block, data)
 
-    def write_get_completed(
-            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         assert self._write_executor is not None
         return self._write_executor.get_completed(timeout=timeout)
 
@@ -178,8 +176,7 @@ class SimpleIOBase(IOBase):
     def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
         self._write(block, data)
 
-    def write_get_completed(
-            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         if self._outstanding_write is not None:
             yield self._write(*self._outstanding_write)
             self._outstanding_write = None

@@ -3,7 +3,7 @@
 import os
 import threading
 import time
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable, Any
 
 import libiscsi.libiscsi as libiscsi
 
@@ -39,7 +39,7 @@ class IO(SimpleIOBase):
         self._initiator_name = config.get_from_dict(module_configuration, 'initiatorName', types=str)
         self._timeout = config.get_from_dict(module_configuration, 'timeout', None, types=int)
 
-        self._iscsi_context = None
+        self._iscsi_context: Any = None
 
     @staticmethod
     def _iscsi_check_status(task: 'struct scsi_task *', operation: str):
@@ -58,9 +58,9 @@ class IO(SimpleIOBase):
 
         # netloc includes username, password and port
         url = 'iscsi://{}{}?{}'.format(self.parsed_url.netloc, self.parsed_url.path, self.parsed_url.query)
-        iscsi_context = None
-        iscsi_url = None
-        task = None
+        iscsi_context: Any = None
+        iscsi_url: Any = None
+        task: Any = None
         try:
             iscsi_context = libiscsi.iscsi_create_context(self._initiator_name)
             iscsi_url = libiscsi.iscsi_parse_full_url(self._iscsi_context, url)
