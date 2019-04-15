@@ -3,16 +3,30 @@ configuration:
   required: False
   empty: True
   schema:
-    user:
+    username:
       type: string
       empty: False
       dependencies:
-        - password
-    password:
+        - passwd
+    passwd:
       type: string
       empty: False
       dependencies:
-        - user
+        - username
+    targetUsername:
+      type: string
+      empty: False
+      dependencies:
+        - targetPasswd
+        # Target/bidirectional CHAP is only supported if you also have normal CHAP authentication.
+        - username
+    targetPasswd:
+      type: string
+      empty: False
+      dependencies:
+        - targetUsername
+        # Target/bidirectional CHAP is only supported if you also have normal CHAP authentication.
+        - username
     headerDigest:
       type: string
       empty: False

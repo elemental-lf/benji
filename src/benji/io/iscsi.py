@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-import os
 import threading
 import time
 from typing import Tuple, Optional, Callable, Any
@@ -28,8 +27,10 @@ class IO(SimpleIOBase):
         if self.parsed_url.params or self.parsed_url.fragment:
             raise UsageError('The supplied URL {} is invalid.'.format(self.url))
 
-        self._user = config.get_from_dict(module_configuration, 'user', None, types=str)
-        self._password = config.get_from_dict(module_configuration, 'password', None, types=str)
+        self._username = config.get_from_dict(module_configuration, 'username', None, types=str)
+        self._password = config.get_from_dict(module_configuration, 'passwd', None, types=str)
+        self._target_username = config.get_from_dict(module_configuration, 'targetUsername', None, types=str)
+        self._target_password = config.get_from_dict(module_configuration, 'targetPasswd', None, types=str)
         header_digest = config.get_from_dict(module_configuration, 'headerDigest', types=str)
         header_digest_attr_name = 'ISCSI_HEADER_DIGEST_{}'.format(header_digest)
         if hasattr(libiscsi, header_digest_attr_name):
@@ -42,15 +43,25 @@ class IO(SimpleIOBase):
         self._iscsi_context: Any = None
 
     @staticmethod
-    def _iscsi_check_status(task: 'struct scsi_task *', operation: str):
+    def _iscsi_execute_sync(operation: str, function: Callable, iscsi_context, *args, **kwargs) -> Any:
+        task = function(iscsi_context, *args, **kwargs)
         if task is not None:
-            sense = libiscsi.scsi_sense()
-            status = libiscsi.scsi_task_get_status(task, sense)
+            status, sense = libiscsi.scsi_task_get_status(task)
             if status != libiscsi.SCSI_STATUS_GOOD:
-                raise RuntimeError('{} failed with status {} and ASCQ {}.'.format(
-                    operation, status.name, libiscsi.scsi_sense_key_str(sense.ascq)))
+                raise RuntimeError('{} failed with {}, ASCQ {}.'.format(operation,
+                                                                        libiscsi.scsi_sense_key_str(sense.key),
+                                                                        libiscsi.scsi_sense_ascq_str(sense.ascq)))
+            else:
+                return task
         else:
-            raise RuntimeError('No task was returned for {}.'.format(operation))
+            raise RuntimeError('{} failed: {}'.format(operation, libiscsi.iscsi_get_error(iscsi_context)))
+
+    @staticmethod
+    def _iscsi_call_sync(operation: str, function: Callable, iscsi_context, *args, **kwargs) -> Any:
+        result = function(iscsi_context, *args, **kwargs)
+        if result is None or isinstance(result, int) and result < 0:
+            raise RuntimeError('{} failed: {}'.format(operation, libiscsi.iscsi_get_error(iscsi_context)))
+        return result
 
     def _open(self) -> None:
         if self._iscsi_context is not None:
@@ -58,58 +69,47 @@ class IO(SimpleIOBase):
 
         # netloc includes username, password and port
         url = 'iscsi://{}{}?{}'.format(self.parsed_url.netloc, self.parsed_url.path, self.parsed_url.query)
-        iscsi_context: Any = None
-        iscsi_url: Any = None
-        task: Any = None
-        try:
-            iscsi_context = libiscsi.iscsi_create_context(self._initiator_name)
-            iscsi_url = libiscsi.iscsi_parse_full_url(self._iscsi_context, url)
-            if not iscsi_url:
-                raise RuntimeError('iSCSI URL {} is invalid.'.format(url))
+        iscsi_context = libiscsi.iscsi_create_context(self._initiator_name)
+        iscsi_url = self._iscsi_call_sync('URL parsing', libiscsi.iscsi_parse_full_url, self._iscsi_context, url)
 
-            libiscsi.iscsi_set_targetname(iscsi_context, iscsi_url.target)
-            libiscsi.iscsi_set_session_type(iscsi_context, libiscsi.ISCSI_SESSION_NORMAL)
-            libiscsi.iscsi_set_header_digest(iscsi_context, self._header_digest)
-            libiscsi.iscsi_set_timeout(iscsi_context, self._timeout)
-            if self._user is not None:
-                libiscsi.iscsi_set_initiator_username_pwd(iscsi_context, self._user.encode('ascii'),
-                                                          self._password.encode('ascii'))
-            result = libiscsi.iscsi_full_connect_sync(iscsi_context, iscsi_url.portal, iscsi_url.lun)
-            if result < 0:
-                raise RuntimeError('Connection to {} failed: {}.'.format(url, os.strerror(result)))
+        libiscsi.iscsi_set_targetname(iscsi_context, iscsi_url.target)
+        libiscsi.iscsi_set_session_type(iscsi_context, libiscsi.ISCSI_SESSION_NORMAL)
+        libiscsi.iscsi_set_header_digest(iscsi_context, self._header_digest)
+        libiscsi.iscsi_set_timeout(iscsi_context, self._timeout)
 
-            task = libiscsi.iscsi_readcapacity16_sync(iscsi_context, iscsi_url.lun)
-            self._iscsi_check_status(task, 'READ CAPACITY(16)')
+        if len(iscsi_url.user) > 0:
+            libiscsi.iscsi_set_initiator_username_pwd(iscsi_context, iscsi_url.user, iscsi_url.passwd)
+        elif self._username is not None:
+            libiscsi.iscsi_set_initiator_username_pwd(iscsi_context, self._username, self._password)
+        # iscsi_set_target_username_pwd needs to come after iscsi_set_initiator_username_pwd
+        if len(iscsi_url.target_user) > 0:
+            libiscsi.iscsi_set_target_username_pwd(iscsi_context, iscsi_url.target_user, iscsi_url.target_passwd)
+        elif self._target_username is not None:
+            libiscsi.iscsi_set_target_username_pwd(iscsi_context, self._target_username, self._target_password)
 
-            task_data = libiscsi.scsi_datain_unmarshall(task)
-            if not task_data:
-                raise RuntimeError('Failed to unmarshall READ CAPACITY(16) data.')
+        self._iscsi_call_sync('iSCSI connect', libiscsi.iscsi_full_connect_sync, iscsi_context, iscsi_url.portal,
+                              iscsi_url.lun)
 
-            self._iscsi_block_size = task_data.readcapacity16.block_length
-            self._iscsi_num_blocks = task_data.readcapacity16.returned_lba + 1
-            self._fully_provisioned = task_data.readcapacity16.lbpme == 0
-            self._unmapped_is_zero = task_data.readcapacity16.lbprz != 0
-            self._iscsi_lun = iscsi_url.lun
+        task = self._iscsi_execute_sync('READ CAPACITY(16)', libiscsi.iscsi_readcapacity16_sync, iscsi_context,
+                                        iscsi_url.lun)
+        task_data = libiscsi.scsi_datain_unmarshall(task)
+        if not task_data:
+            raise RuntimeError('Failed to unmarshall READ CAPACITY(16) data.')
 
-            if self.block_size < self._iscsi_block_size:
-                raise RuntimeError('Block size of version is smaller than block size of iSCSI target ({} < {}).'.format(
-                    self.block_size, self._iscsi_block_size))
+        self._iscsi_block_size = task_data.readcapacity16.block_length
+        self._iscsi_num_blocks = task_data.readcapacity16.returned_lba + 1
+        self._fully_provisioned = task_data.readcapacity16.lbpme == 0
+        self._unmapped_is_zero = task_data.readcapacity16.lbprz != 0
+        self._iscsi_lun = iscsi_url.lun
 
-            if self.block_size % self._iscsi_block_size != 0:
-                raise RuntimeError(
-                    'Block size of version is not aligned to block size of iSCSI target (remainder {}).'.format(
-                        self.block_size % self._iscsi_block_size))
-        except Exception:
-            if task is not None:
-                libiscsi.scsi_free_scsi_task(task)
-            if iscsi_url is not None:
-                libiscsi.iscsi_destroy_url(iscsi_url)
-            if iscsi_context is not None:
-                libiscsi.iscsi_destroy_context(iscsi_context)
-            raise
-        else:
-            libiscsi.scsi_free_scsi_task(task)
-            libiscsi.iscsi_destroy_url(iscsi_url)
+        if self.block_size < self._iscsi_block_size:
+            raise RuntimeError('Block size of version is smaller than block size of iSCSI target ({} < {}).'.format(
+                self.block_size, self._iscsi_block_size))
+
+        if self.block_size % self._iscsi_block_size != 0:
+            raise RuntimeError(
+                'Block size of version is not aligned to block size of iSCSI target (remainder {}).'.format(
+                    self.block_size % self._iscsi_block_size))
 
         self._iscsi_context = iscsi_context
 
@@ -142,17 +142,11 @@ class IO(SimpleIOBase):
                     lba + num_blocks, self._iscsi_num_blocks))
 
         t1 = time.time()
-        task = None
-        try:
-            task = libiscsi.iscsi_read16_sync(self._iscsi_context, self._iscsi_lun, lba, self.block_size,
-                                              self._iscsi_block_size, 0, 0, 0, 0, 0)
-            self._iscsi_check_status(task, 'READ(16)')
+        task = self._iscsi_execute_sync('READ(16)', libiscsi.iscsi_read16_sync, self._iscsi_context, self._iscsi_lun,
+                                        lba, self.block_size, self._iscsi_block_size, 0, 0, 0, 0, 0)
 
-            assert task.datain.size == self.block_size
-            data = libiscsi.bytes(task.datain.data, self.block_size)
-        finally:
-            if task is not None:
-                libiscsi.scsi_free_scsi_task(task)
+        data = task.datain
+        assert len(data) == self.block_size
         t2 = time.time()
 
         logger.debug('{} read block {} in {:.2f}s'.format(
@@ -179,14 +173,8 @@ class IO(SimpleIOBase):
                     lba + num_blocks, self._iscsi_num_blocks))
 
         t1 = time.time()
-        task = None
-        try:
-            task = libiscsi.iscsi_write16_sync(self._iscsi_context, self._iscsi_lun, lba, data, self._iscsi_block_size,
-                                               0, 0, 0, 0, 0)
-            self._iscsi_check_status(task, 'WRITE(16)')
-        finally:
-            if task is not None:
-                libiscsi.scsi_free_scsi_task(task)
+        self._iscsi_execute_sync('WRITE(16)', libiscsi.iscsi_write16_sync, self._iscsi_context, self._iscsi_lun, lba,
+                                 data, self._iscsi_block_size, 0, 0, 0, 0, 0)
         t2 = time.time()
 
         logger.debug('{} wrote block {} in {:.2f}s'.format(
@@ -199,5 +187,4 @@ class IO(SimpleIOBase):
 
     def close(self) -> None:
         super().close()
-        if self._iscsi_context is not None:
-            libiscsi.iscsi_destroy_context(self._iscsi_context)
+        self._iscsi_context = None
