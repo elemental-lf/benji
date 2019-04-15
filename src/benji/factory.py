@@ -45,26 +45,21 @@ class StorageFactory(ReprMixIn):
             if storage_id in cls._storage_id_to_name:
                 raise ConfigurationError('Duplicate id {} in list {}.'.format(storage_id, modules.full_name))
 
+            module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
             try:
-                module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
-            except ImportError:
-                raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
-                    __package__, cls._MODULE, module))
-            else:
-                try:
-                    configuration = config.validate(module=module.__name__, config=configuration)
-                except ConfigurationError as exception:
-                    raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
-                cls._modules[storage_id] = _StorageFactoryModule(
-                    module=module,
-                    arguments={
-                        'config': config,
-                        'name': name,
-                        'storage_id': storage_id,
-                        'module_configuration': configuration
-                    })
-                cls._name_to_storage_id[name] = storage_id
-                cls._storage_id_to_name[storage_id] = name
+                configuration = config.validate(module=module.__name__, config=configuration)
+            except ConfigurationError as exception:
+                raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
+            cls._modules[storage_id] = _StorageFactoryModule(
+                module=module,
+                arguments={
+                    'config': config,
+                    'name': name,
+                    'storage_id': storage_id,
+                    'module_configuration': configuration
+                })
+            cls._name_to_storage_id[name] = storage_id
+            cls._storage_id_to_name[storage_id] = name
 
     @classmethod
     def initialize(cls, config: Config) -> None:
@@ -141,22 +136,17 @@ class TransformFactory(ReprMixIn):
             if name in cls._modules:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
+            module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
             try:
-                module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
-            except ImportError:
-                raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
-                    __package__, cls._MODULE, module))
-            else:
-                try:
-                    configuration = config.validate(module=module.__name__, config=configuration)
-                except ConfigurationError as exception:
-                    raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _StorageFactoryModule(
-                    module=module, arguments={
-                        'config': config,
-                        'name': name,
-                        'module_configuration': configuration
-                    })
+                configuration = config.validate(module=module.__name__, config=configuration)
+            except ConfigurationError as exception:
+                raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
+            cls._modules[name] = _StorageFactoryModule(
+                module=module, arguments={
+                    'config': config,
+                    'name': name,
+                    'module_configuration': configuration
+                })
 
     @classmethod
     def initialize(cls, config: Config) -> None:
@@ -204,22 +194,17 @@ class IOFactory(ReprMixIn):
             if name in cls._modules:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
 
+            module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
             try:
-                module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
-            except ImportError:
-                raise ConfigurationError('Module file {}.{}.{} not found or related import error.'.format(
-                    __package__, cls._MODULE, module))
-            else:
-                try:
-                    configuration = config.validate(module=module.__name__, config=configuration)
-                except ConfigurationError as exception:
-                    raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
-                cls._modules[name] = _StorageFactoryModule(
-                    module=module, arguments={
-                        'config': config,
-                        'name': name,
-                        'module_configuration': configuration
-                    })
+                configuration = config.validate(module=module.__name__, config=configuration)
+            except ConfigurationError as exception:
+                raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
+            cls._modules[name] = _StorageFactoryModule(
+                module=module, arguments={
+                    'config': config,
+                    'name': name,
+                    'module_configuration': configuration
+                })
 
     @classmethod
     def initialize(cls, config: Config) -> None:
