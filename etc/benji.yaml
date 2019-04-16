@@ -81,17 +81,17 @@ storages:
 
 io:
 #
-# All I/O modules supports these directives:
-#
-#       simultaneousReads: 1
-#
 #   - name:
 #     module: file
 #     configuration:
+#       simultaneousReads: 3
+#       simultaneousWrites: 3
 #
 #   - name:
 #     module: rbd
 #     configuration:
+#       simultaneousReads: 3
+#       simultaneousWrites: 3
 #       cephConfigFile: /etc/ceph/ceph.conf
 #       clientIdentifier: admin
 #       newImageFeatures:
@@ -101,6 +101,17 @@ io:
 #         - RBD_FEATURE_OBJECT_MAP
 #         - RBD_FEATURE_FAST_DIFF
 #         - RBD_FEATURE_DEEP_FLATTEN
+#
+#   - name:
+#     module: iscsi
+#     configuration:
+#       username:
+#       password:
+#       targetUsername:
+#       targetPassword:
+#       headerDigest: NONE_CRC32C
+#       initiatorName: iqn.2019-04.me.benji-backup:benji
+#       timeout: 0
 
 # nbd:
 #   cacheDirectory:

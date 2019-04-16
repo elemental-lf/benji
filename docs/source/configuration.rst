@@ -195,9 +195,6 @@ Module specific configuration for this storage configuration entry.
 I/O Modules
 ------------
 
-All currently available I/O modules support the following configuration
-options:
-
 * name: **simultaneousReads**
 * type: integer
 * default: ``1``
@@ -217,14 +214,45 @@ recommended to increase this number to increase this number to get better concur
 I/O Module file
 ~~~~~~~~~~~~~~~~
 
-The ``file`` I/O module currently supports no additional configuration
-directives.
+The ``file`` I/O module supports the following configuration options:
+
+* name: **simultaneousReads**
+* type: integer
+* default: ``1``
+
+Number of reader threads when reading from a backup source. Also
+affects the internal read queue length. It is highly recommended to
+increase this number to increase this number to get better concurrency
+and performance.
+
+* name: **simultaneousWrites**
+* type: integer
+* default: ``1``
+
+Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
 
 I/O Module rbd
 ~~~~~~~~~~~~~~
 
-The ``rbd`` I/O module supports the following additional configuration
-options:
+The ``rbd`` I/O module requires that Ceph's Python modules ``rados`` and ``rbd`` are installed. It supports
+the following configuration options:
+
+* name: **simultaneousReads**
+* type: integer
+* default: ``1``
+
+Number of reader threads when reading from a backup source. Also
+affects the internal read queue length. It is highly recommended to
+increase this number to increase this number to get better concurrency
+and performance.
+
+* name: **simultaneousWrites**
+* type: integer
+* default: ``1``
+
+Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.
 
 * name: **cephConfigFile**
 * type: string
@@ -249,6 +277,61 @@ features applies: ``RBD_FEATURE_LAYERING``, ``RBD_FEATURE_EXCLUSIVE_LOCK``,
 ``RBD_FEATURE_STRIPINGV2``, ``RBD_FEATURE_OBJECT_MAP``,
 ``RBD_FEATURE_FAST_DIFF``, ``RBD_FEATURE_DEEP_FLATTEN``.
 
+I/O Module iscsi
+~~~~~~~~~~~~~~~~
+
+This I/O module requires a special version of the ``libiscsi`` Python bindings available at
+https://github.com/elemental-lf/libiscsi-python. It currently has some limitations:
+
+* Single-threaded synchronous execution of iSCSI commands limiting achievable performance
+* No usage of ``GET_LBA_STATUS`` to detect unmapped regions
+
+The following configuration options are supported:
+
+* name: **username**
+* type: string
+* default: none
+
+Sets the CHAP username for iSCSI authentication and authorization. If this directive is not set,
+no authentication is attempted.
+
+* name: **password**
+* type: string
+* default: none
+
+Sets the CHAP password for iSCSI authentication and authorization.
+
+* name: **targetUsername**
+* type: string
+* default: none
+
+Sets the CHAP username for iSCSI target authentication. If this directive is not set, no authentication
+of the target is done.
+
+* name: **targetPassword**
+* type: string
+* default: none
+
+Sets the CHAP password for iSCSI target authentication.
+
+* name: **headerDigest**
+* type: string
+* default: ``NONE_CRC32C``
+
+Sets the header digest order advertised during negotiation. Possible values are: ``NONE``, ``NONE_CRC32C``,
+``CRC32C_NONE``, and ``CRC32C``.
+
+* name: **initiatorName**
+* type: string
+* default: ``iqn.2019-04.me.benji-backup:benji``
+
+Sets the initiator name.
+
+* name: **timeout**
+* type: string
+* default: ``0`` meaning unlimited
+
+Sets the iSCSI timeout.
 
 Transform Modules
 -----------------
