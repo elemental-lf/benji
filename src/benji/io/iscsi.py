@@ -60,7 +60,7 @@ class IO(SimpleIOBase):
     def _iscsi_call_sync(operation: str, function: Callable, iscsi_context, *args, **kwargs) -> Any:
         result = function(iscsi_context, *args, **kwargs)
         if result is None or isinstance(result, int) and result < 0:
-            raise RuntimeError('{} failed: {}'.format(operation, libiscsi.iscsi_get_error(iscsi_context)))
+            raise RuntimeError('{} failed: {}'.format(operation, libiscsi.iscsi_get_error(iscsi_context).rstrip()))
         return result
 
     def _open(self) -> None:
