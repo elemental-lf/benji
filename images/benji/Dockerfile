@@ -14,7 +14,7 @@ RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
-	yum install -y git gcc \
+	yum install -y git gcc make \
                    python36-devel python36-pip python36-libs python36-setuptools \
                    librados-devel librbd-devel
 
@@ -28,7 +28,8 @@ RUN python3.6 -m venv $VENV_DIR && \
 RUN . $VENV_DIR/bin/activate && \
 	pip install cython && \
 	pip install "git+https://github.com/ceph/ceph@v$CEPH_VERSION#subdirectory=src/pybind/rados" && \
-	pip install "git+https://github.com/ceph/ceph@v$CEPH_VERSION#subdirectory=src/pybind/rbd"
+	pip install "git+https://github.com/ceph/ceph@v$CEPH_VERSION#subdirectory=src/pybind/rbd" && \
+	pip install git+https://github.com/elemental-lf/libiscsi-python
 
 ADD . /benji-source/
 RUN . $VENV_DIR/bin/activate && \
