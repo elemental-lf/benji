@@ -28,9 +28,9 @@ class IO(SimpleIOBase):
             raise UsageError('The supplied URL {} is invalid.'.format(self.url))
 
         self._username = config.get_from_dict(module_configuration, 'username', None, types=str)
-        self._password = config.get_from_dict(module_configuration, 'passwd', None, types=str)
+        self._password = config.get_from_dict(module_configuration, 'password', None, types=str)
         self._target_username = config.get_from_dict(module_configuration, 'targetUsername', None, types=str)
-        self._target_password = config.get_from_dict(module_configuration, 'targetPasswd', None, types=str)
+        self._target_password = config.get_from_dict(module_configuration, 'targetPassword', None, types=str)
         header_digest = config.get_from_dict(module_configuration, 'headerDigest', types=str)
         header_digest_attr_name = 'ISCSI_HEADER_DIGEST_{}'.format(header_digest)
         if hasattr(libiscsi, header_digest_attr_name):

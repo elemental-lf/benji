@@ -7,8 +7,8 @@ configuration:
       type: string
       empty: False
       dependencies:
-        - passwd
-    passwd:
+        - password
+    password:
       type: string
       empty: False
       dependencies:
@@ -17,10 +17,10 @@ configuration:
       type: string
       empty: False
       dependencies:
-        - targetPasswd
+        - targetPassword
         # Target/bidirectional CHAP is only supported if you also have normal CHAP authentication.
         - username
-    targetPasswd:
+    targetPassword:
       type: string
       empty: False
       dependencies:
