@@ -25,23 +25,13 @@ can be installed via private repository::
 .. NOTE:: For more information about this Personal Package Archive (PPA)
     please see https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa.
 
-CentOS 7
---------
+RHEL/CentOS 7
+-------------
 
-As with Ubuntu you need to install a recent Python version from a third-party repository::
+A recent version of Python 3 is included in the EPEL repository::
 
-    yum install -y https://centos7.iuscommunity.org/ius-release.rpm
-    yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
-
-Redhat Enterprise Linux 7
--------------------------
-
-Almost the some procedure as on CentOS::
-
-    yum install -y https://rhel7.iuscommunity.org/ius-release.rpm
-    yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
-
-.. NOTE:: For more information about the IOS Community Project please see https://ius.io/.
+    yum install -y epel-release
+    yum install -y python36-devel python36-pip python36-libs python36-setuptools
 
 Fedora 27 and up
 ----------------

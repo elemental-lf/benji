@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.5.0 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
   
 
   
@@ -79,8 +79,7 @@
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#centos-7">CentOS 7</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rhel-centos-7">RHEL/CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
@@ -102,6 +101,7 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#i-o-modules">I/O Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-file">I/O Module file</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-rbd">I/O Module rbd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-iscsi">I/O Module iscsi</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#transform-modules">Transform Modules</a><ul>
@@ -295,24 +295,12 @@ apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 please see <a class="reference external" href="https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa">https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa</a>.</p>
 </div>
 </div>
-<div class="section" id="centos-7">
-<h2>CentOS 7<a class="headerlink" href="#centos-7" title="Permalink to this headline">¶</a></h2>
-<p>As with Ubuntu you need to install a recent Python version from a third-party repository:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y https://centos7.iuscommunity.org/ius-release.rpm
-yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
+<div class="section" id="rhel-centos-7">
+<h2>RHEL/CentOS 7<a class="headerlink" href="#rhel-centos-7" title="Permalink to this headline">¶</a></h2>
+<p>A recent version of Python 3 is included in the EPEL repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y epel-release
+yum install -y python36-devel python36-pip python36-libs python36-setuptools
 </pre></div>
-</div>
-</div>
-<div class="section" id="redhat-enterprise-linux-7">
-<h2>Redhat Enterprise Linux 7<a class="headerlink" href="#redhat-enterprise-linux-7" title="Permalink to this headline">¶</a></h2>
-<p>Almost the some procedure as on CentOS:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y https://rhel7.iuscommunity.org/ius-release.rpm
-yum install -y python36u-devel python36u-pip python36u-libs python36u-setuptools
-</pre></div>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">For more information about the IOS Community Project please see <a class="reference external" href="https://ius.io/">https://ius.io/</a>.</p>
 </div>
 </div>
 <div class="section" id="fedora-27-and-up">

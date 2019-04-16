@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.5.0 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
   
 
   
@@ -79,8 +79,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#centos-7">CentOS 7</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#redhat-enterprise-linux-7">Redhat Enterprise Linux 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#rhel-centos-7">RHEL/CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
@@ -102,6 +101,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#i-o-modules">I/O Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#i-o-module-file">I/O Module file</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#i-o-module-rbd">I/O Module rbd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#i-o-module-iscsi">I/O Module iscsi</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#transform-modules">Transform Modules</a><ul>
@@ -456,8 +456,6 @@ on the command line.</p>
 </div>
 <div class="section" id="i-o-modules">
 <h2>I/O Modules<a class="headerlink" href="#i-o-modules" title="Permalink to this headline">¶</a></h2>
-<p>All currently available I/O modules support the following configuration
-options:</p>
 <ul class="simple">
 <li>name: <strong>simultaneousReads</strong></li>
 <li>type: integer</li>
@@ -476,13 +474,44 @@ and performance.</p>
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <div class="section" id="i-o-module-file">
 <h3>I/O Module file<a class="headerlink" href="#i-o-module-file" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> I/O module currently supports no additional configuration
-directives.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> I/O module supports the following configuration options:</p>
+<ul class="simple">
+<li>name: <strong>simultaneousReads</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of reader threads when reading from a backup source. Also
+affects the internal read queue length. It is highly recommended to
+increase this number to increase this number to get better concurrency
+and performance.</p>
+<ul class="simple">
+<li>name: <strong>simultaneousWrites</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
 </div>
 <div class="section" id="i-o-module-rbd">
 <h3>I/O Module rbd<a class="headerlink" href="#i-o-module-rbd" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module supports the following additional configuration
-options:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. It supports
+the following configuration options:</p>
+<ul class="simple">
+<li>name: <strong>simultaneousReads</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of reader threads when reading from a backup source. Also
+affects the internal read queue length. It is highly recommended to
+increase this number to increase this number to get better concurrency
+and performance.</p>
+<ul class="simple">
+<li>name: <strong>simultaneousWrites</strong></li>
+<li>type: integer</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+</ul>
+<p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
+recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
 <li>name: <strong>cephConfigFile</strong></li>
 <li>type: string</li>
@@ -506,6 +535,61 @@ libraries. For recent version of Ceph this list of possible image
 features applies: <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_LAYERING</span></code>, <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_EXCLUSIVE_LOCK</span></code>,
 <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_STRIPINGV2</span></code>, <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_OBJECT_MAP</span></code>,
 <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_FAST_DIFF</span></code>, <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_DEEP_FLATTEN</span></code>.</p>
+</div>
+<div class="section" id="i-o-module-iscsi">
+<h3>I/O Module iscsi<a class="headerlink" href="#i-o-module-iscsi" title="Permalink to this headline">¶</a></h3>
+<p>This I/O module requires a special version of the <code class="docutils literal notranslate"><span class="pre">libiscsi</span></code> Python bindings available at
+<a class="reference external" href="https://github.com/elemental-lf/libiscsi-python">https://github.com/elemental-lf/libiscsi-python</a>. It currently has some limitations:</p>
+<ul class="simple">
+<li>Single-threaded synchronous execution of iSCSI commands limiting achievable performance</li>
+<li>No usage of <code class="docutils literal notranslate"><span class="pre">GET_LBA_STATUS</span></code> to detect unmapped regions</li>
+</ul>
+<p>The following configuration options are supported:</p>
+<ul class="simple">
+<li>name: <strong>username</strong></li>
+<li>type: string</li>
+<li>default: none</li>
+</ul>
+<p>Sets the CHAP username for iSCSI authentication and authorization. If this directive is not set,
+no authentication is attempted.</p>
+<ul class="simple">
+<li>name: <strong>password</strong></li>
+<li>type: string</li>
+<li>default: none</li>
+</ul>
+<p>Sets the CHAP password for iSCSI authentication and authorization.</p>
+<ul class="simple">
+<li>name: <strong>targetUsername</strong></li>
+<li>type: string</li>
+<li>default: none</li>
+</ul>
+<p>Sets the CHAP username for iSCSI target authentication. If this directive is not set, no authentication
+of the target is done.</p>
+<ul class="simple">
+<li>name: <strong>targetPassword</strong></li>
+<li>type: string</li>
+<li>default: none</li>
+</ul>
+<p>Sets the CHAP password for iSCSI target authentication.</p>
+<ul class="simple">
+<li>name: <strong>headerDigest</strong></li>
+<li>type: string</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">NONE_CRC32C</span></code></li>
+</ul>
+<p>Sets the header digest order advertised during negotiation. Possible values are: <code class="docutils literal notranslate"><span class="pre">NONE</span></code>, <code class="docutils literal notranslate"><span class="pre">NONE_CRC32C</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CRC32C_NONE</span></code>, and <code class="docutils literal notranslate"><span class="pre">CRC32C</span></code>.</p>
+<ul class="simple">
+<li>name: <strong>initiatorName</strong></li>
+<li>type: string</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">iqn.2019-04.me.benji-backup:benji</span></code></li>
+</ul>
+<p>Sets the initiator name.</p>
+<ul class="simple">
+<li>name: <strong>timeout</strong></li>
+<li>type: string</li>
+<li>default: <code class="docutils literal notranslate"><span class="pre">0</span></code> meaning unlimited</li>
+</ul>
+<p>Sets the iSCSI timeout.</p>
 </div>
 </div>
 <div class="section" id="transform-modules">
