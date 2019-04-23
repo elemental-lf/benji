@@ -60,8 +60,8 @@ jobs:
       install:
         - travis_retry pip install --upgrade setuptools pip
       script:
-        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
-        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
+        - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
     - stage: test
       before_install: skip
       install:
@@ -79,5 +79,5 @@ jobs:
       install: skip
       script:
         - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-        - DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
-        - DOCKER_BUILDKIT=1 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
+        - DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
+        - DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
