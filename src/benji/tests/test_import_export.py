@@ -68,7 +68,7 @@ class ImportExportTestCase():
             benji_obj = self.benjiOpen(init_database=init_database)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename,
+                version = benji_obj.backup('data-backup', 'snapshot-name', 'file:' + image_filename,
                                            hints_from_rbd_diff(hints.read()), base_version)
             version_uids.append((version.uid, size))
             benji_obj.close()

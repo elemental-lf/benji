@@ -22,7 +22,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         with open(image_filename, 'wb') as f:
             f.write(self.image)
         benji_obj = self.benjiOpen(init_database=True)
-        version = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename, None, None)
+        version = benji_obj.backup('data-backup', 'snapshot-name', 'file:' + image_filename, None, None)
         version_uid = version.uid
         benji_obj.close()
         return version_uid, size, image_filename
@@ -120,7 +120,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
 
         store.fixate(cow_version)
 
-        benji_obj.deep_scrub(cow_version.uid, 'file://{}'.format(image_2_filename))
+        benji_obj.deep_scrub(cow_version.uid, 'file:{}'.format(image_2_filename))
 
         store.close(version)
         benji_obj.close()

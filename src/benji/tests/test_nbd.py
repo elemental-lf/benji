@@ -47,7 +47,7 @@ class NbdTestCase:
             self.patch(image_filename, offset, data)
 
         benji_obj = self.benjiOpen(init_database=True)
-        version_uid = benji_obj.backup('data-backup', 'snapshot-name', 'file://' + image_filename, None, None)
+        version_uid = benji_obj.backup('data-backup', 'snapshot-name', 'file:' + image_filename, None, None)
         benji_obj.close()
         return version_uid, size
 
