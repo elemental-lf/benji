@@ -3,6 +3,7 @@
 #
 import os
 import subprocess
+import pkgutil
 from collections import namedtuple
 from distutils.command.build_py import build_py as build_py_orig
 
@@ -40,8 +41,7 @@ def get_version(version_file=STATIC_VERSION_FILE):
 
 def get_static_version_info(version_file=STATIC_VERSION_FILE):
     version_info = {}
-    with open(os.path.join(package_root, version_file), 'rb') as f:
-        exec(f.read(), {}, version_info)
+    exec(pkgutil.get_data('benji', '_static_version.py'), {}, version_info)
     return version_info
 
 
