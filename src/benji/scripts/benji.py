@@ -268,11 +268,11 @@ def main():
 
     if not hasattr(args, 'func'):
         parser.print_usage()
-        exit(os.EX_USAGE)
+        sys.exit(os.EX_USAGE)
 
     if args.func == 'completion':
         completion(args.shell)
-        exit(os.EX_OK)
+        sys.exit(os.EX_OK)
 
     from benji.config import Config
     from benji.logging import logger, init_logging
@@ -281,7 +281,7 @@ def main():
             cfg = open(args.config_file, 'r', encoding='utf-8').read()
         except FileNotFoundError:
             logger.error('File {} not found.'.format(args.config_file))
-            exit(os.EX_USAGE)
+            sys.exit(os.EX_USAGE)
         config = Config(ad_hoc_config=cfg)
     else:
         config = Config()
@@ -329,7 +329,7 @@ def main():
     try:
         logger.debug('commands.{0}(**{1!r})'.format(args.func, func_args))
         func(**func_args)
-        exit(os.EX_OK)
+        sys.exit(os.EX_OK)
     except SystemExit:
         raise
     except BaseException as exception:
@@ -342,7 +342,7 @@ def main():
                     message = '{} exception occurred.'.format(exception.__class__.__name__)
                 logger.debug(message, exc_info=True)
                 logger.error(message)
-                exit(case.exit_code)
+                sys.exit(case.exit_code)
 
 
 if __name__ == '__main__':
