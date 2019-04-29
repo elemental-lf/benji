@@ -19,7 +19,7 @@ source. Different backups of the same source are differentiated by their *versio
 Currently supported schemes for backup sources are **file** and **rbd**. So real-world examples would look like this::
 
     $ benji backup file:///var/lib/vms/database.img database
-    $ benji backup rbd://poolname/database@snapshot1 database
+    $ benji backup rbd:poolname/database@snapshot1 database
 
 Versions
 --------
@@ -121,7 +121,7 @@ In this example, we will backup an RBD image called ``vm1`` which is in the pool
 
     $ rbd snap create pool/vm1@backup1
     $ rbd diff --whole-object pool/vm1@backup1 --format=json > /tmp/vm1.diff
-    $ benji backup --snapshot-name backup1 --rbd-hints /tmp/vm1.diff rbd://pool/vm1@backup1 vm1
+    $ benji backup --snapshot-name backup1 --rbd-hints /tmp/vm1.diff rbd:pool/vm1@backup1 vm1
 
 2. Create a differential backup::
 
@@ -135,7 +135,7 @@ In this example, we will backup an RBD image called ``vm1`` which is in the pool
     $ benji ls 'name == "vm1" and snapshot_name == "backup1"'
 
     # And backup (replace V001234567 with the version UID you identified in the last step)
-    $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd://pool/vm1@backup2 vm1
+    $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd:pool/vm1@backup2 vm1
 
 Automation
 ^^^^^^^^^^
@@ -187,7 +187,7 @@ A *version* can have zero or more associated labels. A label consists of a label
 specify a label the ``benji backup`` command provides the command line switch ``--label`` which can be repeated
 multiple times to set multiple labels at once.
 
-    $ benji backup --label example.com/label=value --label example.com/label-2 rbd://cephstorage/test_vm test_vm
+    $ benji backup --label example.com/label=value --label example.com/label-2 rbd:cephstorage/test_vm test_vm
 
 If no label value is specified it is set to an empty string.
 

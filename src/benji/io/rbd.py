@@ -49,10 +49,10 @@ class IO(ThreadedIOBase):
     def open_r(self) -> None:
         super().open_r()
 
-        re_match = re.match('^([^/]+)/([^@]+)@?(.+)?$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
             raise UsageError(
-                'URL {} is invalid . Need {}://<pool>/<imagename> or {}://<pool>/<imagename>@<snapshotname>.'.format(
+                'URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
                     self.url, self.name, self.name))
         self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
 
@@ -72,7 +72,7 @@ class IO(ThreadedIOBase):
 
         re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}://<pool>/<imagename>.'.format(self.url, self.name))
+            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename>.'.format(self.url, self.name))
         self._pool_name, self._image_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
