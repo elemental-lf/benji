@@ -65,12 +65,12 @@ Topic :: System :: Archiving :: Backup
         'dateparser>=0.7.0,<1',
         'structlog>=19.1.0',
         'colorama>=0.4.1,<1',
+        'diskcache>=3.0.6',
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
         'b2': ['b2>=1.3.2'],
         'compression': ['zstandard>=0.9.0'],
-        'readcache': ['diskcache>=3.0.6'],
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
         # possible packages names include: python-rados, python-rbd or python3-rados, python3-rbd
         #'RBD support': ['rados', 'rbd'],
