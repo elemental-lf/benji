@@ -23,8 +23,11 @@ class IO(ThreadedIOBase):
 
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, url: str,
                  block_size: int) -> None:
-        super().__init__(
-            config=config, name=name, module_configuration=module_configuration, url=url, block_size=block_size)
+        super().__init__(config=config,
+                         name=name,
+                         module_configuration=module_configuration,
+                         url=url,
+                         block_size=block_size)
 
         if self.parsed_url.username or self.parsed_url.password or self.parsed_url.hostname or self.parsed_url.port \
                     or self.parsed_url.params or self.parsed_url.fragment or self.parsed_url.query:
@@ -51,9 +54,8 @@ class IO(ThreadedIOBase):
 
         re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
-            raise UsageError(
-                'URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
-                    self.url, self.name, self.name))
+            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
+                self.url, self.name, self.name))
         self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
