@@ -85,7 +85,7 @@ class RetentionFilter(ReprMixIn):
         # Make our own copy
         versions = list(versions)
         # Sort from youngest to oldest
-        versions.sort(key=lambda version: version.date.timestamp(), reverse=True)
+        versions.sort(key=lambda version: version.date_timestamp, reverse=True)
 
         # Remove latest versions from consideration if configured
         if 'latest' in self.rules:
@@ -95,7 +95,7 @@ class RetentionFilter(ReprMixIn):
         dismissed_versions = []
         for version in versions:
             try:
-                td = _Timedelta(version.date.replace(tzinfo=datetime.timezone.utc).timestamp(), self.reference_time)
+                td = _Timedelta(version.date_timestamp, self.reference_time)
             except _TimedeltaError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)
                 logger.warning('Version {}: {}'.format(version.uid.v_string, exception))
