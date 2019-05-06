@@ -24,7 +24,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import datetime
 import re
 import time
 from collections import OrderedDict
@@ -49,7 +48,7 @@ class RetentionFilter(ReprMixIn):
         for token in tokens:
             if not token:
                 raise ValueError('Empty retention policy element.')
-            match = re.search(r'([a-z]+)([0-9]+)', token)
+            match = re.search(r'^([a-z]+)([0-9]+)$', token)
             if match:
                 category = match.group(1)
                 timecount = int(match.group(2))
