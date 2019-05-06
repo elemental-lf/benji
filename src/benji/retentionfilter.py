@@ -24,11 +24,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import datetime
 import re
-import time
 from collections import OrderedDict
 from collections import defaultdict
 from typing import List, Dict, Sequence
+
+import dateutil
 
 from benji.database import Version
 from benji.exception import UsageError
@@ -69,9 +71,22 @@ class RetentionFilter(ReprMixIn):
 
         return rules
 
-    def __init__(self, rules_spec: str, reference_time: float = None) -> None:
-        self.reference_time = time.time() if reference_time is None else reference_time
+    def __init__(self, rules_spec: str, reference_time: datetime.datetime = None, tz: datetime.tzinfo = None) -> None:
+        if tz is None:
+            self.tz = tz if tz else dateutil.tz.tzlocal()
+        else:
+            self.tz = tz
+        if reference_time is None:
+            self.reference_time = datetime.datetime.now(tz=self.tz)
+        else:
+            if reference_time.tzinfo is None:
+                # Assume it is in UTC
+                self.reference_time = reference_time.replace(tzinfo=datetime.timezone.utc)
+            else:
+                self.reference_time = reference_time
+
         self.rules = self._parse_rules(rules_spec)
+
         logger.debug('Retention filter set up with reference time {} and rules {}'.format(
             self.reference_time, self.rules))
 
@@ -86,7 +101,7 @@ class RetentionFilter(ReprMixIn):
         # Make our own copy
         versions = list(versions)
         # Sort from youngest to oldest
-        versions.sort(key=lambda version: version.date_timestamp, reverse=True)
+        versions.sort(key=lambda version: version.date, reverse=True)
 
         # Remove latest versions from consideration if configured
         if 'latest' in self.rules:
@@ -97,14 +112,16 @@ class RetentionFilter(ReprMixIn):
         dismissed_versions = []
         for version in versions:
             try:
-                td = _Timedelta(version.date_timestamp, self.reference_time)
-            except _TimedeltaError as exception:
+                # version.date is naive and in UTC, attach time zone to make it time zone aware" and convert it to
+                # self.tz after that.
+                td = _Timedelta(version.date.replace(tzinfo=datetime.timezone.utc), self.reference_time, tz=self.tz)
+            except ValueError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)
-                logger.warning('Version {}: {}'.format(version.uid.v_string, exception))
+                logger.warning('Version {}: {}.'.format(version.uid.v_string, exception))
                 continue
 
-            logger.debug('Time and time delta for version {} are {} and {}.'.format(version.uid.v_string, version.date,
-                                                                                    td))
+            logger.debug('Time and time delta for version {} are {} and {}.'.format(
+                version.uid.v_string, version.date.isoformat(timespec='seconds'), td))
 
             for category in categories:
                 timecount = getattr(td, category)
@@ -113,8 +130,7 @@ class RetentionFilter(ReprMixIn):
                     versions_by_category[category][timecount].append(version)
                     break
             else:
-                # For loop did not break: The item doesn't fit into any category,
-                # it's too old
+                # For loop did not break: The item doesn't fit into any category, it's too old.
                 dismissed_versions.append(version)
                 logger.debug('Dismissing version, it doesn\'t fit into any category.')
 
@@ -129,25 +145,56 @@ class RetentionFilter(ReprMixIn):
             return dismissed_versions, versions_in_latest, versions_by_category
 
 
-class _TimedeltaError(RuntimeError):
-    pass
-
-
 class _Timedelta(ReprMixIn):
-    """
-    Represent how many years, months, weeks, days, hours time `t` (float, seconds) is earlier than reference time
-    `reference_time`. Represent these metrics with integer attributes. Both time values are converted to the respective
-    unit by integer division before calculating the difference.
-    There is no implicit summation, each of the numbers is to be considered independently. Time units are considered
-    strictly linear: months are 30 days, years are 365 days, weeks are 7 days, one day is 24 hours.
-    """
 
-    def __init__(self, t: float, reference_time: float) -> None:
-        # Expect two numeric values. Might raise TypeError for other types.
-        if reference_time - t < 0:
-            raise _TimedeltaError('{} isn\'t earlier than the reference time {}.'.format(t, reference_time))
-        self.hours = reference_time // 3600 - t // 3600
-        self.days = reference_time // 86400 - t // 86400
-        self.weeks = reference_time // 604800 - t // 604800
-        self.months = reference_time // 2592000 - t // 2592000
-        self.years = reference_time // 31536000 - t // 31536000
+    @staticmethod
+    def _normalize(t: datetime.datetime, *, units: str):
+        if units == 'hours':
+            return t.replace(minute=0, second=0, microsecond=0)
+        elif units == 'days':
+            return t.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif units == 'weeks':
+            # This will round down to the last Monday at 00:00.0 before t.
+            return t + dateutil.relativedelta.relativedelta(
+                weekday=dateutil.relativedelta.MO(-1), hour=0, minute=0, second=0, microsecond=0)
+        elif units == 'months':
+            return t.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif units == 'years':
+            return t.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            raise ValueError('Unit name {} is unknown.'.format(units))
+
+    def __init__(self, t: datetime.datetime, reference_time: datetime.datetime, tz: datetime.tzinfo) -> None:
+        if t.tzinfo is None:
+            raise ValueError('Time is not time zone aware.')
+        if reference_time.tzinfo is None:
+            raise ValueError('Reference time is not time zone aware.')
+        if reference_time - t < datetime.timedelta(0):
+            raise ValueError('{} isn\'t earlier than the reference time {} (difference = {}).'.format(
+                t.isoformat(timespec='seconds'), reference_time.isoformat(timespec='seconds'),
+                (reference_time - t).total_seconds()))
+
+        t = t.astimezone(tz=tz)
+        reference_time = reference_time.astimezone(tz=tz)
+
+        # Hours
+        delta = self._normalize(reference_time, units='hours') - self._normalize(t, units='hours')
+        self.hours = delta.total_seconds() // 3600
+
+        # Days
+        delta = self._normalize(reference_time, units='days') - self._normalize(t, units='days')
+        self.days = int(delta.days)
+
+        # Weeks
+        delta = self._normalize(reference_time, units='weeks') - self._normalize(t, units='weeks')
+        self.weeks = delta // datetime.timedelta(weeks=1)
+
+        # Months
+        delta = dateutil.relativedelta.relativedelta(self._normalize(reference_time, units='months'),
+                                                     self._normalize(t, units='months')).normalized()
+        self.months = delta.years * 12 + delta.months
+
+        # Years
+        delta = dateutil.relativedelta.relativedelta(self._normalize(reference_time, units='years'),
+                                                     self._normalize(t, units='years')).normalized()
+        self.years = delta.years
