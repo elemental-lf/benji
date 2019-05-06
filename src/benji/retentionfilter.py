@@ -131,22 +131,19 @@ class _TimedeltaError(RuntimeError):
 
 class _Timedelta(ReprMixIn):
     """
-    Represent how many years, months, weeks, days, hours time `t` (float,
-    seconds) is earlier than reference time `ref`. Represent these metrics
-    with integer attributes (floor division, numbers are cut, i.e. 1.9 years
-    would be 1 year).
-    There is no implicit summation, each of the numbers is to be considered
-    independently. Time units are considered strictly linear: months are
-    30 days, years are 365 days, weeks are 7 days, one day is 24 hours.
+    Represent how many years, months, weeks, days, hours time `t` (float, seconds) is earlier than reference time
+    `reference_time`. Represent these metrics with integer attributes. Both time values are converted to the respective
+    unit by integer division before calculating the difference.
+    There is no implicit summation, each of the numbers is to be considered independently. Time units are considered
+    strictly linear: months are 30 days, years are 365 days, weeks are 7 days, one day is 24 hours.
     """
 
     def __init__(self, t: float, reference_time: float) -> None:
         # Expect two numeric values. Might raise TypeError for other types.
-        seconds_earlier = reference_time - t
-        if seconds_earlier < 0:
+        if reference_time - t < 0:
             raise _TimedeltaError('{} isn\'t earlier than the reference time {}.'.format(t, reference_time))
-        self.hours = int(seconds_earlier // 3600)  # 60 * 60
-        self.days = int(seconds_earlier // 86400)  # 60 * 60 * 24
-        self.weeks = int(seconds_earlier // 604800)  # 60 * 60 * 24 * 7
-        self.months = int(seconds_earlier // 2592000)  # 60 * 60 * 24 * 30
-        self.years = int(seconds_earlier // 31536000)  # 60 * 60 * 24 * 365
+        self.hours = reference_time // 3600 - t // 3600
+        self.days = reference_time // 86400 - t // 86400
+        self.weeks = reference_time // 604800 - t // 604800
+        self.months = reference_time // 2592000 - t // 2592000
+        self.years = reference_time // 31536000 - t // 31536000
