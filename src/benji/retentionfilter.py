@@ -79,8 +79,9 @@ class RetentionFilter(ReprMixIn):
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 
+        versions_by_category = {}
         for category in categories:
-            setattr(self, '_{}_dict'.format(category), defaultdict(list))
+            versions_by_category[category] = defaultdict(list)
 
         # Make our own copy
         versions = list(versions)
@@ -108,7 +109,7 @@ class RetentionFilter(ReprMixIn):
                 timecount = getattr(td, category)
                 if timecount <= self.rules[category]:
                     logger.debug('Found matching category {}, timecount {}.'.format(category, timecount))
-                    getattr(self, '_{}_dict'.format(category))[timecount].append(version)
+                    versions_by_category[category][timecount].append(version)
                     break
             else:
                 # For loop did not break: The item doesn't fit into any category,
@@ -117,10 +118,9 @@ class RetentionFilter(ReprMixIn):
                 logger.debug('Dismissing version, it doesn\'t fit into any category.')
 
         for category in categories:
-            category_dict = getattr(self, '_{}_dict'.format(category))
-            for timecount in category_dict:
+            for timecount in versions_by_category[category]:
                 # Keep the oldest of each category, reject the rest
-                dismissed_versions.extend(category_dict[timecount][:-1])
+                dismissed_versions.extend(versions_by_category[category][timecount][:-1])
 
         return dismissed_versions
 
