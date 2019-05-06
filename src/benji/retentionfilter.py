@@ -75,7 +75,7 @@ class RetentionFilter(ReprMixIn):
         logger.debug('Retention filter set up with reference time {} and rules {}'.format(
             self.reference_time, self.rules))
 
-    def filter(self, versions: Sequence[Version]) -> List[Version]:
+    def filter(self, versions: Sequence[Version], debug: bool = False) -> List[Version]:
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 
@@ -91,6 +91,7 @@ class RetentionFilter(ReprMixIn):
         # Remove latest versions from consideration if configured
         if 'latest' in self.rules:
             logger.debug('Keeping {} latest versions.'.format(self.rules['latest']))
+            versions_in_latest = versions[:self.rules['latest']]
             del versions[:self.rules['latest']]
 
         dismissed_versions = []
@@ -122,7 +123,10 @@ class RetentionFilter(ReprMixIn):
                 # Keep the oldest of each category, reject the rest
                 dismissed_versions.extend(versions_by_category[category][timecount][:-1])
 
-        return dismissed_versions
+        if not debug:
+            return dismissed_versions
+        else:
+            return dismissed_versions, versions_in_latest, versions_by_category
 
 
 class _TimedeltaError(RuntimeError):
