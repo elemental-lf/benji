@@ -175,7 +175,7 @@ class _Timedelta(ReprMixIn):
 
         # Hours
         delta = self._round_down(reference_time, start_of='hour') - self._round_down(t, start_of='hour')
-        self.hours = delta.total_seconds() // 3600
+        self.hours = int(delta.total_seconds() // 3600)
 
         # Days
         delta = self._round_down(reference_time, start_of='day') - self._round_down(t, start_of='day')
@@ -183,7 +183,7 @@ class _Timedelta(ReprMixIn):
 
         # Weeks
         delta = self._round_down(reference_time, start_of='week') - self._round_down(t, start_of='week')
-        self.weeks = delta // datetime.timedelta(weeks=1)
+        self.weeks = int(delta // datetime.timedelta(weeks=1))
 
         # Months
         delta = dateutil.relativedelta.relativedelta(self._round_down(reference_time, start_of='month'),
