@@ -144,21 +144,21 @@ class RetentionFilter(ReprMixIn):
 class _Timedelta(ReprMixIn):
 
     @staticmethod
-    def _normalize(t: datetime.datetime, *, units: str):
-        if units == 'hours':
+    def _round_down(t: datetime.datetime, *, start_of: str):
+        if start_of == 'hour':
             return t.replace(minute=0, second=0, microsecond=0)
-        elif units == 'days':
+        elif start_of == 'day':
             return t.replace(hour=0, minute=0, second=0, microsecond=0)
-        elif units == 'weeks':
+        elif start_of == 'week':
             # This will round down to the last Monday at 00:00.0 before t.
             return t + dateutil.relativedelta.relativedelta(
                 weekday=dateutil.relativedelta.MO(-1), hour=0, minute=0, second=0, microsecond=0)
-        elif units == 'months':
+        elif start_of == 'month':
             return t.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        elif units == 'years':
+        elif start_of == 'year':
             return t.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
         else:
-            raise ValueError('Unit name {} is unknown.'.format(units))
+            raise ValueError('Start of {} is unknown.'.format(start_of))
 
     def __init__(self, t: datetime.datetime, reference_time: datetime.datetime, tz: datetime.tzinfo) -> None:
         if t.tzinfo is None:
@@ -174,23 +174,23 @@ class _Timedelta(ReprMixIn):
         reference_time = reference_time.astimezone(tz=tz)
 
         # Hours
-        delta = self._normalize(reference_time, units='hours') - self._normalize(t, units='hours')
+        delta = self._round_down(reference_time, start_of='hour') - self._round_down(t, start_of='hour')
         self.hours = delta.total_seconds() // 3600
 
         # Days
-        delta = self._normalize(reference_time, units='days') - self._normalize(t, units='days')
+        delta = self._round_down(reference_time, start_of='day') - self._round_down(t, start_of='day')
         self.days = int(delta.days)
 
         # Weeks
-        delta = self._normalize(reference_time, units='weeks') - self._normalize(t, units='weeks')
+        delta = self._round_down(reference_time, start_of='week') - self._round_down(t, start_of='week')
         self.weeks = delta // datetime.timedelta(weeks=1)
 
         # Months
-        delta = dateutil.relativedelta.relativedelta(self._normalize(reference_time, units='months'),
-                                                     self._normalize(t, units='months')).normalized()
+        delta = dateutil.relativedelta.relativedelta(self._round_down(reference_time, start_of='month'),
+                                                     self._round_down(t, start_of='month')).normalized()
         self.months = delta.years * 12 + delta.months
 
         # Years
-        delta = dateutil.relativedelta.relativedelta(self._normalize(reference_time, units='years'),
-                                                     self._normalize(t, units='years')).normalized()
+        delta = dateutil.relativedelta.relativedelta(self._round_down(reference_time, start_of='year'),
+                                                     self._round_down(t, start_of='year')).normalized()
         self.years = delta.years
