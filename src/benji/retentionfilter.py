@@ -72,7 +72,7 @@ class RetentionFilter(ReprMixIn):
         return rules
 
     def __init__(self, rules_spec: str, reference_time: datetime.datetime = None, tz: datetime.tzinfo = None) -> None:
-        self.tz = tz if tz is None else dateutil.tz.tzlocal()
+        self.tz = tz if tz is not None else dateutil.tz.tzlocal()
         if reference_time is None:
             self.reference_time = datetime.datetime.now(tz=self.tz)
         else:
