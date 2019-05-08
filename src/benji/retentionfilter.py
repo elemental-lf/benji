@@ -84,8 +84,8 @@ class RetentionFilter(ReprMixIn):
 
         self.rules = self._parse_rules(rules_spec)
 
-        logger.debug('Retention filter set up with reference time {} and rules {}'.format(
-            self.reference_time, self.rules))
+        logger.debug('Retention filter set up with reference time {} and rules {}.'.format(
+            self.reference_time.isoformat(timespec='seconds'), self.rules))
 
     def filter(self, versions: Sequence[Version], debug: bool = False) -> List[Version]:
         # Category labels without latest
