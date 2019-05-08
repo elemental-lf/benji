@@ -109,8 +109,7 @@ class RetentionFilter(ReprMixIn):
         dismissed_versions = []
         for version in versions:
             try:
-                # version.date is naive and in UTC, attach time zone to make it time zone aware" and convert it to
-                # self.tz after that.
+                # version.date is naive and in UTC, attach time zone to make it time zone aware.
                 td = _Timedelta(version.date.replace(tzinfo=datetime.timezone.utc), self.reference_time, tz=self.tz)
             except ValueError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)

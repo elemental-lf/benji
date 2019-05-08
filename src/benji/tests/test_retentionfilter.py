@@ -105,7 +105,7 @@ class RetentionFilterTestCase(TestCase):
             dismissed_versions = set(filter.filter(remaining_versions))
             # We're moving in steps of one hour, so each time one version is dismissed
             self.assertEqual(len(dismissed_versions), 1)
-            # The dismissed versions must be older than 31 hours
+            # The dismissed version must be older than 31 hours
             self.assertGreaterEqual((future_time - list(dismissed_versions)[0].date).total_seconds(), 31 * 60 * 60)
             remaining_versions = remaining_versions - dismissed_versions
 
