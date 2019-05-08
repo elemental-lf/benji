@@ -1,5 +1,6 @@
 import datetime
 from itertools import count, tee
+from typing import Sequence
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock
 
@@ -20,10 +21,10 @@ def pairwise(iterable):
 
 class RetentionFilterTestCase(TestCase):
 
-    REF_TIME = datetime.datetime(2019, 5, 9, 20, 0, 0, 0, tzinfo=None)
+    REF_TIME = datetime.datetime(2019, 5, 9, 0, 0, 0, 0, tzinfo=None)
 
     @staticmethod
-    def _make_version(uid: int, date: float) -> Version:
+    def _make_version(uid: int, date: datetime.datetime) -> Version:
         version = MagicMock(spec=('uid', 'date', '__repr__'))
         version.uid = VersionUid(uid)
         version.date = date
@@ -47,6 +48,7 @@ class RetentionFilterTestCase(TestCase):
         ('weeks4', 5, 7 * 24 * 60 * 60),
         ('months1', 2, 31 * 24 * 60 * 60),
         ('months2', 3, 31 * 24 * 60 * 60),
+        ('years1', 1, 366 * 31 * 24 * 60 * 60),
     ])
     def test_single(self, spec: str, expected_length: int, base_unit: float) -> None:
         filter = RetentionFilter(rules_spec=spec, reference_time=self.REF_TIME, tz=datetime.timezone.utc)
@@ -71,10 +73,10 @@ class RetentionFilterTestCase(TestCase):
 
     @parameterized.expand([
         ('latest3,months2', 6, 3 * 30 * 24 * 60 * 60),
-        ('latest3,hours24,days3', 30, 4 * 24 * 60 * 60),
-        ('latest3,hours48,days3', 53, 4 * 24 * 60 * 60),
-        ('latest3,hours48,days3,months2', 56, 3 * 30 * 24 * 60 * 60),
-        ('latest3,hours48,days30,months2', 82, 3 * 30 * 24 * 60 * 60),
+        ('latest3,hours24,days3', 29, 4 * 24 * 60 * 60),
+        ('latest3,hours48,days3', 52, 4 * 24 * 60 * 60),
+        ('latest3,hours48,days3,months2', 55, 3 * 30 * 24 * 60 * 60),
+        ('latest3,hours48,days30,months2', 81, 3 * 30 * 24 * 60 * 60),
     ])
     def test_multiple(self, spec: str, expected_length: int, cutoff: float) -> None:
         filter = RetentionFilter(rules_spec=spec, reference_time=self.REF_TIME, tz=datetime.timezone.utc)
@@ -92,7 +94,8 @@ class RetentionFilterTestCase(TestCase):
         self.assertEqual(0, len(dismissed_versions_2))
 
     def test_moving_single(self) -> None:
-        filter = RetentionFilter(rules_spec='hours30', reference_time=self.REF_TIME, tz=datetime.timezone.utc)
+        current_time = self.REF_TIME
+        filter = RetentionFilter(rules_spec='hours30', reference_time=current_time, tz=datetime.timezone.utc)
         dismissed_versions = set(filter.filter(self.versions))
         remaining_versions = self.versions - set(dismissed_versions)
 
@@ -100,13 +103,65 @@ class RetentionFilterTestCase(TestCase):
 
         # Move in steps of 1 hour into the future
         for hour in range(1, 31):
-            future_time = self.REF_TIME + dateutil.relativedelta.relativedelta(hours=hour)
-            filter = RetentionFilter(rules_spec='hours30', reference_time=future_time)
+            current_time = self.REF_TIME + dateutil.relativedelta.relativedelta(hours=hour)
+            filter = RetentionFilter(rules_spec='hours30', reference_time=current_time, tz=datetime.timezone.utc)
             dismissed_versions = set(filter.filter(remaining_versions))
             # We're moving in steps of one hour, so each time one version is dismissed
             self.assertEqual(len(dismissed_versions), 1)
             # The dismissed version must be older than 31 hours
-            self.assertGreaterEqual((future_time - list(dismissed_versions)[0].date).total_seconds(), 31 * 60 * 60)
+            self.assertGreaterEqual((current_time - list(dismissed_versions)[0].date).total_seconds(), 31 * 60 * 60)
             remaining_versions = remaining_versions - dismissed_versions
 
         self.assertEqual(1, len(remaining_versions))
+
+    @parameterized.expand([
+        ('hours30', ['hours'], [range(0, 31)], [1]),
+        ('latest10', ['latest'], [range(0, 1)], [10]),
+        ('latest8,hours48,days7,weeks4,months2,years1', ['latest', 'hours', 'days', 'weeks', 'months', 'years'],
+         [range(0, 1), range(2, 49), range(2, 8),
+          range(1, 5), range(1, 3), range(0, 1)], [8, 1, 1, 1, 1, 1]),
+    ])
+    def test_classification(self, spec: str, expected_categories: Sequence[str], expected_timecounts: Sequence[int],
+                            expected_in_each: Sequence[int]) -> None:
+        remaining_versions = set(self.versions)
+        previous_versions_by_category_remaining = None
+        # From self.REF_TIME to roughly 6 months into the future
+        for hour in range(0, 4464):
+            current_time = self.REF_TIME + dateutil.relativedelta.relativedelta(hours=hour)
+            filter = RetentionFilter(rules_spec=spec, reference_time=current_time, tz=datetime.timezone.utc)
+            dismissed_versions, versions_by_category_remaining = filter.filter(remaining_versions, debug=True)
+            dismissed_versions = set(dismissed_versions)
+            remaining_versions = remaining_versions - dismissed_versions
+
+            try:
+                self.assertSetEqual(set(versions_by_category_remaining.keys()), set(expected_categories))
+
+                for i, category in enumerate(expected_categories):
+                    actual_timecounts_set = set(versions_by_category_remaining[category].keys())
+                    expected_timecounts_set = set(expected_timecounts[i])
+
+                    # Due to the fact that we align on the start of day, week, etc. the first (youngest) expected
+                    # timecount category can be missing.
+                    if len(actual_timecounts_set) != len(expected_timecounts_set):
+                        expected_timecounts_set = set(list(expected_timecounts[i])[1:])
+
+                    self.assertSetEqual(actual_timecounts_set, expected_timecounts_set, category)
+
+                    for timecount in versions_by_category_remaining[category].keys():
+                        self.assertEqual(len(versions_by_category_remaining[category][timecount]), expected_in_each[i])
+                        self.assertTrue(versions_by_category_remaining[category][timecount][0] in remaining_versions)
+                        self.assertTrue(versions_by_category_remaining[category][timecount][0] not in dismissed_versions)
+            except AssertionError:
+                print('Time at failed assertion: {}.'.format(current_time.isoformat(timespec='seconds')))
+                if previous_versions_by_category_remaining:
+                    print(previous_versions_by_category_remaining)
+                print(versions_by_category_remaining)
+                raise
+
+            # Add four new versions
+            for minute in (15, 30, 45, 60):
+                remaining_versions.add(
+                    self._make_version(1000000 + hour * 60 + minute,
+                                       current_time + dateutil.relativedelta.relativedelta(minutes=minute)))
+
+            previous_versions_by_category_remaining = versions_by_category_remaining
