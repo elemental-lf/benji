@@ -28,7 +28,7 @@ import datetime
 import re
 from collections import OrderedDict
 from collections import defaultdict
-from typing import List, Dict, Sequence
+from typing import List, Dict, Sequence, Union, Tuple, Set
 
 import dateutil
 
@@ -87,12 +87,16 @@ class RetentionFilter(ReprMixIn):
         logger.debug('Retention filter set up with reference time {} and rules {}.'.format(
             self.reference_time.isoformat(timespec='seconds'), self.rules))
 
-    def filter(self, versions: Sequence[Version], debug: bool = False) -> List[Version]:
+    def filter(self, versions: Union[Sequence[Version], Set[Version]]) -> List[Version]:
+        return self._filter(versions)[0]
+
+    def _filter(self, versions: Union[Sequence[Version], Set[Version]]
+               ) -> Tuple[List[Version], Dict[str, Dict[int, List[Version]]]]:
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 
-        versions_by_category = {}
-        versions_by_category_remaining = {}
+        versions_by_category: Dict[str, Dict[int, List[Version]]] = {}
+        versions_by_category_remaining: Dict[str, Dict[int, List[Version]]] = {}
         for category in categories:
             versions_by_category[category] = defaultdict(list)
             versions_by_category_remaining[category] = {}
@@ -138,10 +142,7 @@ class RetentionFilter(ReprMixIn):
                 dismissed_versions.extend(versions_by_category[category][timecount][:-1])
                 versions_by_category_remaining[category][timecount] = versions_by_category[category][timecount][-1:]
 
-        if not debug:
-            return dismissed_versions
-        else:
-            return dismissed_versions, versions_by_category_remaining
+        return dismissed_versions, versions_by_category_remaining
 
 
 class _Timedelta(ReprMixIn):

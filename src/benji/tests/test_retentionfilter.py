@@ -1,6 +1,6 @@
 import datetime
 from itertools import count, tee
-from typing import Sequence
+from typing import Sequence, Set, Union
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock
 
@@ -22,6 +22,8 @@ def pairwise(iterable):
 class RetentionFilterTestCase(TestCase):
 
     REF_TIME = datetime.datetime(2019, 5, 9, 0, 0, 0, 0, tzinfo=None)
+
+    versions: Set[Version]
 
     @staticmethod
     def _make_version(uid: int, date: datetime.datetime) -> Version:
@@ -121,15 +123,16 @@ class RetentionFilterTestCase(TestCase):
          [range(0, 1), range(2, 49), range(2, 8),
           range(1, 5), range(1, 3), range(0, 1)], [8, 1, 1, 1, 1, 1]),
     ])
-    def test_classification(self, spec: str, expected_categories: Sequence[str], expected_timecounts: Sequence[int],
-                            expected_in_each: Sequence[int]) -> None:
+    def test_classification(self, spec: str, expected_categories: Sequence[str],
+                            expected_timecounts: Sequence[Sequence[int]], expected_in_each: Sequence[int]) -> None:
         remaining_versions = set(self.versions)
         previous_versions_by_category_remaining = None
         # From self.REF_TIME to roughly 6 months into the future
         for hour in range(0, 4464):
             current_time = self.REF_TIME + dateutil.relativedelta.relativedelta(hours=hour)
             filter = RetentionFilter(rules_spec=spec, reference_time=current_time, tz=datetime.timezone.utc)
-            dismissed_versions, versions_by_category_remaining = filter.filter(remaining_versions, debug=True)
+            dismissed_versions: Union[Sequence, Set]
+            dismissed_versions, versions_by_category_remaining = filter._filter(remaining_versions)
             dismissed_versions = set(dismissed_versions)
             remaining_versions = remaining_versions - dismissed_versions
 

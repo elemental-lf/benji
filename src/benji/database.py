@@ -12,7 +12,6 @@ import sqlite3
 import time
 import uuid
 from abc import abstractmethod
-from binascii import hexlify, unhexlify
 from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
@@ -27,6 +26,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from binascii import hexlify, unhexlify
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
@@ -595,8 +595,7 @@ class DatabaseBackend(ReprMixIn):
             if self._engine.has_table('alembic_version'):
                 with self._engine.begin() as connection:
                     connection.execute(
-                        sqlalchemy.sql.ddl.DropTable(  # type: ignore
-                            sqlalchemy.Table('alembic_version', sqlalchemy.MetaData())))
+                        sqlalchemy.sql.ddl.DropTable(sqlalchemy.Table('alembic_version', sqlalchemy.MetaData())))
 
         table_names = self._database_tables()
         if not table_names:
@@ -1297,11 +1296,10 @@ class _QueryBuilder:
                 else:
                     return op(getattr(Version, self.name), other)
 
-            # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
-            def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
+            def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.eq, other)
 
-            def __ne__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
+            def __ne__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.ne, other)
 
             def __lt__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
@@ -1332,11 +1330,10 @@ class _QueryBuilder:
                                                                       op(Label.value, str(other)))
                 return Version.uid.in_(label_query)
 
-            # See https://github.com/python/mypy/issues/2783 for the reason of type: ignore
-            def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
+            def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.eq, other)
 
-            def __ne__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:  # type: ignore
+            def __ne__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.ne, other)
 
             # This is called when the token is not part of a comparison and test for label existence
