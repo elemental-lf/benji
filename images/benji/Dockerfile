@@ -1,10 +1,7 @@
 FROM centos:7 AS build
 
-# For the Debian repository
-ARG CEPH_CODENAME="mimic"
+ARG CEPH_CODENAME="nautilus"
 ARG CEPH_DISTRO="el7"
-# For the Git checkout
-ARG CEPH_VERSION="13.2.5"
 
 ENV VENV_DIR /benji
 
@@ -15,25 +12,15 @@ RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y git gcc make \
-                   python36-devel python36-pip python36-libs python36-setuptools \
-                   librados-devel librbd-devel
-
-RUN python3.6 -m venv $VENV_DIR && \
-	ln -s /usr/bin/python3.6-config $VENV_DIR/bin/python-config && \
-	ln -s /usr/bin/python3.6m-x86_64-config $VENV_DIR/bin/python3.6m-x86_64-config && \
-	. $VENV_DIR/bin/activate && \
-	pip install --upgrade 'pip==10.0.*' && \
-	sed -i "s|self.run_command(\['clone', '-q', url, dest\])|self.run_command(['clone', '--depth=1', '--branch', rev if rev else 'master', '-q', url, dest])|" $(python -c 'import site; print(site.getsitepackages()[0])')/pip/_internal/vcs/git.py
-
-RUN . $VENV_DIR/bin/activate && \
-	pip install cython && \
-	pip install "git+https://github.com/ceph/ceph@v$CEPH_VERSION#subdirectory=src/pybind/rados" && \
-	pip install "git+https://github.com/ceph/ceph@v$CEPH_VERSION#subdirectory=src/pybind/rbd" && \
-	pip install git+https://github.com/elemental-lf/libiscsi-python
+		python36-devel python36-pip python36-libs python36-setuptools \
+		python36-rbd python36-rados
 
 ADD . /benji-source/
-RUN . $VENV_DIR/bin/activate && \
-	pip install '/benji-source/[compression,s3,readcache,b2]'
+
+RUN python3.6 -m venv --system-site-packages $VENV_DIR && \
+	. $VENV_DIR/bin/activate && \
+	pip install git+https://github.com/elemental-lf/libiscsi-python && \
+	pip install '/benji-source/[compression,s3,b2]'
 
 FROM centos:7 AS runtime
 
@@ -59,8 +46,8 @@ COPY --from=build /etc/yum.repos.d/ceph.repo /etc/yum.repos.d/ceph.repo
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
-	yum install -y python36-devel python36-pip python36-libs python36-setuptools && \
-	yum install -y librados2 librbd1 ceph-base && \
+	yum install -y python36 && \
+	yum install -y ceph-base python36-rbd python36-rados && \
 	yum install -y bash-completion joe jq && \
 	yum clean all
 
