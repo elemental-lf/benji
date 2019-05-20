@@ -130,9 +130,7 @@ def init_logging(logfile: Optional[str],
 
     if logfile is not None:
         logging_config['handlers']['file']['filename'] = logfile
-        logging_config['handlers']['file']['level'] = min(
-            logging.getLevelName(console_level),  # type: ignore
-            logging.INFO)
+        logging_config['handlers']['file']['level'] = min(logging.getLevelName(console_level), logging.INFO)
         logging_config['handlers']['file']['formatter'] = logfile_formatter
     else:
         del (logging_config['handlers']['file'])
@@ -150,8 +148,9 @@ def init_logging(logfile: Optional[str],
     logging.getLogger('nose').setLevel(logging.WARN)
     # This disables ResourceWarnings from boto3 which are normal
     # See: https://github.com/boto/boto3/issues/454
-    warnings.filterwarnings(
-        "ignore", category=ResourceWarning, message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
+    warnings.filterwarnings("ignore",
+                            category=ResourceWarning,
+                            message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
     # silence b2
     logging.getLogger('b2').setLevel(logging.WARN)
 
