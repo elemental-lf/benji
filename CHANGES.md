@@ -1,3 +1,25 @@
+## 0.6.0, unreleased
+
+Notable changes:
+
+* URL parsing of I/O resources is now conforming to standards. Especially for the RBD I/O module the two slashes
+  directly after the colon are no longer valid and have to be removed (`rbd://pool/image` -> `rbd:pool/image`).
+
+* Added I/O module for iSCSI. It is based on `libiscsi` and requires no elevated permissions. Please see the 
+  documentation as Benji requires a special version of the `libiscsi` Python bindings. The module is single-threaded
+  and synchronous, so performance will be limited. Contributions are welcome!
+  
+* The algorithm used by `benji enforce` has seen an overhaul and should be more comprehensible as the time categories
+  are based on natural time boundaries (start of the hour, day, week, month, and year) now.
+  
+* Added a restore helper script (`images/benji-k8s/scripts/benji-restore-pvc`) for Kubernetes. This script is intended
+  to be run on a management system with access to the Kubernetes cluster and can restore a version into a new or
+  an existing PVC/PV pair.
+  
+* The container images are now based on the Python 3.6 included in EPEL. The RBD support has been updated to Ceph
+  Nautilus. Nautilus also added RADOS and RBD Python bindings for Python 3.6 which are now used instead of building
+  them themselves.
+
 ## v0.5.0, 02.04.2019
 
 Notable changes:
