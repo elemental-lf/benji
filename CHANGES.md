@@ -1,4 +1,4 @@
-## 0.6.0, unreleased
+## 0.6.0 (Kubecon Barcelona Edition), 22.05.2019
 
 Notable changes:
 

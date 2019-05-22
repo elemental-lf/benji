@@ -31,11 +31,10 @@ for your persistent volumes.
 Status
 ------
 
-
-Benji is currently somewhere between alpha and beta quality I think. It passes all
-included tests. The documentation isn't completely up-to-date. Please open an
-issue on GitHub if you have a usage question that is not or incorrectly covered
-by the documentation.
+Benji is currently nearing beta quality. It passes all included tests. The
+documentation isn't completely up-to-date. Please open an issue on GitHub if you have
+a usage question that is not or incorrectly covered by the documentation. And have a
+look at the CHANGES file for any upgrade notes.
 
 Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
@@ -49,21 +48,6 @@ the Ceph credentials into the container. I'd accept patches for a third Docker
 image (resurrecting the old ``benji-rook`` image) or maybe it's also possible to integrate
 the changes into the ``benji-k8s`` image without too much fuss.
 
-Upgrade notes
--------------
-
-* Current master drops the version_statistics table and integrates the
-  statistics into the versions table.  Statistics for still existing
-  versions are moved into the versions table, but statistics for no
-  longer existing versions are dropped! If you want to keep this data,
-  you have to export it with ``benji stats`` or ``benji -m stats``
-  before upgrading. Old metadata backups and exports can still be
-  imported but the statistics in the versions table will be empty.
-
-* The current master branch is not compatible with the old master branch of 10/05/2018
-  and earlier and there is no migration path. The last commit supporting the old data
-  structures and configuration file format is available under the tag master-20181005
-  if you need it.
 
 Main Features
 -------------
