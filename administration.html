@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Administration &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Containerized Benji" href="container.html" />
     <link rel="prev" title="Cleanup" href="cleanup.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -288,17 +291,17 @@ Please see section <a class="reference internal" href="restore.html#database-les
 <p>Further copies of the <em>version</em> metadata can be made with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>. These exports can be stored
 somewhere safe and later be restored with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">It is advisable to compress the exports as the  JSON export format is quite redundant.</p>
+<p class="admonition-title">Note</p>
+<p>It is advisable to compress the exports as the  JSON export format is quite redundant.</p>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">A <em>version</em>’s metadata can only be imported if a <em>version</em> with the same <em>version</em> UID  does not exist
+<p class="admonition-title">Note</p>
+<p>A <em>version</em>’s metadata can only be imported if a <em>version</em> with the same <em>version</em> UID  does not exist
 in the database, yet.</p>
 </div>
 <div class="admonition attention">
-<p class="first admonition-title">Attention</p>
-<p class="last">When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) <em>versions</em> from the database and then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>,
+<p class="admonition-title">Attention</p>
+<p>When you remove (<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>) <em>versions</em> from the database and then call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code>,
 the blocks containing the backed up data will be removed from storage. No <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code> can
 bring them back, because Benji’s metadata exports only contain information on how to assemble the blocks
 and not the block data themselves.</p>
@@ -309,8 +312,8 @@ and not the block data themselves.</p>
 <p>An additional option against data loss is to replicate the SQL database. Please refer to the database documentation.
 You should also have a regular database backup in place.</p>
 <div class="admonition caution">
-<p class="first admonition-title">Caution</p>
-<p class="last">DBMS replication only helps in the case when one server crashes or has a failure. It does not help
+<p class="admonition-title">Caution</p>
+<p>DBMS replication only helps in the case when one server crashes or has a failure. It does not help
 against software-bug related data loss or human error. So the automatic metadata backup and
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code> are the only reliable options for long-term data safety.</p>
 </div>
@@ -322,10 +325,10 @@ against software-bug related data loss or human error. So the automatic metadata
 guarantees a certain level of availability. If the storage is self-managed, look into the redundancy and
 high-availability options it provides like:</p>
 <ul class="simple">
-<li>RAID 1, 5 and 6</li>
-<li>Redundancy options provided by distributed object stores like Ceph or Minio</li>
-<li>DRBD</li>
-<li>Data redundancy and replication mechanisms in filesystems like Btrfs or ZFS</li>
+<li><p>RAID 1, 5 and 6</p></li>
+<li><p>Redundancy options provided by distributed object stores like Ceph or Minio</p></li>
+<li><p>DRBD</p></li>
+<li><p>Data redundancy and replication mechanisms in filesystems like Btrfs or ZFS</p></li>
 </ul>
 <p>If a storage fails or is affected by data corruption, at best corrupted or incomplete restores are possible.</p>
 <p>Benji also supports multiple storages so a backup can be made to more then one storage, so providing a level
@@ -336,14 +339,14 @@ of redundancy.</p>
 <div class="section" id="general-advise">
 <h3>General Advise<a class="headerlink" href="#general-advise" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li>If anything goes wrong Benji exists with a non-zero exit code. Make sure to catch and report this is your scripts.</li>
-<li>Benji writes all output including possible stack traces and command lines to the configured logfile
+<li><p>If anything goes wrong Benji exists with a non-zero exit code. Make sure to catch and report this is your scripts.</p></li>
+<li><p>Benji writes all output including possible stack traces and command lines to the configured logfile
 (see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a>). If anything goes wrong, you’ll be able to visit this logfile and hopefully get enough
-information to troubleshoot the problem.</li>
-<li>Starting Benji with <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">DEBUG</span></code> will increase the log level on the console as well.</li>
-<li>You should also monitor the status of existing backups with commands like <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span> <span class="pre">'status</span> <span class="pre">!=</span> <span class="pre">&quot;valid&quot;'</span></code>.
-<em>Versions</em> with a status of <code class="docutils literal notranslate"><span class="pre">incomplete</span></code> are normal while a backup is in progress.</li>
-<li>Benji also changes to process name to indicate what it is currently doing.</li>
+information to troubleshoot the problem.</p></li>
+<li><p>Starting Benji with <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">DEBUG</span></code> will increase the log level on the console as well.</p></li>
+<li><p>You should also monitor the status of existing backups with commands like <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span> <span class="pre">'status</span> <span class="pre">!=</span> <span class="pre">&quot;valid&quot;'</span></code>.
+<em>Versions</em> with a status of <code class="docutils literal notranslate"><span class="pre">incomplete</span></code> are normal while a backup is in progress.</p></li>
+<li><p>Benji also changes to process name to indicate what it is currently doing.</p></li>
 </ul>
 </div>
 <div class="section" id="machine-output">
@@ -369,42 +372,42 @@ information to troubleshoot the problem.</li>
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Take care to put the <code class="docutils literal notranslate"><span class="pre">-m</span></code> between <code class="docutils literal notranslate"><span class="pre">benji</span></code> and <code class="docutils literal notranslate"><span class="pre">ls</span></code>.</p>
+<p class="admonition-title">Note</p>
+<p>Take care to put the <code class="docutils literal notranslate"><span class="pre">-m</span></code> between <code class="docutils literal notranslate"><span class="pre">benji</span></code> and <code class="docutils literal notranslate"><span class="pre">ls</span></code>.</p>
 </div>
 <p>All messages emitted by Benji are written to STDERR. In contrast the machine readable output is written to STDOUT.</p>
 <p>Here’s a table of commands supporting machine readable output and their output:</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="23%" />
-<col width="77%" />
+<col style="width: 23%" />
+<col style="width: 77%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Command</th>
-<th class="head">Description of output</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Command</p></th>
+<th class="head"><p>Description of output</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>ls</td>
-<td>List of matching <em>versions</em></td>
+<tbody>
+<tr class="row-even"><td><p>ls</p></td>
+<td><p>List of matching <em>versions</em></p></td>
 </tr>
-<tr class="row-odd"><td>backup</td>
-<td>List of newly create <em>version</em></td>
+<tr class="row-odd"><td><p>backup</p></td>
+<td><p>List of newly create <em>version</em></p></td>
 </tr>
-<tr class="row-even"><td>enforce</td>
-<td>List of removed <em>versions</em></td>
+<tr class="row-even"><td><p>enforce</p></td>
+<td><p>List of removed <em>versions</em></p></td>
 </tr>
-<tr class="row-odd"><td>scrub</td>
-<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+<tr class="row-odd"><td><p>scrub</p></td>
+<td><p>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</p></td>
 </tr>
-<tr class="row-even"><td>deep-scrub</td>
-<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+<tr class="row-even"><td><p>deep-scrub</p></td>
+<td><p>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</p></td>
 </tr>
-<tr class="row-odd"><td>batch-scrub</td>
-<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+<tr class="row-odd"><td><p>batch-scrub</p></td>
+<td><p>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</p></td>
 </tr>
-<tr class="row-even"><td>batch-deep-scrub</td>
-<td>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</td>
+<tr class="row-even"><td><p>batch-deep-scrub</p></td>
+<td><p>List of scrubbed <em>versions</em> and of <em>versions</em> with errors</p></td>
 </tr>
 </tbody>
 </table>
@@ -429,7 +432,7 @@ Here’s a short example, but see the <code class="docutils literal notranslate"
         <a href="container.html" class="btn btn-neutral float-right" title="Containerized Benji" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="cleanup.html" class="btn btn-neutral" title="Cleanup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="cleanup.html" class="btn btn-neutral float-left" title="Cleanup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -455,27 +458,16 @@ Here’s a short example, but see the <code class="docutils literal notranslate"
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

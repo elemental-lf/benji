@@ -10,7 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -19,34 +19,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installation.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -296,19 +299,19 @@ Many thanks go to him for making his work public and releasing backy² as
 open-source software!</p>
 <p>The primary use cases for Benji are:</p>
 <ul class="simple">
-<li>Fast and resource-efficient backup of Ceph RBD images to object or file storage</li>
-<li>Backup of LVM volumes (e.g. from servers or personal computers) to external hard
-drives or the cloud</li>
+<li><p>Fast and resource-efficient backup of Ceph RBD images to object or file storage</p></li>
+<li><p>Backup of LVM volumes (e.g. from servers or personal computers) to external hard
+drives or the cloud</p></li>
 </ul>
 <p>Benji features a Docker image and Helm chart for integration with
 <a class="reference external" href="https://kubernetes.io/">Kubernetes</a>. This makes it easy to setup a backup solution
 for your persistent volumes.</p>
 <div class="section" id="status">
 <h2>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
-<p>Benji is currently somewhere between alpha and beta quality I think. It passes all
-included tests. The documentation isn’t completely up-to-date. Please open an
-issue on GitHub if you have a usage question that is not or incorrectly covered
-by the documentation.</p>
+<p>Benji is currently nearing beta quality. It passes all included tests. The
+documentation isn’t completely up-to-date. Please open an issue on GitHub if you have
+a usage question that is not or incorrectly covered by the documentation. And have a
+look at the CHANGES file for any upgrade notes.</p>
 <p>Benji requires <strong>Python 3.6.5 or newer</strong> because older Python versions
 have some shortcomings in the <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> implementation which lead to an
 excessive memory usage.</p>
@@ -320,73 +323,53 @@ the Ceph credentials into the container. I’d accept patches for a third Docker
 image (resurrecting the old <code class="docutils literal notranslate"><span class="pre">benji-rook</span></code> image) or maybe it’s also possible to integrate
 the changes into the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image without too much fuss.</p>
 </div>
-<div class="section" id="upgrade-notes">
-<h2>Upgrade notes<a class="headerlink" href="#upgrade-notes" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>Current master drops the version_statistics table and integrates the
-statistics into the versions table.  Statistics for still existing
-versions are moved into the versions table, but statistics for no
-longer existing versions are dropped! If you want to keep this data,
-you have to export it with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">stats</span></code> or <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">-m</span> <span class="pre">stats</span></code>
-before upgrading. Old metadata backups and exports can still be
-imported but the statistics in the versions table will be empty.</li>
-<li>The current master branch is not compatible with the old master branch of 10/05/2018
-and earlier and there is no migration path. The last commit supporting the old data
-structures and configuration file format is available under the tag master-20181005
-if you need it.</li>
-</ul>
-</div>
 <div class="section" id="main-features">
 <h2>Main Features<a class="headerlink" href="#main-features" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt><strong>Small backups</strong></dt>
-<dd>Benji deduplicates while reading from the block device and only writes
+<dl>
+<dt><strong>Small backups</strong></dt><dd><p>Benji deduplicates while reading from the block device and only writes
 blocks once if they have the same checksum. Deduplication takes into
 account all historic data present in the backup storage target and so
 spans all backups and all backup sources. This can make deduplication
-more effective if images are clones of a common ancestor.</dd>
-<dt><strong>Fast backups</strong></dt>
-<dd>With the help of Ceph’s <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code>, Benji will only read the blocks
+more effective if images are clones of a common ancestor.</p>
+</dd>
+<dt><strong>Fast backups</strong></dt><dd><p>With the help of Ceph’s <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code>, Benji will only read the blocks
 that have changed since the last backup. Even when this information
 is not available (like with LVM) Benji will still only backup
-changed blocks.</dd>
-<dt><strong>Fast restores</strong></dt>
-<dd>With supporting block storage (like Ceph’s RBD), a sparse restore is
+changed blocks.</p>
+</dd>
+<dt><strong>Fast restores</strong></dt><dd><p>With supporting block storage (like Ceph’s RBD), a sparse restore is
 possible. This means, sparse blocks (i.e. blocks which are holes or are
-all zeros) will be skipped on restore.</dd>
-<dt><strong>NBD server facilitating file-based restores</strong></dt>
-<dd><p class="first">Benji brings its own NBD (network block device) server which makes backup
+all zeros) will be skipped on restore.</p>
+</dd>
+<dt><strong>NBD server facilitating file-based restores</strong></dt><dd><p>Benji brings its own NBD (network block device) server which makes backup
 images directly mountable - even over the network on another machine. This
 enables file-based restores without restoring the whole image.</p>
-<p class="last">These mounts are read/write (unless you specify <code class="docutils literal notranslate"><span class="pre">-r</span></code>) and writing to them
+<p>These mounts are read/write (unless you specify <code class="docutils literal notranslate"><span class="pre">-r</span></code>) and writing to them
 creates a copy-on-write backup version (<strong>i.e. the original version is not modified</strong>).
 This makes it possible to do repairs on the image (<code class="docutils literal notranslate"><span class="pre">fsck</span></code>, etc.) and restore
 the repaired copy afterwards.</p>
 </dd>
-<dt><strong>Small bandwidth requirements</strong></dt>
-<dd><p class="first">As only changed blocks are written to the backup storage, a small connection
+<dt><strong>Small bandwidth requirements</strong></dt><dd><p>As only changed blocks are written to the backup storage, a small connection
 is sufficient even for larger backups. Even with newly created block devices
 the traffic to the backup target is small, because these block devices usually
 contain mostly zeros and are deduplicated before reaching the target storage.</p>
-<p class="last">In addition to this Benji supports fast state-of-the-art compression based on
+<p>In addition to this Benji supports fast state-of-the-art compression based on
 <a class="reference external" href="https://github.com/facebook/zstd">zstandard</a>. This further reduces the
 required bandwidth and also reduces the storage space requirements.</p>
 </dd>
-<dt><strong>Support for a variety of backup storage targets</strong></dt>
-<dd><p class="first">Benji supports AWS S3 as a data backend but also has options to enable
+<dt><strong>Support for a variety of backup storage targets</strong></dt><dd><p>Benji supports AWS S3 as a data backend but also has options to enable
 compatibility with other S3 implementations like Google Storage, Ceph’s
 RADOS Gateway or <a class="reference external" href="https://www.minio.io/">Minio</a>.</p>
 <p>Benji also supports <a class="reference external" href="https://www.backblaze.com/">Backblaze’s</a> B2 Cloud
 Storage which opens up a very cost effective way to keep your backups.</p>
-<p class="last">Last but not least Benji can also use any file based storage including
+<p>Last but not least Benji can also use any file based storage including
 external hard drives and NFS based storage solutions.</p>
 </dd>
-<dt><strong>Confidentiality</strong></dt>
-<dd>Benji supports AES-256 in GCM mode to encrypt all your data on the backup
+<dt><strong>Confidentiality</strong></dt><dd><p>Benji supports AES-256 in GCM mode to encrypt all your data on the backup
 storage. By using envelope encryption every block is encrypted with its
-own unique random key which makes plaintext attacks even more difficult.</dd>
-<dt><strong>Integrity</strong></dt>
-<dd><p class="first">Every backed up block keeps a checksum with it. When Benji scrubs the
+own unique random key which makes plaintext attacks even more difficult.</p>
+</dd>
+<dt><strong>Integrity</strong></dt><dd><p>Every backed up block keeps a checksum with it. When Benji scrubs the
 backup, it reads the block from the backup storage, calculates its
 checksum and compares it to the stored checksum. If the checksum differs,
 it’s most likely that there was an error while storing or reading
@@ -396,28 +379,26 @@ the object’s existence and metadata consistency.</p>
 <p>If a scrubbing failure occurs, the defective block and the backups it belongs
 to are marked as ‘invalid’ and the block will be re-read for the next backup
 version even if <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code> indicates that it hasn’t changed.</p>
-<p class="last">Scrubbing can also take a percentage value of how many blocks of the backup
+<p>Scrubbing can also take a percentage value of how many blocks of the backup
 it should scrub. So you can statistically scrub 16% each day and have a
 full scrub each week (16*7 &gt; 100).</p>
 </dd>
-<dt><strong>Concurrency: Backup while scrubbing while restoring</strong></dt>
-<dd><p class="first">As Benji is a long-running process, you don’t want to wait until something has
+<dt><strong>Concurrency: Backup while scrubbing while restoring</strong></dt><dd><p>As Benji is a long-running process, you don’t want to wait until something has
 finished of course. You can scrub, backup and restore at the same time and
 multiple times each.</p>
-<p class="last">Benji even supports distributed operation where multiple instances run on
+<p>Benji even supports distributed operation where multiple instances run on
 different hosts or in different containers at the same time.</p>
 </dd>
-<dt><strong>Cache friendly</strong></dt>
-<dd>While reading large pieces of data on Linux, buffers and caches get filled
+<dt><strong>Cache friendly</strong></dt><dd><p>While reading large pieces of data on Linux, buffers and caches get filled
 up with data, which in case of backups is essentially only needed once.
-Benji instructs Linux and Ceph to immediately forget the data once it’s processed.</dd>
-<dt><strong>Simplicity: As simple as cp, but as clever as a backup solution needs to be</strong></dt>
-<dd>With a small set of commands, good <code class="docutils literal notranslate"><span class="pre">--help</span></code> and intuitive usage,
+Benji instructs Linux and Ceph to immediately forget the data once it’s processed.</p>
+</dd>
+<dt><strong>Simplicity: As simple as cp, but as clever as a backup solution needs to be</strong></dt><dd><p>With a small set of commands, good <code class="docutils literal notranslate"><span class="pre">--help</span></code> and intuitive usage,
 Benji feels mostly like <code class="docutils literal notranslate"><span class="pre">cp</span></code>. And that’s intentional, because we think,
 a restore must be fool-proof and succeed even if you’re woken up at 3am in the
-morning.</dd>
-<dt><strong>Prevents you from doing something stupid</strong></dt>
-<dd><p class="first">By providing a configuration value for how old backups need to be in order to
+morning.</p>
+</dd>
+<dt><strong>Prevents you from doing something stupid</strong></dt><dd><p>By providing a configuration value for how old backups need to be in order to
 be able to remove them, you can’t accidentally remove very young backups. An
 exception to this is the enforcement of retention policies which will also
 remove recent backups if configured.</p>
@@ -426,12 +407,12 @@ This is important when you plan to restore a version which according to the
 retention policy may be removed soon. During restore a lock will also prevent
 removal, however, by protecting it, it cannot be removed until you decide
 that it is no longer needed.</p>
-<p class="last">Also, you’ll need to use <code class="docutils literal notranslate"><span class="pre">--force</span></code> to overwrite existing files or volumes.</p>
+<p>Also, you’ll need to use <code class="docutils literal notranslate"><span class="pre">--force</span></code> to overwrite existing files or volumes.</p>
 </dd>
-<dt><strong>Free and Open Source Software</strong></dt>
-<dd>Anyone can review the source code and audit security and functionality.
+<dt><strong>Free and Open Source Software</strong></dt><dd><p>Anyone can review the source code and audit security and functionality.
 Benji is licensed under the LGPLv3 license. Please see the documentation
-for a full list of licenses.</dd>
+for a full list of licenses.</p>
+</dd>
 </dl>
 <div class="toctree-wrapper compound">
 <ul>
@@ -559,27 +540,16 @@ for a full list of licenses.</dd>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

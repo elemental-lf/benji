@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Backup" href="backup.html" />
     <link rel="prev" title="Quick Start" href="quickstart.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -277,10 +280,10 @@
 <h2>Configuration File Location<a class="headerlink" href="#configuration-file-location" title="Permalink to this headline">¶</a></h2>
 <p>Benji will by default search the following locations for configuration files:</p>
 <ul class="simple">
-<li>/etc/benji.yaml</li>
-<li>/etc/benji/benji.yaml</li>
-<li>~/.benji.yaml</li>
-<li>~/benji.yaml</li>
+<li><p>/etc/benji.yaml</p></li>
+<li><p>/etc/benji/benji.yaml</p></li>
+<li><p>~/.benji.yaml</p></li>
+<li><p>~/benji.yaml</p></li>
 </ul>
 <p>If multiple of these files exist, only the first file found is read.</p>
 <p>In order to explicitly pass a configuration file, use the <code class="docutils literal notranslate"><span class="pre">-c</span></code> (or
@@ -289,25 +292,25 @@
 <div class="section" id="top-level-configuration-directives">
 <h2>Top-level configuration directives<a class="headerlink" href="#top-level-configuration-directives" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>key: <strong>configurationVersion</strong></li>
-<li>type: string (integer is also accepted)</li>
-<li>required</li>
+<li><p>key: <strong>configurationVersion</strong></p></li>
+<li><p>type: string (integer is also accepted)</p></li>
+<li><p>required</p></li>
 </ul>
 <p>Currently this is always <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
 <ul class="simple">
-<li>key: <strong>logFile</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></li>
+<li><p>key: <strong>logFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></p></li>
 </ul>
 <p>Benji will by default log INFO, WARNING and ERROR to this file. If you also
 need DEBUG information, please start Benji with <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">DEBUG</span></code>.
 Setting this to null disables logging to a file, this might be useful when
 running Benji inside a container.</p>
 <ul class="simple">
-<li>key: <strong>blockSize</strong></li>
-<li>type: integer</li>
-<li>unit: bytes</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">4194304</span></code> (4MiB)</li>
+<li><p>key: <strong>blockSize</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>unit: bytes</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">4194304</span></code> (4MiB)</p></li>
 </ul>
 <p>The block size can be changed on the command line on a version by version
 basis, but be aware that this will affect deduplication and increase the
@@ -315,63 +318,63 @@ space usage. One possible use case for different block sizes would be backing
 up LVM volumes and Ceph images with the same Benji installation. While for Ceph
 4MiB is usually the best size, LVM volume might profit from a smaller block size.</p>
 <ul class="simple">
-<li>key: <strong>hashFunction</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">BLAKE2b,digest_bits=256</span></code></li>
+<li><p>key: <strong>hashFunction</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">BLAKE2b,digest_bits=256</span></code></p></li>
 </ul>
 <p>Hash function to use for calculating block checksums. There is normally no reason
 to change the default. <strong>Do not change this setting when backups already exist.</strong></p>
 <ul class="simple">
-<li>key: <strong>processName</strong></li>
-<li>type: string</li>
-<li>default : <code class="docutils literal notranslate"><span class="pre">benji</span></code></li>
+<li><p>key: <strong>processName</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default : <code class="docutils literal notranslate"><span class="pre">benji</span></code></p></li>
 </ul>
 <p>This name will be used to identify a specific instance of Benji in the process list
 and  can be used to distinguish several parallel installations.</p>
 <ul class="simple">
-<li>key: <strong>disallowRemoveWhenYounger</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">6</span></code></li>
+<li><p>key: <strong>disallowRemoveWhenYounger</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p></li>
 </ul>
 <p>This settings disallows removal of backup versions if they are younger than the
 specified number of days. Set to 0 to disable, i.e. to be able to delete any
 backup version regardless of its age.</p>
 <ul class="simple">
-<li>key: <strong>databaseEngine</strong></li>
-<li>type: string</li>
-<li>required</li>
+<li><p>key: <strong>databaseEngine</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>required</p></li>
 </ul>
 <p>See <a class="reference external" href="https://docs.sqlalchemy.org/en/latest/core/engines.html">https://docs.sqlalchemy.org/en/latest/core/engines.html</a> for options.
 Only PostgreSQL (dialect psycopg2) and SQLite 3 are tested with during development.</p>
 <ul class="simple">
-<li>key: <strong>ios</strong></li>
-<li>type: list of dictionaries</li>
-<li>required</li>
+<li><p>key: <strong>ios</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>required</p></li>
 </ul>
 <p>List of I/O configurations. Backup sources are accessed via these configurations.
 They are also used as a destination during restore operations. See below.</p>
 <ul class="simple">
-<li>key: <strong>storages</strong></li>
-<li>type: list of dictionaries</li>
-<li>required</li>
+<li><p>key: <strong>storages</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>required</p></li>
 </ul>
 <p>List of storage configurations used for storing backup versions. See below.</p>
 <ul class="simple">
-<li>key: <strong>defaultStorage</strong></li>
-<li>type: string</li>
-<li>required</li>
+<li><p>key: <strong>defaultStorage</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>required</p></li>
 </ul>
 <p>Default storage for storing backup versions. Reference to a storage name.</p>
 <ul class="simple">
-<li>key: <strong>transforms</strong></li>
-<li>type: list of dictionaries</li>
-<li>default: empty list</li>
+<li><p>key: <strong>transforms</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>default: empty list</p></li>
 </ul>
 <p>List of data transformation configurations. See below.</p>
 <ul class="simple">
-<li>key: <strong>nbd</strong></li>
-<li>type: dictionary</li>
-<li>default: see below</li>
+<li><p>key: <strong>nbd</strong></p></li>
+<li><p>type: dictionary</p></li>
+<li><p>default: see below</p></li>
 </ul>
 <p>Configuration options pertaining to Benji’s NBD server.</p>
 </div>
@@ -380,22 +383,22 @@ They are also used as a destination during restore operations. See below.</p>
 <p>The list of I/O configurations (<strong>ios</strong>) is a list of dictionaries with the
 following keys:</p>
 <ul class="simple">
-<li>key: <strong>name</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>name</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>This sets the name of this I/O configuration entry. It is used as the
 scheme in backup source or restore destination specifications.</p>
 <ul class="simple">
-<li>key: <strong>module</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>module</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Reference to a I/O module name. See below.</p>
 <ul class="simple">
-<li>key: <strong>configuration</strong></li>
-<li>type: list of dictionaries</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></li>
+<li><p>key: <strong>configuration</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></p></li>
 </ul>
 <p>Module specific configuration for this I/O configuration entry.</p>
 </div>
@@ -404,22 +407,22 @@ scheme in backup source or restore destination specifications.</p>
 <p>The list of transform configuration (<strong>transforms</strong>) is a list of
 dictionaries with the following keys:</p>
 <ul class="simple">
-<li>key: <strong>name</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>name</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>This sets the name of this transform configuration entry. It is
 referenced in the list of <strong>activeTransforms</strong>.</p>
 <ul class="simple">
-<li>key: <strong>module</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>module</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Reference to a transform module name. See below.</p>
 <ul class="simple">
-<li>key: <strong>configuration</strong></li>
-<li>type: list of dictionaries</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></li>
+<li><p>key: <strong>configuration</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></p></li>
 </ul>
 <p>Module specific configuration for this transform configuration entry.</p>
 </div>
@@ -428,47 +431,47 @@ referenced in the list of <strong>activeTransforms</strong>.</p>
 <p>The list of storage configurations (<strong>storages</strong>) is a list of dictionaries
 with the following keys:</p>
 <ul class="simple">
-<li>key: <strong>name</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>name</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>This sets the name of this storage configuration entry. It is referenced by
 the <strong>defaultStorage</strong> top-level configuration directive or it is specified
 on the command line.</p>
 <ul class="simple">
-<li>key: <strong>module</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>key: <strong>module</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Reference to a storage module name. See below.</p>
 <ul class="simple">
-<li>key: <strong>storageId</strong></li>
-<li>type: integer</li>
-<li>default: none</li>
+<li><p>key: <strong>storageId</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>This sets the internal storage id for this storage configuration.</p>
 <ul class="simple">
-<li>key: <strong>configuration</strong></li>
-<li>type: list of dictionaries</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></li>
+<li><p>key: <strong>configuration</strong></p></li>
+<li><p>type: list of dictionaries</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">null</span></code></p></li>
 </ul>
 <p>Module specific configuration for this storage configuration entry.</p>
 </div>
 <div class="section" id="i-o-modules">
 <h2>I/O Modules<a class="headerlink" href="#i-o-modules" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>name: <strong>simultaneousReads</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousReads</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
 increase this number to increase this number to get better concurrency
 and performance.</p>
 <ul class="simple">
-<li>name: <strong>simultaneousWrites</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousWrites</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
@@ -476,18 +479,18 @@ recommended to increase this number to increase this number to get better concur
 <h3>I/O Module file<a class="headerlink" href="#i-o-module-file" title="Permalink to this headline">¶</a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> I/O module supports the following configuration options:</p>
 <ul class="simple">
-<li>name: <strong>simultaneousReads</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousReads</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
 increase this number to increase this number to get better concurrency
 and performance.</p>
 <ul class="simple">
-<li>name: <strong>simultaneousWrites</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousWrites</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
@@ -497,38 +500,38 @@ recommended to increase this number to increase this number to get better concur
 <p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. It supports
 the following configuration options:</p>
 <ul class="simple">
-<li>name: <strong>simultaneousReads</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousReads</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
 increase this number to increase this number to get better concurrency
 and performance.</p>
 <ul class="simple">
-<li>name: <strong>simultaneousWrites</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousWrites</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
-<li>name: <strong>cephConfigFile</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code></li>
+<li><p>name: <strong>cephConfigFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">/etc/ceph/ceph.conf</span></code></p></li>
 </ul>
 <p>Sets the path to the Ceph configuration file used by this I/O configuration.</p>
 <ul class="simple">
-<li>name: <strong>clientIdentifier</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">admin</span></code></li>
+<li><p>name: <strong>clientIdentifier</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">admin</span></code></p></li>
 </ul>
 <p>Sets the name of the client identifier used by this I/O configuration to
 access the Ceph RBD service.</p>
 <ul class="simple">
-<li>name: <strong>newImageFeatures</strong></li>
-<li>type: list of strings</li>
-<li>default: none, required</li>
+<li><p>name: <strong>newImageFeatures</strong></p></li>
+<li><p>type: list of strings</p></li>
+<li><p>default: none, required</p></li>
 </ul>
 <p>Valid values for this list are extracted from the installed Ceph RBD
 libraries. For recent version of Ceph this list of possible image
@@ -541,53 +544,53 @@ features applies: <code class="docutils literal notranslate"><span class="pre">R
 <p>This I/O module requires a special version of the <code class="docutils literal notranslate"><span class="pre">libiscsi</span></code> Python bindings available at
 <a class="reference external" href="https://github.com/elemental-lf/libiscsi-python">https://github.com/elemental-lf/libiscsi-python</a>. It currently has some limitations:</p>
 <ul class="simple">
-<li>Single-threaded synchronous execution of iSCSI commands limiting achievable performance</li>
-<li>No usage of <code class="docutils literal notranslate"><span class="pre">GET_LBA_STATUS</span></code> to detect unmapped regions</li>
+<li><p>Single-threaded synchronous execution of iSCSI commands limiting achievable performance</p></li>
+<li><p>No usage of <code class="docutils literal notranslate"><span class="pre">GET_LBA_STATUS</span></code> to detect unmapped regions</p></li>
 </ul>
 <p>The following configuration options are supported:</p>
 <ul class="simple">
-<li>name: <strong>username</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>username</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the CHAP username for iSCSI authentication and authorization. If this directive is not set,
 no authentication is attempted.</p>
 <ul class="simple">
-<li>name: <strong>password</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>password</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the CHAP password for iSCSI authentication and authorization.</p>
 <ul class="simple">
-<li>name: <strong>targetUsername</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>targetUsername</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the CHAP username for iSCSI target authentication. If this directive is not set, no authentication
 of the target is done.</p>
 <ul class="simple">
-<li>name: <strong>targetPassword</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>targetPassword</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the CHAP password for iSCSI target authentication.</p>
 <ul class="simple">
-<li>name: <strong>headerDigest</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">NONE_CRC32C</span></code></li>
+<li><p>name: <strong>headerDigest</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">NONE_CRC32C</span></code></p></li>
 </ul>
 <p>Sets the header digest order advertised during negotiation. Possible values are: <code class="docutils literal notranslate"><span class="pre">NONE</span></code>, <code class="docutils literal notranslate"><span class="pre">NONE_CRC32C</span></code>,
 <code class="docutils literal notranslate"><span class="pre">CRC32C_NONE</span></code>, and <code class="docutils literal notranslate"><span class="pre">CRC32C</span></code>.</p>
 <ul class="simple">
-<li>name: <strong>initiatorName</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">iqn.2019-04.me.benji-backup:benji</span></code></li>
+<li><p>name: <strong>initiatorName</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">iqn.2019-04.me.benji-backup:benji</span></code></p></li>
 </ul>
 <p>Sets the initiator name.</p>
 <ul class="simple">
-<li>name: <strong>timeout</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">0</span></code> meaning unlimited</li>
+<li><p>name: <strong>timeout</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">0</span></code> meaning unlimited</p></li>
 </ul>
 <p>Sets the iSCSI timeout.</p>
 </div>
@@ -612,15 +615,15 @@ affect newly create data objects.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">zstd</span></code> module supports the following configuration
 options:</p>
 <ul class="simple">
-<li>name: <strong>level</strong></li>
-<li>type: integer</li>
-<li>default: none, required</li>
+<li><p>name: <strong>level</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: none, required</p></li>
 </ul>
 <p>The compression level used for compressing blocks of data.</p>
 <ul class="simple">
-<li>name: <strong>dictDataFile</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>dictDataFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the path to a zstandard dictionary. This option has limited value in the
 context of Benji and shouldn’t be set.</p>
@@ -634,27 +637,27 @@ and then saved beside the data block.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">aes_256_gcm</span></code> module supports the following configuration
 options:</p>
 <ul class="simple">
-<li>name: <strong>kdfSalt</strong></li>
-<li>type: binary string encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>kdfSalt</strong></p></li>
+<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the salt for the key derivation function.</p>
 <ul class="simple">
-<li>name: <strong>kdfIterations</strong></li>
-<li>type: binary string encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>kdfIterations</strong></p></li>
+<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the number of iterations for the key derivation function.</p>
 <ul class="simple">
-<li>name: <strong>password</strong></li>
-<li>type: binary string encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>password</strong></p></li>
+<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the password from which the master key is generated.</p>
 <ul class="simple">
-<li>name: <strong>masterKey</strong></li>
-<li>type: binary string with a length of 32 bytes encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>masterKey</strong></p></li>
+<li><p>type: binary string with a length of 32 bytes encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the master key used for encrypting the envelope keys. This key should
 have a high entropy. In most cases it is safer and easier to derive
@@ -673,54 +676,54 @@ cannot be decrypted anymore.</p>
 <h2>Storage Modules<a class="headerlink" href="#storage-modules" title="Permalink to this headline">¶</a></h2>
 <p>All storage modules support the following configuration directives:</p>
 <ul class="simple">
-<li>name: <strong>simultaneousReads</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousReads</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of reader threads when reading from a storage. Also affects the internal read queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
-<li>name: <strong>simultaneousWrites</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousWrites</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of writer threads when writing to a storage. Also affects the internal write queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
-<li>name: <strong>simultaneousRemovals</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></li>
+<li><p>name: <strong>simultaneousRemovals</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
 <p>Number of removal threads when removing blocks from a storage. Also affects the internal queue length. It is highly
 recommended to increase this number to increase this number to get better concurrency and performance.</p>
 <ul class="simple">
-<li>name: <strong>bandwidthRead</strong></li>
-<li>type: integer</li>
-<li>unit: bytes per second</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">0</span></code></li>
+<li><p>name: <strong>bandwidthRead</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>unit: bytes per second</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p></li>
 </ul>
 <p>This limits the number of bytes read from the storage by second using a token
 bucket algorithm. A value of <code class="docutils literal notranslate"><span class="pre">0</span></code> disables this feature.</p>
 <ul class="simple">
-<li>name: <strong>bandwidthWrite</strong></li>
-<li>type: integer</li>
-<li>unit: bytes per second</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">0</span></code></li>
+<li><p>name: <strong>bandwidthWrite</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>unit: bytes per second</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p></li>
 </ul>
 <p>This limits the number of bytes written to the storage by second using a token
 bucket algorithm.  A value of <code class="docutils literal notranslate"><span class="pre">0</span></code> disables this feature.</p>
 <ul class="simple">
-<li>name: <strong>activeTransforms</strong></li>
-<li>type: list of strings</li>
-<li>default: empty list</li>
+<li><p>name: <strong>activeTransforms</strong></p></li>
+<li><p>type: list of strings</p></li>
+<li><p>default: empty list</p></li>
 </ul>
 <p>Sets a list of transform which are applied to each data object before it is
 written to the storage. The transformations are performed in order. In
 forward direction when writing data and in reverse direction when reading.</p>
 <ul class="simple">
-<li>name: <strong>consistencyCheckWrites</strong></li>
-<li>type: bool</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">false</span></code></li>
+<li><p>name: <strong>consistencyCheckWrites</strong></p></li>
+<li><p>type: bool</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">false</span></code></p></li>
 </ul>
 <p>When this option is set to <code class="docutils literal notranslate"><span class="pre">true</span></code> then each write to the storage is followed
 by a read checking the data integrity of the written object data and metadata.
@@ -734,33 +737,33 @@ metadata corruption or malicious manipulation an object’s metadata can be
 protected by a HMAC (Hash-based Message Authentication Code). Benji’s
 implementation conforms to RFC 2104 and uses SHA-256 as the hash algorithm.</p>
 <ul class="simple">
-<li>name: <strong>hmac</strong></li>
-<li>type: dictionary</li>
-<li>default: none</li>
+<li><p>name: <strong>hmac</strong></p></li>
+<li><p>type: dictionary</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>The <strong>hmac</strong> dictionary supports the following keys:</p>
 <ul class="simple">
-<li>name: <strong>kdfSalt</strong></li>
-<li>type: binary string encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>kdfSalt</strong></p></li>
+<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Set ths salt for the key derivation function.</p>
 <ul class="simple">
-<li>name: <strong>kdfIterations</strong></li>
-<li>type: integer</li>
-<li>default: none</li>
+<li><p>name: <strong>kdfIterations</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the number of iterations for the key derivation function.</p>
 <ul class="simple">
-<li>name: <strong>password</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>password</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the password from which the key is generated.</p>
 <ul class="simple">
-<li>name: <strong>key</strong></li>
-<li>type: binary string encoded with BASE64</li>
-<li>default: none</li>
+<li><p>name: <strong>key</strong></p></li>
+<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the key used for seeding the hash function. In most cases it is safer and
 easier to derive the key from a <strong>password</strong>.</p>
@@ -774,28 +777,28 @@ three configuration directives by using PBKDF2 with SHA-512.</p>
 <p>Benji supports a read cache for all storage modules. The read cache can be
 be beneficial when frequently restoring images that are mostly identical.</p>
 <ul class="simple">
-<li>name: <strong>readCache</strong></li>
-<li>type: dictionary</li>
-<li>default: none</li>
+<li><p>name: <strong>readCache</strong></p></li>
+<li><p>type: dictionary</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>The <strong>readCache</strong> dictionary supports the following keys:</p>
 <ul class="simple">
-<li>name: <strong>directory</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>directory</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the directory used by the cache.</p>
 <ul class="simple">
-<li>name: <strong>maximumSize</strong></li>
-<li>type: integer</li>
-<li>unit: bytes</li>
-<li>default: none</li>
+<li><p>name: <strong>maximumSize</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>unit: bytes</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Maximum size of the cache in bytes.</p>
 <ul class="simple">
-<li>name: <strong>shards</strong></li>
-<li>type: integer</li>
-<li>default: none</li>
+<li><p>name: <strong>shards</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>Sets the number of cache shards. Needs to be scaled together with
 <strong>simultaneousReads</strong>.</p>
@@ -804,66 +807,66 @@ be beneficial when frequently restoring images that are mostly identical.</p>
 <h3>Storage Module file<a class="headerlink" href="#storage-module-file" title="Permalink to this headline">¶</a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">file</span></code> storage module supports the following configuration options:</p>
 <ul class="simple">
-<li>name: <strong>path</strong></li>
-<li>type: string</li>
-<li>required</li>
+<li><p>name: <strong>path</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>required</p></li>
 </ul>
 <p>Sets the path to a directory where backup version data is stored.</p>
 </div>
 <div class="section" id="storage-module-s3">
 <h3>Storage Module s3<a class="headerlink" href="#storage-module-s3" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li>name: <strong>awsAccessKeyId</strong></li>
-<li>type: string</li>
-<li>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</li>
+<li><p>name: <strong>awsAccessKeyId</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</p></li>
 </ul>
 <p>Sets the access key id. This option and the <strong>awsAccessKeyIdFile</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>awsAccessKeyIdFile</strong></li>
-<li>type: string</li>
-<li>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</li>
+<li><p>name: <strong>awsAccessKeyIdFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>awsAccessKeyId</strong> or <strong>awsAccessKeyIdFile</strong> required</p></li>
 </ul>
 <p>Sets the access key id from a file. This option and the <strong>awsAccessKeyId</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>awsSecretAccessKey</strong></li>
-<li>type: string</li>
-<li>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</li>
+<li><p>name: <strong>awsSecretAccessKey</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</p></li>
 </ul>
 <p>Set the access key. This option and the <strong>awsSecretAccessKeyFile</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>awsSecretAccessKeyFile</strong></li>
-<li>type: string</li>
-<li>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</li>
+<li><p>name: <strong>awsSecretAccessKeyFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>awsSecretAccessKey</strong> or <strong>awsSecretAccessKeyFile</strong> required</p></li>
 </ul>
 <p>Sets the access key from a file.This option and the <strong>awsSecretAccessKey</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>bucketName</strong></li>
-<li>type: string</li>
-<li>required</li>
+<li><p>name: <strong>bucketName</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>required</p></li>
 </ul>
 <p>Sets the bucket name.</p>
 <ul class="simple">
-<li>name: <strong>regionName</strong></li>
-<li>type: string</li>
-<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</li>
+<li><p>name: <strong>regionName</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</p></li>
 </ul>
 <p>Sets the region of the bucket.</p>
 <ul class="simple">
-<li>name: <strong>useSsl</strong></li>
-<li>type: bool</li>
-<li>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</li>
+<li><p>name: <strong>useSsl</strong></p></li>
+<li><p>type: bool</p></li>
+<li><p>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</p></li>
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used.
 When this option is set to <code class="docutils literal notranslate"><span class="pre">true</span></code> then TLS is used to connect to
 the S3 API endpoint. When it is set to <code class="docutils literal notranslate"><span class="pre">false</span></code> HTTP is used.</p>
 <ul class="simple">
-<li>name: <strong>endpointUrl</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>endpointUrl</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used.
 This option sets the S3 API endpoint to use in URL format. If it is
@@ -872,25 +875,25 @@ by the underlying <code class="docutils literal notranslate"><span class="pre">b
 <code class="docutils literal notranslate"><span class="pre">https://storage.googleapis.com/</span></code> when connecting to a Google Storage
 bucket.</p>
 <ul class="simple">
-<li>name: <strong>addressingStyle</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>addressingStyle</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used.
 Valid values are <code class="docutils literal notranslate"><span class="pre">path</span></code> and <code class="docutils literal notranslate"><span class="pre">host</span></code>. This needs to be set to <code class="docutils literal notranslate"><span class="pre">path</span></code>
 when connecting to a Google Storage bucket.</p>
 <ul class="simple">
-<li>name: <strong>signatureVersion</strong></li>
-<li>type: string</li>
-<li>default: none</li>
+<li><p>name: <strong>signatureVersion</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
 </ul>
 <p>If not set, the default of the underlying <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library is used. Valid
 values are <code class="docutils literal notranslate"><span class="pre">s3</span></code> for version 2 signatures and  <code class="docutils literal notranslate"><span class="pre">s3v4</span></code> for version 4
 signatures.</p>
 <ul class="simple">
-<li>name: <strong>disableEncodingType</strong></li>
-<li>type: bool</li>
-<li>default: False</li>
+<li><p>name: <strong>disableEncodingType</strong></p></li>
+<li><p>type: bool</p></li>
+<li><p>default: False</p></li>
 </ul>
 <p>Some S3 compatible endpoints generate errors when an encoding type is set
 during some operations. Enabling this setting prevents this by not sending
@@ -900,56 +903,56 @@ to a Google Storage bucket.</p>
 <div class="section" id="storage-module-b2">
 <h3>Storage Module b2<a class="headerlink" href="#storage-module-b2" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li>name: <strong>accountId</strong></li>
-<li>type: string</li>
-<li>one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</li>
+<li><p>name: <strong>accountId</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</p></li>
 </ul>
 <p>Set the account id. This option and the <strong>accountIdFile</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>accountIdFile</strong></li>
-<li>type: string</li>
-<li>one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</li>
+<li><p>name: <strong>accountIdFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>accountId</strong> or <strong>accountIdFile</strong> required</p></li>
 </ul>
 <p>Sets the account id from a file. This option and the <strong>accountId</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>applicationKey</strong></li>
-<li>type: string</li>
-<li>one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</li>
+<li><p>name: <strong>applicationKey</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</p></li>
 </ul>
 <p>Sets the application key. This option and the <strong>applicationKeyFile</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>applicationKeyFile</strong></li>
-<li>type: string</li>
-<li>one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</li>
+<li><p>name: <strong>applicationKeyFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>one of <strong>applicationKey</strong> or <strong>applicationKeyFile</strong> required</p></li>
 </ul>
 <p>Sets the application key from a file. This option and the <strong>applicationKey</strong>
 option are mutually exclusive.</p>
 <ul class="simple">
-<li>name: <strong>bucketName</strong></li>
-<li>type: string</li>
-<li>required</li>
+<li><p>name: <strong>bucketName</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>required</p></li>
 </ul>
 <p>Sets the bucket name.</p>
 <ul class="simple">
-<li>name: <strong>uploadAttempts</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">5</span></code></li>
+<li><p>name: <strong>uploadAttempts</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">5</span></code></p></li>
 </ul>
 <p>Sets the number of upload attempts made by the underlying <code class="docutils literal notranslate"><span class="pre">b2</span></code> library.</p>
 <ul class="simple">
-<li>name: <strong>writeObjectAttempts</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">3</span></code></li>
+<li><p>name: <strong>writeObjectAttempts</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">3</span></code></p></li>
 </ul>
 <p>Sometimes the b2 API shows transient errors during object writes. Benji will
 retry writes this number of times.</p>
 <ul class="simple">
-<li>name: <strong>readObjectAttempts</strong></li>
-<li>type: integer</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">3</span></code></li>
+<li><p>name: <strong>readObjectAttempts</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">3</span></code></p></li>
 </ul>
 <p>Sometimes the b2 API shows transient errors during object reads. Benji will
 retry reads this number of times.</p>
@@ -962,9 +965,9 @@ the top-level key <strong>nbd</strong>:</p>
 <p>The only configuration option currently present in the <strong>nbd</strong> dictionary
 is:</p>
 <ul class="simple">
-<li>name: <strong>directory</strong></li>
-<li>type: string</li>
-<li>default: <code class="docutils literal notranslate"><span class="pre">/tmp</span></code></li>
+<li><p>name: <strong>directory</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">/tmp</span></code></p></li>
 </ul>
 </div>
 <div class="section" id="multiple-instance-installations">
@@ -992,7 +995,7 @@ have a dedicated instance for restores for example.</p>
         <a href="backup.html" class="btn btn-neutral float-right" title="Backup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="quickstart.html" class="btn btn-neutral" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1018,27 +1021,16 @@ have a dedicated instance for restores for example.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

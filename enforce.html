@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Retention Policy Enforcement &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Retention Policy Enforcement &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Cleanup" href="cleanup.html" />
     <link rel="prev" title="Restore" href="restore.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -301,45 +304,57 @@ is applied to.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>). All removed versions are listed
 and could be aggregated into a report for example.</p>
 <div class="admonition attention">
-<p class="first admonition-title">Attention</p>
-<p class="last">Enforcement will remove any <em>version</em> which doesn’t match the policy. To exclude versions from
+<p class="admonition-title">Attention</p>
+<p>Enforcement will remove any <em>version</em> which doesn’t match the policy. To exclude versions from
 enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
 </div>
 <div class="section" id="policy-specification">
 <h2>Policy Specification<a class="headerlink" href="#policy-specification" title="Permalink to this headline">¶</a></h2>
 <p>The enforcement policy is specified as a comma separated list of time categories:</p>
 <ul class="simple">
-<li>latest (always refers to the youngest versions, regardless of how old they are)</li>
-<li>hours</li>
-<li>days</li>
-<li>weeks</li>
-<li>months</li>
-<li>years.</li>
+<li><p>latest (always refers to the youngest versions, regardless of how old they are)</p></li>
+<li><p>hours</p></li>
+<li><p>days</p></li>
+<li><p>weeks</p></li>
+<li><p>months</p></li>
+<li><p>years.</p></li>
 </ul>
-<p>Each time interval is directly followed by a positive number, no whitespace is
-allowed.</p>
+<p>Each time interval is directly followed by a positive number, no whitespace is allowed. The categorization (except for
+latest) follows natural time boundaries, i.e. the groups of <em>versions</em> formed by the hours category each start at
+the full hour. The same goes for months where each group starts at the first of each month at 00:00 and for years
+where each group starts at January 1st, 00:00. Each group of the weeks category starts on Monday at 00h00.</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>Times are based on the timezone which is set when <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> is called. Ensure that each
+invocation of <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> uses the same timezone. Otherwise some additional <em>versions</em> might get deleted
+because of the time shift.</p>
+</div>
 <p>Examples:</p>
 <ul class="simple">
-<li>latest3,hours48,days7,weeks4,months12,years3<ul>
-<li>Keep the youngest three versions regardless of their age</li>
-<li>Then keep one version per hour for the last 48 hours</li>
-<li>Then keep one version per week for the last four weeks</li>
-<li>Then keep one version per month for the last twelve months</li>
-<li>Then keep one version per year for the last three years</li>
+<li><p>latest3,hours48,days7,weeks4,months12,years3</p>
+<ul>
+<li><p>Keep the youngest three versions regardless of their age</p></li>
+<li><p>Then keep one version per hour for the last 48 hours</p></li>
+<li><p>Then keep one version per week for the last four weeks</p></li>
+<li><p>Then keep one version per month for the last twelve months</p></li>
+<li><p>Then keep one version per year for the last three years</p></li>
 </ul>
 </li>
-<li>years3,months12,latest2<ul>
-<li>Keep the youngest two versions</li>
-<li>Then keep one version per month for the last twelve months</li>
-<li>Then keep one version per year for the last three years</li>
+<li><p>years3,months12,latest2</p>
+<ul>
+<li><p>Keep the youngest two versions</p></li>
+<li><p>Then keep one version per month for the last twelve months</p></li>
+<li><p>Then keep one version per year for the last three years</p></li>
 </ul>
 </li>
-<li>hours72<ul>
-<li>Keep one version per hour for the last 72 hours</li>
+<li><p>hours72</p>
+<ul>
+<li><p>Keep one version per hour for the last 72 hours</p></li>
 </ul>
 </li>
-<li>latest10<ul>
-<li>Keep the youngest ten versions</li>
+<li><p>latest10</p>
+<ul>
+<li><p>Keep the youngest ten versions</p></li>
 </ul>
 </li>
 </ul>
@@ -364,7 +379,7 @@ old enough even though it falls out of the first specified category.</p>
         <a href="cleanup.html" class="btn btn-neutral float-right" title="Cleanup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="restore.html" class="btn btn-neutral" title="Restore" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="restore.html" class="btn btn-neutral float-left" title="Restore" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -390,27 +405,16 @@ old enough even though it falls out of the first specified category.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

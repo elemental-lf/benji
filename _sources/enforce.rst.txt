@@ -34,8 +34,14 @@ The enforcement policy is specified as a comma separated list of time categories
 - months
 - years.
 
-Each time interval is directly followed by a positive number, no whitespace is
-allowed.
+Each time interval is directly followed by a positive number, no whitespace is allowed. The categorization (except for
+latest) follows natural time boundaries, i.e. the groups of *versions* formed by the hours category each start at
+the full hour. The same goes for months where each group starts at the first of each month at 00:00 and for years
+where each group starts at January 1st, 00:00. Each group of the weeks category starts on Monday at 00h00.
+
+.. ATTENTION:: Times are based on the timezone which is set when ``benji enforce`` is called. Ensure that each
+    invocation of ``benji enforce`` uses the same timezone. Otherwise some additional *versions* might get deleted
+    because of the time shift.
 
 Examples:
 

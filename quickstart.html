@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Quick Start &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Configuration" href="configuration.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -276,33 +279,33 @@
 <p>This guide will show you how to do a <em>backup</em> - <em>scrub</em> - <em>restore</em> - <em>cleanup</em> cycle.</p>
 <div class="section" id="some-vocabulary">
 <h2>Some Vocabulary<a class="headerlink" href="#some-vocabulary" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>Backup source</dt>
-<dd>A block device or image file to be backed up. Benji can’t backup folders or multiple files. The source should not
-be modified during backup, so it is best to either stop all writes or to create a snapshot.</dd>
-<dt>Storages</dt>
-<dd>One or more data storages (currently supported: filesystem, S3 and B2) to which the
-backed up data will be saved.</dd>
-<dt>Database backend</dt>
-<dd>An SQL database containing information on how to reassemble the stored blocks
+<dl class="simple">
+<dt>Backup source</dt><dd><p>A block device or image file to be backed up. Benji can’t backup folders or multiple files. The source should not
+be modified during backup, so it is best to either stop all writes or to create a snapshot.</p>
+</dd>
+<dt>Storages</dt><dd><p>One or more data storages (currently supported: filesystem, S3 and B2) to which the
+backed up data will be saved.</p>
+</dd>
+<dt>Database backend</dt><dd><p>An SQL database containing information on how to reassemble the stored blocks
 to get the original data back.
-For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#database-less-restore"><span class="std std-ref">Restoring without a database</span></a>.</dd>
+For restores the database backend is not compulsory. See <a class="reference internal" href="restore.html#database-less-restore"><span class="std std-ref">Restoring without a database</span></a>.</p>
+</dd>
 </dl>
 <div class="admonition caution">
-<p class="first admonition-title">Caution</p>
-<p class="last">Benji has been tested successfully with PostgreSQL and SQLite3. While support for MySQL and MariaDB
+<p class="admonition-title">Caution</p>
+<p>Benji has been tested successfully with PostgreSQL and SQLite3. While support for MySQL and MariaDB
 has been kept in mind during development, it is untested- Reports are welcome.</p>
 </div>
-<dl class="docutils">
-<dt>Version</dt>
-<dd>A <em>version</em> is a backup of a specific backup source at a specific point in time.
-A <em>version</em> is identified by a unique id.</dd>
+<dl class="simple">
+<dt>Version</dt><dd><p>A <em>version</em> is a backup of a specific backup source at a specific point in time.
+A <em>version</em> is identified by a unique id.</p>
+</dd>
 </dl>
 </div>
 <div class="section" id="backup">
 <span id="id1"></span><h2>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple" start="0">
-<li>Minimal configuration:</li>
+<li><p>Minimal configuration:</p></li>
 </ol>
 <p>This represents a minimal configuration with SQLite3 database backend and file-based block storage:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>configurationVersion: <span class="s1">&#39;1&#39;</span>
@@ -324,18 +327,18 @@ without problems, but it will probably need root privileges to access most
 backup sources.</p>
 <p>Please see <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for a full list of configuration options.</p>
 <ol class="arabic">
-<li><p class="first">Initialize the database:</p>
+<li><p>Initialize the database:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji database-init
     INFO: $ benji database-init
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Initializing the database multiple times does <strong>not</strong> destroy any
+<p class="admonition-title">Note</p>
+<p>Initializing the database multiple times does <strong>not</strong> destroy any
 data. Instead it will fail because it finds already existing tables.</p>
 </div>
 </li>
-<li><p class="first">Create some demo data:</p>
+<li><p>Create some demo data:</p>
 <p>For demonstration purpose create a 40MB test file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ dd <span class="k">if</span><span class="o">=</span>/dev/urandom <span class="nv">of</span><span class="o">=</span>TESTFILE <span class="nv">bs</span><span class="o">=</span>1M <span class="nv">count</span><span class="o">=</span><span class="m">40</span>
 <span class="m">40</span>+0 records in
@@ -344,7 +347,7 @@ data. Instead it will fail because it finds already existing tables.</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Backup the image (works similar with a device):</p>
+<li><p>Backup the image (works similar with a device):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji backup file://TESTFILE myfirsttestbackup
     INFO: $ benji backup file://TESTFILE myfirsttestbackup
     INFO: Backed up <span class="m">1</span>/10 blocks <span class="o">(</span><span class="m">10</span>.0%<span class="o">)</span>
@@ -362,7 +365,7 @@ data. Instead it will fail because it finds already existing tables.</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first">List backups:</p>
+<li><p>List backups:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
     INFO: $ benji ls
 +---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
@@ -509,8 +512,8 @@ try again, it will fail:</p>
 </div>
 <p>If you want to overwrite data, you must <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">For more (and possibly faster) restore methods, please refer to the
+<p class="admonition-title">Note</p>
+<p>For more (and possibly faster) restore methods, please refer to the
 section <a class="reference internal" href="restore.html#restore"><span class="std std-ref">Restore</span></a>.</p>
 </div>
 </div>
@@ -534,7 +537,7 @@ section <a class="reference internal" href="restore.html#restore"><span class="s
 </pre></div>
 </div>
 <p>Benji stores each distinct block (identified by its checksum and size) only once. If it encounters another block on
-the backup source with the same checksum <a class="footnote-reference" href="#id3" id="id2">[1]</a>, it will only write metadata which refers to the same backup target block.
+the backup source with the same checksum <a class="footnote-reference brackets" href="#id3" id="id2">1</a>, it will only write metadata which refers to the same backup target block.
 So if a <em>version</em> is deleted, Benji needs to check if there aren’t any other references to the blocks referenced
 by this <em>version</em>. This may be resource intensive but also introduces race conditions due to other backup sessions
 running in parallel. This is why there is a separate command to cleanup unreferenced blocks:</p>
@@ -552,18 +555,17 @@ deleted:</p>
     INFO: Cleanup: Cleanup finished. <span class="m">0</span> <span class="nb">false</span> positives, <span class="m">10</span> data deletions.
 </pre></div>
 </div>
-<table class="docutils footnote" frame="void" id="id3" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>Benji uses blake2b with a 32 byte digest size but this can be configured
+<dl class="footnote brackets">
+<dt class="label" id="id3"><span class="brackets"><a class="fn-backref" href="#id2">1</a></span></dt>
+<dd><p>Benji uses blake2b with a 32 byte digest size but this can be configured
 in <code class="docutils literal notranslate"><span class="pre">benji.yaml</span></code>. blake2b is the recommended hash function as it is very
 fast on modern computers. However it’s possible to use any other algorithm
 which is included in <a class="reference external" href="https://pycryptodome.readthedocs.io/en/latest/src/hash/hash.html#modern-hash-algorithms">PyCryptodome</a>.
 The maximum supported digest length is 64. Smaller digest lengths have a
 higher chance of hash collisions which must be avoided. Digest lengths below
-32 bytes are not recommended.</td></tr>
-</tbody>
-</table>
+32 bytes are not recommended.</p>
+</dd>
+</dl>
 </div>
 </div>
 
@@ -578,7 +580,7 @@ higher chance of hash collisions which must be avoided. Digest lengths below
         <a href="configuration.html" class="btn btn-neutral float-right" title="Configuration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -604,27 +606,16 @@ higher chance of hash collisions which must be avoided. Digest lengths below
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

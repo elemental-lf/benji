@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Filter Expressions &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Filter Expressions &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Data Layout" href="datalayout.html" />
     <link rel="prev" title="Containerized Benji" href="container.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -275,50 +278,50 @@
 <span id="id1"></span><h1>Filter Expressions<a class="headerlink" href="#filter-expressions" title="Permalink to this headline">¶</a></h1>
 <p>A number of CLI command accept a filter expression to select the <em>versions</em> to display or act on:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-scrub</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code>: The expression selects the <em>versions</em> to scrub. When no filter is
-specified all <em>versions</em> are scrubbed.</li>
-<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code>: The expression selects the <em>versions</em> to which the retention policy is applied.</li>
-<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>: The filter expression selects which <em>versions</em> to list. When no filter is specified all <em>versions</em> are
-listed.</li>
-<li><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-backup</span></code>: The expression selects the <em>versions</em> to export or to backup
-respectively.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-scrub</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code>: The expression selects the <em>versions</em> to scrub. When no filter is
+specified all <em>versions</em> are scrubbed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code>: The expression selects the <em>versions</em> to which the retention policy is applied.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>: The filter expression selects which <em>versions</em> to list. When no filter is specified all <em>versions</em> are
+listed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>, <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-backup</span></code>: The expression selects the <em>versions</em> to export or to backup
+respectively.</p></li>
 </ul>
 <p>The filter expression syntax is a subset of Python’s expression syntax. The following tokens are recognized:</p>
 <ul class="simple">
-<li>Identifiers: These reference version metadata columns and are named <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">uid</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot_name</span></code>,
+<li><p>Identifiers: These reference version metadata columns and are named <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">uid</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">snapshot_name</span></code>,
 <code class="docutils literal notranslate"><span class="pre">size</span></code>, <code class="docutils literal notranslate"><span class="pre">block_size</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">protected</span></code> and <code class="docutils literal notranslate"><span class="pre">storage</span></code>, <code class="docutils literal notranslate"><span class="pre">read</span></code>, <code class="docutils literal notranslate"><span class="pre">written</span></code>, <code class="docutils literal notranslate"><span class="pre">dedup</span></code>, <code class="docutils literal notranslate"><span class="pre">sparse</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">duration</span></code>.</li>
-<li>The <code class="docutils literal notranslate"><span class="pre">uid</span></code> identifier can either be compared to a string like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> (leading zeros after the <code class="docutils literal notranslate"><span class="pre">V</span></code> are
-not necessary) or directly to an integer like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code>.</li>
-<li>The <code class="docutils literal notranslate"><span class="pre">status</span></code> identifier should be compared to a string representing the status like <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code>.</li>
-<li>The <code class="docutils literal notranslate"><span class="pre">date</span></code> identifier should be compared to a string representing an absolute or relative time reference. To parse
+<code class="docutils literal notranslate"><span class="pre">duration</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">uid</span></code> identifier can either be compared to a string like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> (leading zeros after the <code class="docutils literal notranslate"><span class="pre">V</span></code> are
+not necessary) or directly to an integer like <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">status</span></code> identifier should be compared to a string representing the status like <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">date</span></code> identifier should be compared to a string representing an absolute or relative time reference. To parse
 this reference <a class="reference external" href="https://pypi.org/project/dateparser/">dateparser</a> with a locale of <code class="docutils literal notranslate"><span class="pre">en</span></code> (english) is used. The
-date and time format output by Benji is also accepted.</li>
-<li>In addition labels can be referenced via a special dictionary named <code class="docutils literal notranslate"><span class="pre">labels</span></code>. The syntax is <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code>.
+date and time format output by Benji is also accepted.</p></li>
+<li><p>In addition labels can be referenced via a special dictionary named <code class="docutils literal notranslate"><span class="pre">labels</span></code>. The syntax is <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code>.
 The string literal between the square brackets can be enclosed in either single or double quotes. Labels only
 supported comparisons with <code class="docutils literal notranslate"><span class="pre">==</span></code> and <code class="docutils literal notranslate"><span class="pre">!=</span></code>. It is possible to test for label existence by using
-<code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code> as a stand-alone expression.</li>
-<li>Strings literals either enclosed in single or double quotes</li>
-<li>Integers</li>
-<li>Comparison operators: The normal set of operators is supported: <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>.
-Benji (actually Python and SQLAlchemy) will try to adapt types when possible.</li>
-<li>Logical operators: <code class="docutils literal notranslate"><span class="pre">not</span></code>, <code class="docutils literal notranslate"><span class="pre">and</span></code>, and <code class="docutils literal notranslate"><span class="pre">or</span></code> (in order of precendence). <code class="docutils literal notranslate"><span class="pre">not</span></code> can be applied to other expressions
+<code class="docutils literal notranslate"><span class="pre">labels[&quot;label-name&quot;]</span></code> as a stand-alone expression.</p></li>
+<li><p>Strings literals either enclosed in single or double quotes</p></li>
+<li><p>Integers</p></li>
+<li><p>Comparison operators: The normal set of operators is supported: <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code> and <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>.
+Benji (actually Python and SQLAlchemy) will try to adapt types when possible.</p></li>
+<li><p>Logical operators: <code class="docutils literal notranslate"><span class="pre">not</span></code>, <code class="docutils literal notranslate"><span class="pre">and</span></code>, and <code class="docutils literal notranslate"><span class="pre">or</span></code> (in order of precendence). <code class="docutils literal notranslate"><span class="pre">not</span></code> can be applied to other expressions
 and directly to identifiers (<code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">protected</span></code> for example, but also <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">labels[&quot;label-name&quot;]</span></code> to test for label
-absence).</li>
-<li>Boolean constants: <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code></li>
-<li>Brackets are supported to control precedence.</li>
+absence).</p></li>
+<li><p>Boolean constants: <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
+<li><p>Brackets are supported to control precedence.</p></li>
 </ul>
 <p>Examples:</p>
 <ul class="simple">
-<li>Version named <code class="docutils literal notranslate"><span class="pre">V0000000001</span></code>: <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V0000000001&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code></li>
-<li>All <code class="docutils literal notranslate"><span class="pre">invalid</span></code> <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;invalid&quot;</span></code></li>
-<li>All <em>versions</em> older than one week: <code class="docutils literal notranslate"><span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">week</span> <span class="pre">ago&quot;</span></code></li>
-<li>All <em>versions</em> which have a label named <code class="docutils literal notranslate"><span class="pre">label-1</span></code> and are <code class="docutils literal notranslate"><span class="pre">valid</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">and</span> <span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code></li>
-<li>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code>: <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;</span></code></li>
-<li>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code> that are older than one month:
-<code class="docutils literal notranslate"><span class="pre">(name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;)</span> <span class="pre">and</span> <span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">month</span> <span class="pre">ago&quot;</span></code></li>
-<li>All <em>versions</em> that have a label of <code class="docutils literal notranslate"><span class="pre">label-1</span></code> with value <code class="docutils literal notranslate"><span class="pre">example-1</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;example-1&quot;</span></code></li>
-<li>All protected <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">protected</span> <span class="pre">==</span> <span class="pre">True</span></code></li>
+<li><p>Version named <code class="docutils literal notranslate"><span class="pre">V0000000001</span></code>: <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V0000000001&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">&quot;V1&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">uid</span> <span class="pre">==</span> <span class="pre">1</span></code></p></li>
+<li><p>All <code class="docutils literal notranslate"><span class="pre">invalid</span></code> <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;invalid&quot;</span></code></p></li>
+<li><p>All <em>versions</em> older than one week: <code class="docutils literal notranslate"><span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">week</span> <span class="pre">ago&quot;</span></code></p></li>
+<li><p>All <em>versions</em> which have a label named <code class="docutils literal notranslate"><span class="pre">label-1</span></code> and are <code class="docutils literal notranslate"><span class="pre">valid</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">and</span> <span class="pre">status</span> <span class="pre">==</span> <span class="pre">&quot;valid&quot;</span></code></p></li>
+<li><p>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code>: <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;</span></code></p></li>
+<li><p>All <em>versions</em> with a name of <code class="docutils literal notranslate"><span class="pre">database-1</span></code> or a name of <code class="docutils literal notranslate"><span class="pre">redis-1</span></code> that are older than one month:
+<code class="docutils literal notranslate"><span class="pre">(name</span> <span class="pre">==</span> <span class="pre">&quot;database-1&quot;</span> <span class="pre">or</span> <span class="pre">name</span> <span class="pre">==</span> <span class="pre">&quot;redis-1&quot;)</span> <span class="pre">and</span> <span class="pre">date</span> <span class="pre">&lt;</span> <span class="pre">&quot;1</span> <span class="pre">month</span> <span class="pre">ago&quot;</span></code></p></li>
+<li><p>All <em>versions</em> that have a label of <code class="docutils literal notranslate"><span class="pre">label-1</span></code> with value <code class="docutils literal notranslate"><span class="pre">example-1</span></code>: <code class="docutils literal notranslate"><span class="pre">labels[&quot;label-1&quot;]</span> <span class="pre">==</span> <span class="pre">&quot;example-1&quot;</span></code></p></li>
+<li><p>All protected <em>versions</em>: <code class="docutils literal notranslate"><span class="pre">protected</span> <span class="pre">==</span> <span class="pre">True</span></code></p></li>
 </ul>
 </div>
 
@@ -333,7 +336,7 @@ absence).</li>
         <a href="datalayout.html" class="btn btn-neutral float-right" title="Data Layout" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="container.html" class="btn btn-neutral" title="Containerized Benji" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="container.html" class="btn btn-neutral float-left" title="Containerized Benji" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -359,27 +362,16 @@ absence).</li>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Retention Policy Enforcement" href="enforce.html" />
     <link rel="prev" title="Scrub" href="scrub.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -290,8 +293,8 @@ optional arguments:
 </div>
 <p>There are two possible restore options with Benji.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">If you determined the <em>version</em> you want to restore it is a good idea to protect this <em>version</em> to prevent
+<p class="admonition-title">Note</p>
+<p>If you determined the <em>version</em> you want to restore it is a good idea to protect this <em>version</em> to prevent
 any accidental or automatic removal by any retention policy enforcement that you might have configured.</p>
 </div>
 <div class="section" id="full-restore">
@@ -301,22 +304,22 @@ volume.</p>
 <p>The target is specified by the URI scheme. Examples:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore --sparse <span class="nv">$VERSION_UID</span> file:///var/lib/vms/myvm.qcow2
 $ benji restore --sparse --force <span class="nv">$VERSION_UID</span> file:///dev/sda1
-$ benji restore --sparse <span class="nv">$VERSION_UID</span> rbd://pool/myvm_restore
+$ benji restore --sparse <span class="nv">$VERSION_UID</span> rbd:pool/myvm_restore
 </pre></div>
 </div>
 <p>If the target already exists, i.e.</p>
 <ul class="simple">
-<li>it is a device file</li>
-<li>an existing Ceph RBD volume</li>
-<li>or an existing image file</li>
+<li><p>it is a device file</p></li>
+<li><p>an existing Ceph RBD volume</p></li>
+<li><p>or an existing image file</p></li>
 </ul>
 <p>you need to <code class="docutils literal notranslate"><span class="pre">--force</span></code> the restore. Benji will create an Ceph RBD volume or file if it does not exist, yet.</p>
 <p>In most cases <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> should be used to skip the restore of sparse (empty) blocks. This increases restore
 performance and in the case of Ceph RBD or thinly provisioned LVM volumes also decreases space usage. When <code class="docutils literal notranslate"><span class="pre">--sparse</span></code>
 is not specified sparse blocks are written as blocks full of zeros.</p>
 <div class="admonition caution">
-<p class="first admonition-title">Caution</p>
-<p class="last">If you use <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> to restore to an existing device or file, sparse blocks will not be written,
+<p class="admonition-title">Caution</p>
+<p>If you use <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> to restore to an existing device or file, sparse blocks will not be written,
 so whatever random data was in the location of the sparse block before the restore will remain. This is not
 the case with Ceph RBD as <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> will discard all currently used blocks before beginning the restore.</p>
 </div>
@@ -348,22 +351,22 @@ optional arguments:
 <p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. These <em>versions</em> can then be
 mounted on any Linux host. The requirements on the Linux host are:</p>
 <ul class="simple">
-<li>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</li>
-<li>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</li>
+<li><p>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</p></li>
+<li><p>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</p></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to am NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>)
 on the Linux host. If the image contains a filesystem it can be mounted normally. You can then search for the relevant
 files and restore them.</p>
 <p>There are some known issues with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code>:</p>
 <ul class="simple">
-<li>Some problems have been reported with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> 3.18. Please see <a class="reference external" href="https://github.com/elemental-lf/benji/issues/12">https://github.com/elemental-lf/benji/issues/12</a>.</li>
-<li>Some versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> use a timeout value of zero which also leads to problems. Please explicit specify
-a timeout with <code class="docutils literal notranslate"><span class="pre">-t</span></code> in these cases.</li>
-<li>If the image has a partition table the Linux kernel will have problems parsing the partition table
+<li><p>Some problems have been reported with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> 3.18. Please see <a class="reference external" href="https://github.com/elemental-lf/benji/issues/12">https://github.com/elemental-lf/benji/issues/12</a>.</p></li>
+<li><p>Some versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> use a timeout value of zero which also leads to problems. Please explicit specify
+a timeout with <code class="docutils literal notranslate"><span class="pre">-t</span></code> in these cases.</p></li>
+<li><p>If the image has a partition table the Linux kernel will have problems parsing the partition table
 when the device block size used by <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> is different from the one used during creation of the partition
 table. Please use the <code class="docutils literal notranslate"><span class="pre">-b</span></code> option of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> to specify the original device block size which normally
 will be 512. Newer versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> already changed the default block size from 1024 to 512 because of
-this. See <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64">https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64</a>.</li>
+this. See <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64">https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64</a>.</p></li>
 </ul>
 <div class="section" id="read-only-mount">
 <h3>Read-Only Mount<a class="headerlink" href="#read-only-mount" title="Permalink to this headline">¶</a></h3>
@@ -431,8 +434,8 @@ INFO: Finished.
 </pre></div>
 </div>
 <div class="admonition caution">
-<p class="first admonition-title">Caution</p>
-<p class="last">If you end the NBD server before the last “INFO: Finished.” is reported, your copy-on-write clone will not
+<p class="admonition-title">Caution</p>
+<p>If you end the NBD server before the last “INFO: Finished.” is reported, your copy-on-write clone will not
 be written completely and thus be incomplete. However, the original backup <em>version</em>
 <strong>will be untouched in any case</strong>.</p>
 </div>
@@ -453,8 +456,8 @@ by the <em>version</em> UID followed by a timestamp.</p>
 policy enforcement configured. This ensures the new <em>version</em> won’t be destroyed accidentally. To be able to remove
 the <em>version</em> the protection needs to be lifted with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">unprotect</span></code>.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The new created COW <em>version</em> can be restored just like any other <em>version</em>. Both the original and the
+<p class="admonition-title">Note</p>
+<p>The new created COW <em>version</em> can be restored just like any other <em>version</em>. Both the original and the
 COW <em>version</em> are independent from each other and each can be removed without affecting the other.</p>
 </div>
 </div>
@@ -472,8 +475,8 @@ and all <em>versions</em> also referencing this block will be marked as invalid 
 </div>
 <p>Even when encountering such an error, Benji will continue the restore.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The philosophy behind this is that restores should always succeed, even if there
+<p class="admonition-title">Note</p>
+<p>The philosophy behind this is that restores should always succeed, even if there
 is data corruption. Often invalid data is in irrelevant places or can be fixed later.
 You get as much of your data back as possible!</p>
 </div>
@@ -491,7 +494,7 @@ You get as much of your data back as possible!</p>
         <a href="enforce.html" class="btn btn-neutral float-right" title="Retention Policy Enforcement" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="scrub.html" class="btn btn-neutral" title="Scrub" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="scrub.html" class="btn btn-neutral float-left" title="Scrub" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -517,27 +520,16 @@ You get as much of your data back as possible!</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

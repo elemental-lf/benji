@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>For Backy² Users &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>For Backy² Users &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Support" href="support.html" />
     <link rel="prev" title="Data Layout" href="datalayout.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -285,41 +288,41 @@ output, there’d be changes required as Benji uses JSON instead of CSV.</p>
 <p>Here’s a list of the new features that differentiate Benji
 from backy²:</p>
 <ul class="simple">
-<li>Encryption support (AES-256, GCM mode)</li>
-<li>Compression support (zstandard)</li>
-<li>Automatic metadata export to data backend for backup purposes</li>
-<li>Support for Backblaze’s B2 Cloud Storage as a storage backend</li>
-<li>Support for multiple storage backends</li>
-<li>Variable block size for efficient support of LVM and Ceph in
-one installation of Benji</li>
-<li>More compact metadata storage, the database backend now uses
-significantly less disk space</li>
-<li>Database based locking to make it possible to have multiple instances
-on different hosts or in different containers</li>
-<li>New scrubbing mode based on metadata, object existence and length</li>
-<li>Randomly sampled batch scrubbing of <em>versions</em></li>
-<li>Simple yet flexible retention policy enforcement</li>
-<li>Migration from boto to boto3 with better compatibility for other
-S3 implementations (Google Storage for example)</li>
-<li>Kubernetes integration with a Helm chart</li>
-<li>blake2b with 32 byte digest as default hash function</li>
-<li>Optional read caching of blocks</li>
-<li>Configuration file format changed to YAML</li>
-<li>Machine readable output is JSON instead of CSV</li>
-<li>More commands support machine readable output</li>
-<li>Import/export format is JSON instead of CSV</li>
-<li>Replacement of the original tags with labels (key-value pairs)</li>
-<li>Flexible filter specification for listings, scrubs and other operations</li>
+<li><p>Encryption support (AES-256, GCM mode)</p></li>
+<li><p>Compression support (zstandard)</p></li>
+<li><p>Automatic metadata export to data backend for backup purposes</p></li>
+<li><p>Support for Backblaze’s B2 Cloud Storage as a storage backend</p></li>
+<li><p>Support for multiple storage backends</p></li>
+<li><p>Variable block size for efficient support of LVM and Ceph in
+one installation of Benji</p></li>
+<li><p>More compact metadata storage, the database backend now uses
+significantly less disk space</p></li>
+<li><p>Database based locking to make it possible to have multiple instances
+on different hosts or in different containers</p></li>
+<li><p>New scrubbing mode based on metadata, object existence and length</p></li>
+<li><p>Randomly sampled batch scrubbing of <em>versions</em></p></li>
+<li><p>Simple yet flexible retention policy enforcement</p></li>
+<li><p>Migration from boto to boto3 with better compatibility for other
+S3 implementations (Google Storage for example)</p></li>
+<li><p>Kubernetes integration with a Helm chart</p></li>
+<li><p>blake2b with 32 byte digest as default hash function</p></li>
+<li><p>Optional read caching of blocks</p></li>
+<li><p>Configuration file format changed to YAML</p></li>
+<li><p>Machine readable output is JSON instead of CSV</p></li>
+<li><p>More commands support machine readable output</p></li>
+<li><p>Import/export format is JSON instead of CSV</p></li>
+<li><p>Replacement of the original tags with labels (key-value pairs)</p></li>
+<li><p>Flexible filter specification for listings, scrubs and other operations</p></li>
 </ul>
 <p>There also have been quite a few changes under the hood:</p>
 <ul class="simple">
-<li>Migration from classic threads and queues to concurrent.futures</li>
-<li>Use Ceph provided Python bindings</li>
-<li>Some refactoring and rewriting to share more code</li>
-<li>Update to database transaction handling</li>
-<li>Update to exit code handling, exit codes have changed</li>
-<li>SQLAlchemy based database backend is the only supported backend now</li>
-<li>Configuration file validation</li>
+<li><p>Migration from classic threads and queues to concurrent.futures</p></li>
+<li><p>Use Ceph provided Python bindings</p></li>
+<li><p>Some refactoring and rewriting to share more code</p></li>
+<li><p>Update to database transaction handling</p></li>
+<li><p>Update to exit code handling, exit codes have changed</p></li>
+<li><p>SQLAlchemy based database backend is the only supported backend now</p></li>
+<li><p>Configuration file validation</p></li>
 </ul>
 </div>
 
@@ -334,7 +337,7 @@ S3 implementations (Google Storage for example)</li>
         <a href="support.html" class="btn btn-neutral float-right" title="Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="datalayout.html" class="btn btn-neutral" title="Data Layout" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="datalayout.html" class="btn btn-neutral float-left" title="Data Layout" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -360,27 +363,16 @@ S3 implementations (Google Storage for example)</li>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

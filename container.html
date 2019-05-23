@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Containerized Benji &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Containerized Benji &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Filter Expressions" href="filter_expressions.html" />
     <link rel="prev" title="Administration" href="administration.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -315,8 +318,8 @@ listed values.</p>
 <p>The backup script <code class="docutils literal notranslate"><span class="pre">benji-backup-pvc</span></code> first searches for <code class="docutils literal notranslate"><span class="pre">PersistemtVolumeClaims</span></code> matching the selector supplied on
 the command line. Direct backups of <code class="docutils literal notranslate"><span class="pre">PersistentVolumes</span></code> are currently not supported by this script.</p>
 <div class="admonition tip">
-<p class="first admonition-title">Tip</p>
-<p class="last">See <a class="reference external" href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors</a>
+<p class="admonition-title">Tip</p>
+<p>See <a class="reference external" href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors</a>
 for possible ways to construct your selector.</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">enforce</span></code> should be called regularly to expire old backup versions. Also <code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">cleanup</span></code> needs
@@ -345,8 +348,8 @@ so that it can be detected automatically:</p>
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The deployed resources create a service account which has the right to <em>get</em>,
+<p class="admonition-title">Note</p>
+<p>The deployed resources create a service account which has the right to <em>get</em>,
 <em>list</em> and <em>watch</em> all PersistentVolume, PersistentVolumeClaim, Storageclasses and Pod resources in all
 namespaces. Additionally it is able to <em>create</em> Events.</p>
 </div>
@@ -365,7 +368,7 @@ namespaces. Additionally it is able to <em>create</em> Events.</p>
         <a href="filter_expressions.html" class="btn btn-neutral float-right" title="Filter Expressions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="administration.html" class="btn btn-neutral" title="Administration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="administration.html" class="btn btn-neutral float-left" title="Administration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -391,27 +394,16 @@ namespaces. Additionally it is able to <em>create</em> Events.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

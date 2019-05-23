@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Scrub &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Scrub &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Restore" href="restore.html" />
     <link rel="prev" title="Backup" href="backup.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -283,11 +286,11 @@ deduplication, an invalid block can potentially affect multiple versions and
 so image backups.</p>
 <p>Invalid blocks can occur for the following reasons (probably incomplete):</p>
 <ul class="simple">
-<li>Bit rot / data degradation (<a class="reference external" href="https://en.wikipedia.org/wiki/Data_degradation">https://en.wikipedia.org/wiki/Data_degradation</a>)</li>
-<li>Software failure when writing the block for the first time</li>
-<li>OS errors and bugs</li>
-<li>Human error: Deleting or modifying blocks by accident</li>
-<li>Software errors in Benji and other used tools</li>
+<li><p>Bit rot / data degradation (<a class="reference external" href="https://en.wikipedia.org/wiki/Data_degradation">https://en.wikipedia.org/wiki/Data_degradation</a>)</p></li>
+<li><p>Software failure when writing the block for the first time</p></li>
+<li><p>OS errors and bugs</p></li>
+<li><p>Human error: Deleting or modifying blocks by accident</p></li>
+<li><p>Software errors in Benji and other used tools</p></li>
 </ul>
 </div>
 <div class="section" id="scrubbing-methods">
@@ -296,8 +299,8 @@ so image backups.</p>
 accepts the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> (short form <code class="docutils literal notranslate"><span class="pre">-p</span></code>) option. With it you
 can limit the scrubbing to a randomly selected percentage of the blocks.</p>
 <div class="admonition attention">
-<p class="first admonition-title">Attention</p>
-<p class="last">When using the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> option with a value of
+<p class="admonition-title">Attention</p>
+<p>When using the <code class="docutils literal notranslate"><span class="pre">--block-percentage</span></code> option with a value of
 less than 100 percent with any of the deep scrubbing commands, an invalid
 <em>version</em> won’t be marked as valid again, when it has been marked as
 invalid in the past. Only a full successful deep-scrub will do that.</p>
@@ -467,8 +470,8 @@ is invalid data restored.</p>
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Multiple versions can be affected by a single block as Benji does
+<p class="admonition-title">Note</p>
+<p>Multiple versions can be affected by a single block as Benji does
 deduplication and one block can belong to multiple versions, even to
 different images.</p>
 </div>
@@ -486,7 +489,7 @@ different images.</p>
         <a href="restore.html" class="btn btn-neutral float-right" title="Restore" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="backup.html" class="btn btn-neutral" title="Backup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="backup.html" class="btn btn-neutral float-left" title="Backup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -512,27 +515,16 @@ different images.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

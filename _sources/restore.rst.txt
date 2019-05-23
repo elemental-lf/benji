@@ -22,7 +22,7 @@ The target is specified by the URI scheme. Examples::
 
     $ benji restore --sparse $VERSION_UID file:///var/lib/vms/myvm.qcow2
     $ benji restore --sparse --force $VERSION_UID file:///dev/sda1
-    $ benji restore --sparse $VERSION_UID rbd://pool/myvm_restore
+    $ benji restore --sparse $VERSION_UID rbd:pool/myvm_restore
 
 If the target already exists, i.e.
 

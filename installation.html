@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.6.0 documentation</title>
   
 
   
@@ -17,13 +17,21 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
@@ -31,21 +39,16 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Quick Start" href="quickstart.html" />
     <link rel="prev" title="Benji, backup me!" href="index.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -290,8 +293,8 @@ apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">For more information about this Personal Package Archive (PPA)
+<p class="admonition-title">Note</p>
+<p>For more information about this Personal Package Archive (PPA)
 please see <a class="reference external" href="https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa">https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa</a>.</p>
 </div>
 </div>
@@ -326,10 +329,10 @@ pip install git+https://github.com/elemental-lf/benji
 <p>If you want to use certain features of Benji you need to install additional
 dependencies:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 object storage support</li>
-<li><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud object storage support</li>
-<li><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</li>
-<li><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 object storage support</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud object storage support</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</p></li>
 </ul>
 <p>You can do this be specifying a comma delimited list of extra features in square brackets after the package URL:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.2.0[compression,s3,readcache,b2]&#39;</span>
@@ -337,8 +340,8 @@ dependencies:</p>
 </div>
 <p>To upgrade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">It is recommended to install and use the compression feature for
+<p class="admonition-title">Note</p>
+<p>It is recommended to install and use the compression feature for
 almost all use cases.</p>
 </div>
 </div>
@@ -355,7 +358,7 @@ almost all use cases.</p>
         <a href="quickstart.html" class="btn btn-neutral float-right" title="Quick Start" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Benji, backup me!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Benji, backup me!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -381,27 +384,16 @@ almost all use cases.</p>
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 
