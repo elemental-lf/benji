@@ -38,6 +38,20 @@ Fedora 27 and up
 
 The distribution includes a supported version of Python 3. Make sure to install the latest available update.
 
+openSUSE
+--------
+
+The distribution includes a supported version of Python 3.
+Benji is also available through the official repositories of openSUSE Tumbleweed.
+For older, versioned releases of openSUSE you need to add the devel project::
+
+    zypper ar obs://Archiving:Backup ab-benji
+    zypper ref
+
+Then you can install it via::
+
+    zypper in benji
+
 Common to All Distributions
 ---------------------------
 
