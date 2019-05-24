@@ -149,7 +149,7 @@ class IO(SimpleIOBase):
         assert len(data) == self.block_size
         t2 = time.time()
 
-        logger.debug('{} read block {} in {:.2f}s'.format(
+        logger.debug('{} read block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,
@@ -177,7 +177,7 @@ class IO(SimpleIOBase):
                                  data, self._iscsi_block_size, 0, 0, 0, 0, 0)
         t2 = time.time()
 
-        logger.debug('{} wrote block {} in {:.2f}s'.format(
+        logger.debug('{} wrote block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,

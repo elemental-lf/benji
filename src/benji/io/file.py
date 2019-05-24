@@ -56,7 +56,7 @@ class IO(ThreadedIOBase):
         if not data:
             raise EOFError('End of file reached on {} when there should be data.'.format(self.url))
 
-        logger.debug('{} read block {} in {:.2f}s'.format(
+        logger.debug('{} read block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,
@@ -73,7 +73,7 @@ class IO(ThreadedIOBase):
             os.posix_fadvise(f.fileno(), offset, len(data), os.POSIX_FADV_DONTNEED)
         t2 = time.time()
 
-        logger.debug('{} wrote block {} in {:.2f}s'.format(
+        logger.debug('{} wrote block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,
