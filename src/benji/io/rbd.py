@@ -7,7 +7,6 @@ from typing import Tuple, Optional
 
 import rados
 import rbd
-
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock
 from benji.exception import UsageError, ConfigurationError
@@ -132,7 +131,7 @@ class IO(ThreadedIOBase):
         if not data:
             raise EOFError('End of file reached on {} when there should be data.'.format(self.url))
 
-        logger.debug('{} read block {} in {:.2f}s'.format(
+        logger.debug('{} read block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,
@@ -148,7 +147,7 @@ class IO(ThreadedIOBase):
             written = image.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
         t2 = time.time()
 
-        logger.debug('{} wrote block {} in {:.2f}s'.format(
+        logger.debug('{} wrote block {} in {:.3f}s'.format(
             threading.current_thread().name,
             block.id,
             t2 - t1,
