@@ -3,16 +3,17 @@
 import os
 import threading
 import time
-from typing import Tuple
+from typing import Tuple, Optional, Union, Iterator
 
 from benji.config import ConfigDict, Config
-from benji.database import DereferencedBlock
+from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError
-from benji.io.base import ThreadedIOBase
+from benji.io.base import IOBase
+from benji.jobexecutor import JobExecutor
 from benji.logging import logger
 
 
-class IO(ThreadedIOBase):
+class IO(IOBase):
 
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict, url: str,
                  block_size: int) -> None:
@@ -23,8 +24,17 @@ class IO(ThreadedIOBase):
                 or self.parsed_url.params or self.parsed_url.fragment or self.parsed_url.query:
             raise UsageError('The supplied URL {} is invalid.'.format(self.url))
 
+        self._simultaneous_reads = config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
+        self._simultaneous_writes = config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
+        self._read_executor: Optional[JobExecutor] = None
+        self._write_executor: Optional[JobExecutor] = None
+
+    def open_r(self) -> None:
+        self._read_executor = JobExecutor(name='IO-Read', workers=self._simultaneous_reads, blocking_submit=False)
+
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
-        super().open_w(size, force, sparse)
+        self._write_executor = JobExecutor(name='IO-Write', workers=self._simultaneous_writes, blocking_submit=True)
+
         if os.path.exists(self.parsed_url.path):
             if not force:
                 raise FileExistsError('{} already exists. Force the restore if you want to overwrite it.'.format(
@@ -37,6 +47,12 @@ class IO(ThreadedIOBase):
             with open(self.parsed_url.path, 'wb') as f:
                 f.seek(size - 1)
                 f.write(b'\0')
+
+    def close(self) -> None:
+        if self._read_executor:
+            self._read_executor.shutdown()
+        if self._write_executor:
+            self._write_executor.shutdown()
 
     def size(self) -> int:
         with open(self.parsed_url.path, 'rb') as f:
@@ -60,9 +76,27 @@ class IO(ThreadedIOBase):
             threading.current_thread().name,
             block.id,
             t2 - t1,
-        ))
+            ))
 
         return block, data
+
+    def read(self, block: Union[DereferencedBlock, Block]) -> None:
+        block_deref = block.deref() if isinstance(block, Block) else block
+
+        def job():
+            return self._read(block_deref)
+
+        assert self._read_executor is not None
+        self._read_executor.submit(job)
+
+    def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        return self._read(block_deref)[1]
+
+    def read_get_completed(
+            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+        assert self._read_executor is not None
+        return self._read_executor.get_completed(timeout=timeout)
 
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
         offset = block.id * self.block_size
@@ -77,7 +111,22 @@ class IO(ThreadedIOBase):
             threading.current_thread().name,
             block.id,
             t2 - t1,
-        ))
+            ))
 
         assert written == len(data)
         return block
+
+    def write(self, block: DereferencedBlock, data: bytes) -> None:
+
+        def job():
+            return self._write(block, data)
+
+        assert self._write_executor is not None
+        self._write_executor.submit(job)
+
+    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
+        self._write(block, data)
+
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
+        assert self._write_executor is not None
+        return self._write_executor.get_completed(timeout=timeout)

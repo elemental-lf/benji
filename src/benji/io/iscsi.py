@@ -2,17 +2,17 @@
 # -*- encoding: utf-8 -*-
 import threading
 import time
-from typing import Tuple, Optional, Callable, Any
+from typing import Tuple, Optional, Callable, Any, List, Union, Iterator
 
 import libiscsi.libiscsi as libiscsi
 from benji.config import ConfigDict, Config
-from benji.database import DereferencedBlock
+from benji.database import DereferencedBlock, Block
 from benji.exception import ConfigurationError, UsageError
-from benji.io.base import SimpleIOBase
+from benji.io.base import IOBase
 from benji.logging import logger
 
 
-class IO(SimpleIOBase):
+class IO(IOBase):
 
     _pool_name: Optional[str]
     _image_name: Optional[str]
@@ -25,6 +25,9 @@ class IO(SimpleIOBase):
 
         if self.parsed_url.params or self.parsed_url.fragment:
             raise UsageError('The supplied URL {} is invalid.'.format(self.url))
+
+        self._read_queue: List[DereferencedBlock] = []
+        self._outstanding_write: Optional[Tuple[DereferencedBlock, bytes]] = None
 
         self._username = config.get_from_dict(module_configuration, 'username', None, types=str)
         self._password = config.get_from_dict(module_configuration, 'password', None, types=str)
@@ -121,6 +124,17 @@ class IO(SimpleIOBase):
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         self._open()
 
+    def close(self) -> None:
+        if len(self._read_queue) > 0:
+            logger.warning('Closing IO module with {} read outstanding jobs.'.format(self._name, len(self._read_queue)))
+            self._read_queue = []
+
+        if self._outstanding_write is not None:
+            logger.warning('Closing IO module with one outstanding write.'.format(self._name))
+            self._outstanding_write = None
+
+        self._iscsi_context = None
+
     def size(self) -> int:
         self._open()
         return self._iscsi_block_size * self._iscsi_num_blocks
@@ -156,6 +170,19 @@ class IO(SimpleIOBase):
 
         return block, data
 
+    def read(self, block: Union[DereferencedBlock, Block]) -> None:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        self._read_queue.append(block_deref)
+
+    def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        return self._read(block_deref)[1]
+
+    def read_get_completed(
+            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+        while len(self._read_queue) > 0:
+            yield self._read(self._read_queue.pop())
+
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
         assert block.size == self.block_size
         lba = (block.id * self.block_size) // self._iscsi_block_size
@@ -184,6 +211,15 @@ class IO(SimpleIOBase):
 
         return block
 
-    def close(self) -> None:
-        super().close()
-        self._iscsi_context = None
+    def write(self, block: DereferencedBlock, data: bytes) -> None:
+        assert self._outstanding_write is None
+        self._outstanding_write = (block, data)
+
+    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
+        self._write(block, data)
+
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
+        if self._outstanding_write is not None:
+            yield self._write(*self._outstanding_write)
+            self._outstanding_write = None
+

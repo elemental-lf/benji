@@ -3,18 +3,19 @@
 import re
 import threading
 import time
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, Iterator
 
 import rados
 import rbd
 from benji.config import ConfigDict, Config
-from benji.database import DereferencedBlock
+from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError
-from benji.io.base import ThreadedIOBase
+from benji.io.base import IOBase
+from benji.jobexecutor import JobExecutor
 from benji.logging import logger
 
 
-class IO(ThreadedIOBase):
+class IO(IOBase):
 
     _pool_name: Optional[str]
     _image_name: Optional[str]
@@ -48,8 +49,13 @@ class IO(ThreadedIOBase):
         self._image_name = None
         self._snapshot_name = None
 
+        self._simultaneous_reads = config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
+        self._simultaneous_writes = config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
+        self._read_executor: Optional[JobExecutor] = None
+        self._write_executor: Optional[JobExecutor] = None
+
     def open_r(self) -> None:
-        super().open_r()
+        self._read_executor = JobExecutor(name='IO-Read', workers=self._simultaneous_reads, blocking_submit=False)
 
         re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
@@ -69,7 +75,7 @@ class IO(ThreadedIOBase):
             raise FileNotFoundError('RBD image or snapshot {} not found.'.format(self.url)) from None
 
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
-        super().open_w(size, force, sparse)
+        self._write_executor = JobExecutor(name='IO-Write', workers=self._simultaneous_writes, blocking_submit=True)
 
         re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
         if not re_match:
@@ -113,6 +119,12 @@ class IO(ThreadedIOBase):
             finally:
                 image.close()
 
+    def close(self) -> None:
+        if self._read_executor:
+            self._read_executor.shutdown()
+        if self._write_executor:
+            self._write_executor.shutdown()
+
     def size(self) -> int:
         assert self._pool_name is not None and self._image_name is not None
         ioctx = self._cluster.open_ioctx(self._pool_name)
@@ -139,6 +151,24 @@ class IO(ThreadedIOBase):
 
         return block, data
 
+    def read(self, block: Union[DereferencedBlock, Block]) -> None:
+        block_deref = block.deref() if isinstance(block, Block) else block
+
+        def job():
+            return self._read(block_deref)
+
+        assert self._read_executor is not None
+        self._read_executor.submit(job)
+
+    def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
+        block_deref = block.deref() if isinstance(block, Block) else block
+        return self._read(block_deref)[1]
+
+    def read_get_completed(
+            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+        assert self._read_executor is not None
+        return self._read_executor.get_completed(timeout=timeout)
+
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
         offset = block.id * self.block_size
         t1 = time.time()
@@ -155,3 +185,18 @@ class IO(ThreadedIOBase):
 
         assert written == len(data)
         return block
+
+    def write(self, block: DereferencedBlock, data: bytes) -> None:
+
+        def job():
+            return self._write(block, data)
+
+        assert self._write_executor is not None
+        self._write_executor.submit(job)
+
+    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
+        self._write(block, data)
+
+    def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
+        assert self._write_executor is not None
+        return self._write_executor.get_completed(timeout=timeout)
