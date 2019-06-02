@@ -4,11 +4,11 @@ import queue
 import re
 import threading
 import time
-from collections import namedtuple
 from typing import Tuple, Optional, Union, Iterator, List
 
 import rados
 import rbd
+
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError
@@ -131,18 +131,17 @@ class IO(IOBase):
         return self._rbd_image.size()
 
     def _submit_aio_reads(self):
-        if len(self._read_queue) > 0:
-            while self._outstanding_aio_reads < self._simultaneous_reads:
-                block = self._read_queue.pop()
-                t1 = time.time()
+        while len(self._read_queue) > 0 and self._outstanding_aio_reads < self._simultaneous_reads:
+            block = self._read_queue.pop()
+            t1 = time.time()
 
-                def aio_callback(completion, data):
-                    t2 = time.time()
-                    self._read_completion_queue.put((completion, t1, t2, block, data))
+            def aio_callback(completion, data):
+                t2 = time.time()
+                self._read_completion_queue.put((completion, t1, t2, block, data))
 
-                offset = block.id * self.block_size
-                self._rbd_image.aio_read(offset, block.size, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
-                self._outstanding_aio_reads += 1
+            offset = block.id * self.block_size
+            self._rbd_image.aio_read(offset, block.size, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
+            self._outstanding_aio_reads += 1
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
         block_deref = block.deref() if isinstance(block, Block) else block
@@ -197,20 +196,19 @@ class IO(IOBase):
 
     def _submit_aio_writes(self):
         assert self._rbd_image is not None
-        if len(self._write_queue) > 0:
-            while self._outstanding_aio_writes < self._simultaneous_writes:
-                block, data = self._write_queue.pop()
-                t1 = time.time()
+        while len(self._write_queue) > 0 and self._outstanding_aio_writes < self._simultaneous_writes:
+            block, data = self._write_queue.pop()
+            t1 = time.time()
 
-                def aio_callback(completion):
-                    t2 = time.time()
-                    self._write_completion_queue.put((completion, t1, t2, block))
-                    self._submitted_aio_writes.release()
+            def aio_callback(completion):
+                t2 = time.time()
+                self._write_completion_queue.put((completion, t1, t2, block))
+                self._submitted_aio_writes.release()
 
-                self._submitted_aio_writes.acquire()
-                offset = block.id * self.block_size
-                self._rbd_image.aio_write(data, offset, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
-                self._outstanding_aio_writes += 1
+            self._submitted_aio_writes.acquire()
+            offset = block.id * self.block_size
+            self._rbd_image.aio_write(data, offset, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
+            self._outstanding_aio_writes += 1
 
     def write(self, block: DereferencedBlock, data: bytes) -> None:
         self._write_queue.append((block, data))
