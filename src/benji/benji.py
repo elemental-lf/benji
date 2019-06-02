@@ -685,7 +685,7 @@ class Benji(ReprMixIn):
                     write_jobs, done_write_jobs))
 
         logger.info('Successfully restored version {} in {} with {}/s.'.format(
-            version.uid.v_string, PrettyPrint.duration(min(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
+            version.uid.v_string, PrettyPrint.duration(max(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
 
     def protect(self, version_uid: VersionUid) -> None:
         self._database_backend.set_version(version_uid, protected=True)
