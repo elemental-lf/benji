@@ -164,8 +164,8 @@ class IO(IOBase):
         block_deref = block.deref() if isinstance(block, Block) else block
         return self._read(block_deref)[1]
 
-    def read_get_completed(
-            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+    def read_get_completed(self, timeout: Optional[int] = None
+                          ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         assert self._read_executor is not None
         return self._read_executor.get_completed(timeout=timeout)
 
