@@ -4,7 +4,8 @@ import queue
 import re
 import threading
 import time
-from typing import Tuple, Optional, Union, Iterator, List
+from collections import deque
+from typing import Tuple, Optional, Union, Iterator, Deque
 
 import rados
 import rbd
@@ -53,8 +54,8 @@ class IO(IOBase):
 
         self._simultaneous_reads = config.get_from_dict(module_configuration, 'simultaneousReads', types=int)
         self._simultaneous_writes = config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
-        self._read_queue: List[DereferencedBlock] = []
-        self._write_queue: List[Tuple[DereferencedBlock, bytes]] = []
+        self._read_queue: Deque[DereferencedBlock] = deque()
+        self._write_queue: Deque[Tuple[DereferencedBlock, bytes]] = deque()
         self._outstanding_aio_reads = 0
         self._outstanding_aio_writes = 0
         self._submitted_aio_writes = threading.BoundedSemaphore(self._simultaneous_writes)
@@ -145,7 +146,7 @@ class IO(IOBase):
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
         block_deref = block.deref() if isinstance(block, Block) else block
-        self._read_queue.append(block_deref)
+        self._read_queue.appendleft(block_deref)
         self._submit_aio_reads()
 
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
@@ -224,7 +225,7 @@ class IO(IOBase):
             self._outstanding_aio_writes += 1
 
     def write(self, block: DereferencedBlock, data: bytes) -> None:
-        self._write_queue.append((block, data))
+        self._write_queue.appendleft((block, data))
         self._submit_aio_writes()
 
     def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
