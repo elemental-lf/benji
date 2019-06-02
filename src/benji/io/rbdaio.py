@@ -169,6 +169,8 @@ class IO(IOBase):
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         try:
             while not self._reads_finished():
+                logger.debug('Read queue length, outstanding reads, completion queue length: {}, {}, {}.'.format(
+                    len(self._read_queue), self._outstanding_aio_reads, self._read_completion_queue.qsize()))
                 self._submit_aio_reads()
 
                 completion, t1, t2, block, data = self._read_completion_queue.get(
@@ -231,6 +233,8 @@ class IO(IOBase):
     def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         try:
             while not self._writes_finished():
+                logger.debug('Write queue length, outstanding writes, completion queue length: {}, {}, {}.'.format(
+                    len(self._write_queue), self._outstanding_aio_writes, self._write_completion_queue.qsize()))
                 self._submit_aio_writes()
 
                 completion, t1, t2, block = self._write_completion_queue.get(
