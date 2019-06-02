@@ -179,7 +179,7 @@ class IO(IOBase):
                 self._outstanding_aio_reads -= 1
 
                 try:
-                    completion.wait_for_complete_and_cb(completion)
+                    completion.wait_for_complete_and_cb()
                 except Exception as exception:
                     yield exception
                 else:
@@ -243,7 +243,7 @@ class IO(IOBase):
                 self._outstanding_aio_writes -= 1
 
                 try:
-                    completion.wait_for_complete_and_cb(completion)
+                    completion.wait_for_complete_and_cb()
                 except Exception as exception:
                     yield exception
                 else:
