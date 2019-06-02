@@ -183,8 +183,19 @@ class IO(IOBase):
                 except Exception as exception:
                     yield exception
                 else:
+                    read_return_value = completion.get_return_value()
+
+                    if read_return_value < 0:
+                        raise IOError('Read of block {} failed.'.format(block.id))
+
+                    if read_return_value != block.size:
+                        raise IOError('Short read of block {}. Wanted {} bytes but got {}.'.format(
+                            block.id, block.size, read_return_value))
+
                     if not data:
-                        raise EOFError('End of file reached on {} when there should be data.'.format(self.url))
+                        # We shouldn't get here because a failed read should be caught by the "read_return_value < 0"
+                        # check above. See: https://github.com/ceph/ceph/blob/880468b4bf6f0a1995de5bd98c09007a00222cbf/src/pybind/rbd/rbd.pyx#L4145.
+                        raise IOError('Read of block {} failed.'.format(block.id))
 
                     logger.debug('Read block {} in {:.3f}s'.format(block.id, t2 - t1))
 
@@ -247,10 +258,11 @@ class IO(IOBase):
                 except Exception as exception:
                     yield exception
                 else:
-                    logger.debug('Wrote block {} in {:.3f}s'.format(block.id, t2 - t1))
+                    write_return_value = completion.get_return_value()
+                    if write_return_value != 0:
+                        raise IOError('Write of block {} failed.'.format(block.id))
 
-                    written = completion.get_return_value()
-                    assert written == block.size
+                    logger.debug('Wrote block {} in {:.3f}s'.format(block.id, t2 - t1))
 
                     yield block
 
