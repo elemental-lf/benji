@@ -53,7 +53,7 @@ spec:
         - name: rbd-mounts
           hostPath:
             path: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
-            type: Directory
+            type: DirectoryOrCreate
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
