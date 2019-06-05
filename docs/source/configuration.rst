@@ -389,13 +389,13 @@ options:
 Sets the salt for the key derivation function.
 
 * name: **kdfIterations**
-* type: binary string encoded with BASE64
+* type: integer
 * default: none
 
 Sets the number of iterations for the key derivation function.
 
 * name: **password**
-* type: binary string encoded with BASE64
+* type: string
 * default: none
 
 Sets the password from which the master key is generated.
