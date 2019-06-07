@@ -74,7 +74,7 @@ Topic :: System :: Archiving :: Backup
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
         # possible packages names include: python-rados, python-rbd or python3-rados, python3-rbd
         #'RBD support': ['rados', 'rbd'],
-        'dev': ['parameterized'],
+        'dev': ['parameterized', 'wheel', 'yapf', 'mypy'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
     },
     python_requires='~=3.6',

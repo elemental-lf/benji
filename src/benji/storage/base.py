@@ -10,8 +10,6 @@ from abc import ABCMeta, abstractmethod
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, Iterator, Iterable
 
 import semantic_version
-from diskcache import FanoutCache
-
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.exception import ConfigurationError, BenjiException
@@ -23,6 +21,7 @@ from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, derive_key
 from benji.versions import VERSIONS
+from diskcache import FanoutCache
 
 
 class InvalidBlockException(BenjiException, IOError):
@@ -208,7 +207,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             raise
         t2 = time.time()
 
-        logger.debug('{} wrote data of uid {} in {:.2f}s'.format(threading.current_thread().name, block.uid, t2 - t1))
+        logger.debug('{} wrote data of uid {} in {:.3f}s'.format(threading.current_thread().name, block.uid, t2 - t1))
 
         if self._consistency_check_writes:
             try:
@@ -267,7 +266,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
             data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore
 
-        logger.debug('{} read data of uid {} in {:.2f}s{}'.format(threading.current_thread().name, block.uid, t2 - t1,
+        logger.debug('{} read data of uid {} in {:.3f}s{}'.format(threading.current_thread().name, block.uid, t2 - t1,
                                                                   ' (metadata only)' if metadata_only else ''))
 
         return block, data, metadata

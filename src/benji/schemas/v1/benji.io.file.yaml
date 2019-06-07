@@ -1,2 +1,15 @@
-parents:
-- benji.io.threaded-v1
+configuration:
+  type: dict
+  required: True
+  empty: False
+  schema:
+    simultaneousWrites:
+      type: integer
+      empty: False
+      min: 1
+      default: 3
+    simultaneousReads:
+      type: integer
+      empty: False
+      min: 1
+      default: 3
