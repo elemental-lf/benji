@@ -65,7 +65,7 @@ Topic :: System :: Archiving :: Backup
         'dateparser>=0.7.0,<1',
         'structlog>=19.1.0',
         'colorama>=0.4.1,<1',
-        'diskcache>=3.0.6',
+        'diskcache>=3.0.6', 'blinker', 'prometheus_client'
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],

@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+import sys
+
+import logging
+import time
+from typing import Any, Dict, Optional, Union, Tuple
+
+import benji.helpers.utils as utils
+import benji.helpers.settings as settings
+import benji.helpers.prometheus as prometheus
+import benji.helpers.ceph as ceph
+import benji.helpers.kubernetes as kubernetes
+
+FSFREEZE_TIMEOUT = 15
+FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
+FSFREEZE_ANNOTATION = 'benji-backup.me/fsfreeze'
+FSFREEZE_POD_SELECTOR = 'benji-backup.me/component=fsfreeze'
+KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{}'
+
+utils.setup_syslog_logging()
+logger = logging.getLogger()
+
+
+def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
+                             image: str) -> Tuple[bool, Optional[str], Optional[str], str]:
+    pv_fsfreeze = False
+    pv_host_ip = None
+    pv_fsfreeze_pod = None
+    pv_mount_point = KUBELET_MOUNT_PATH_FORMAT.format(image)
+
+    pvc = utils.subprocess_run(['kubectl', 'get', 'pvc', '-o', 'json', '-n', pvc_namespace, pvc_name], decode_json=True)
+    if 'annotations' in pvc['metadata'] and 'benji-backup.me/fsfreeze' in pvc['metadata']['annotations'] and pvc[
+            'metadata']['annotations'][FSFREEZE_ANNOTATION] == 'yes':
+        pods = kubernetes.get_list(
+            utils.subprocess_run(['kubectl', 'get', 'pod', '-o', 'json', '-n', pvc_namespace], decode_json=True))
+        for pod in pods:
+            if pv_fsfreeze:
+                break
+            if 'volumes' not in pod['spec']:
+                continue
+            for volume in pod['spec']['volumes']:
+                if 'persistentVolumeClaim' not in volume or volume['persistentVolumeClaim']['claimName'] != pvc_name:
+                    continue
+                if 'hostIP' in pod['status']:
+                    pv_fsfreeze = True
+                    pv_host_ip = pod['status']['hostIP']
+                    break
+
+        if pv_fsfreeze:
+            pods = kubernetes.get_list(
+                utils.subprocess_run(['kubectl', 'get', 'pod', '-o', 'json', '-l', FSFREEZE_POD_SELECTOR],
+                                     decode_json=True))
+            for pod in pods:
+                if 'hostIP' not in pod['status'] or 'phase' not in pod['status']:
+                    continue
+
+                if pod['status']['hostIP'] == pv_host_ip and pod['status']['phase'] == 'Running':
+                    pv_fsfreeze_pod = pod['metadata']['name']
+                    break
+            else:
+                pv_fsfreeze = False
+
+    return pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point
+
+
+@ceph.signal_snapshot_create_pre.connect
+def ceph_snapshot_create_pre(sender: str, version_name: str, pool: str, image: str, snapshot: str,
+                             context: Dict[str, Any]) -> None:
+    assert isinstance(context, dict)
+    assert 'pvc' in context
+    pvc_namespace = context['pvc']['metadata']['namespace']
+    pvc_name = context['pvc']['metadata']['name']
+
+    pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point = _determine_fsfreeze_info(pvc_namespace, pvc_name, image)
+
+    # Record for use in post signals
+    context['pv-fsfreeze'] = pv_fsfreeze
+    context['pv-host-ip'] = pv_host_ip
+    context['pv-fsfreeze-pod'] = pv_fsfreeze_pod
+    context['pv-mount-point'] = pv_mount_point
+
+    if not pv_fsfreeze:
+        return
+    if pv_host_ip is None:
+        logger.info(f'PV is not mounted anywhere, skipping fsfreeze.')
+        return
+    if pv_fsfreeze_pod is None:
+        logger.info(f'No fsfreeze pod found for host {pv_host_ip}, skipping fsfreeze for this PV.')
+        return
+
+    logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip}.')
+
+    try:
+        utils.subprocess_run(
+            ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--freeze', pv_mount_point],
+            timeout=FSFREEZE_TIMEOUT)
+    except Exception as exception:
+        # Try to unfreeze in any case
+        try:
+            utils.subprocess_run(
+                ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--unfreeze', pv_mount_point],
+                timeout=FSFREEZE_TIMEOUT)
+        except Exception as exception_2:
+            raise exception_2 from exception
+        else:
+            raise exception
+
+    logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip} succeeded.')
+
+
+@ceph.signal_snapshot_create_post_success.connect
+def ceph_snapshot_create_post_success(sender: str, version_name: str, pool: str, image: str, snapshot: str,
+                                      context: Dict[str, Any]) -> None:
+    assert isinstance(context, dict)
+    assert 'pv-fsfreeze' in context
+    pv_fsfreeze = context['pv-fsfreeze']
+    if not pv_fsfreeze:
+        return
+
+    assert 'pv-host-ip' in context
+    assert 'pv-fsfreeze-pod' in context
+    assert 'pv-mount-point' in context
+    pv_host_ip = context['pv-host-ip']
+    pv_fsfreeze_pod = context['pv-fsfreeze-pod']
+    pv_mount_point = context['pv-mount-point']
+
+    logger.info(f'Unfreezing filesystem {pv_mount_point} on host {pv_host_ip}.')
+
+    for delay in FSFREEZE_UNFREEZE_TRIES:
+        if delay > 0:
+            time.sleep(delay)
+
+        try:
+            utils.subprocess_run(
+                ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--unfreeze', pv_mount_point],
+                timeout=FSFREEZE_TIMEOUT)
+        except Exception:
+            pass
+        else:
+            logger.info(f'Unfreezing filesystem {pv_mount_point} on host {pv_host_ip} succeeded.')
+            break
+    else:
+        logger.error(f'Giving up on unfreezing filesystem {pv_mount_point} on host {pv_host_ip}.')
+
+
+@ceph.signal_snapshot_create_post_error.connect
+def ceph_snapshot_create_post_error(sender: str, version_name: str, pool: str, image: str, snapshot: str,
+                                    context: Dict[str, Any], exception: Exception) -> None:
+    ceph_snapshot_create_post_success(sender, version_name, pool, image, snapshot, context)
+    raise exception
+
+
+@ceph.signal_backup_pre.connect
+def ceph_backup_pre(sender: str, version_name: str, pool: str, image: str, version_labels: Dict[str, str],
+                    context: Dict[str, Any]):
+    assert isinstance(context, dict)
+    context['backup-start-time'] = start_time = time.time()
+    prometheus.backup_start_time.labels(version_name=version_name).set(start_time)
+
+
+def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[str, Any]):
+    assert isinstance(context, dict)
+    assert 'pvc' in context
+    pvc_namespace = context['pvc']['metadata']['namespace']
+    pvc_name = context['pvc']['metadata']['name']
+    pvc_uid = context['pvc']['metadata']['uid']
+
+    kubernetes.create_pvc_event(type=type,
+                                reason=reason,
+                                message=message,
+                                pvc_namespace=pvc_namespace,
+                                pvc_name=pvc_name,
+                                pvc_uid=pvc_uid)
+
+
+@ceph.signal_backup_post_success.connect
+def ceph_backup_post_success(sender: str, version_name: str, pool: str, image: str, version_labels: Dict[str, str],
+                             context: Dict[str, Any], version: Optional[Dict]):
+    assert isinstance(context, dict)
+    assert 'backup-start-time' in context
+    assert 'pvc' in context
+    assert version is not None
+
+    pvc_namespace = context['pvc']['metadata']['namespace']
+    pvc_name = context['pvc']['metadata']['name']
+    pvc_uid = context['pvc']['metadata']['uid']
+    start_time = context['backup-start-time']
+
+    completion_time = time.time()
+    prometheus.backup_completion_time.labels(version_name=version_name).set(completion_time)
+    prometheus.backup_runtime_seconds.labels(version_name=version_name).set(completion_time - start_time)
+    prometheus.backup_status_succeeded.labels(version_name=version_name).set(1)
+
+    kubernetes.create_pvc_event(
+        type='Normal',
+        reason='SuccessfulBackup',
+        message=f'Backup to V{version["uid"]:09d} completed successfully (took {completion_time - start_time:.0f} seconds).',
+        pvc_namespace=pvc_namespace,
+        pvc_name=pvc_name,
+        pvc_uid=pvc_uid)
+
+
+@ceph.signal_backup_post_error.connect
+def ceph_backup_post_error(sender: str, version_name: str, pool: str, image: str, version_labels: Dict[str, str],
+                           context: Dict[str, Any], version: Optional[Dict], exception: Exception):
+    assert isinstance(context, dict)
+    assert 'backup-start-time' in context
+    assert 'pvc' in context
+    pvc_namespace = context['pvc']['metadata']['namespace']
+    pvc_name = context['pvc']['metadata']['name']
+    pvc_uid = context['pvc']['metadata']['uid']
+
+    start_time = context['backup-start-time']
+    completion_time = time.time()
+
+    prometheus.backup_completion_time.labels(version_name=version_name).set(completion_time)
+    prometheus.backup_runtime_seconds.labels(version_name=version_name).set(completion_time - start_time)
+    prometheus.backup_status_failed.labels(version_name=version_name).set(1)
+
+    kubernetes.create_pvc_event(type='Warning',
+                                reason='FailedBackup',
+                                message=f'Backup failed: {exception.__class__.__name__} {str(exception)}',
+                                pvc_namespace=pvc_namespace,
+                                pvc_name=pvc_name,
+                                pvc_uid=pvc_uid)
+
+    raise exception
+
+
+if len(sys.argv) < 2:
+    print(f'usage: {sys.argv[0]} KUBECTL-GET-PVC-ARGS', file=sys.stderr)
+    sys.exit(1)
+
+# Get a list of persistent volumes claims
+pvcs = kubernetes.get_list(
+    utils.subprocess_run(['kubectl', 'get', 'pvc', '-o', 'json'] + sys.argv[1:], decode_json=True))
+for pvc in pvcs:
+    if 'volumeName' not in pvc['spec']:
+        continue
+
+    pv_name = pvc['spec']['volumeName']
+
+    pv = utils.subprocess_run(['kubectl', 'get', 'pv', '-o', 'json', pv_name], decode_json=True)
+
+    if 'rbd' in pv['spec']:
+        assert 'pool' in pv['spec']['rbd']
+        assert 'image' in pv['spec']['rbd']
+        pool = pv['spec']['rbd']['pool']
+        image = pv['spec']['rbd']['image']
+    else:
+        continue
+
+    assert 'namespace' in pvc['metadata']
+    assert 'name' in pvc['metadata']
+    pvc_namespace = pvc['metadata']['namespace']
+    pvc_name = pvc['metadata']['name']
+    version_name = f'{pvc_namespace}/{pvc_name}'
+
+    version_labels = {
+        'benji-backup.me/instance': settings.benji_instance,
+        'benji-backup.me/ceph-pool': pool,
+        'benji-backup.me/ceph-rbd-image': image,
+        'benji-backup.me/k8s-pvc-namespace': pvc_namespace,
+        'benji-backup.me/k8s-pvc-name': pvc_name,
+        'benji-backup.me/k8s-pv': pv_name
+    }
+
+    context = {
+        'pvc': pvc,
+        'pv': pv,
+    }
+
+    ceph.backup(version_name=version_name, pool=pool, image=image, version_labels=version_labels, context=context)
+
+prometheus.push(prometheus.backup_registry)
+sys.exit(0)

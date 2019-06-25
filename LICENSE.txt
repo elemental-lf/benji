@@ -33,11 +33,6 @@ Copyright:
     Modified work: 2018 Lars Fenneberg
 License: Expat http://directory.fsf.org/wiki/License:Expat
 
-Files: scripts/prometheus.sh
-Copyrigt:
-    2015 Adrian Colley <aecolley@gmail.com>
-License: Apache 2.0
-
 Files: docs/source/_static/asciinema/asciinema-player.css, docs/source/_static/asciinema/asciinema-player.js
 License: Apache 2.0
 
