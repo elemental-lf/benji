@@ -46,16 +46,7 @@ spec:
               mountPath: /benji/etc
             - name: tz-config
               mountPath: /etc/localtime
-            # Ceph volumes start
-            - name: ceph-etc
-              mountPath: /etc/ceph/ceph.conf
-              subPath: ceph.conf
-              readOnly: true
-            - name: ceph-client-admin-keyring
-              mountPath: /etc/ceph/ceph.client.admin.keyring
-              subPath: ceph.client.admin.keyring
-              readOnly: true
-            # Ceph volumes end
+            {{ toYaml .Values.benji.volumeMounts | nindent 12 }}
           resources:
             {{ toYaml .Values.benji.resources | nindent 12 }}
         - name: pushgateway
@@ -83,15 +74,7 @@ spec:
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
-        # Ceph volumes start
-        - name: ceph-etc
-          configMap:
-            name: ceph-etc
-            defaultMode: 0444
-        - name: ceph-client-admin-keyring
-          secret:
-            secretName: ceph-client-admin-keyring
-        # Ceph end
+        {{ toYaml .Values.benji.volumes | nindent 8 }}
 {{- with .Values.fsfreeze.nodeSelector }}
       nodeSelector:
         {{ toYaml . | nindent 8 }}
