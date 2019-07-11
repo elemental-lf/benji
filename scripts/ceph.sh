@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+set -o pipefail
+
+: "${BENJI_INSTANCE:=benji-k8s}"
+: "${BENJI_LOG_LEVEL:=INFO}"
+
+function benji::version::uid::format {
+    jq -r '"V" + ("000000000" + (. | tostring))[-10:]'
+}
+
+
 function _extract_version_uid {
     jq -r '.versions[0].uid'
 }
@@ -15,29 +25,14 @@ function benji::backup::ceph::snapshot::create {
     trap -- 'trap - SIGINT SIGTERM SIGTSTP RETURN' RETURN
     trap -- '' SIGINT SIGTERM SIGTSTP
 
-    benji::hook::execute benji::backup::ceph::snapshot::create::pre "$VERSION_NAME" "$CEPH_POOL" \
-        "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
-        || return $?
-
     # Start rbd with a timeout to increase the likelihood that we don't hang with signals off...
     timeout --kill-after=10 30 rbd snap create "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT"
     local EC=$?
-
-    if [[ $EC == 0 ]]; then
-        benji::hook::execute benji::backup::ceph::snapshot::create::post::success "$VERSION_NAME" "$CEPH_POOL" \
-            "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
-            || return $?
-        return 0
-    else
-        if [[ $EC == 124 ]]; then
-            echo "Warning: Snapshot creation timed out for $CEPH_POOL/$CEPH_RBD_IMAGE."
-        fi
-
-        benji::hook::execute benji::backup::ceph::snapshot::create::post::error "$VERSION_NAME" "$CEPH_POOL" \
-            "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
-            || return $?
-        return $EC
+    if [[ $EC == 124 ]]; then
+        echo "Warning: Snapshot creation timed out for $CEPH_POOL/$CEPH_RBD_IMAGE."
     fi
+
+    return $EC
 }
 
 # Returns:
@@ -119,8 +114,6 @@ function benji::backup::ceph {
     shift 3
     local VERSION_LABELS=("$@")
 
-    benji::hook::execute benji::backup::pre "$VERSION_NAME"
-
     # find the latest snapshot name from rbd
     local CEPH_RBD_SNAPSHOT_LAST=$(rbd snap ls "$CEPH_POOL"/"$CEPH_RBD_IMAGE" --format=json | jq -r '[.[].name] | map(select(test("^b-"))) | sort | .[-1] // ""')
     local EC=$?; [[ $EC == 0 ]] || return $EC
@@ -151,12 +144,5 @@ function benji::backup::ceph {
         fi
     fi
 
-    if [[ $EC == 0 ]]; then
-        benji::hook::execute benji::backup::post::success "$VERSION_NAME" "$BENJI_BACKUP_STDERR" "$VERSION_UID" \
-            || return $?
-        return 0
-    else
-        benji::hook::execute benji::backup::post::error "$VERSION_NAME" "$BENJI_BACKUP_STDERR"
-        return $EC
-    fi
+    return $EC
 }

@@ -32,7 +32,7 @@ ARG BUILD_DATE
 
 ENV VENV_DIR /benji
 
-ENV PATH $VENV_DIR/scripts:$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin
+ENV PATH $VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin
 
 LABEL org.label-schema.schema-version="1.0" \
       org.label-schema.vcs-ref="$VCS_REF" \
@@ -56,11 +56,8 @@ RUN mkdir /etc/benji && \
     echo "PATH=$PATH" >>/etc/environment
 
 COPY --from=build $VENV_DIR/ $VENV_DIR/
-COPY scripts/ $VENV_DIR/scripts/
 COPY etc/benji-minimal.yaml $VENV_DIR/etc/benji.yaml
 COPY images/benji/bashrc /root/.bashrc
-
-RUN chmod -R a+x $VENV_DIR/scripts/
 
 WORKDIR $VENV_DIR
 

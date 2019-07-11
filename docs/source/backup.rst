@@ -140,11 +140,12 @@ In this example, we will backup an RBD image called ``vm1`` which is in the pool
 Automation
 ^^^^^^^^^^
 
-Benji includes a number of Bash scripts to automate the process outlined in the last section.
+Bash
+""""
 
-.. todo:: Explain the Bash scripts and how to use them!
+Benji includes an example Bash script ``scripts/ceph.sh`` which automates the process outlined in the last section.
 
-The general workflow of these scripts is:
+The general workflow of this script is:
 
 * When the backup of an RBD image is initiated, the latest RBD snapshot is looked up.
 
@@ -163,6 +164,25 @@ The general workflow of these scripts is:
 
 .. NOTE:: This alone won't be enough to be on the safe side. The validity of the backup data needs to checked
     regularly. Please refer to section :ref:`scrubbing`.
+
+Python
+""""""
+
+There is also a number of Python modules in the ``benji.helpers`` package. The modules are independent from the rest of
+Benji's Python modules and only call the command line interface of Benji.
+
+* ``benji.helpers.ceph``: Implements the same functionality as the Bash scripts described in the previous section.
+* ``benji.helpers.utils``: Utility functions used by other modules in the ``benji.helpers`` package.
+* ``benji.helpers.settings``: Configuration variables used by other modules in the ``benji.helpers`` package derived from
+  environment variables.
+* ``benji.helpers.kubernetes``: Helper functions for interacting with Kubernetes (requires ``kubectl``)
+* ``benji.helpers.prometheus``: Helper functions and metric definitions for pushing metrics to a Prometheus
+  ``pushgateway``
+
+Usage examples for these helpers can be found in ``images/benji-k8s/bin``.
+
+.. NOTE:: If you want to use them as the basis for your own scripts please make copies of the parts you need, so that
+    you are not affected by changes in future versions of Benji.
 
 Specifying a block size
 -----------------------

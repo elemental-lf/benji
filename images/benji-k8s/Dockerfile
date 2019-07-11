@@ -22,10 +22,9 @@ RUN curl -o /usr/bin/kubectl -sSL https://storage.googleapis.com/kubernetes-rele
 
 COPY images/benji-k8s/supervisord.conf /etc/supervisord.conf
 COPY images/benji-k8s/crontab $VENV_DIR/etc/crontab
-COPY images/benji-k8s/scripts/ $VENV_DIR/scripts/
 COPY images/benji-k8s/bin/ $VENV_DIR/bin/
 
-RUN chmod -R a+x $VENV_DIR/scripts/ && \
+RUN chmod a+x $VENV_DIR/bin/* && \
     chmod 644 $VENV_DIR/etc/crontab && \
     rm -f /etc/crontab /etc/cron.d/* && \
     ln -s $VENV_DIR/etc/crontab /etc/crontab  && \

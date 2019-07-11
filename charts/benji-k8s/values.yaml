@@ -30,7 +30,7 @@ benji:
         module: file
 
   crontab: |
-    #PROM_PUSH_GATEWAY=:9091
+    #PROM_PUSH_GATEWAY=localhost:9091
     #BENJI_INSTANCE:-benji-k8s
     # 00  * * * * root benji-backup-pvc --all-namespaces -l 'release in (prod)'
     # 03  * * * * root benji-backup-pvc --namespace staging
