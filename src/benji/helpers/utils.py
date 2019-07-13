@@ -1,13 +1,10 @@
+import json
 import logging
 import re
+import subprocess
+from json import JSONDecodeError
 from logging.handlers import SysLogHandler
 from typing import Dict, List, Union
-
-import subprocess
-
-import json
-
-from json import JSONDecodeError
 
 from benji.helpers.settings import benji_log_level
 
@@ -15,6 +12,8 @@ logger = logging.getLogger()
 
 
 def setup_syslog_logging() -> None:
+    # Don't raise exceptions occurring during logging as syslog might fail with too long messages.
+    logging.raiseExceptions = False
     logger.addHandler(SysLogHandler(address='/dev/log'))
     logger.setLevel(benji_log_level)
 
@@ -27,8 +26,9 @@ def _one_line_stderr(stderr: str):
 
 def subprocess_run(args: List[str], input: str = None, timeout: int = None,
                    decode_json: bool = False) -> Union[Dict, List, str]:
+    logger.debug('Running process: {}'.format(' '.join(args)))
     try:
-        logger.debug('Running process: {}'.format(' '.join(args)))
+
         result = subprocess.run(args=args,
                                 input=input,
                                 stdout=subprocess.PIPE,

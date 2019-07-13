@@ -1,6 +1,6 @@
 import os
 
-pod_name = os.getenv('POD_NAME', 'unknown-pod-name')
+running_pod_name = os.getenv('POD_NAME', 'unknown-pod-name')
 
 benji_instance = os.getenv('BENJI_INSTANCE', 'benji-k8s')
 benji_log_level = os.getenv('BENJI_LOG_LEVEL', 'INFO')

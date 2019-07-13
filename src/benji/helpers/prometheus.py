@@ -1,6 +1,6 @@
 import logging
-
 import urllib.error
+
 from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway, generate_latest
 
 from benji.helpers.settings import prom_push_gateway, benji_instance

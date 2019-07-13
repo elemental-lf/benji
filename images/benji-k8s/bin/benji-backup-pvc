@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-import sys
-
+import argparse
 import logging
+import sys
 import time
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-import benji.helpers.utils as utils
-import benji.helpers.settings as settings
-import benji.helpers.prometheus as prometheus
+import kubernetes
+import kubernetes.stream
+
 import benji.helpers.ceph as ceph
-import benji.helpers.kubernetes as kubernetes
+import benji.helpers.kubernetes
+import benji.helpers.prometheus as prometheus
+import benji.helpers.settings as settings
+import benji.helpers.utils as utils
 
 FSFREEZE_TIMEOUT = 15
 FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
 FSFREEZE_ANNOTATION = 'benji-backup.me/fsfreeze'
-FSFREEZE_POD_SELECTOR = 'benji-backup.me/component=fsfreeze'
+FSFREEZE_POD_LABEL_SELECTOR = 'benji-backup.me/component=fsfreeze'
+FSFREEZE_CONTAINER_NAME = 'fsfreeze'
 KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{}'
 
 utils.setup_syslog_logging()
@@ -28,34 +32,41 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
     pv_fsfreeze_pod = None
     pv_mount_point = KUBELET_MOUNT_PATH_FORMAT.format(image)
 
-    pvc = utils.subprocess_run(['kubectl', 'get', 'pvc', '-o', 'json', '-n', pvc_namespace, pvc_name], decode_json=True)
-    if 'annotations' in pvc['metadata'] and 'benji-backup.me/fsfreeze' in pvc['metadata']['annotations'] and pvc[
-            'metadata']['annotations'][FSFREEZE_ANNOTATION] == 'yes':
-        pods = kubernetes.get_list(
-            utils.subprocess_run(['kubectl', 'get', 'pod', '-o', 'json', '-n', pvc_namespace], decode_json=True))
+    core_v1_api = kubernetes.client.CoreV1Api()
+    pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
+    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
+    assert hasattr(pvc, 'metadata')
+    if hasattr(pvc.metadata,
+               'annotations') and FSFREEZE_ANNOTATION in pvc.metadata.annotations and pvc.metadata.annotations[FSFREEZE_ANNOTATION] == 'yes':
+        pods = core_v1_api.list_namespaced_pod(service_account_namespace, watch=False).items
         for pod in pods:
             if pv_fsfreeze:
                 break
-            if 'volumes' not in pod['spec']:
+            assert hasattr(pod, 'spec')
+            if not hasattr(pod.spec, 'volumes'):
                 continue
-            for volume in pod['spec']['volumes']:
-                if 'persistentVolumeClaim' not in volume or volume['persistentVolumeClaim']['claimName'] != pvc_name:
+            for volume in pod.spec.volumes:
+                if not hasattr(volume, 'persistent_volume_claim') or not hasattr(
+                        volume.persistent_volume_claim, 'claim_name') or volume.persistent_volume_claim.claim_name != pvc_name:
                     continue
-                if 'hostIP' in pod['status']:
+                assert hasattr(pod, 'status')
+                if hasattr(pod.status, 'host_ip') and pod.status.host_ip != '':
                     pv_fsfreeze = True
-                    pv_host_ip = pod['status']['hostIP']
-                    break
+                    pv_host_ip = pod.status.host_ip
+                break
 
         if pv_fsfreeze:
-            pods = kubernetes.get_list(
-                utils.subprocess_run(['kubectl', 'get', 'pod', '-o', 'json', '-l', FSFREEZE_POD_SELECTOR],
-                                     decode_json=True))
+            pods = core_v1_api.list_namespaced_pod(benji.helpers.kubernetes.service_account_namespace(),
+                                                   label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
             for pod in pods:
-                if 'hostIP' not in pod['status'] or 'phase' not in pod['status']:
+                assert hasattr(pod, 'status')
+                if not hasattr(pod.status, 'host_ip') or not hasattr(pod.status, 'phase'):
                     continue
 
-                if pod['status']['hostIP'] == pv_host_ip and pod['status']['phase'] == 'Running':
-                    pv_fsfreeze_pod = pod['metadata']['name']
+                if pod.status.host_ip == pv_host_ip and pod.status.phase == 'Running':
+                    assert hasattr(pod, 'metadata')
+                    assert hasattr(pod.metadata, 'name')
+                    pv_fsfreeze_pod = pod.metadata.name
                     break
             else:
                 pv_fsfreeze = False
@@ -68,8 +79,8 @@ def ceph_snapshot_create_pre(sender: str, version_name: str, pool: str, image: s
                              context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
     assert 'pvc' in context
-    pvc_namespace = context['pvc']['metadata']['namespace']
-    pvc_name = context['pvc']['metadata']['name']
+    pvc_namespace = context['pvc'].metadata.namespace
+    pvc_name = context['pvc'].metadata.name
 
     pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point = _determine_fsfreeze_info(pvc_namespace, pvc_name, image)
 
@@ -88,24 +99,29 @@ def ceph_snapshot_create_pre(sender: str, version_name: str, pool: str, image: s
         logger.info(f'No fsfreeze pod found for host {pv_host_ip}, skipping fsfreeze for this PV.')
         return
 
-    logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip}.')
+    logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip} (pod {pv_fsfreeze_pod}).')
 
+    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
     try:
-        utils.subprocess_run(
-            ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--freeze', pv_mount_point],
-            timeout=FSFREEZE_TIMEOUT)
+        benji.helpers.kubernetes.pod_exec(['fsfreeze', '--freeze', pv_mount_point],
+                                          name=pv_fsfreeze_pod,
+                                          namespace=service_account_namespace,
+                                          container=FSFREEZE_CONTAINER_NAME,
+                                          timeout=FSFREEZE_TIMEOUT)
     except Exception as exception:
         # Try to unfreeze in any case
         try:
-            utils.subprocess_run(
-                ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--unfreeze', pv_mount_point],
-                timeout=FSFREEZE_TIMEOUT)
+            benji.helpers.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
+                                              name=pv_fsfreeze_pod,
+                                              namespace=service_account_namespace,
+                                              container=FSFREEZE_CONTAINER_NAME,
+                                              timeout=FSFREEZE_TIMEOUT)
         except Exception as exception_2:
             raise exception_2 from exception
         else:
             raise exception
 
-    logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip} succeeded.')
+    logger.debug(f'Freezing filesystem succeeded.')
 
 
 @ceph.signal_snapshot_create_post_success.connect
@@ -126,18 +142,21 @@ def ceph_snapshot_create_post_success(sender: str, version_name: str, pool: str,
 
     logger.info(f'Unfreezing filesystem {pv_mount_point} on host {pv_host_ip}.')
 
+    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
     for delay in FSFREEZE_UNFREEZE_TRIES:
         if delay > 0:
             time.sleep(delay)
 
         try:
-            utils.subprocess_run(
-                ['kubectl', 'exec', '-c', 'fsfreeze', pv_fsfreeze_pod, '--', 'fsfreeze', '--unfreeze', pv_mount_point],
-                timeout=FSFREEZE_TIMEOUT)
+            benji.helpers.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
+                                              name=pv_fsfreeze_pod,
+                                              namespace=service_account_namespace,
+                                              container=FSFREEZE_CONTAINER_NAME,
+                                              timeout=FSFREEZE_TIMEOUT)
         except Exception:
             pass
         else:
-            logger.info(f'Unfreezing filesystem {pv_mount_point} on host {pv_host_ip} succeeded.')
+            logger.debug(f'Unfreezing filesystem succeeded.')
             break
     else:
         logger.error(f'Giving up on unfreezing filesystem {pv_mount_point} on host {pv_host_ip}.')
@@ -161,16 +180,20 @@ def ceph_backup_pre(sender: str, version_name: str, pool: str, image: str, versi
 def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[str, Any]):
     assert isinstance(context, dict)
     assert 'pvc' in context
-    pvc_namespace = context['pvc']['metadata']['namespace']
-    pvc_name = context['pvc']['metadata']['name']
-    pvc_uid = context['pvc']['metadata']['uid']
+    pvc_namespace = context['pvc'].metadata.namespace
+    pvc_name = context['pvc'].metadata.name
+    pvc_uid = context['pvc'].metadata.uid
 
-    kubernetes.create_pvc_event(type=type,
-                                reason=reason,
-                                message=message,
-                                pvc_namespace=pvc_namespace,
-                                pvc_name=pvc_name,
-                                pvc_uid=pvc_uid)
+    try:
+        benji.helpers.kubernetes.create_pvc_event(type=type,
+                                                  reason=reason,
+                                                  message=message,
+                                                  pvc_namespace=pvc_namespace,
+                                                  pvc_name=pvc_name,
+                                                  pvc_uid=pvc_uid)
+    except Exception as exception:
+        logger.error(f'Creating Kubernetes event for {pvc_namespace}/{pvc_name} failed with a {exception.__class__.__name__} exception: {str(exception)}')
+        pass
 
 
 @ceph.signal_backup_post_success.connect
@@ -181,9 +204,9 @@ def ceph_backup_post_success(sender: str, version_name: str, pool: str, image: s
     assert 'pvc' in context
     assert version is not None
 
-    pvc_namespace = context['pvc']['metadata']['namespace']
-    pvc_name = context['pvc']['metadata']['name']
-    pvc_uid = context['pvc']['metadata']['uid']
+    pvc_namespace = context['pvc'].metadata.namespace
+    pvc_name = context['pvc'].metadata.name
+    pvc_uid = context['pvc'].metadata.uid
     start_time = context['backup-start-time']
 
     completion_time = time.time()
@@ -191,13 +214,17 @@ def ceph_backup_post_success(sender: str, version_name: str, pool: str, image: s
     prometheus.backup_runtime_seconds.labels(version_name=version_name).set(completion_time - start_time)
     prometheus.backup_status_succeeded.labels(version_name=version_name).set(1)
 
-    kubernetes.create_pvc_event(
-        type='Normal',
-        reason='SuccessfulBackup',
-        message=f'Backup to V{version["uid"]:09d} completed successfully (took {completion_time - start_time:.0f} seconds).',
-        pvc_namespace=pvc_namespace,
-        pvc_name=pvc_name,
-        pvc_uid=pvc_uid)
+    try:
+        benji.helpers.kubernetes.create_pvc_event(
+            type='Normal',
+            reason='SuccessfulBackup',
+            message=f'Backup to V{version["uid"]:09d} completed successfully (took {completion_time - start_time:.0f} seconds).',
+            pvc_namespace=pvc_namespace,
+            pvc_name=pvc_name,
+            pvc_uid=pvc_uid)
+    except Exception as exception:
+        logger.error(f'Creating Kubernetes event for {pvc_namespace}/{pvc_name} failed with a {exception.__class__.__name__} exception: {str(exception)}')
+        pass
 
 
 @ceph.signal_backup_post_error.connect
@@ -206,9 +233,9 @@ def ceph_backup_post_error(sender: str, version_name: str, pool: str, image: str
     assert isinstance(context, dict)
     assert 'backup-start-time' in context
     assert 'pvc' in context
-    pvc_namespace = context['pvc']['metadata']['namespace']
-    pvc_name = context['pvc']['metadata']['name']
-    pvc_uid = context['pvc']['metadata']['uid']
+    pvc_namespace = context['pvc'].metadata.namespace
+    pvc_name = context['pvc'].metadata.name
+    pvc_uid = context['pvc'].metadata.uid
 
     start_time = context['backup-start-time']
     completion_time = time.time()
@@ -217,60 +244,102 @@ def ceph_backup_post_error(sender: str, version_name: str, pool: str, image: str
     prometheus.backup_runtime_seconds.labels(version_name=version_name).set(completion_time - start_time)
     prometheus.backup_status_failed.labels(version_name=version_name).set(1)
 
-    kubernetes.create_pvc_event(type='Warning',
-                                reason='FailedBackup',
-                                message=f'Backup failed: {exception.__class__.__name__} {str(exception)}',
-                                pvc_namespace=pvc_namespace,
-                                pvc_name=pvc_name,
-                                pvc_uid=pvc_uid)
+    benji.helpers.kubernetes.create_pvc_event(type='Warning',
+                                              reason='FailedBackup',
+                                              message=f'Backup failed: {exception.__class__.__name__} {str(exception)}',
+                                              pvc_namespace=pvc_namespace,
+                                              pvc_name=pvc_name,
+                                              pvc_uid=pvc_uid)
 
     raise exception
 
 
-if len(sys.argv) < 2:
-    print(f'usage: {sys.argv[0]} KUBECTL-GET-PVC-ARGS', file=sys.stderr)
-    sys.exit(1)
+# This arguments parser tries to mimic kubectl
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
-# Get a list of persistent volumes claims
-pvcs = kubernetes.get_list(
-    utils.subprocess_run(['kubectl', 'get', 'pvc', '-o', 'json'] + sys.argv[1:], decode_json=True))
+parser.add_argument('-n',
+                    '--namespace',
+                    metavar='namespace',
+                    dest='namespace',
+                    default=None,
+                    help='Filter on namespace')
+parser.add_argument('-l',
+                    '--selector',
+                    metavar='label-selector',
+                    dest='labels',
+                    action='append',
+                    default=[],
+                    help='Filter PVCs on label selector')
+parser.add_argument('--field-selector',
+                    metavar='field-selector',
+                    dest='fields',
+                    action='append',
+                    default=[],
+                    help='Filter PVCs on field selector')
+
+args = parser.parse_args()
+
+benji.helpers.kubernetes.load_config()
+core_v1_api = kubernetes.client.CoreV1Api()
+
+labels = ','.join(args.labels)
+fields = ','.join(args.fields)
+
+if args.namespace is not None:
+    logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
+else:
+    logger.info(f'Backing up all PVCs in all namespaces.')
+if labels != '':
+    logger.info(f'Matching label(s) {labels}.')
+if fields != '':
+    logger.info(f'Matching field(s) {fields}.')
+
+if args.namespace is not None:
+    pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
+                                                               watch=False,
+                                                               label_selector=labels,
+                                                               field_selector=fields).items
+else:
+    pvcs = core_v1_api.list_persistent_volume_claim_for_all_namespaces(watch=False,
+                                                                       label_selector=labels,
+                                                                       field_selector=fields).items
+if len(pvcs) == 0:
+    logger.info('Not matching PVCs found.')
+    sys.exit(0)
+
 for pvc in pvcs:
-    if 'volumeName' not in pvc['spec']:
+    assert hasattr(pvc, 'spec')
+    if not hasattr(pvc.spec, 'volume_name'):
         continue
 
-    pv_name = pvc['spec']['volumeName']
-
-    pv = utils.subprocess_run(['kubectl', 'get', 'pv', '-o', 'json', pv_name], decode_json=True)
-
-    if 'rbd' in pv['spec']:
-        assert 'pool' in pv['spec']['rbd']
-        assert 'image' in pv['spec']['rbd']
-        pool = pv['spec']['rbd']['pool']
-        image = pv['spec']['rbd']['image']
-    else:
+    pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+    assert hasattr(pv, 'spec')
+    if not hasattr(pv.spec, 'rbd') or not hasattr(pv.spec.rbd, 'pool') or not hasattr(pv.spec.rbd, 'image'):
         continue
 
-    assert 'namespace' in pvc['metadata']
-    assert 'name' in pvc['metadata']
-    pvc_namespace = pvc['metadata']['namespace']
-    pvc_name = pvc['metadata']['name']
-    version_name = f'{pvc_namespace}/{pvc_name}'
+    assert hasattr(pvc, 'metadata')
+    assert hasattr(pvc.metadata, 'namespace')
+    assert hasattr(pvc.metadata, 'name')
+    assert hasattr(pvc.metadata, 'uid')  # Used later
+    version_name = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
 
+    assert hasattr(pv, 'metadata')
+    assert hasattr(pv.metadata, 'name')
     version_labels = {
         'benji-backup.me/instance': settings.benji_instance,
-        'benji-backup.me/ceph-pool': pool,
-        'benji-backup.me/ceph-rbd-image': image,
-        'benji-backup.me/k8s-pvc-namespace': pvc_namespace,
-        'benji-backup.me/k8s-pvc-name': pvc_name,
-        'benji-backup.me/k8s-pv': pv_name
+        'benji-backup.me/ceph-pool': pv.spec.rbd.pool,
+        'benji-backup.me/ceph-rbd-image': pv.spec.rbd.image,
+        'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
+        'benji-backup.me/k8s-pvc-name': pvc.metadata.name,
+        'benji-backup.me/k8s-pv': pv.metadata.name
     }
 
-    context = {
-        'pvc': pvc,
-        'pv': pv,
-    }
-
-    ceph.backup(version_name=version_name, pool=pool, image=image, version_labels=version_labels, context=context)
+    context = {'pvc': pvc}
+    ceph.backup(version_name=version_name,
+                pool=pv.spec.rbd.pool,
+                image=pv.spec.rbd.image,
+                version_labels=version_labels,
+                context=context)
 
 prometheus.push(prometheus.backup_registry)
 sys.exit(0)

@@ -1,13 +1,12 @@
+import logging
 from datetime import datetime
+from tempfile import NamedTemporaryFile
 from typing import Dict, Any
 
-from tempfile import NamedTemporaryFile
-
-import logging
 from blinker import signal
 
-from benji.helpers.utils import subprocess_run
 from benji.helpers.settings import benji_log_level
+from benji.helpers.utils import subprocess_run
 
 SIGNAL_SENDER = 'ceph'
 RBD_SNAP_CREATE_TIMEOUT = 30

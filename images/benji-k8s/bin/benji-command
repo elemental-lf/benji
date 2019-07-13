@@ -3,9 +3,9 @@ import sys
 import time
 from typing import Optional
 
-import benji.helpers.utils as utils
-import benji.helpers.settings as settings
 import benji.helpers.prometheus as prometheus
+import benji.helpers.settings as settings
+import benji.helpers.utils as utils
 
 utils.setup_syslog_logging()
 
