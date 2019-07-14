@@ -32,6 +32,16 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+    - benji-backup.me
+  resources:
+    - '*'
+  verbs:
+    - create
+    - get
+    - list
+    - watch
+    - patch
 {{- if .Values.fsfreeze.enabled }}
 - apiGroups:
   - ""

@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import logging
+import time
+from typing import Dict
+
+import k8s_mini_operator
+import kubernetes
+from kubernetes.client.rest import ApiException
+
+from benji.helpers import utils
+from benji.helpers.kubernetes import create_pvc, parse_quantity
+from benji.helpers.settings import benji_log_level
+from benji.helpers.utils import subprocess_run
+
+utils.setup_syslog_logging()
+logger = logging.getLogger()
+
+restore_cr = k8s_mini_operator.CustomResource(group='benji-backup.me', resource='benjirestores', version='v1alpha1')
+
+
+def benji_restore_job(version: str, pvc_name: str, pvc_namespace: str):
+    logger.info(f'Restoring version {version} to PVC {pvc_namespace}/{pvc_name}.')
+
+    benji_ls = subprocess_run(
+        ['benji', '--machine-output', '--log-level', benji_log_level, 'ls', f'uid == "{version}"'], decode_json=True)
+    assert isinstance(benji_ls, dict)
+    assert 'versions' in benji_ls
+    assert isinstance(benji_ls['versions'], list)
+
+    if len(benji_ls['versions']) == 0:
+        raise RuntimeError(f'Size of {version} could not be determined.')
+
+    assert isinstance(benji_ls['versions'][0], dict)
+    assert isinstance(benji_ls['versions'][0]['size'], int)
+    version_size = benji_ls['versions'][0]['size']
+
+    # This assumes that the Kubernetes client has already been initialized
+    core_v1_api = kubernetes.client.CoreV1Api()
+    pvc = None
+    try:
+        pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
+    except ApiException as exception:
+        if exception.status != 404:
+            raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
+
+    if pvc is None:
+        create_pvc(pvc_name, pvc_namespace, version_size)
+    else:
+        pvc_size = parse_quantity(restore_cr['status']['capacity']['storage'])
+        if pvc_size < version_size:
+            raise RuntimeError(f'Exiting PVC is too small to hold version {version} ({pvc_size} < {version_size}).')
+
+    while True:
+        pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
+        if pvc.status.phase == 'Bound':
+            break
+        logger.info('Waiting for persistent volume creation.')
+        time.sleep(1)
+
+    subprocess_run([
+        'benji', '--machine-output', '--log-level', benji_log_level, 'restore', '--sparse', '--force', version,
+        f'rbd:{pvc.spec.rbd.pool}/{pvc.spec.rbd.image}'
+    ],
+                   decode_json=True)
+
+
+@k8s_mini_operator.signal_apply.connect_via(restore_cr)
+def apply(sender: k8s_mini_operator.CustomResource, resource_object: Dict):
+    logger.debug({'action': 'APPLY', 'sender': sender, 'resource_object': resource_object})
+    benji_restore_job(restore_cr['spec']['version']['versionName'], restore_cr['metadata']['namespace'],
+                      restore_cr['spec']['persistentVolumeClaim:']['claimName'])
+    return {'conditions': [{'type': 'Message', 'status': 'Job received'}, {'type': 'Ready', 'status': 'False'}]}
+
+
+# We don't need to do anything on delete
+@k8s_mini_operator.signal_delete.connect_via(restore_cr)
+def delete(sender: k8s_mini_operator.CustomResource, resource_object: Dict):
+    pass
+
+
+k8s_mini_operator.register_custom_resource(restore_cr)
+k8s_mini_operator.run()

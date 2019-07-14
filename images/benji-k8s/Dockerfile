@@ -28,7 +28,10 @@ RUN chmod a+x $VENV_DIR/bin/* && \
     chmod 644 $VENV_DIR/etc/crontab && \
     rm -f /etc/crontab /etc/cron.d/* && \
     ln -s $VENV_DIR/etc/crontab /etc/crontab  && \
-    sed -i '/pam_systemd.so/d' /etc/pam.d/password-auth
+    sed -i '/pam_systemd.so/d' /etc/pam.d/password-auth && \
+    . /benji/bin/activate && \
+    yum install -y git && \
+    pip install git+https://github.com/elemental-lf/k8s-mini-operator
 
 ENTRYPOINT ["/usr/bin/supervisord"]
 CMD ["-c", "/etc/supervisord.conf", "-u", "root", "-n"]

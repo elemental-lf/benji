@@ -169,7 +169,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
     core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
 
 
-def create_pvc(pvc_namespace: str, pvc_name: str, pvc_size: int):
+def create_pvc(pvc_name: str, pvc_namespace: str, pvc_size: str) -> None:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
