@@ -30,7 +30,7 @@ def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
 
 
 # old_msg is used as a stateful storage between calls
-def notify(process_name: str, msg: str = '', old_msg: str = ''):
+def notify(process_name: str, msg: str = '', old_msg: str = '') -> None:
     """ This method can receive notifications and append them in '[]' to the
     process name seen in ps, top, ...
     """
@@ -48,7 +48,8 @@ def notify(process_name: str, msg: str = '', old_msg: str = ''):
 # Indeed it's so tricky that older Python versions had the same problem. See https://bugs.python.org/issue27144.
 def future_results_as_completed(futures: List[Future], semaphore=None, timeout: int = None) -> Iterator[Any]:
     if sys.version_info < (3, 6, 4):
-        logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' + 'Upgrade your Python to at least 3.6.4.')
+        logger.warning('Large backup jobs are likely to fail because of excessive memory usage. ' +
+                       'Upgrade your Python to at least 3.6.4.')
 
     for future in concurrent.futures.as_completed(futures, timeout=timeout):
         futures.remove(future)
@@ -92,8 +93,7 @@ class BlockHash:
         try:
             hash = hash_module.new(**hash_kwargs)
         except (TypeError, ValueError) as exception:
-            raise ConfigurationError(
-                'Unsupported or invalid block hash arguments: {}.'.format(hash_kwargs)) from exception
+            raise ConfigurationError('Unsupported or invalid block hash arguments: {}.'.format(hash_kwargs)) from exception
 
         from benji.database import Block
         if len(hash.digest()) > Block.MAXIMUM_CHECKSUM_LENGTH:

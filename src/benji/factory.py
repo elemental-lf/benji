@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import importlib
-from typing import Dict, NamedTuple, Any
+from typing import Dict, NamedTuple, Any, List
 from urllib import parse
 
 from benji.config import Config, ConfigList
@@ -30,14 +30,27 @@ class StorageFactory(ReprMixIn):
     @classmethod
     def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
-            module = Config.get_from_dict(
-                module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
-            name = Config.get_from_dict(
-                module_dict, 'name', types=str, full_name_override=modules.full_name, index=index)
-            storage_id = Config.get_from_dict(
-                module_dict, 'storageId', types=int, full_name_override=modules.full_name, index=index)
-            configuration = Config.get_from_dict(
-                module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
+            module = Config.get_from_dict(module_dict,
+                                          'module',
+                                          types=str,
+                                          full_name_override=modules.full_name,
+                                          index=index)
+            name = Config.get_from_dict(module_dict,
+                                        'name',
+                                        types=str,
+                                        full_name_override=modules.full_name,
+                                        index=index)
+            storage_id = Config.get_from_dict(module_dict,
+                                              'storageId',
+                                              types=int,
+                                              full_name_override=modules.full_name,
+                                              index=index)
+            configuration = Config.get_from_dict(module_dict,
+                                                 'configuration',
+                                                 None,
+                                                 types=dict,
+                                                 full_name_override=modules.full_name,
+                                                 index=index)
 
             if name in cls._name_to_storage_id:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
@@ -50,14 +63,13 @@ class StorageFactory(ReprMixIn):
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
-            cls._modules[storage_id] = _StorageFactoryModule(
-                module=module,
-                arguments={
-                    'config': config,
-                    'name': name,
-                    'storage_id': storage_id,
-                    'module_configuration': configuration
-                })
+            cls._modules[storage_id] = _StorageFactoryModule(module=module,
+                                                             arguments={
+                                                                 'config': config,
+                                                                 'name': name,
+                                                                 'storage_id': storage_id,
+                                                                 'module_configuration': configuration
+                                                             })
             cls._name_to_storage_id[name] = storage_id
             cls._storage_id_to_name[storage_id] = name
 
@@ -126,12 +138,22 @@ class TransformFactory(ReprMixIn):
     @classmethod
     def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
-            module = Config.get_from_dict(
-                module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
-            name = Config.get_from_dict(
-                module_dict, 'name', types=str, full_name_override=modules.full_name, index=index)
-            configuration = Config.get_from_dict(
-                module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
+            module = Config.get_from_dict(module_dict,
+                                          'module',
+                                          types=str,
+                                          full_name_override=modules.full_name,
+                                          index=index)
+            name = Config.get_from_dict(module_dict,
+                                        'name',
+                                        types=str,
+                                        full_name_override=modules.full_name,
+                                        index=index)
+            configuration = Config.get_from_dict(module_dict,
+                                                 'configuration',
+                                                 None,
+                                                 types=dict,
+                                                 full_name_override=modules.full_name,
+                                                 index=index)
 
             if name in cls._modules:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
@@ -141,12 +163,12 @@ class TransformFactory(ReprMixIn):
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
-            cls._modules[name] = _StorageFactoryModule(
-                module=module, arguments={
-                    'config': config,
-                    'name': name,
-                    'module_configuration': configuration
-                })
+            cls._modules[name] = _StorageFactoryModule(module=module,
+                                                       arguments={
+                                                           'config': config,
+                                                           'name': name,
+                                                           'module_configuration': configuration
+                                                       })
 
     @classmethod
     def initialize(cls, config: Config) -> None:
@@ -184,12 +206,22 @@ class IOFactory(ReprMixIn):
     @classmethod
     def _import_modules(cls, config: Config, modules: ConfigList) -> None:
         for index, module_dict in enumerate(modules):
-            module = Config.get_from_dict(
-                module_dict, 'module', types=str, full_name_override=modules.full_name, index=index)
-            name = Config.get_from_dict(
-                module_dict, 'name', types=str, full_name_override=modules.full_name, index=index)
-            configuration = Config.get_from_dict(
-                module_dict, 'configuration', None, types=dict, full_name_override=modules.full_name, index=index)
+            module = Config.get_from_dict(module_dict,
+                                          'module',
+                                          types=str,
+                                          full_name_override=modules.full_name,
+                                          index=index)
+            name = Config.get_from_dict(module_dict,
+                                        'name',
+                                        types=str,
+                                        full_name_override=modules.full_name,
+                                        index=index)
+            configuration = Config.get_from_dict(module_dict,
+                                                 'configuration',
+                                                 None,
+                                                 types=dict,
+                                                 full_name_override=modules.full_name,
+                                                 index=index)
 
             if name in cls._modules:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
@@ -199,12 +231,12 @@ class IOFactory(ReprMixIn):
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
-            cls._modules[name] = _StorageFactoryModule(
-                module=module, arguments={
-                    'config': config,
-                    'name': name,
-                    'module_configuration': configuration
-                })
+            cls._modules[name] = _StorageFactoryModule(module=module,
+                                                       arguments={
+                                                           'config': config,
+                                                           'name': name,
+                                                           'module_configuration': configuration
+                                                       })
 
     @classmethod
     def initialize(cls, config: Config) -> None:

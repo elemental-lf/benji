@@ -64,9 +64,7 @@ class Commands:
                                                                                ', '.join(label_remove)))
 
             if self.machine_output:
-                benji_obj.export_any({
-                    'versions': [backup_version]
-                },
+                benji_obj.export_any({'versions': [backup_version]},
                                      sys.stdout,
                                      ignore_relationships=[((Version,), ('blocks',))])
         finally:
@@ -115,12 +113,11 @@ class Commands:
         try:
             benji_obj = Benji(self.config)
             for version_uid in version_uid_objs:
-                benji_obj.rm(
-                    version_uid,
-                    force=force,
-                    disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
-                    keep_metadata_backup=keep_metadata_backup,
-                    override_lock=override_lock)
+                benji_obj.rm(version_uid,
+                             force=force,
+                             disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
+                             keep_metadata_backup=keep_metadata_backup,
+                             override_lock=override_lock)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -134,12 +131,13 @@ class Commands:
         except benji.exception.ScrubbingError:
             assert benji_obj is not None
             if self.machine_output:
-                benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
-                    'errors': benji_obj.ls(version_uid=version_uid_obj)
-                },
-                                     sys.stdout,
-                                     ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any(
+                    {
+                        'versions': benji_obj.ls(version_uid=version_uid_obj),
+                        'errors': benji_obj.ls(version_uid=version_uid_obj)
+                    },
+                    sys.stdout,
+                    ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
@@ -162,12 +160,13 @@ class Commands:
         except benji.exception.ScrubbingError:
             assert benji_obj is not None
             if self.machine_output:
-                benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
-                    'errors': benji_obj.ls(version_uid=version_uid_obj)
-                },
-                                     sys.stdout,
-                                     ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any(
+                    {
+                        'versions': benji_obj.ls(version_uid=version_uid_obj),
+                        'errors': benji_obj.ls(version_uid=version_uid_obj)
+                    },
+                    sys.stdout,
+                    ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
@@ -278,9 +277,7 @@ class Commands:
 
             if self.machine_output:
                 benji_obj.export_any(
-                    {
-                        'versions': versions
-                    },
+                    {'versions': versions},
                     sys.stdout,
                     ignore_relationships=[((Version,), ('blocks',))],
                 )
@@ -407,12 +404,11 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            dismissed_versions = benji_obj.enforce_retention_policy(
-                filter_expression=filter_expression,
-                rules_spec=rules_spec,
-                dry_run=dry_run,
-                keep_metadata_backup=keep_metadata_backup,
-                group_label=group_label)
+            dismissed_versions = benji_obj.enforce_retention_policy(filter_expression=filter_expression,
+                                                                    rules_spec=rules_spec,
+                                                                    dry_run=dry_run,
+                                                                    keep_metadata_backup=keep_metadata_backup,
+                                                                    group_label=group_label)
             if self.machine_output:
                 benji_obj.export_any({
                     'versions': dismissed_versions,
@@ -446,7 +442,7 @@ class Commands:
             logger.info('Object metadata version: {}, supported {}.'.format(VERSIONS.object_metadata.current,
                                                                             VERSIONS.object_metadata.supported))
         else:
-            versions = {
+            result = {
                 'version': __version__,
                 'configuration_version': {
                     'current': str(VERSIONS.configuration.current),
@@ -461,7 +457,7 @@ class Commands:
                     'supported': str(VERSIONS.object_metadata.supported)
                 },
             }
-            print(json.dumps(versions, indent=4))
+            print(json.dumps(result, indent=4))
 
     @staticmethod
     def _ls_storage_stats_table_output(objects_count: int, objects_size: int) -> None:
@@ -486,10 +482,11 @@ class Commands:
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
 
             if self.machine_output:
-                benji_obj.export_any({
+                result = {
                     'objects_count': objects_count,
                     'objects_size': objects_size,
-                }, sys.stdout)
+                }
+                print(json.dumps(result, indent=4))
             else:
                 self._ls_storage_stats_table_output(objects_count, objects_size)
         finally:

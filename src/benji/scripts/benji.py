@@ -44,15 +44,19 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
     parser.add_argument('-c', '--config-file', default=None, type=str, help='Specify a non-default configuration file')
-    parser.add_argument(
-        '-m', '--machine-output', action='store_true', default=False, help='Enable machine-readable JSON output')
-    parser.add_argument(
-        '--log-level',
-        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-        default='INFO',
-        help='Only log messages of this level or above on the console')
-    parser.add_argument(
-        '--no-color', action='store_true', default=False, help='Disable colorization of console logging')
+    parser.add_argument('-m',
+                        '--machine-output',
+                        action='store_true',
+                        default=False,
+                        help='Enable machine-readable JSON output')
+    parser.add_argument('--log-level',
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        default='INFO',
+                        help='Only log messages of this level or above on the console')
+    parser.add_argument('--no-color',
+                        action='store_true',
+                        default=False,
+                        help='Disable colorization of console logging')
 
     subparsers_root = parser.add_subparsers(title='commands')
 
@@ -62,57 +66,50 @@ def main():
     p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
     p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
     p.add_argument('-b', '--block-size', type=int, default=None, help='Block size in bytes')
-    p.add_argument(
-        '-l',
-        '--label',
-        action='append',
-        dest='labels',
-        metavar='label',
-        default=None,
-        help='Labels for this version (can be repeated)')
+    p.add_argument('-l',
+                   '--label',
+                   action='append',
+                   dest='labels',
+                   metavar='label',
+                   default=None,
+                   help='Labels for this version (can be repeated)')
     p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
     p.add_argument('source', help='Source URL')
     p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
     p.set_defaults(func='backup')
 
     # BATCH-DEEP-SCRUB
-    p = subparsers_root.add_parser(
-        'batch-deep-scrub',
-        help='Check data and metadata integrity of multiple versions at once',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-P',
-        '--version-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of versions')
+    p = subparsers_root.add_parser('batch-deep-scrub',
+                                   help='Check data and metadata integrity of multiple versions at once',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('-p',
+                   '--block-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of blocks')
+    p.add_argument('-P',
+                   '--version-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of versions')
     p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_deep_scrub')
 
     # BATCH-SCRUB
-    p = subparsers_root.add_parser(
-        'batch-scrub',
-        help='Check block existence and metadata integrity of multiple versions at once',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of blocks')
-    p.add_argument(
-        '-P',
-        '--version-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of versions')
+    p = subparsers_root.add_parser('batch-scrub',
+                                   help='Check block existence and metadata integrity of multiple versions at once',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('-p',
+                   '--block-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of blocks')
+    p.add_argument('-P',
+                   '--version-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of versions')
     p.add_argument('-g', '--group_label', default=None, help='Label to find related versions')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='batch_scrub')
@@ -128,8 +125,8 @@ def main():
     p.set_defaults(func='completion')
 
     # DATABASE-INIT
-    p = subparsers_root.add_parser(
-        'database-init', help='Initialize the database (will not delete existing tables or data)')
+    p = subparsers_root.add_parser('database-init',
+                                   help='Initialize the database (will not delete existing tables or data)')
     p.set_defaults(func='database_init')
 
     # DATABASE-MIGRATE
@@ -137,17 +134,15 @@ def main():
     p.set_defaults(func='database_migrate')
 
     # DEEP-SCRUB
-    p = subparsers_root.add_parser(
-        'deep-scrub',
-        help='Check a version\'s data and metadata integrity',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = subparsers_root.add_parser('deep-scrub',
+                                   help='Check a version\'s data and metadata integrity',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('-s', '--source', default=None, help='Additionally compare version against source URL')
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of blocks')
+    p.add_argument('-p',
+                   '--block-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of blocks')
     p.add_argument('version_uid', help='Version UID')
     p.set_defaults(func='deep_scrub')
 
@@ -180,16 +175,16 @@ def main():
     p.set_defaults(func='metadata_backup')
 
     # METADATA EXPORT
-    p = subparsers_root.add_parser(
-        'metadata-export', help='Export the metadata of one or more versions to a file or standard output')
+    p = subparsers_root.add_parser('metadata-export',
+                                   help='Export the metadata of one or more versions to a file or standard output')
     p.add_argument('filter_expression', nargs='?', default=None, help="Version filter expression")
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing output file')
     p.add_argument('-o', '--output-file', default=None, help='Output file (standard output if missing)')
     p.set_defaults(func='metadata_export')
 
     # METADATA-IMPORT
-    p = subparsers_root.add_parser(
-        'metadata-import', help='Import the metadata of one or more versions from a file or standard input')
+    p = subparsers_root.add_parser('metadata-import',
+                                   help='Import the metadata of one or more versions from a file or standard input')
     p.add_argument('-i', '--input-file', default=None, help='Input file (standard input if missing)')
     p.set_defaults(func='metadata_import')
 
@@ -205,8 +200,9 @@ def main():
     p.set_defaults(func='metadata_restore')
 
     # NBD
-    p = subparsers_root.add_parser(
-        'nbd', help='Start an NBD server', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p = subparsers_root.add_parser('nbd',
+                                   help='Start an NBD server',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
     p.add_argument('-p', '--bind-port', default=10809, help='Bind to the specified port')
     p.add_argument('-r', '--read-only', action='store_true', default=False, help='NBD device is read-only')
@@ -221,8 +217,10 @@ def main():
     p = subparsers_root.add_parser('restore', help='Restore a backup')
     p.add_argument('-s', '--sparse', action='store_true', help='Restore only existing blocks')
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing file, device or image')
-    p.add_argument(
-        '-d', '--database-backend-less', action='store_true', help='Restore without requiring the database backend')
+    p.add_argument('-d',
+                   '--database-backend-less',
+                   action='store_true',
+                   help='Restore without requiring the database backend')
     p.add_argument('version_uid', help='Version UID to restore')
     p.add_argument('destination', help='Destination URL')
     p.set_defaults(func='restore')
@@ -236,16 +234,14 @@ def main():
     p.set_defaults(func='rm')
 
     # SCRUB
-    p = subparsers_root.add_parser(
-        'scrub',
-        help='Check a version\'s block existence and metadata integrity',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument(
-        '-p',
-        '--block-percentage',
-        type=partial(integer_range, 1, 100),
-        default=100,
-        help='Check only a certain percentage of blocks')
+    p = subparsers_root.add_parser('scrub',
+                                   help='Check a version\'s block existence and metadata integrity',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument('-p',
+                   '--block-percentage',
+                   type=partial(integer_range, 1, 100),
+                   default=100,
+                   help='Check only a certain percentage of blocks')
     p.add_argument('version_uid', help='Version UID')
     p.set_defaults(func='scrub')
 
@@ -286,10 +282,9 @@ def main():
     else:
         config = Config()
 
-    init_logging(
-        config.get('logFile', types=(str, type(None))),
-        console_level=args.log_level,
-        console_formatter='console-plain' if args.no_color else 'console-colored')
+    init_logging(config.get('logFile', types=(str, type(None))),
+                 console_level=args.log_level,
+                 console_formatter='console-plain' if args.no_color else 'console-colored')
 
     if sys.hexversion < 0x030604F0:
         logger.warning('The installed Python version will use excessive amounts of memory when used with Benji. Upgrade Python to at least 3.6.4.')
