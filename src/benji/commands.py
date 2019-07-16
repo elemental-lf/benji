@@ -39,9 +39,7 @@ class Commands:
             raise benji.exception.UsageError('Snapshot name {} is invalid.'.format(snapshot_name))
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
         if labels:
-            label_add, label_remove = self._parse_labels(labels)
-            if label_remove:
-                raise benji.exception.UsageError('Wanting to delete labels on a new version is senseless.')
+            label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         benji_obj = None
         try:
             benji_obj = Benji(self.config, block_size=block_size)
@@ -376,45 +374,9 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    @staticmethod
-    def _parse_labels(labels: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
-        add_list: List[Tuple[str, str]] = []
-        remove_list: List[str] = []
-        for label in labels:
-            if len(label) == 0:
-                raise benji.exception.UsageError('A zero-length label is invalid.')
-
-            if label.endswith('-'):
-                name = label[:-1]
-
-                if not InputValidation.is_label_name(name):
-                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
-
-                remove_list.append(name)
-            elif label.find('=') > -1:
-                name, value = label.split('=')
-
-                if len(name) == 0:
-                    raise benji.exception.UsageError('Missing label key in label {}.'.format(label))
-                if not InputValidation.is_label_name(name):
-                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
-                if not InputValidation.is_label_value(value):
-                    raise benji.exception.UsageError('Label value {} is not a valid.'.format(value))
-
-                add_list.append((name, value))
-            else:
-                name = label
-
-                if not InputValidation.is_label_name(name):
-                    raise benji.exception.UsageError('Label name {} is invalid.'.format(name))
-
-                add_list.append((name, ''))
-
-        return add_list, remove_list
-
     def label(self, version_uid: str, labels: List[str]) -> None:
         version_uid_obj = VersionUid(version_uid)
-        label_add, label_remove = self._parse_labels(labels)
+        label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         benji_obj = None
         try:
             benji_obj = Benji(self.config)

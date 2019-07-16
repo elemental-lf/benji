@@ -3,7 +3,6 @@
 import concurrent
 import json
 import re
-import setproctitle
 import sys
 from ast import literal_eval
 from concurrent.futures import Future
@@ -13,12 +12,13 @@ from threading import Lock
 from time import time
 from typing import List, Tuple, Union, Any, Optional, Dict, Iterator
 
+import setproctitle
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
 
-from benji.exception import ConfigurationError
+from benji.exception import ConfigurationError, UsageError
 from benji.logging import logger
 
 
@@ -217,3 +217,39 @@ class InputValidation:
             return True
         else:
             return re.fullmatch(cls.QUALIFIED_NAME_REGEXP, name) is not None
+
+    @staticmethod
+    def parse_and_validate_labels(labels: List[str]) -> Tuple[List[Tuple[str, str]], List[str]]:
+        add_list: List[Tuple[str, str]] = []
+        remove_list: List[str] = []
+        for label in labels:
+            if len(label) == 0:
+                raise UsageError('A zero-length label is invalid.')
+
+            if label.endswith('-'):
+                name = label[:-1]
+
+                if not InputValidation.is_label_name(name):
+                    raise UsageError('Label name {} is invalid.'.format(name))
+
+                remove_list.append(name)
+            elif label.find('=') > -1:
+                name, value = label.split('=')
+
+                if len(name) == 0:
+                    raise UsageError('Missing label key in label {}.'.format(label))
+                if not InputValidation.is_label_name(name):
+                    raise UsageError('Label name {} is invalid.'.format(name))
+                if not InputValidation.is_label_value(value):
+                    raise UsageError('Label value {} is not a valid.'.format(value))
+
+                add_list.append((name, value))
+            else:
+                name = label
+
+                if not InputValidation.is_label_name(name):
+                    raise UsageError('Label name {} is invalid.'.format(name))
+
+                add_list.append((name, ''))
+
+        return add_list, remove_list
