@@ -1183,6 +1183,10 @@ class Benji(ReprMixIn):
             storage = StorageFactory.get_by_storage_id(self._default_storage_id)
         return storage.storage_stats()
 
+    @staticmethod
+    def list_storages() -> List[str]:
+        return StorageFactory.list_by_name()
+
 
 class _BlockCache:
 
