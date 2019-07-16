@@ -1,8 +1,8 @@
-import fileinput
 import json
+import logging
 import os
 import sys
-from typing import List, NamedTuple, Type, Optional, Tuple
+from typing import List, NamedTuple, Type, Optional
 
 from prettytable import PrettyTable
 
@@ -13,6 +13,7 @@ from benji.database import Version, VersionUid
 from benji.factory import StorageFactory
 from benji.logging import logger
 from benji.nbdserver import NbdServer
+from benji.restapi import RestAPI
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 from benji.versions import VERSIONS
 
@@ -30,7 +31,7 @@ class Commands:
         self.config = config
 
     def backup(self, version_name: str, snapshot_name: str, source: str, rbd_hints: str, base_version_uid: str,
-               block_size: int, labels: List[str], storage) -> None:
+               block_size: int, labels: List[str], storage: str) -> None:
         # Validate version_name and snapshot_name
         if not InputValidation.is_backup_name(version_name):
             raise benji.exception.UsageError('Version name {} is invalid.'.format(version_name))
