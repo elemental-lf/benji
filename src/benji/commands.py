@@ -47,8 +47,9 @@ class Commands:
             benji_obj = Benji(self.config, block_size=block_size)
             hints = None
             if rbd_hints:
-                data = ''.join([line for line in fileinput.input(rbd_hints).readline()])
-                hints = hints_from_rbd_diff(data)
+                logger.debug(f'Loading RBD hints from file {rbd_hints}.')
+                with open(rbd_hints, 'r') as f:
+                    hints = hints_from_rbd_diff(f.read())
             backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj, storage)
 
             if labels:
