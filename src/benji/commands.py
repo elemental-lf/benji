@@ -13,7 +13,6 @@ from benji.database import Version, VersionUid
 from benji.factory import StorageFactory
 from benji.logging import logger
 from benji.nbdserver import NbdServer
-from benji.restapi import RestAPI
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
 from benji.versions import VERSIONS
 
@@ -494,6 +493,7 @@ class Commands:
                 benji_obj.close()
 
     def rest_api(self, bind_address: str, bind_port: int) -> None:
+        from benji.restapi import RestAPI
         api = RestAPI(self.config)
         logger.info(f'Starting REST API via gunicorn on {bind_address}:{bind_port}.')
         debug = bool(logger.isEnabledFor(logging.DEBUG))

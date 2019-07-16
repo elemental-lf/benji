@@ -66,7 +66,6 @@ Topic :: System :: Archiving :: Backup
         'structlog>=19.1.0',
         'colorama>=0.4.1,<1',
         'diskcache>=3.0.6',
-        'bottle>=0.12.16,<1'
     ],
     extras_require={
         's3': ['boto3>=1.7.28'],
@@ -78,7 +77,7 @@ Topic :: System :: Archiving :: Backup
         'dev': ['parameterized', 'wheel', 'yapf', 'mypy'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
         'helpers': ['blinker>=1.4,<2', 'prometheus_client>=0.7.0,<1', 'kubernetes>=10.0.0,<11'],
-        'rest-api': ['bottle>=0.12.16,<1', 'gunicorn>=19.9.0,<20'],
+        'rest-api': ['bottle>=0.12.16,<1', 'gunicorn>=19.9.0,<20', 'webargs>=5.3.1,<6'],
     },
     python_requires='~=3.6',
     entry_points="""
