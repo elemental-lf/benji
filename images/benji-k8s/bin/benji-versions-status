@@ -5,7 +5,7 @@ import benji.helpers.prometheus as prometheus
 import benji.helpers.settings as settings
 import benji.helpers.utils as utils
 
-utils.setup_syslog_logging()
+utils.setup_logging()
 
 incomplete_versions = utils.subprocess_run([
     'benji',

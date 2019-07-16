@@ -3,7 +3,6 @@ import logging
 import re
 import subprocess
 from json import JSONDecodeError
-from logging.handlers import SysLogHandler
 from typing import Dict, List, Union
 
 from benji.helpers.settings import benji_log_level
@@ -11,10 +10,10 @@ from benji.helpers.settings import benji_log_level
 logger = logging.getLogger()
 
 
-def setup_syslog_logging() -> None:
-    # Don't raise exceptions occurring during logging as syslog might fail with too long messages.
+def setup_logging() -> None:
+    # Don't raise exceptions occurring during logging
     logging.raiseExceptions = False
-    logger.addHandler(SysLogHandler(address='/dev/log'))
+    logger.addHandler(logging.StreamHandler())
     logger.setLevel(benji_log_level)
 
 

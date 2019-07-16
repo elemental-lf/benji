@@ -21,7 +21,7 @@ FSFREEZE_POD_LABEL_SELECTOR = 'benji-backup.me/component=fsfreeze'
 FSFREEZE_CONTAINER_NAME = 'fsfreeze'
 KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{}'
 
-utils.setup_syslog_logging()
+utils.setup_logging()
 logger = logging.getLogger()
 
 

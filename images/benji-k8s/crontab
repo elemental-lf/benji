@@ -1,7 +1,0 @@
-#00 * * * * root benji-pvc-backup --namespace production
-#15 * * * * root benji-pvc-backup --namespace staging
-#45 * * * * root benji-pvc-backup --namespace ceph -l release==benji
-#00 04 * * * root benji-command enforce latest3,hours24,days30,months3 'labels["benji-backup.me/instance"] == "benji-k8s"'
-#00 05 * * * root benji-command cleanup
-#10 05 * * * root benji-versions-status
-#00 06 * * * root benji-command batch-deep-scrub --version-percentage 10 --block-percentage 33 'labels["benji-backup.me/instance"] == "benji-k8s"'

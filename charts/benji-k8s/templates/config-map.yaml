@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "benji.fullname" . }}
+  name: {{ tuple . "" | include "benji.fullname" }}
   labels:
     app.kubernetes.io/name: {{ include "benji.name" . }}
     helm.sh/chart: {{ include "benji.chart" . }}
@@ -11,5 +11,3 @@ metadata:
 data:
   benji.yaml: |
     {{ .Values.benji.configuration | toYaml | nindent 4 }}
-  crontab: |
-    {{ .Values.benji.crontab | nindent 4 }}
