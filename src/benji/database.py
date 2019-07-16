@@ -12,7 +12,6 @@ import sqlite3
 import time
 import uuid
 from abc import abstractmethod
-from binascii import hexlify, unhexlify
 from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
@@ -27,6 +26,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from binascii import hexlify, unhexlify
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
@@ -351,8 +351,6 @@ class Version(Base):
         backref='version',
         order_by='asc(Label.name)',
         passive_deletes=True,
-        # Always load labels together with the version
-        lazy='selectin',
     )
 
     blocks = sqlalchemy.orm.relationship(
@@ -583,7 +581,7 @@ class DatabaseBackend(ReprMixIn):
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
 
-        Session = sqlalchemy.orm.sessionmaker(bind=self._engine, expire_on_commit=False)
+        Session = sqlalchemy.orm.sessionmaker(bind=self._engine)
         self._session = Session()
         self._locking = DatabaseBackendLocking(self._session)
         self._last_blocks_commit = time.monotonic()
