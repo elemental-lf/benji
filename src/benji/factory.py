@@ -124,6 +124,10 @@ class StorageFactory(ReprMixIn):
         else:
             raise ConfigurationError('Storage name {} is undefined.'.format(name))
 
+    @classmethod
+    def list_by_name(cls) -> List[str]:
+        return cls._name_to_storage_id.keys()
+
 
 class TransformFactory(ReprMixIn):
 

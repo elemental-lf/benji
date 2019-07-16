@@ -41,6 +41,8 @@ def main():
     if sys.hexversion < 0x030600F0:
         raise InternalError('Benji only supports Python 3.6 or above.')
 
+    enable_experimental = os.getenv('BENJI_EXPERIMENTAL', default='0') == '1'
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
     parser.add_argument('-c', '--config-file', default=None, type=str, help='Specify a non-default configuration file')
@@ -258,6 +260,13 @@ def main():
     # VERSION-INFO
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
+
+    # REST-API
+    if enable_experimental:
+        p = subparsers_root.add_parser('rest-api', help='Start REST API server')
+        p.set_defaults(func='rest_api')
+        p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
+        p.add_argument('-p', '--bind-port', default=8080, type=int, help='Bind to the specified port')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
