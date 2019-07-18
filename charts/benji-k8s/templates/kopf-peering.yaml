@@ -1,0 +1,6 @@
+# Source: https://raw.githubusercontent.com/zalando-incubator/kopf/242774942c5cbe5c236a439414ba42e45f79e644/peering.yaml
+---
+apiVersion: zalando.org/v1
+kind: ClusterKopfPeering
+metadata:
+  name: default
