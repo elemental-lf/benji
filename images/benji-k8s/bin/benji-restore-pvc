@@ -1,119 +1,83 @@
-#!/bin/bash
-#
-# This is helper script to restore a version into a PVC/PV.  It should be
-# run a management workstation with access to the Kubernetes API.
-#
-# It requires kubectl and the necessary credentials to execute commands in
-# the Benji K8s pod, create the PVC (if does not already exist) and start a
-# pod in the target namespace.
-#
-# The namespace where the target PVC is located needs to enabled for dynamic
-# provisioning of RBD volumes if the specified PVC and the corresponding PV
-# does not already exist.
-#
-# If restoring into an existing PVC/PV the PV needs to at least the size
-# of the version to be restored. If the PV is bigger than the version the
-# the filesystem won't be resized automatically.
-#
+#!/usr/bin/env python3
+import argparse
+import logging
+import sys
+import time
 
-if [[ $# != 3 ]]; then
-    echo "usage: $0 <version> <restore-pvc-namespace> <restore-pvc-name>"
-    exit 1
-fi
+import kubernetes
+from kubernetes.client.rest import ApiException
 
-VERSION="$1"
-RESTORE_NS="$2"
-RESTORE_PVC="$3"
+import benji.helpers.kubernetes
+import benji.helpers.settings as settings
+import benji.helpers.utils as utils
 
-: ${BENJI_K8S_NS:=ceph}
+utils.setup_logging()
+logger = logging.getLogger()
 
-BENJI_K8S_POD="$(kubectl get pod -n "$BENJI_K8S_NS" -l benji-backup.me/component=benji -o 'jsonpath={.items[0].metadata.name}')"
-[[ ! $BENJI_K8S_POD ]] && { echo 'Benji K8s pod not found.' 1>&2; exit 1; }
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
-VERSION_SIZE="$(kubectl exec -n "$BENJI_K8S_NS" "$BENJI_K8S_POD" -c benji -- \
-		benji --log-level ERROR -m ls 'uid == "'"$VERSION"'"' | jq '.versions[0].size')"
-[[ ! $VERSION_SIZE ]] && { echo "Size of $VERSION could not be determined." 1>&2; exit 1; }
+parser.add_argument('-f',
+                    '--force',
+                    dest='force',
+                    action='store_true',
+                    default=False,
+                    help='Overwrite content of existing persistent volumes')
+parser.add_argument(metavar='version', dest='version', help='Version name')
+parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
+parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
 
-if ! kubectl get pvc -n "$RESTORE_NS" "$RESTORE_PVC" 2>/dev/null 1>&2; then
-    kubectl create -f - <<EOF
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  namespace: $RESTORE_NS
-  name: $RESTORE_PVC
-spec:
-  storageClassName: rbd
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: $VERSION_SIZE
-EOF
-    [[ $? != 0 ]] && exit 1
-else
-    PVC_SIZE=$(kubectl get pvc -n "$RESTORE_NS" "$RESTORE_PVC" -o 'jsonpath={.status.capacity.storage}')
-    cat <<EOF
-It seems the PVC $RESTORE_NS/$RESTORE_PVC already exists and has a size of $PVC_SIZE bytes.
-Size of version requested to be restored is $VERSION_SIZE bytes.
+args = parser.parse_args()
 
-EOF
+benji.helpers.kubernetes.load_config()
+core_v1_api = kubernetes.client.CoreV1Api()
 
-    read -r -p 'Do you want to try to overwrite the persistent volume and lose all data in it? [y/N] ' response
-    case $response in
-        [yY][eE][sS]|[yY]) 
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-fi
+logger.info(f'Restoring version {args.version} to PVC {args.pvc_namespace}/{args.pvc_name}.')
 
-# Wait for PV creation (if it does not already exist)
-echo
-until kubectl get pvc -n "$RESTORE_NS" "$RESTORE_PVC" -o jsonpath='{.status.phase}' | grep -q Bound; do
-    echo 'Waiting for PV creation...'
-    sleep 2
-done
+benji_ls = utils.subprocess_run(
+    ['benji', '--machine-output', '--log-level', settings.benji_log_level, 'ls', f'uid == "{args.version}"'],
+    decode_json=True)
+assert isinstance(benji_ls, dict)
+assert 'versions' in benji_ls
+assert isinstance(benji_ls['versions'], list)
 
-PV="$(kubectl get pvc -n "$RESTORE_NS" "$RESTORE_PVC" -o 'jsonpath={.spec.volumeName}')"
-[[ ! $PV ]] && { echo "Persistent volume for PVC $RESTORE_NS/$RESTORE_PVC could not be found." 1>&2; exit 1; }
+if len(benji_ls['versions']) == 0:
+    raise RuntimeError(f'Size of {args.version} could not be determined.')
 
-RBD_IMAGE="$(kubectl get pv "$PV" -o jsonpath='{.spec.rbd.pool}{"/"}{.spec.rbd.image}')"
-[[ ! $RBD_IMAGE ]] && { echo "RBD image for PV $PV could not be found." 1>&2; exit 1; }
+assert isinstance(benji_ls['versions'][0], dict)
+assert isinstance(benji_ls['versions'][0]['size'], int)
+version_size = benji_ls['versions'][0]['size']
 
-echo
-kubectl exec -n "$BENJI_K8S_NS" "$BENJI_K8S_POD" -c benji -- benji restore --sparse --force "$VERSION" rbd:"$RBD_IMAGE"
-[[ $? != 0 ]] && exit 1
+# This assumes that the Kubernetes client has already been initialized
+core_v1_api = kubernetes.client.CoreV1Api()
+pvc = None
+try:
+    pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
+except ApiException as exception:
+    if exception.status != 404:
+        raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
-echo -e '\nStarting test pod, volume is mounted at /volume.'
-kubectl run -n "$RESTORE_NS" benji-k8s-restore-$$ --image elementalnet/benji-k8s --rm -ti --restart=Never --overrides='
-{
-    "spec": {
-        "containers": [
-            {
-                "stdin": true,
-                "tty": true,
-                "command": [ "bash" ],
-                "args": [ "-il" ],
-                "name": "benji-k8s-volume-test",
-                "image": "elementalnet/benji-k8s",
-                "volumeMounts": [
-                    {
-                        "mountPath": "/volume",
-                        "name": "volume"
-                    }
-                ]
-            }
-        ],
-        "volumes": [
-            {
-                "name": "volume",
-                "persistentVolumeClaim": {
-                    "claimName": "'"$RESTORE_PVC"'"
-                }
-            }
-        ]
-    }
-}
-'
-#EOF
+if pvc is None:
+    pvc = benji.helpers.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size)
+else:
+    if not args.force:
+        raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
+
+    # I don't really understand why capacity is a regular dict and not an object. Oh, well.
+    pvc_size = benji.helpers.kubernetes.parse_quantity(pvc.status.capacity['storage'])
+    if pvc_size < version_size:
+        raise RuntimeError(f'Existing PVC is too small to hold version {args.version} ({pvc_size} < {version_size}).')
+
+while True:
+    pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
+    if pvc.status.phase == 'Bound':
+        break
+    logger.info('Waiting for persistent volume creation.')
+    time.sleep(1)
+
+pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+
+utils.subprocess_run([
+    'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version,
+    f'rbd:{pv.spec.rbd.pool}/{pv.spec.rbd.image}'
+])
+sys.exit(0)
