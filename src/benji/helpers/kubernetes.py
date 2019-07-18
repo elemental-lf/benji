@@ -124,7 +124,8 @@ def pod_exec(args: List[str], *, name: str, namespace: str, container: str = Non
     return stdout_channel, stderr_channel
 
 
-def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str, pvc_name: str, pvc_uid: str):
+def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str, pvc_name: str,
+                     pvc_uid: str) -> kubernetes.client.models.v1_event.V1Event:
     event_name = '{}-{}'.format(benji_instance, str(uuid.uuid4()))
     # Kubernetes requires a time including microseconds
     event_time = datetime.datetime.utcnow().isoformat(timespec='microseconds') + 'Z'
@@ -167,10 +168,11 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
     }
 
     core_v1_api = kubernetes.client.CoreV1Api()
-    core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
+    return core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
 
 
-def create_pvc(pvc_namespace: str, pvc_name: str, pvc_size: int):
+def create_pvc(pvc_name: str, pvc_namespace: int,
+               pvc_size: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -190,7 +192,7 @@ def create_pvc(pvc_namespace: str, pvc_name: str, pvc_size: int):
     }
 
     core_v1_api = kubernetes.client.CoreV1Api()
-    core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
+    return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
 
 
 # This is taken from https://github.com/kubernetes-client/python/pull/855 with minimal changes.
