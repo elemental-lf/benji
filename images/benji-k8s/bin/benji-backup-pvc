@@ -35,21 +35,18 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
     core_v1_api = kubernetes.client.CoreV1Api()
     pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
     service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
-    assert hasattr(pvc, 'metadata')
     if hasattr(pvc.metadata,
                'annotations') and FSFREEZE_ANNOTATION in pvc.metadata.annotations and pvc.metadata.annotations[FSFREEZE_ANNOTATION] == 'yes':
         pods = core_v1_api.list_namespaced_pod(service_account_namespace, watch=False).items
         for pod in pods:
             if pv_fsfreeze:
                 break
-            assert hasattr(pod, 'spec')
             if not hasattr(pod.spec, 'volumes'):
                 continue
             for volume in pod.spec.volumes:
                 if not hasattr(volume, 'persistent_volume_claim') or not hasattr(
                         volume.persistent_volume_claim, 'claim_name') or volume.persistent_volume_claim.claim_name != pvc_name:
                     continue
-                assert hasattr(pod, 'status')
                 if hasattr(pod.status, 'host_ip') and pod.status.host_ip != '':
                     pv_fsfreeze = True
                     pv_host_ip = pod.status.host_ip
@@ -59,13 +56,10 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
             pods = core_v1_api.list_namespaced_pod(benji.helpers.kubernetes.service_account_namespace(),
                                                    label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
             for pod in pods:
-                assert hasattr(pod, 'status')
                 if not hasattr(pod.status, 'host_ip') or not hasattr(pod.status, 'phase'):
                     continue
 
                 if pod.status.host_ip == pv_host_ip and pod.status.phase == 'Running':
-                    assert hasattr(pod, 'metadata')
-                    assert hasattr(pod.metadata, 'name')
                     pv_fsfreeze_pod = pod.metadata.name
                     break
             else:
@@ -128,14 +122,10 @@ def ceph_snapshot_create_pre(sender: str, version_name: str, pool: str, image: s
 def ceph_snapshot_create_post_success(sender: str, version_name: str, pool: str, image: str, snapshot: str,
                                       context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
-    assert 'pv-fsfreeze' in context
     pv_fsfreeze = context['pv-fsfreeze']
     if not pv_fsfreeze:
         return
 
-    assert 'pv-host-ip' in context
-    assert 'pv-fsfreeze-pod' in context
-    assert 'pv-mount-point' in context
     pv_host_ip = context['pv-host-ip']
     pv_fsfreeze_pod = context['pv-fsfreeze-pod']
     pv_mount_point = context['pv-mount-point']
@@ -200,8 +190,6 @@ def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[st
 def ceph_backup_post_success(sender: str, version_name: str, pool: str, image: str, version_labels: Dict[str, str],
                              context: Dict[str, Any], version: Optional[Dict]):
     assert isinstance(context, dict)
-    assert 'backup-start-time' in context
-    assert 'pvc' in context
     assert version is not None
 
     pvc_namespace = context['pvc'].metadata.namespace
@@ -231,8 +219,6 @@ def ceph_backup_post_success(sender: str, version_name: str, pool: str, image: s
 def ceph_backup_post_error(sender: str, version_name: str, pool: str, image: str, version_labels: Dict[str, str],
                            context: Dict[str, Any], version: Optional[Dict], exception: Exception):
     assert isinstance(context, dict)
-    assert 'backup-start-time' in context
-    assert 'pvc' in context
     pvc_namespace = context['pvc'].metadata.namespace
     pvc_name = context['pvc'].metadata.name
     pvc_uid = context['pvc'].metadata.uid
@@ -308,23 +294,15 @@ if len(pvcs) == 0:
     sys.exit(0)
 
 for pvc in pvcs:
-    assert hasattr(pvc, 'spec')
     if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
         continue
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    assert hasattr(pv, 'spec')
     if not hasattr(pv.spec, 'rbd') or not hasattr(pv.spec.rbd, 'pool') or not hasattr(pv.spec.rbd, 'image'):
         continue
 
-    assert hasattr(pvc, 'metadata')
-    assert hasattr(pvc.metadata, 'namespace')
-    assert hasattr(pvc.metadata, 'name')
-    assert hasattr(pvc.metadata, 'uid')  # Used later
     version_name = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
 
-    assert hasattr(pv, 'metadata')
-    assert hasattr(pv.metadata, 'name')
     version_labels = {
         'benji-backup.me/instance': settings.benji_instance,
         'benji-backup.me/ceph-pool': pv.spec.rbd.pool,
