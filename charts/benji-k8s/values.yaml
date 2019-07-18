@@ -69,6 +69,21 @@ benji:
       subPath: ceph.client.admin.keyring
       readOnly: true
 
+operator:
+  image:
+    registry: docker.io
+    repository: elementalnet/benji-k8s-operator
+    tag: latest
+    pullPolicy: Always
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
 fsfreeze:
   enabled: True
 
@@ -85,6 +100,8 @@ fsfreeze:
   tolerations: []
 
   affinity: {}
+
+
 
 # Running the database backend on the same cluster could be dangerous!
 # Please consider the implications.
