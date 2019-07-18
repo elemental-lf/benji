@@ -96,6 +96,21 @@ benji:
     #   subPath: keyring
     #   readOnly: true
 
+operator:
+  image:
+    registry: docker.io
+    repository: elementalnet/benji-k8s-operator
+    tag: latest
+    pullPolicy: Always
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
 fsfreeze:
   enabled: true
 
