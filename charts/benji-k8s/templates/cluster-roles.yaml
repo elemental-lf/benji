@@ -1,0 +1,97 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ tuple . "" | include "benji.fullname" }}
+  labels:
+    app.kubernetes.io/name: {{ include "benji.name" . }}
+    helm.sh/chart: {{ include "benji.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  - persistentvolumeclaims
+  - pods
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+    - ""
+  resources:
+    - events
+  verbs:
+    - create
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+{{- if .Values.fsfreeze.enabled }}
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+  # Also needs GET where kubectl doesn't, see https://github.com/kubernetes-client/python/issues/690#issuecomment-459010364
+  - get
+{{- end}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ tuple . "operator" | include "benji.fullname" }}
+  labels:
+    app.kubernetes.io/name: {{ include "benji.name" . }}
+    helm.sh/chart: {{ include "benji.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+rules:
+  - apiGroups:
+      - "zalando.org"
+    resources:
+      - clusterkopfpeerings
+      - kopfpeerings
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - "benji-backup.me"
+    resources:
+      - benjirestores
+      - benjiversions
+      - benjibackups
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+  - apiGroups:
+      - "batch"
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - patch
+      - delete

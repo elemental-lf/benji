@@ -25,7 +25,7 @@ spec:
         # This is used to find fsfreeze pods
         benji-backup.me/component: "fsfreeze"
     spec:
-      serviceAccountName: {{ tuple . "" | include "benji.fullname" }}
+      serviceAccountName: {{ tuple . "fsfreeze" | include "benji.fullname" }}
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: fsfreeze
