@@ -5,6 +5,8 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: {{ tuple $ .name | include "benji.fullname" }}
+  annotations:
+    checksum/config: {{ $.Values.benji.configuration | toYaml | sha256sum }}
   labels:
     app.kubernetes.io/name: {{ include "benji.name" $ }}
     helm.sh/chart: {{ include "benji.chart" $ }}

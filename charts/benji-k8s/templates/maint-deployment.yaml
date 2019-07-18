@@ -3,6 +3,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ tuple . "maint" | include "benji.fullname" }}
+  annotations:
+    checksum/config: {{ .Values.benji.configuration | toYaml | sha256sum }}
   labels:
     app.kubernetes.io/name: {{ include "benji.name" . }}
     helm.sh/chart: {{ include "benji.chart" . }}
