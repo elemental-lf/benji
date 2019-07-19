@@ -1,3 +1,44 @@
+## 0.7.0, 19.07.2019
+
+Notable changes:
+
+* Added a new I/O module `rbdaio` which uses the asynchronous API of `librbd`.  Performance results in relation to `rbd`
+  have been mixed but performance should at least be 10-20% bigger.  In one case performance has been increased tenfold.
+
+* Almost all Bash helper scripts have been rewritten in Python. The new scripts are calling Benji via the command line
+  just like before. This is intentional to minimize the interdependence between Benji and these helpers. These
+  scripts are examples only and not part of the API. There still is one example Bash script at `scripts/ceph.sh` to show
+  how to interact with Benji via Bash. The helpers have additional dependencies which can be installed with
+  `pip install benji[helpers]`.
+
+* The Prometheus metrics exported by `benji-k8s` have changed:
+
+    * Backup metrics now longer include the `auxiliary_data` label.
+    * Command metrics now longer include the `arguments` label. The
+      arguments have been folded into the `command` label.
+
+* `benji-k8s`: The included scripts have been replaced by Python scripts and are using the new helper modules. They 
+  should be calling compatible.
+
+* `benji-k8s`: All calls to `kubectl` have been replaced with direct API requests. The official Python client for
+  Kubernetes is used.
+
+
+* Helm chart: Volumes and volume mounts are now configurable via `values.yaml`. This is mostly for getting the Ceph
+  credentials into the container but could also be used to mount file-based storage. 
+
+* Helm chart: The postgresql chart dependency was updated from 2.7.6 to 4.2.2. This is the last chart which uses 
+  PostgreSQL 10 and requires no upgrade of the database data structures.
+
+* `benji-k8s` and Helm chart: The image was simplified to only include the Kubernetes specific scripts and `kubectl`. 
+  Instead of running backups or other jobs via `crond` inside the container, the Helm chart now generates separate 
+  `CronJob`s inside of Kubernetes.  This is in preparation of the move to custom resources and an operator.
+
+* An experimental and as of yet unfinished REST API has been added.  The environment variable `BENJI_EXPERIMENTAL` 
+  has to be set to `1` to enable the new `rest-api` subcommand.  The API currently only services one request at a time,
+  which limits its usefulness. The REST API has additional dependencies, they can be installed with `pip install
+  benji[rest-api]`.
+
 ## 0.6.0 (Kubecon Barcelona Edition), 22.05.2019
 
 Notable changes:
