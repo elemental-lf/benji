@@ -309,7 +309,7 @@ if len(pvcs) == 0:
 
 for pvc in pvcs:
     assert hasattr(pvc, 'spec')
-    if not hasattr(pvc.spec, 'volume_name'):
+    if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
         continue
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
