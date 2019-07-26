@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.6.0.dev1+gc1e1538 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.7.0 documentation</title>
   
 
   
@@ -105,6 +105,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#i-o-modules">I/O Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#i-o-module-file">I/O Module file</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#i-o-module-rbd">I/O Module rbd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#i-o-module-rbdaio">I/O Module rbdaio</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#i-o-module-iscsi">I/O Module iscsi</a></li>
 </ul>
 </li>
@@ -540,6 +541,14 @@ features applies: <code class="docutils literal notranslate"><span class="pre">R
 <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_STRIPINGV2</span></code>, <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_OBJECT_MAP</span></code>,
 <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_FAST_DIFF</span></code>, <code class="docutils literal notranslate"><span class="pre">RBD_FEATURE_DEEP_FLATTEN</span></code>.</p>
 </div>
+<div class="section" id="i-o-module-rbdaio">
+<h3>I/O Module rbdaio<a class="headerlink" href="#i-o-module-rbdaio" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">rbdaio</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. The configuration
+options are identical to the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> module but instead of using multiple threads the asynchronous I/O support of
+<code class="docutils literal notranslate"><span class="pre">librbd</span></code> is used to access the images and snapshots. This module is relatively new and has not seen much testing.
+Some non-methodical testing shows that the performance is about 10 to 20 percent better than the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> module. It
+is planned that this module is going to replace the <code class="docutils literal notranslate"><span class="pre">rbd</span></code> module in the future.</p>
+</div>
 <div class="section" id="i-o-module-iscsi">
 <h3>I/O Module iscsi<a class="headerlink" href="#i-o-module-iscsi" title="Permalink to this headline">¶</a></h3>
 <p>This I/O module requires a special version of the <code class="docutils literal notranslate"><span class="pre">libiscsi</span></code> Python bindings available at
@@ -645,13 +654,13 @@ options:</p>
 <p>Sets the salt for the key derivation function.</p>
 <ul class="simple">
 <li><p>name: <strong>kdfIterations</strong></p></li>
-<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>type: integer</p></li>
 <li><p>default: none</p></li>
 </ul>
 <p>Sets the number of iterations for the key derivation function.</p>
 <ul class="simple">
 <li><p>name: <strong>password</strong></p></li>
-<li><p>type: binary string encoded with BASE64</p></li>
+<li><p>type: string</p></li>
 <li><p>default: none</p></li>
 </ul>
 <p>Sets the password from which the master key is generated.</p>

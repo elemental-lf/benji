@@ -277,6 +277,15 @@ features applies: ``RBD_FEATURE_LAYERING``, ``RBD_FEATURE_EXCLUSIVE_LOCK``,
 ``RBD_FEATURE_STRIPINGV2``, ``RBD_FEATURE_OBJECT_MAP``,
 ``RBD_FEATURE_FAST_DIFF``, ``RBD_FEATURE_DEEP_FLATTEN``.
 
+I/O Module rbdaio
+~~~~~~~~~~~~~~~~~
+
+The ``rbdaio`` I/O module requires that Ceph's Python modules ``rados`` and ``rbd`` are installed. The configuration
+options are identical to the ``rbd`` module but instead of using multiple threads the asynchronous I/O support of
+``librbd`` is used to access the images and snapshots. This module is relatively new and has not seen much testing.
+Some non-methodical testing shows that the performance is about 10 to 20 percent better than the ``rbd`` module. It
+is planned that this module is going to replace the ``rbd`` module in the future.
+
 I/O Module iscsi
 ~~~~~~~~~~~~~~~~
 
@@ -389,13 +398,13 @@ options:
 Sets the salt for the key derivation function.
 
 * name: **kdfIterations**
-* type: binary string encoded with BASE64
+* type: integer
 * default: none
 
 Sets the number of iterations for the key derivation function.
 
 * name: **password**
-* type: binary string encoded with BASE64
+* type: string
 * default: none
 
 Sets the password from which the master key is generated.

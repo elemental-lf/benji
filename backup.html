@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Backup &mdash; Benji Backup 0.6.0.dev1+gc1e1538 documentation</title>
+  <title>Backup &mdash; Benji Backup 0.7.0 documentation</title>
   
 
   
@@ -105,6 +105,7 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#i-o-modules">I/O Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-file">I/O Module file</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-rbd">I/O Module rbd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-rbdaio">I/O Module rbdaio</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-iscsi">I/O Module iscsi</a></li>
 </ul>
 </li>
@@ -438,12 +439,10 @@ $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version 
 </div>
 <div class="section" id="automation">
 <h5>Automation<a class="headerlink" href="#automation" title="Permalink to this headline">¶</a></h5>
-<p>Benji includes a number of Bash scripts to automate the process outlined in the last section.</p>
-<div class="admonition-todo admonition" id="index-0">
-<p class="admonition-title">Todo</p>
-<p>Explain the Bash scripts and how to use them!</p>
-</div>
-<p>The general workflow of these scripts is:</p>
+<div class="section" id="bash">
+<h6>Bash<a class="headerlink" href="#bash" title="Permalink to this headline">¶</a></h6>
+<p>Benji includes an example Bash script <code class="docutils literal notranslate"><span class="pre">scripts/ceph.sh</span></code> which automates the process outlined in the last section.</p>
+<p>The general workflow of this script is:</p>
 <ul class="simple">
 <li><p>When the backup of an RBD image is initiated, the latest RBD snapshot is looked up.</p></li>
 </ul>
@@ -464,6 +463,27 @@ backup is performed.</p></li>
 <p class="admonition-title">Note</p>
 <p>This alone won’t be enough to be on the safe side. The validity of the backup data needs to checked
 regularly. Please refer to section <a class="reference internal" href="scrub.html#scrubbing"><span class="std std-ref">Scrub</span></a>.</p>
+</div>
+</div>
+<div class="section" id="python">
+<h6>Python<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h6>
+<p>There is also a number of Python modules in the <code class="docutils literal notranslate"><span class="pre">benji.helpers</span></code> package. The modules are independent from the rest of
+Benji’s Python modules and only call the command line interface of Benji.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">benji.helpers.ceph</span></code>: Implements the same functionality as the Bash scripts described in the previous section.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji.helpers.utils</span></code>: Utility functions used by other modules in the <code class="docutils literal notranslate"><span class="pre">benji.helpers</span></code> package.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji.helpers.settings</span></code>: Configuration variables used by other modules in the <code class="docutils literal notranslate"><span class="pre">benji.helpers</span></code> package derived from
+environment variables.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji.helpers.kubernetes</span></code>: Helper functions for interacting with Kubernetes (requires <code class="docutils literal notranslate"><span class="pre">kubectl</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji.helpers.prometheus</span></code>: Helper functions and metric definitions for pushing metrics to a Prometheus
+<code class="docutils literal notranslate"><span class="pre">pushgateway</span></code></p></li>
+</ul>
+<p>Usage examples for these helpers can be found in <code class="docutils literal notranslate"><span class="pre">images/benji-k8s/bin</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you want to use them as the basis for your own scripts please make copies of the parts you need, so that
+you are not affected by changes in future versions of Benji.</p>
+</div>
 </div>
 </div>
 </div>
