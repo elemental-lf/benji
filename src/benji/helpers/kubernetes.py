@@ -156,7 +156,8 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
         'lastTimestamp': event_time,
         'type': type,
         'reason': reason,
-        'message': message,
+        # Message can be at most 1024 characters long
+        'message': message[:1024],
         'action': 'None',
         'reportingComponent': 'benji',
         'reportingInstance': running_pod_name,
