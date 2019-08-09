@@ -9,9 +9,23 @@ from typing import List, Union, Tuple, Optional
 
 import attrs
 import kubernetes
+from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
 
+from benji.helpers import settings
+from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, \
+    LABEL_K8S_STORAGE_CLASS_NAME, LABEL_K8S_PV_TYPE, LABEL_RBD_CLUSTER_FSID, \
+    LABEL_RBD_IMAGE_SPEC, VERSION_DATE, VERSION_VOLUME, VERSION_SNAPSHOT, VERSION_SIZE, VERSION_STORAGE, \
+    VERSION_BYTES_READ, VERSION_BYTES_WRITTEN, VERSION_BYTES_DEDUPLICATED, VERSION_BYTES_SPARSE, VERSION_DURATION, \
+    K8S_VERSION_SPEC_VOLUME_INFO_STORAGE_CLASS_NAME, \
+    K8S_VERSION_SPEC_VOLUME_INFO_PERSISTENT_VOLUME_CLAIM_NAME, K8S_VERSION_SPEC_DATE, K8S_VERSION_SPEC_VOLUME, \
+    K8S_VERSION_SPEC_SNAPSHOT, K8S_VERSION_SPEC_SIZE, K8S_VERSION_SPEC_STORAGE, K8S_VERSION_SPEC_BYTES_READ, \
+    K8S_VERSION_SPEC_BYTES_WRITTEN, K8S_VERSION_SPEC_BYTES_DEDUPLICATED, K8S_VERSION_SPEC_BYTES_SPARSE, \
+    K8S_VERSION_SPEC_DURATION, \
+    K8S_VERSION_SPEC_VOLUME_INFO, K8S_VERSION_STATUS_PROTECTED, K8S_VERSION_STATUS_STATUS, VERSION_PROTECTED, \
+    VERSION_STATUS, \
+    VERSION_LABELS, PV_TYPE_RBD
 from benji.helpers.settings import running_pod_name, benji_instance
 from benji.helpers.utils import keys_exist, key_get
 
@@ -149,9 +163,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
             'name': event_name,
             'namespace': pvc_namespace,
             'labels': {
-                'reporting-component': 'benji',
-                'reporting-instance': running_pod_name,
-                'benji-backup.me/instance': benji_instance
+                LABEL_INSTANCE: benji_instance
             }
         },
         'involvedObject': {
@@ -169,7 +181,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
         # Message can be at most 1024 characters long
         'message': message[:1024],
         'action': 'None',
-        'reportingComponent': 'benji',
+        'reportingComponent': EVENT_REPORTING_COMPONENT,
         'reportingInstance': running_pod_name,
         'source': {
             'component': 'benji'

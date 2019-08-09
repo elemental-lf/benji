@@ -9,6 +9,8 @@ benji:
     tag: latest
     pullPolicy: Always
 
+  instance: benji
+
   resources: {}
 
   nodeSelector: {}
@@ -95,6 +97,11 @@ benji:
     #   mountPath: /etc/ceph/ceph.client.admin.keyring
     #   subPath: keyring
     #   readOnly: true
+
+  api:
+    port: 7746
+    replicas: 1
+    threadsPerReplica: 10
 
 operator:
   image:

@@ -278,3 +278,5 @@ def backup(*,
                                         version_labels=version_labels,
                                         context=context,
                                         version=version)
+
+    return version

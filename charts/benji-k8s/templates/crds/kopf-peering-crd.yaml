@@ -5,11 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   name: clusterkopfpeerings.zalando.org
   labels:
-    app.kubernetes.io/name: {{ include "benji.name" $ }}
-    helm.sh/chart: {{ include "benji.chart" $ }}
-    app.kubernetes.io/instance: {{ $.Release.Name }}
-    app.kubernetes.io/component: kopf
-    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    component: benji
   annotations:
     helm.sh/hook: crd-install
 spec:
@@ -29,11 +25,7 @@ kind: CustomResourceDefinition
 metadata:
   name: kopfpeerings.zalando.org
   labels:
-    app.kubernetes.io/name: {{ include "benji.name" $ }}
-    helm.sh/chart: {{ include "benji.chart" $ }}
-    app.kubernetes.io/instance: {{ $.Release.Name }}
-    app.kubernetes.io/component: kopf
-    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    component: benji
   annotations:
     helm.sh/hook: crd-install
 spec:

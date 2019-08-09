@@ -22,7 +22,7 @@ RUN python3 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
 	pip install --upgrade pip setuptools && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
-	pip install '/benji-source/[compression,s3,b2,helpers]'
+	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
 
 FROM almalinux:8.5 AS runtime
 
@@ -31,6 +31,9 @@ ARG VCS_URL
 ARG VERSION 
 ENV BENJI_VERSION_OVERRIDE=$VERSION
 ARG BUILD_DATE
+
+ARG CEPH_CODENAME="nautilus"
+ARG CEPH_DISTRO="el7"
 
 ENV VENV_DIR /benji
 
@@ -46,7 +49,8 @@ LABEL org.label-schema.schema-version="1.0" \
 	org.label-schema.build-date="$BUILD_DATE" \
 	org.label-schema.version="$VERSION"
 
-COPY --from=build /etc/yum.repos.d/ceph.repo /etc/yum.repos.d/ceph.repo
+COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
+RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	ulimit -n 1024 && \
