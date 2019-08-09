@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+import argparse
+import logging
+import sys
+
+import kubernetes
+
+from benji.helpers.kubernetes import load_config, update_version_resource, list_version_resources, delete_version_resource
+from benji.helpers.settings import benji_instance, benji_log_level
+from benji.helpers.utils import setup_logging, subprocess_run
+from benji.helpers.constants import LABEL_INSTANCE
+
+setup_logging()
+logger = logging.getLogger()
+
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
+
+args = parser.parse_args()
+
+load_config()
+core_v1_api = kubernetes.client.CoreV1Api()
+
+logger.debug(f'Listing versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
+benji_ls = subprocess_run([
+    'benji', '--machine-output', '--log-level', benji_log_level, 'ls', f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"'
+],
+                          decode_json=True)
+assert isinstance(benji_ls, dict)
+assert 'versions' in benji_ls
+assert isinstance(benji_ls['versions'], list)
+logger.debug(f"Number of versions in the database: {len(benji_ls['versions'])}.")
+
+versions_seen = set()
+for version in benji_ls['versions']:
+    try:
+        version_resource = update_version_resource(version=version)
+    except KeyError as exception:
+        logger.warning(str(exception))
+        continue
+
+    version_resource_name = version_resource['metadata']['name']
+    version_resource_namespace = version_resource['metadata']['namespace']
+    versions_seen.add(f'{version_resource_namespace}/{version_resource_name}')
+
+logger.debug(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
+for version_resource in list_version_resources(label_selector=f'{LABEL_INSTANCE}={benji_instance}'):
+    version_resource_name = version_resource['metadata']['name']
+    version_resource_namespace = version_resource['metadata']['namespace']
+
+    if f'{version_resource_namespace}/{version_resource_name}' not in versions_seen:
+        delete_version_resource(version_resource_name, namespace=version_resource_namespace)
+
+sys.exit(0)

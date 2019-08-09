@@ -1,5 +1,6 @@
 import functools
 import json
+import sys
 from io import StringIO
 from typing import List, Optional, Dict, Any
 
@@ -57,7 +58,7 @@ def route(path: str, **decorator_kwargs):
                 return body.getvalue()
             else:
                 response.content_type = 'application/json; charset=utf-8'
-                return json.dumps(body) if body is not None else ''
+                return json.dumps(body, check_circular=True, separators=(',', ': '), indent=2) if body is not None else ''
 
         return wrapped_func
 
@@ -89,6 +90,8 @@ class RestAPI:
                 self._app.error(attr.bottle_error)(attr)
 
     def run(self, bind_address: str, bind_port: int, threads: int, debug: bool = False):
+        # We need to reset sys.argv, otherwise gunicorn will try to parse it.
+        sys.argv = [sys.argv[0]]
         self._app.run(
             server='gunicorn',
             host=bind_address,
