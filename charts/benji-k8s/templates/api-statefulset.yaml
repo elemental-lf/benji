@@ -1,8 +1,8 @@
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: {{ tuple . "maint" | include "benji.fullname" }}
+  name: {{ tuple . "api" | include "benji.fullname" }}
   annotations:
     checksum/config: {{ .Values.benji.configuration | toYaml | sha256sum }}
   labels:
@@ -12,18 +12,19 @@ metadata:
     app.kubernetes.io/component: benji
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.benji.api.replicas }}
+  serviceName: {{ tuple . "api" | include "benji.fullname" }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "benji.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/component: maint
+      app.kubernetes.io/component: api
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{ include "benji.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/component: maint
+        app.kubernetes.io/component: api
     spec:
       serviceAccountName: {{ tuple . "" | include "benji.fullname" }}
       dnsPolicy: ClusterFirstWithHostNet
@@ -33,6 +34,15 @@ spec:
           imagePullPolicy: {{ .Values.benji.image.pullPolicy }}
           securityContext:
             privileged: true
+          command:
+            - benji
+            - rest-api
+            - --threads={{ .Values.benji.api.threadsPerReplica }}
+            - --bind-address=0.0.0.0
+            - --bind-port={{ .Values.benji.api.port }}
+          ports:
+            - name: api
+              containerPort: {{ .Values.benji.api.port }}
           env:
             - name: POD_NAME
               valueFrom:
@@ -44,14 +54,14 @@ spec:
                   fieldPath: metadata.namespace
             - name: TZ
               value: "{{ .Values.timeZone }}"
-            - name: BENJI_INSTANCE
-              value: {{ .Values.benji.instance | quote }}
             - name: PROM_PUSH_GATEWAY
               value: "{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
+            - name: BENJI_EXPERIMENTAL
+              value: "1"
           volumeMounts:
             - name: benji-config
               mountPath: /benji/etc
-{{- if .Values.benji.volumeMounts -}}
+{{- if .Values.benji.volumeMounts }}
             {{- toYaml .Values.benji.volumeMounts | nindent 12 }}
 {{- end -}}
 {{- with .Values.benji.resources }}
@@ -63,8 +73,8 @@ spec:
         - name: benji-config
           configMap:
             name: {{ tuple . "" | include "benji.fullname" }}
-{{- if .Values.benji.volumes -}}
-        {{ toYaml .Values.benji.volumes | nindent 8 }}
+{{- if .Values.benji.volumes }}
+      {{ toYaml .Values.benji.volumes | nindent 8 }}
 {{- end -}}
 {{- with .Values.benji.nodeSelector }}
       nodeSelector:

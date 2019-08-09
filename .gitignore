@@ -39,3 +39,5 @@ dist
 .b2-account-id.txt
 tests-scratch
 .mypy_cache
+charts/benji-k8s/charts
+charts/benji-k8s/requirements.lock

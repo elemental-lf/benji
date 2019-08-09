@@ -48,8 +48,6 @@ spec:
           volumeMounts:
             - name: rbd-mounts
               mountPath: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
-            - name: tz-config
-              mountPath: /etc/localtime
           resources:
             {{ toYaml .Values.fsfreeze.resources | nindent 12 }}
       hostNetwork: false
@@ -58,9 +56,6 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
             type: DirectoryOrCreate
-        - name: tz-config
-          hostPath:
-            path: /usr/share/zoneinfo/{{ .Values.timeZone }}
 {{- with .Values.fsfreeze.nodeSelector }}
       nodeSelector:
         {{ toYaml . | nindent 8 }}

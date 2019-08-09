@@ -7,11 +7,15 @@ import time
 import kubernetes
 from kubernetes.client.rest import ApiException
 
-import benji.helpers.kubernetes
-import benji.helpers.settings as settings
-import benji.helpers.utils as utils
+from benji.helpers.constants import LABEL_K8S_STORAGE_CLASS_NAME, VERSION_LABELS
+from benji.helpers.kubernetes import load_config, parse_quantity, create_pvc, determine_rbd_image_location
+from benji.helpers.settings import benji_log_level
+from benji.helpers.utils import subprocess_run, setup_logging
 
-utils.setup_logging()
+PVC_CREATION_TRIES = 30
+PVC_CREATION_WAIT = 2
+
+setup_logging()
 logger = logging.getLogger()
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
@@ -21,31 +25,34 @@ parser.add_argument('-f',
                     dest='force',
                     action='store_true',
                     default=False,
-                    help='Overwrite content of existing persistent volumes')
+                    help='Overwrite content of existing persistent volume')
+parser.add_argument('-s',
+                    '--storage-class',
+                    metavar='storage_class',
+                    dest='storage_class',
+                    default=None,
+                    help='Override storage class for new PVC')
 parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
 parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
 
 args = parser.parse_args()
 
-benji.helpers.kubernetes.load_config()
+load_config()
 core_v1_api = kubernetes.client.CoreV1Api()
+custom_objects_api = kubernetes.client.CustomObjectsApi()
 
-logger.info(f'Restoring version {args.version_uid} to PVC {args.pvc_namespace}/{args.pvc_name}.')
-
-benji_ls = utils.subprocess_run(
-    ['benji', '--machine-output', '--log-level', settings.benji_log_level, 'ls', f'uid == "{args.version_uid}"'],
+benji_ls = subprocess_run(
+    ['benji', '--machine-output', '--log-level', benji_log_level, 'ls', f'uid == "{args.version_uid}"'],
     decode_json=True)
-assert isinstance(benji_ls, dict)
-assert 'versions' in benji_ls
-assert isinstance(benji_ls['versions'], list)
 
 if len(benji_ls['versions']) == 0:
-    raise RuntimeError(f'Size of {args.version_uid} could not be determined.')
+    raise RuntimeError(f'Version {args.version_uid} is not known to Benji.')
 
-assert isinstance(benji_ls['versions'][0], dict)
-assert isinstance(benji_ls['versions'][0]['size'], int)
-version_size = benji_ls['versions'][0]['size']
+version = benji_ls['versions'][0]
+version_size = version['size']
+
+logger.info(f'Restoring version {args.version_uid} to PVC {args.pvc_namespace}/{args.pvc_name}.')
 
 # This assumes that the Kubernetes client has already been initialized
 core_v1_api = kubernetes.client.CoreV1Api()
@@ -56,30 +63,49 @@ except ApiException as exception:
     if exception.status != 404:
         raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
+if args.storage_class:
+    storage_class_name = args.storage_class
+else:
+    storage_class_name = version[VERSION_LABELS][LABEL_K8S_STORAGE_CLASS_NAME]
+
 if pvc is None:
-    pvc = benji.helpers.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size)
+    logger.info(f'Trying to create PVC {args.pvc_namespace}/{args.pvc_name} (storage class {storage_class_name}).')
+    pvc = create_pvc(pvc_name=args.pvc_name,
+                     pvc_namespace=args.pvc_namespace,
+                     pvc_size=version_size,
+                     storage_class_name=storage_class_name)
+
+    for _ in range(PVC_CREATION_TRIES):
+        # Probably should use a watch instead of polling
+        pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
+        if pvc.status.phase == 'Bound':
+            break
+        logger.info('Waiting for persistent volume creation...')
+        time.sleep(PVC_CREATION_WAIT)
+    else:
+        logger.error(f'PVC is still not provisioned after {PVC_CREATION_TRIES * PVC_CREATION_WAIT} seconds.')
+        logger.info(f'Deleting PVC {args.pvc_namespace}/{args.pvc_name}.')
+        core_v1_api.delete_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
 else:
     if not args.force:
         raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
 
-    # I don't really understand why capacity is a regular dict and not an object. Oh, well.
-    pvc_size = int(benji.helpers.kubernetes.parse_quantity(pvc.status.capacity['storage']))
+    if pvc.status.phase != 'Bound':
+        raise RuntimeError('PVC is not bound to a volume.')
+
+    pvc_size = int(parse_quantity(pvc.status.capacity['storage']))
     if pvc_size < version_size:
         raise RuntimeError(f'Existing PVC is too small to hold version {args.version_uid} ({pvc_size} < {version_size}).')
     elif pvc_size > version_size:
         logger.warning(f'Existing PVC is {pvc_size - version_size} bytes bigger than version {args.version_uid}.')
 
-while True:
-    pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
-    if pvc.status.phase == 'Bound':
-        break
-    logger.info('Waiting for persistent volume creation.')
-    time.sleep(1)
-
 pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+pool, image = determine_rbd_image_location(pv)
 
-utils.subprocess_run([
-    'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version_uid,
-    f'rbd:{pv.spec.rbd.pool}/{pv.spec.rbd.image}'
+if pool is None or image is None:
+    raise RuntimeError(f'Cannot determine RBD pool and image of PersistentVolume {pv.metadata.name}.')
+
+subprocess_run([
+    'benji', '--log-level', benji_log_level, 'restore', '--sparse', '--force', args.version_uid, f'{pool}:{pool}/{image}'
 ])
 sys.exit(0)

@@ -12,14 +12,11 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - persistentvolumes
   - persistentvolumeclaims
-  - pods
   verbs:
   - create
   - get
   - list
-  - watch
 - apiGroups:
     - ""
   resources:
@@ -27,13 +24,39 @@ rules:
   verbs:
     - create
 - apiGroups:
+    - ""
+  resources:
+    - namespaces
+    - persistentvolumes
+    - pods
+  verbs:
+    - list
+    - get
+- apiGroups:
   - storage.k8s.io
   resources:
   - storageclasses
   verbs:
   - get
   - list
-  - watch
+- apiGroups:
+    - "benji-backup.me"
+  resources:
+    - benjirestores
+    - benjiversions
+    - benjibackups
+  verbs:
+    - create
+    - update
+    - get
+    - list
+    - patch
+- apiGroups:
+    - benji-backup.me
+  resources:
+    - benjiversions
+  verbs:
+    - delete
 {{- if .Values.fsfreeze.enabled }}
 - apiGroups:
   - ""
@@ -60,7 +83,6 @@ rules:
     resources:
       - clusterkopfpeerings
       - kopfpeerings
-      - pods
     verbs:
       - get
       - list
@@ -70,8 +92,13 @@ rules:
       - "benji-backup.me"
     resources:
       - benjirestores
-      - benjiversions
       - benjibackups
+      - benjibackupschedules
+      - clusterbenjibackupschedules
+      - benjiretentionschedules
+      - clusterbenjiretentionschedules
+      - benjiversions
+      - benjioperatorconfigs
     verbs:
       - get
       - list

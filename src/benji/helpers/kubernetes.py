@@ -5,15 +5,36 @@ import re
 import time
 import uuid
 from subprocess import TimeoutExpired, CalledProcessError
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Dict, Any, Optional, Generator
 
 import kubernetes
+from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
 
+from benji.helpers import settings
+from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, \
+    LABEL_K8S_STORAGE_CLASS_NAME, LABEL_K8S_PV_TYPE, LABEL_RBD_CLUSTER_FSID, \
+    LABEL_RBD_IMAGE_SPEC, VERSION_DATE, VERSION_VOLUME, VERSION_SNAPSHOT, VERSION_SIZE, VERSION_STORAGE, \
+    VERSION_BYTES_READ, VERSION_BYTES_WRITTEN, VERSION_BYTES_DEDUPLICATED, VERSION_BYTES_SPARSE, VERSION_DURATION, \
+    K8S_VERSION_SPEC_VOLUME_INFO_STORAGE_CLASS_NAME, \
+    K8S_VERSION_SPEC_VOLUME_INFO_PERSISTENT_VOLUME_CLAIM_NAME, K8S_VERSION_SPEC_DATE, K8S_VERSION_SPEC_VOLUME, \
+    K8S_VERSION_SPEC_SNAPSHOT, K8S_VERSION_SPEC_SIZE, K8S_VERSION_SPEC_STORAGE, K8S_VERSION_SPEC_BYTES_READ, \
+    K8S_VERSION_SPEC_BYTES_WRITTEN, K8S_VERSION_SPEC_BYTES_DEDUPLICATED, K8S_VERSION_SPEC_BYTES_SPARSE, \
+    K8S_VERSION_SPEC_DURATION, \
+    K8S_VERSION_SPEC_VOLUME_INFO, K8S_VERSION_STATUS_PROTECTED, K8S_VERSION_STATUS_STATUS, VERSION_PROTECTED, \
+    VERSION_STATUS, \
+    VERSION_LABELS, PV_TYPE_RBD
 from benji.helpers.settings import running_pod_name, benji_instance
+from benji.helpers.utils import attrs_exist
 
 SERVICE_NAMESPACE_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+
+BENJI_VERSIONS_API_VERSION = 'v1alpha1'
+BENJI_VERSIONS_API_GROUP = 'benji-backup.me'
+BENJI_VERSIONS_API_PLURAL = 'benjiversions'
+
+EVENT_REPORTING_COMPONENT = 'benji'
 
 logger = logging.getLogger()
 
@@ -49,7 +70,11 @@ def service_account_namespace() -> str:
 # connect_post_namespaced_pod_exec. The examples from the kubernetes client use connect_get_namespaced_pod_exec instead.
 # There shouldn't be any differences in functionality but the settings in the RBAC role are different (create vs. get)
 # which is why we follow the kubectl implementation here.
-def pod_exec(args: List[str], *, name: str, namespace: str, container: str = None,
+def pod_exec(args: List[str],
+             *,
+             name: str,
+             namespace: str,
+             container: str = None,
              timeout: float = float("inf")) -> Tuple[str, str]:
     core_v1_api = kubernetes.client.CoreV1Api()
     logger.debug('Running command in pod {}/{}: {}.'.format(namespace, name, ' '.join(args)))
@@ -140,9 +165,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
             'name': event_name,
             'namespace': pvc_namespace,
             'labels': {
-                'reporting-component': 'benji',
-                'reporting-instance': running_pod_name,
-                'benji-backup.me/instance': benji_instance
+                LABEL_INSTANCE: benji_instance
             }
         },
         'involvedObject': {
@@ -160,7 +183,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
         # Message can be at most 1024 characters long
         'message': message[:1024],
         'action': 'None',
-        'reportingComponent': 'benji',
+        'reportingComponent': EVENT_REPORTING_COMPONENT,
         'reportingInstance': running_pod_name,
         'source': {
             'component': 'benji'
@@ -171,8 +194,8 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
     return core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
 
 
-def create_pvc(pvc_name: str, pvc_namespace: int,
-               pvc_size: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
+def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,
+               storage_class_name: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -181,7 +204,7 @@ def create_pvc(pvc_name: str, pvc_namespace: int,
             'name': pvc_name,
         },
         'spec': {
-            'storageClassName': 'rbd',
+            'storageClassName': storage_class_name,
             'accessModes': ['ReadWriteOnce'],
             'resources': {
                 'requests': {
@@ -193,6 +216,198 @@ def create_pvc(pvc_name: str, pvc_namespace: int,
 
     core_v1_api = kubernetes.client.CoreV1Api()
     return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
+
+
+def update_version_resource(*, version: Dict[str, Any]) -> Dict[str, Any]:
+    labels = version[VERSION_LABELS]
+
+    required_label_names = [
+        LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE,
+        LABEL_K8S_STORAGE_CLASS_NAME
+    ]
+
+    for label_name in required_label_names:
+        if label_name not in labels:
+            raise KeyError(f'Version {version["uid"]} is missing label {label_name}, skipping update.')
+
+    namespace = labels[LABEL_K8S_PVC_NAMESPACE]
+    logger.debug(f'Updating version resource {namespace}/{version["uid"]}.')
+
+    body: Dict[str, Any] = {
+        'apiVersion': 'benji-backup.me/v1alpha1',
+        'kind': 'BenjiVersion',
+        'metadata': {
+            'name': version['uid'],
+            'namespace': namespace,
+            'annotations': {},
+            'labels': {
+                LABEL_INSTANCE: labels[LABEL_INSTANCE],
+            },
+        },
+        'spec': {
+            K8S_VERSION_SPEC_DATE: version[VERSION_DATE],
+            K8S_VERSION_SPEC_VOLUME: version[VERSION_VOLUME],
+            K8S_VERSION_SPEC_SNAPSHOT: version[VERSION_SNAPSHOT],
+            K8S_VERSION_SPEC_SIZE: str(version[VERSION_SIZE]),
+            K8S_VERSION_SPEC_STORAGE: version[VERSION_STORAGE],
+            K8S_VERSION_SPEC_BYTES_READ: str(version[VERSION_BYTES_READ]),
+            K8S_VERSION_SPEC_BYTES_WRITTEN: str(version[VERSION_BYTES_WRITTEN]),
+            K8S_VERSION_SPEC_BYTES_DEDUPLICATED: str(version[VERSION_BYTES_DEDUPLICATED]),
+            K8S_VERSION_SPEC_BYTES_SPARSE: str(version[VERSION_BYTES_SPARSE]),
+            K8S_VERSION_SPEC_DURATION: version[VERSION_DURATION],
+            K8S_VERSION_SPEC_VOLUME_INFO: {
+                K8S_VERSION_SPEC_VOLUME_INFO_PERSISTENT_VOLUME_CLAIM_NAME: labels[LABEL_K8S_PVC_NAME],
+                K8S_VERSION_SPEC_VOLUME_INFO_STORAGE_CLASS_NAME: labels[LABEL_K8S_STORAGE_CLASS_NAME],
+            },
+        },
+        'status': {
+            K8S_VERSION_STATUS_PROTECTED: version[VERSION_PROTECTED],
+            K8S_VERSION_STATUS_STATUS: version[VERSION_STATUS].capitalize(),
+        }
+    }
+
+    version_resource: Optional[Dict[str, Any]] = None
+    custom_objects_api = kubernetes.client.CustomObjectsApi()
+    try:
+        version_resource = get_version_resource(version['uid'], namespace)
+
+        body['metadata']['resourceVersion'] = version_resource['metadata']['resourceVersion']
+
+        # Keep other labels and annotations but overwrite our own
+        version_resource['metadata']['labels'] = version_resource['metadata'].get('labels', {})
+        version_resource['metadata']['labels'].update(body['metadata']['labels'])
+        body['metadata']['labels'] = version_resource['metadata']['labels']
+
+        version_resource['metadata']['annotations'] = version_resource['metadata'].get('annotations', {})
+        version_resource['metadata']['annotations'].update(body['metadata']['annotations'])
+        body['metadata']['annotations'] = version_resource['metadata']['annotations']
+
+        # Keep other status field but overwrite protected and status
+        version_resource['status'] = version_resource.get('status', {})
+        version_resource['status'].update(body['status'])
+        body['status'] = version_resource['status']
+
+        version_resource = custom_objects_api.replace_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                               version=BENJI_VERSIONS_API_VERSION,
+                                                                               plural=BENJI_VERSIONS_API_PLURAL,
+                                                                               name=version['uid'],
+                                                                               namespace=namespace,
+                                                                               body=body)
+    except ApiException as exception:
+        if exception.status == 404:
+            version_resource = custom_objects_api.create_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                                  version=BENJI_VERSIONS_API_VERSION,
+                                                                                  plural=BENJI_VERSIONS_API_PLURAL,
+                                                                                  namespace=namespace,
+                                                                                  body=body)
+        else:
+            raise exception
+
+    assert isinstance(version_resource, dict)
+    return version_resource
+
+
+def delete_version_resource(name: str, namespace: str) -> None:
+    custom_objects_api = kubernetes.client.CustomObjectsApi()
+
+    try:
+        logger.debug(f'Deleting version resource {namespace}/{name}.')
+        custom_objects_api.delete_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                           version=BENJI_VERSIONS_API_VERSION,
+                                                           plural=BENJI_VERSIONS_API_PLURAL,
+                                                           name=name,
+                                                           namespace=namespace,
+                                                           body=kubernetes.client.V1DeleteOptions())
+    except ApiException as exception:
+        if exception.status == 404:
+            logger.warning(f'Tried to delete non-existing version resource {name} in namespace {namespace}.')
+        else:
+            raise exception
+
+
+def list_namespaces(
+        label_selector: str = '') -> Generator[kubernetes.client.models.v1_namespace.V1Namespace, None, None]:
+    core_v1_api = kubernetes.client.CoreV1Api()
+
+    list_namespace_result = core_v1_api.list_namespace(label_selector=label_selector)
+    for namespace in list_namespace_result.items:
+        yield namespace
+
+
+def list_version_resources(*,
+                           namespace_label_selector: str = '',
+                           label_selector: str = '') -> Generator[Any, None, None]:
+    custom_objects_api = kubernetes.client.CustomObjectsApi()
+
+    for namespace in list_namespaces(label_selector=namespace_label_selector):
+        list_version_result = custom_objects_api.list_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                               version=BENJI_VERSIONS_API_VERSION,
+                                                                               plural=BENJI_VERSIONS_API_PLURAL,
+                                                                               namespace=namespace.metadata.name,
+                                                                               label_selector=label_selector)
+
+        for version_resource in list_version_result['items']:
+            yield version_resource
+
+
+def get_version_resource(name: str, namespace: str) -> Any:
+    custom_objects_api = kubernetes.client.CustomObjectsApi()
+    return custom_objects_api.get_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                           version=BENJI_VERSIONS_API_VERSION,
+                                                           plural=BENJI_VERSIONS_API_PLURAL,
+                                                           namespace=namespace,
+                                                           name=name)
+
+
+def build_version_labels_rbd(*,
+                             pvc,
+                             pv,
+                             pool: str,
+                             image: str,
+                             cluster_name: str = 'ceph',
+                             cluster_fsid: str) -> Dict[str, str]:
+    version_labels = {
+        LABEL_INSTANCE: settings.benji_instance,
+        LABEL_K8S_PVC_NAMESPACE: pvc.metadata.namespace,
+        LABEL_K8S_PVC_NAME: pvc.metadata.name,
+        LABEL_K8S_PV_NAME: pv.metadata.name,
+        LABEL_K8S_STORAGE_CLASS_NAME: pv.spec.storage_class_name,
+        # RBD specific
+        LABEL_K8S_PV_TYPE: PV_TYPE_RBD,
+        LABEL_RBD_CLUSTER_FSID: cluster_fsid,
+        LABEL_RBD_IMAGE_SPEC: f'{pool}/{image}',
+    }
+
+    return version_labels
+
+
+def determine_rbd_image_location(pv: kubernetes.client.models.V1PersistentVolume) -> (str, str):
+    pool, image = None, None
+
+    if attrs_exist(pv.spec, ['rbd.pool', 'rbd.image']):
+        logger.debug(f'Considering PersistentVolume {pv.metadata.name} as a native Ceph RBD volume.')
+        pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
+    elif attrs_exist(pv.spec, ['flex_volume.options', 'flex_volume.driver']):
+        logger.debug(f'Considering PersistentVolume {pv.metadata.name} as a Rook Ceph FlexVolume volume.')
+        options = pv.spec.flex_volume.options
+        driver = pv.spec.flex_volume.driver
+        if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
+            pool, image = options['pool'], options['image']
+        else:
+            logger.debug(f'PersistentVolume {pv.metadata.name} was provisioned by unknown driver {driver}.')
+    elif attrs_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes']):
+        logger.debug(f'Considering PersistentVolume {pv.metadata.name} as a Rook Ceph CSI volume.')
+        driver = pv.spec.csi.driver
+        volume_handle = pv.spec.csi.volume_handle
+        if driver.endswith('.rbd.csi.ceph.com') and pv.spec.csi.volume_attributes.get('pool'):
+            pool = pv.spec.csi.volume_attributes['pool']
+            image_ids = volume_handle.split('-')
+            if len(image_ids) >= 9:
+                image = 'csi-vol-' + '-'.join(image_ids[len(image_ids) - 5:])
+            else:
+                logger.warning(f'PersistentVolume {pv.metadata.name} was provisioned by Rook Ceph CSI, but we do not understand the volumeHandle format: {volume_handle}')
+
+    return pool, image
 
 
 # This is taken from https://github.com/kubernetes-client/python/pull/855 with minimal changes.

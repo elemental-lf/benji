@@ -1,33 +1,21 @@
 #!/usr/bin/env python3
 import sys
 
-import benji.helpers.prometheus as prometheus
-import benji.helpers.settings as settings
-import benji.helpers.utils as utils
+from benji.helpers.prometheus import older_incomplete_versions, version_status_registry, invalid_versions, push
+from benji.helpers.settings import benji_log_level
+from benji.helpers.utils import setup_logging, subprocess_run
 
-utils.setup_logging()
+setup_logging()
 
-incomplete_versions = utils.subprocess_run([
-    'benji',
-    '--machine-output',
-    '--log-level',
-    settings.benji_log_level,
-    'ls',
-    'status == "incomplete" and date < "1 day ago"',
+benji_ls_older_incomplete_versions = subprocess_run([
+    'benji', '--machine-output', '--log-level', benji_log_level, 'ls', 'status == "incomplete" and date < "1 day ago"'
 ],
-                                           decode_json=True)
+                                                    decode_json=True)
 
-invalid_versions = utils.subprocess_run([
-    'benji',
-    '--machine-output',
-    '--log-level',
-    settings.benji_log_level,
-    'ls',
-    'status == "invalid"',
-],
-                                        decode_json=True)
+benji_ls_invalid_versions = subprocess_run(
+    ['benji', '--machine-output', '--log-level', benji_log_level, 'ls', 'status == "invalid"'], decode_json=True)
 
-prometheus.older_incomplete_versions.set(len(incomplete_versions['versions']))
-prometheus.invalid_versions.set(len(invalid_versions['versions']))
-prometheus.push(prometheus.version_status_registry)
+older_incomplete_versions.set(len(benji_ls_older_incomplete_versions['versions']))
+invalid_versions.set(len(benji_ls_invalid_versions['versions']))
+push(version_status_registry)
 sys.exit(0)

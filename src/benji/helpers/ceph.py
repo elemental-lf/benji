@@ -22,6 +22,12 @@ signal_backup_post_success = signal('on_backup_post_success')
 signal_backup_post_error = signal('on_backup_post_error')
 
 
+def cluster_fsid(cluster_name: str = 'ceph') -> str:
+    mon_dump = subprocess_run(['ceph', '--cluster', cluster_name, 'mon', 'dump', '--format=json'], decode_json=True)
+    assert isinstance(mon_dump, dict)
+    return mon_dump['fsid']
+
+
 def snapshot_create(*, volume: str, pool: str, image: str, snapshot: str, context: Any = None):
     signal_snapshot_create_pre.send(SIGNAL_SENDER,
                                     volume=volume,
@@ -207,3 +213,5 @@ def backup(*,
                                         version_labels=version_labels,
                                         context=context,
                                         version=version)
+
+    return version

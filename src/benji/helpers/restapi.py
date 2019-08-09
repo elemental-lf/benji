@@ -1,6 +1,4 @@
-import sys
 from typing import Any, Dict, Tuple, List, Optional
-from urllib.error import HTTPError
 
 import requests
 

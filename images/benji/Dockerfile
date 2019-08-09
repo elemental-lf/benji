@@ -20,7 +20,7 @@ ADD . /benji-source/
 RUN python3.6 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
-	pip install '/benji-source/[compression,s3,b2,helpers]'
+	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
 
 FROM centos:7 AS runtime
 
@@ -29,6 +29,9 @@ ARG VCS_URL
 ARG VERSION 
 ENV IMAGE_VERSION=$VERSION
 ARG BUILD_DATE
+
+ARG CEPH_CODENAME="nautilus"
+ARG CEPH_DISTRO="el7"
 
 ENV VENV_DIR /benji
 
@@ -41,14 +44,15 @@ LABEL org.label-schema.schema-version="1.0" \
       org.label-schema.version="$VERSION" \
       org.label-schema.url="https://benji-backup.me/"
 
-COPY --from=build /etc/yum.repos.d/ceph.repo /etc/yum.repos.d/ceph.repo
+COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
+RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y python36 && \
 	yum install -y ceph-base python36-rbd python36-rados && \
-	yum install -y bash-completion joe jq && \
+	yum install -y bash-completion joe jq postgresql && \
 	yum clean all
 
 RUN mkdir /etc/benji && \

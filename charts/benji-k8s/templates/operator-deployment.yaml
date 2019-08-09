@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "benji.name" . }}
@@ -40,22 +42,24 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: BENJI_INSTANCE
+              value: {{ .Values.benji.instance | quote }}
+            - name: BENJI_API_ENDPOINT
+              value: "http://{{ tuple . "api" | include "benji.fullname" }}:{{ .Values.benji.api.port }}"
+{{- with .Values.operator.resources }}
           resources:
-            {{ toYaml .Values.operator.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
       hostNetwork: false
-      volumes:
-        - name: tz-config
-          hostPath:
-            path: /usr/share/zoneinfo/{{ .Values.timeZone }}
 {{- with .Values.operator.nodeSelector }}
       nodeSelector:
-        {{ toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
 {{- end }}
 {{- with .Values.operator.affinity }}
       affinity:
-        {{ toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
 {{- end }}
 {{- with .Values.operator.tolerations }}
       tolerations:
-        {{ toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
 {{- end }}

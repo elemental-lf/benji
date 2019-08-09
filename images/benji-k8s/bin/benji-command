@@ -3,30 +3,31 @@ import sys
 import time
 from typing import Optional
 
-import benji.helpers.prometheus as prometheus
-import benji.helpers.settings as settings
-import benji.helpers.utils as utils
+from benji.helpers.prometheus import command_start_time, command_status_failed, command_status_succeeded, \
+    command_registry, command_completion_time, command_runtime_seconds, push
+from benji.helpers.settings import benji_log_level
+from benji.helpers.utils import setup_logging, subprocess_run
 
-utils.setup_logging()
+setup_logging()
 
 exception: Optional[Exception] = None
 command = ' '.join(sys.argv[1:])
 start_time = time.time()
 
-prometheus.command_start_time.labels(command=command).set(start_time)
+command_start_time.labels(command=command).set(start_time)
 try:
-    utils.subprocess_run(['benji', '--log-level', settings.benji_log_level] + sys.argv[1:])
+    subprocess_run(['benji', '--log-level', benji_log_level] + sys.argv[1:])
 except Exception as exception:
-    prometheus.command_status_failed.labels(command=command).set(1)
+    command_status_failed.labels(command=command).set(1)
     completion_time = time.time()
-    prometheus.command_completion_time.labels(command=command).set(completion_time)
-    prometheus.command_runtime_seconds.labels(command=command).set(completion_time - start_time)
-    prometheus.push(prometheus.command_registry)
+    command_completion_time.labels(command=command).set(completion_time)
+    command_runtime_seconds.labels(command=command).set(completion_time - start_time)
+    push(command_registry)
     raise exception
 else:
-    prometheus.command_status_succeeded.labels(command=command).set(1)
+    command_status_succeeded.labels(command=command).set(1)
     completion_time = time.time()
-    prometheus.command_completion_time.labels(command=command).set(completion_time)
-    prometheus.command_runtime_seconds.labels(command=command).set(completion_time - start_time)
-    prometheus.push(prometheus.command_registry)
+    command_completion_time.labels(command=command).set(completion_time)
+    command_runtime_seconds.labels(command=command).set(completion_time - start_time)
+    push(command_registry)
     sys.exit(0)
