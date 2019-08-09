@@ -12,6 +12,7 @@ import sqlite3
 import time
 import uuid
 from abc import abstractmethod
+from binascii import hexlify, unhexlify
 from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
@@ -26,7 +27,6 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
-from binascii import hexlify, unhexlify
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
@@ -351,6 +351,7 @@ class Version(Base):
         backref='version',
         order_by='asc(Label.name)',
         passive_deletes=True,
+        cascade='all, delete-orphan',
     )
 
     blocks = sqlalchemy.orm.relationship(
@@ -358,6 +359,7 @@ class Version(Base):
         backref='version',
         order_by='asc(Block.id)',
         passive_deletes=True,
+        cascade='all, delete-orphan',
     )
 
     def __eq__(self, other: Any) -> bool:
