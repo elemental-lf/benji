@@ -72,9 +72,11 @@ files and restore them.
 There are some known issues with ``nbd-client``:
 
 * Some problems have been reported with ``nbd-client`` 3.18. Please see https://github.com/elemental-lf/benji/issues/12.
+  Older versions like 3.16 and 3.17 (needs ``-t``, see below) and newer versions like 3.19 seems to be fine.
 
-* Some versions of ``nbd-client`` use a timeout value of zero which also leads to problems. Please explicit specify
-  a timeout with ``-t`` in these cases.
+* Some versions of ``nbd-client`` (like 3.17) use a timeout value of zero which also leads to problems. Please
+  explicitly specify a timeout with ``-t`` in these cases. To make the confusion complete some distributions have
+  back-ported the fix for this issue. So 3.17 on Fedora is actually fine without ``-t``.
 
 * If the image has a partition table the Linux kernel will have problems parsing the partition table
   when the device block size used by ``nbd-client`` is different from the one used during creation of the partition
