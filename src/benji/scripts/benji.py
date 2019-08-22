@@ -219,10 +219,8 @@ def main():
     p = subparsers_root.add_parser('restore', help='Restore a backup')
     p.add_argument('-s', '--sparse', action='store_true', help='Restore only existing blocks')
     p.add_argument('-f', '--force', action='store_true', help='Overwrite an existing file, device or image')
-    p.add_argument('-d',
-                   '--database-backend-less',
-                   action='store_true',
-                   help='Restore without requiring the database backend')
+    p.add_argument('-d', '--database-less', action='store_true', help='Restore without requiring the database')
+    p.add_argument('-S', '--storage', default=None, help='Source storage (if unspecified the default is used)')
     p.add_argument('version_uid', help='Version UID to restore')
     p.add_argument('destination', help='Destination URL')
     p.set_defaults(func='restore')

@@ -200,7 +200,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.restore(version_uid, 'file:' + restore_filename_mdl, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_mdl))
-            logger.debug('Metadata-backend-less restore successful')
+            logger.debug('Database-less restore successful')
 
             benji_obj = self.benjiOpen(in_memory_database=True)
             benji_obj.metadata_restore([version_uid], storage_name)

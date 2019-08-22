@@ -70,14 +70,17 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def restore(self, version_uid: str, destination: str, sparse: bool, force: bool,
-                database_backend_less: bool) -> None:
+    def restore(self, version_uid: str, destination: str, sparse: bool, force: bool, database_less: bool,
+                storage: str) -> None:
+        if not database_less and storage is not None:
+            raise benji.exception.UsageError('Specifying a storage location is only supported for database-less restores.')
+
         version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
-            benji_obj = Benji(self.config, in_memory_database=database_backend_less)
-            if database_backend_less:
-                benji_obj.metadata_restore([version_uid_obj])
+            benji_obj = Benji(self.config, in_memory_database=database_less)
+            if database_less:
+                benji_obj.metadata_restore([version_uid_obj], storage)
             benji_obj.restore(version_uid_obj, destination, sparse, force)
         finally:
             if benji_obj:
