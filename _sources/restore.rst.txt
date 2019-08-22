@@ -9,20 +9,45 @@ Restore
 
 There are two possible restore options with Benji.
 
-.. NOTE:: If you determined the *version* you want to restore it is a good idea to protect this *version* to prevent
-    any accidental or automatic removal by any retention policy enforcement that you might have configured.
+.. NOTE:: If you determined the *version* you want to restore it is a good idea to protect this *version* with
+    ``benji protect`` to prevent any accidental or automatic removal by any retention policy enforcement that you
+    might have configured.
 
-Full Restore
-------------
+Restoring
+---------
 
-A full restore either saves the image into a file (i.e. an image file), to a device (e.g. /dev/hda) or to a Ceph RBD
-volume.
+A restore can write a *version* to any one of the supported and configured I/O instances. This doesn't have to be
+the same I/O instance that was used for creating the backup. The URL syntax is the same as the one used for the
+backup command. Examples include:
 
-The target is specified by the URI scheme. Examples::
+- Command line: ``benji restore --sparse V00000001 example-1:///tmp/vm1-image.qcow2``
 
-    $ benji restore --sparse $VERSION_UID file:///var/lib/vms/myvm.qcow2
-    $ benji restore --sparse --force $VERSION_UID file:///dev/sda1
-    $ benji restore --sparse $VERSION_UID rbd:pool/myvm_restore
+  I/O module configuration::
+
+    ios:
+      - name: example-1
+        module: file
+
+  Restores *version* ``V00000001`` to path ``/tmp/vm1-image.qcow2`` in the local filesystem
+
+- Command line: ``benji restore --sparse V00000002 example-2:pool-1/image-2``
+
+  I/O module configuration::
+
+    ios:
+      - name: example-2
+        module: rbdaio
+        configuration:
+          newImageFeatures:
+            - RBD_FEATURE_LAYERING
+
+  Restores *version* ``V00000002`` to an RBD image named ``image-2`` in the Ceph pool ``pool-1``. The RBD image is
+  created in the process with the configured RBD image features. If no RBD image features are specified in the
+  configuration Ceph's default is used.
+
+.. NOTE:: Normally the name chosen for an instance of the ``file`` module is ``file`` and the name used for an instance
+   of an ``rbd`` or ``rbdaio`` module is ``rbd``. But that is not required and there can be multiple instances of the
+   same I/O module with different configurations under different names.
 
 If the target already exists, i.e.
 
@@ -30,11 +55,11 @@ If the target already exists, i.e.
 - an existing Ceph RBD volume
 - or an existing image file
 
-you need to ``--force`` the restore. Benji will create an Ceph RBD volume or file if it does not exist, yet.
+the ``--force``  option needs to be added to the command line. Otherwise Benji won't overwrite the existing resource.
 
-In most cases ``--sparse`` should be used to skip the restore of sparse (empty) blocks. This increases restore
-performance and in the case of Ceph RBD or thinly provisioned LVM volumes also decreases space usage. When ``--sparse``
-is not specified sparse blocks are written as blocks full of zeros.
+Generally the usage of the ``--sparse`` option is advisable to skip the restore of sparse (empty) blocks. This
+increases restore performance and also decreases space usage in most cases. When ``--sparse`` is not specified
+sparse blocks are written as blocks of zeros.
 
 .. CAUTION:: If you use ``--sparse`` to restore to an existing device or file, sparse blocks will not be written,
     so whatever random data was in the location of the sparse block before the restore will remain. This is not
@@ -45,14 +70,16 @@ is not specified sparse blocks are written as blocks full of zeros.
 Restoring without a database
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``benji restore`` also supports a mode to restore a *version* even when the database backend is not available. This
-mode is activated by passing the ``--database-backend-less`` switch to ``benji restore``. Benji will import the
-metadata backup of the specified *version* from the storage into an ad-hoc in-memory database  and then restore the
-image normally.
+``benji restore`` also supports a mode to restore a *version* even when the database is not available. This
+mode is activated by passing the ``--database-less`` switch to ``benji restore``. Benji will import the
+metadata backup of the specified *version* from the storage into an ad-hoc in-memory database and then restore the
+image normally. If you have configured more than one storage location and the *version* to restore does not reside
+on the default storage you need to specify the storage location with ``--storage``.
 
-This is for failure scenarios where the database is unavailable and you still need to restore a *version*. But because
-of the database unavailability you can't just execute ``benji ls`` to determine the right *version* to restore, you
-need to generate some reports beforehand and save them somewhere to be able to chose the right *version*!
+This mode is for failure scenarios where the database is unavailable. But because of this unavailability it is
+impossible to execute commands like ``benji ls`` to determine the right *version*  for the restore. Reports
+(based on ``benji ls``) need to be generated and saved beforehand so that this information is still available in another
+way.
 
 NBD Server
 ----------

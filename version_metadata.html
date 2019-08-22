@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Version Metadata &mdash; Benji Backup 0.5.0.dev16+ge54b195 documentation</title>
+  <title>Version Metadata &mdash; Benji Backup 0.7.0.dev9+g4c27d5f documentation</title>
   
 
   
@@ -17,33 +17,36 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -79,6 +82,7 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#rhel-centos-7">RHEL/CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#fedora-27-and-up">Fedora 27 and up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#opensuse">openSUSE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#common-to-all-distributions">Common to All Distributions</a></li>
 </ul>
 </li>
@@ -99,6 +103,7 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#i-o-modules">I/O Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-file">I/O Module file</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-rbd">I/O Module rbd</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-rbdaio">I/O Module rbdaio</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#i-o-module-iscsi">I/O Module iscsi</a></li>
 </ul>
 </li>
@@ -144,7 +149,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="restore.html">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="restore.html#full-restore">Full Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="restore.html#restoring">Restoring</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
@@ -293,8 +298,8 @@ optional arguments:
 metadata from the storage, but you could get a list of all versions
 manually from the storage.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This metadata backup is compressed and encrypted like the blocks
+<p class="admonition-title">Note</p>
+<p>This metadata backup is compressed and encrypted like the blocks
 if you have these features enabled.</p>
 </div>
 <p>If you want to make your own copies of your metadata you can do so by using
@@ -384,27 +389,16 @@ optional arguments:
   
 
 
-  
-
-    
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
-    
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
+  
  
 
 

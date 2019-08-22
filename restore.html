@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.7.0.dev7+gae6be12 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.7.0.dev9+g4c27d5f documentation</title>
   
 
   
@@ -151,7 +151,7 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Restore</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#full-restore">Full Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#restoring">Restoring</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#restoring-without-a-database">Restoring without a database</a></li>
 </ul>
 </li>
@@ -296,18 +296,45 @@ optional arguments:
 <p>There are two possible restore options with Benji.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If you determined the <em>version</em> you want to restore it is a good idea to protect this <em>version</em> to prevent
-any accidental or automatic removal by any retention policy enforcement that you might have configured.</p>
+<p>If you determined the <em>version</em> you want to restore it is a good idea to protect this <em>version</em> with
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code> to prevent any accidental or automatic removal by any retention policy enforcement that you
+might have configured.</p>
 </div>
-<div class="section" id="full-restore">
-<h2>Full Restore<a class="headerlink" href="#full-restore" title="Permalink to this headline">¶</a></h2>
-<p>A full restore either saves the image into a file (i.e. an image file), to a device (e.g. /dev/hda) or to a Ceph RBD
-volume.</p>
-<p>The target is specified by the URI scheme. Examples:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji restore --sparse <span class="nv">$VERSION_UID</span> file:///var/lib/vms/myvm.qcow2
-$ benji restore --sparse --force <span class="nv">$VERSION_UID</span> file:///dev/sda1
-$ benji restore --sparse <span class="nv">$VERSION_UID</span> rbd:pool/myvm_restore
+<div class="section" id="restoring">
+<h2>Restoring<a class="headerlink" href="#restoring" title="Permalink to this headline">¶</a></h2>
+<p>A restore can write a <em>version</em> to any one of the supported and configured I/O instances. This doesn’t have to be
+the same I/O instance that was used for creating the backup. The URL syntax is the same as the one used for the
+backup command. Examples include:</p>
+<ul>
+<li><p>Command line: <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span> <span class="pre">--sparse</span> <span class="pre">V00000001</span> <span class="pre">example-1:///tmp/vm1-image.qcow2</span></code></p>
+<p>I/O module configuration:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ios:
+  - name: example-1
+    module: file
 </pre></div>
+</div>
+<p>Restores <em>version</em> <code class="docutils literal notranslate"><span class="pre">V00000001</span></code> to path <code class="docutils literal notranslate"><span class="pre">/tmp/vm1-image.qcow2</span></code> in the local filesystem</p>
+</li>
+<li><p>Command line: <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span> <span class="pre">--sparse</span> <span class="pre">V00000002</span> <span class="pre">example-2:pool-1/image-2</span></code></p>
+<p>I/O module configuration:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ios:
+  - name: example-2
+    module: rbdaio
+    configuration:
+      newImageFeatures:
+        - RBD_FEATURE_LAYERING
+</pre></div>
+</div>
+<p>Restores <em>version</em> <code class="docutils literal notranslate"><span class="pre">V00000002</span></code> to an RBD image named <code class="docutils literal notranslate"><span class="pre">image-2</span></code> in the Ceph pool <code class="docutils literal notranslate"><span class="pre">pool-1</span></code>. The RBD image is
+created in the process with the configured RBD image features. If no RBD image features are specified in the
+configuration Ceph’s default is used.</p>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Normally the name chosen for an instance of the <code class="docutils literal notranslate"><span class="pre">file</span></code> module is <code class="docutils literal notranslate"><span class="pre">file</span></code> and the name used for an instance
+of an <code class="docutils literal notranslate"><span class="pre">rbd</span></code> or <code class="docutils literal notranslate"><span class="pre">rbdaio</span></code> module is <code class="docutils literal notranslate"><span class="pre">rbd</span></code>. But that is not required and there can be multiple instances of the
+same I/O module with different configurations under different names.</p>
 </div>
 <p>If the target already exists, i.e.</p>
 <ul class="simple">
@@ -315,10 +342,10 @@ $ benji restore --sparse <span class="nv">$VERSION_UID</span> rbd:pool/myvm_rest
 <li><p>an existing Ceph RBD volume</p></li>
 <li><p>or an existing image file</p></li>
 </ul>
-<p>you need to <code class="docutils literal notranslate"><span class="pre">--force</span></code> the restore. Benji will create an Ceph RBD volume or file if it does not exist, yet.</p>
-<p>In most cases <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> should be used to skip the restore of sparse (empty) blocks. This increases restore
-performance and in the case of Ceph RBD or thinly provisioned LVM volumes also decreases space usage. When <code class="docutils literal notranslate"><span class="pre">--sparse</span></code>
-is not specified sparse blocks are written as blocks full of zeros.</p>
+<p>the <code class="docutils literal notranslate"><span class="pre">--force</span></code>  option needs to be added to the command line. Otherwise Benji won’t overwrite the existing resource.</p>
+<p>Generally the usage of the <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> option is advisable to skip the restore of sparse (empty) blocks. This
+increases restore performance and also decreases space usage in most cases. When <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> is not specified
+sparse blocks are written as blocks of zeros.</p>
 <div class="admonition caution">
 <p class="admonition-title">Caution</p>
 <p>If you use <code class="docutils literal notranslate"><span class="pre">--sparse</span></code> to restore to an existing device or file, sparse blocks will not be written,
@@ -327,13 +354,15 @@ the case with Ceph RBD as <code class="docutils literal notranslate"><span class
 </div>
 <div class="section" id="restoring-without-a-database">
 <span id="database-less-restore"></span><h3>Restoring without a database<a class="headerlink" href="#restoring-without-a-database" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode to restore a <em>version</em> even when the database backend is not available. This
-mode is activated by passing the <code class="docutils literal notranslate"><span class="pre">--database-backend-less</span></code> switch to <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code>. Benji will import the
-metadata backup of the specified <em>version</em> from the storage into an ad-hoc in-memory database  and then restore the
-image normally.</p>
-<p>This is for failure scenarios where the database is unavailable and you still need to restore a <em>version</em>. But because
-of the database unavailability you can’t just execute <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> to determine the right <em>version</em> to restore, you
-need to generate some reports beforehand and save them somewhere to be able to chose the right <em>version</em>!</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code> also supports a mode to restore a <em>version</em> even when the database is not available. This
+mode is activated by passing the <code class="docutils literal notranslate"><span class="pre">--database-less</span></code> switch to <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">restore</span></code>. Benji will import the
+metadata backup of the specified <em>version</em> from the storage into an ad-hoc in-memory database and then restore the
+image normally. If you have configured more than one storage location and the <em>version</em> to restore does not reside
+on the default storage you need to specify the storage location with <code class="docutils literal notranslate"><span class="pre">--storage</span></code>.</p>
+<p>This mode is for failure scenarios where the database is unavailable. But because of this unavailability it is
+impossible to execute commands like <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code> to determine the right <em>version</em>  for the restore. Reports
+(based on <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">ls</span></code>) need to be generated and saved beforehand so that this information is still available in another
+way.</p>
 </div>
 </div>
 <div class="section" id="nbd-server">
