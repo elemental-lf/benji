@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.7.0.dev9+g4c27d5f documentation</title>
+  <title>Installation &mdash; Benji Backup 0.7.0.dev11+g51b7886.dirty documentation</title>
   
 
   
@@ -81,11 +81,12 @@
             
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#rhel-centos-7">RHEL/CentOS 7</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#fedora-27-and-up">Fedora 27 and up</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#opensuse">openSUSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rhel-centos-7">RHEL/CentOS 7</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ubuntu-16-04">Ubuntu 16.04</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#common-to-all-distributions">Common to All Distributions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ceph-rbd-support">Ceph RBD Support</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
@@ -278,11 +279,36 @@
             
   <div class="section" id="installation">
 <span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<p>Currently there are no pre-built packages but you can easily install Benji
-with <code class="docutils literal notranslate"><span class="pre">pip</span></code>. Furthermore there are two Docker images which each contain
-a complete Benji installation. The <code class="docutils literal notranslate"><span class="pre">benji</span></code> image is the easiest and fastest
-way to test Benji but can also be used in production. See section <a class="reference internal" href="container.html#container"><span class="std std-ref">Containerized Benji</span></a>
-for more information about the images.</p>
+<p>Release versions of Benji are available on PyPi and can installed via <cite>pip</cite>. In addition there are two container images:
+One generic image and an extended one for the use with Kubernetes. The generic <code class="docutils literal notranslate"><span class="pre">elementalnet/benji</span></code> image is the
+easiest and fastest way to try out Benji but can also be used in production. It includes all dependencies and extra
+features listed below (including RBD and iSCSI support). See section <a class="reference internal" href="container.html#container"><span class="std std-ref">Containerized Benji</span></a> for more information about the
+images.</p>
+<div class="section" id="fedora-27-and-up">
+<h2>Fedora 27 and up<a class="headerlink" href="#fedora-27-and-up" title="Permalink to this headline">¶</a></h2>
+<p>The distribution includes a supported version of Python 3. Make sure to install the latest available update.</p>
+</div>
+<div class="section" id="opensuse">
+<h2>openSUSE<a class="headerlink" href="#opensuse" title="Permalink to this headline">¶</a></h2>
+<p>The distribution includes a supported version of Python 3. Benji is also available through the official repositories of
+openSUSE Tumbleweed. For older, versioned releases of openSUSE you need to add the devel project:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper ar obs://Archiving:Backup ab-benji
+zypper ref
+</pre></div>
+</div>
+<p>Then you can install it via:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper in benji
+</pre></div>
+</div>
+</div>
+<div class="section" id="rhel-centos-7">
+<h2>RHEL/CentOS 7<a class="headerlink" href="#rhel-centos-7" title="Permalink to this headline">¶</a></h2>
+<p>A recent version of Python 3 is included in the EPEL repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y epel-release
+yum install -y python36-devel python36-pip python36-libs python36-setuptools
+</pre></div>
+</div>
+</div>
 <div class="section" id="ubuntu-16-04">
 <h2>Ubuntu 16.04<a class="headerlink" href="#ubuntu-16-04" title="Permalink to this headline">¶</a></h2>
 <p>This version of Ubuntu doesn’t have a current Python installation. But Python 3
@@ -300,65 +326,114 @@ apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 please see <a class="reference external" href="https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa">https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa</a>.</p>
 </div>
 </div>
-<div class="section" id="rhel-centos-7">
-<h2>RHEL/CentOS 7<a class="headerlink" href="#rhel-centos-7" title="Permalink to this headline">¶</a></h2>
-<p>A recent version of Python 3 is included in the EPEL repository:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>yum install -y epel-release
-yum install -y python36-devel python36-pip python36-libs python36-setuptools
-</pre></div>
-</div>
-</div>
-<div class="section" id="fedora-27-and-up">
-<h2>Fedora 27 and up<a class="headerlink" href="#fedora-27-and-up" title="Permalink to this headline">¶</a></h2>
-<p>The distribution includes a supported version of Python 3. Make sure to install the latest available update.</p>
-</div>
-<div class="section" id="opensuse">
-<h2>openSUSE<a class="headerlink" href="#opensuse" title="Permalink to this headline">¶</a></h2>
-<p>The distribution includes a supported version of Python 3.
-Benji is also available through the official repositories of openSUSE Tumbleweed.
-For older, versioned releases of openSUSE you need to add the devel project:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper ar obs://Archiving:Backup ab-benji
-zypper ref
-</pre></div>
-</div>
-<p>Then you can install it via:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper in benji
-</pre></div>
-</div>
-</div>
 <div class="section" id="common-to-all-distributions">
 <h2>Common to All Distributions<a class="headerlink" href="#common-to-all-distributions" title="Permalink to this headline">¶</a></h2>
-<p>After installing a recent Python version, it is now time to install
-Benji and its dependencies:</p>
+<p>After installing a recent Python version, it is now time to install Benji and its dependencies:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create new virtual environment</span>
 python3.6 -m venv /usr/local/benji
 <span class="c1"># Activate it (your shell prompt should change)</span>
 . /usr/local/benji/bin/activate
-<span class="c1"># Alternative A: Install a specific released version from PyPI (0.4.0)</span>
-pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.4.0
+<span class="c1"># Alternative A: Install a specific released version from PyPI (0.7.0)</span>
+pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.7.0
 <span class="c1"># Alternative B: Install the latest released version from PyPI</span>
 pip install benji
 <span class="c1"># Alternative C: Install the latest version from the master branch of the Git repository</span>
 pip install git+https://github.com/elemental-lf/benji
 </pre></div>
 </div>
-<p>If you want to use certain features of Benji you need to install additional
-dependencies:</p>
+<p>For certain features additional dependencies are needed. These are referenced by a symbolic name:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 object storage support</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud object storage support</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</p></li>
 </ul>
-<p>You can do this be specifying a comma delimited list of extra features in square brackets after the package URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.2.0[compression,s3,readcache,b2]&#39;</span>
+<p>Specify any extra extra features as a comma delimited list in square brackets after the package URL:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.7.0[compression,s3,readcache,b2]&#39;</span>
 </pre></div>
 </div>
 <p>To upgrade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>It is recommended to install and use the compression feature for
-almost all use cases.</p>
+<p>It is recommended to install and use the compression feature for almost all use cases as it decreases storage
+space usage significantly.</p>
+</div>
+</div>
+<div class="section" id="ceph-rbd-support">
+<h2>Ceph RBD Support<a class="headerlink" href="#ceph-rbd-support" title="Permalink to this headline">¶</a></h2>
+<p>The Ceph RBD support cannot be installed via <cite>pip</cite> like the other dependencies as the Python bindings for <cite>librados</cite>
+and <cite>librbd</cite> are not available on PyPi. Depending on the distribution and the used Ceph version pre-built packages
+are available:</p>
+<ul class="simple">
+<li><p>For RHEL and CentOS 7 see <a class="reference external" href="https://docs.ceph.com/docs/master/install/get-packages/">https://docs.ceph.com/docs/master/install/get-packages/</a>, the packages are named
+<cite>python36-rados</cite> and <cite>python36-rbd</cite>.</p></li>
+<li><p>For Ubuntu (Xenial and Bionic) also see <a class="reference external" href="https://docs.ceph.com/docs/master/install/get-packages/">https://docs.ceph.com/docs/master/install/get-packages/</a>, the packages are
+named <cite>python3-rados</cite> and <cite>python3-rbd</cite>.</p></li>
+<li><p>The Ceph project no longer supplies Debian packages but unofficial packages can be found at
+<a class="reference external" href="https://mirror.croit.io/debian-mimic/">https://mirror.croit.io/debian-mimic/</a> (Mimic) and <a class="reference external" href="https://mirror.croit.io/debian-nautilus/">https://mirror.croit.io/debian-nautilus/</a> (Nautilus). Usage
+instructions are given in this <a class="reference external" href="https://croit.io/2018/09/23/2018-09-23-debian-mirror">blog post</a>.</p></li>
+<li><p>Some distributions also provide packages for recent versions of Ceph directly via their official
+repositories. For Fedora 30 the packages are named <cite>python3-rados</cite> and <cite>python3-rbd</cite> for example and are based
+on Nautilus.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If Benji is installed in a virtual environment as suggested above, system-wide Python packages are not
+available by default. To access system-wide Python packages like Ceph’s Python bindings the virtual environment
+needs to be created with the <cite>–system-site-packages</cite> option.</p>
+</div>
+<p>If all other options fail, it is still possible to directly install the Python binding from the Ceph source code. For
+RHEL/CentOS 7 the procedure looks like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat &gt;/etc/yum.repos.d/ceph.repo <span class="s">&lt;&lt;EOF</span>
+<span class="s">[ceph]</span>
+<span class="s">name=Ceph packages for $basearch</span>
+<span class="s">baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/$basearch</span>
+<span class="s">enabled=1</span>
+<span class="s">priority=2</span>
+<span class="s">gpgcheck=1</span>
+<span class="s">gpgkey=https://download.ceph.com/keys/release.asc</span>
+
+<span class="s">[ceph-noarch]</span>
+<span class="s">name=Ceph noarch packages</span>
+<span class="s">baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/noarch</span>
+<span class="s">enabled=1</span>
+<span class="s">priority=2</span>
+<span class="s">gpgcheck=1</span>
+<span class="s">gpgkey=https://download.ceph.com/keys/release.asc</span>
+
+<span class="s">[ceph-source]</span>
+<span class="s">name=Ceph source packages</span>
+<span class="s">baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/SRPMS</span>
+<span class="s">enabled=0</span>
+<span class="s">priority=2</span>
+<span class="s">gpgcheck=1</span>
+<span class="s">gpgkey=https://download.ceph.com/keys/release.asc</span>
+<span class="s">EOF</span>
+
+<span class="nb">export</span> <span class="nv">CEPH_CODENAME</span><span class="o">=</span><span class="s2">&quot;nautilus&quot;</span>
+<span class="nb">export</span> <span class="nv">CEPH_DISTRO</span><span class="o">=</span><span class="s2">&quot;el7&quot;</span>
+sed -i -e <span class="s2">&quot;s/{ceph-release}/</span><span class="nv">$CEPH_CODENAME</span><span class="s2">/&quot;</span> -e <span class="s2">&quot;s/{distro}/</span><span class="nv">$CEPH_DISTRO</span><span class="s2">/&quot;</span> /etc/yum.repos.d/ceph.repo
+
+yum install -y epel-release
+yum install -y git gcc make python36-devel python36-pip python36-libs python36-setuptools librados-devel librbd-devel
+
+<span class="nb">export</span> <span class="nv">VENV_DIR</span><span class="o">=</span>/usr/local/benji
+python3.6 -m venv <span class="nv">$VENV_DIR</span>
+. <span class="nv">$VENV_DIR</span>/bin/activate
+pip install --upgrade pip
+
+<span class="nb">export</span> <span class="nv">CEPH_VERSION</span><span class="o">=</span><span class="m">14</span>.2.2
+<span class="c1"># The links are necessary as Ceph&#39;s setup.py searches for these names</span>
+ln -s /usr/bin/python3.6-config <span class="nv">$VENV_DIR</span>/bin/python-config
+ln -s /usr/bin/python3.6m-x86_64-config <span class="nv">$VENV_DIR</span>/bin/python3.6m-x86_64-config
+pip install cython
+pip install <span class="s2">&quot;git+https://github.com/ceph/ceph@v</span><span class="nv">$CEPH_VERSION</span><span class="s2">#subdirectory=src/pybind/rados&quot;</span>
+pip install <span class="s2">&quot;git+https://github.com/ceph/ceph@v</span><span class="nv">$CEPH_VERSION</span><span class="s2">#subdirectory=src/pybind/rbd&quot;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Benji has only been tested with Luminous and later versions of Ceph’s Python bindings.</p>
 </div>
 </div>
 </div>
