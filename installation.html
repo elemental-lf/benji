@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.7.0.dev11+g51b7886.dirty documentation</title>
+  <title>Installation &mdash; Benji Backup 0.7.0.dev13+g9b9e21d.dirty documentation</title>
   
 
   
@@ -372,9 +372,10 @@ named <cite>python3-rados</cite> and <cite>python3-rbd</cite>.</p></li>
 <li><p>The Ceph project no longer supplies Debian packages but unofficial packages can be found at
 <a class="reference external" href="https://mirror.croit.io/debian-mimic/">https://mirror.croit.io/debian-mimic/</a> (Mimic) and <a class="reference external" href="https://mirror.croit.io/debian-nautilus/">https://mirror.croit.io/debian-nautilus/</a> (Nautilus). Usage
 instructions are given in this <a class="reference external" href="https://croit.io/2018/09/23/2018-09-23-debian-mirror">blog post</a>.</p></li>
+<li><p>Proxmox 6.0 includes packages for Ceph Nautilus (<cite>python3-rados</cite> and <cite>python3-rbd</cite>).</p></li>
 <li><p>Some distributions also provide packages for recent versions of Ceph directly via their official
 repositories. For Fedora 30 the packages are named <cite>python3-rados</cite> and <cite>python3-rbd</cite> for example and are based
-on Nautilus.</p></li>
+on Nautilus. Debian Buster includes packages for Ceph Luminous (<cite>python3-rados</cite> and <cite>python3-rbd</cite>).</p></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -386,8 +387,8 @@ needs to be created with the <cite>–system-site-packages</cite> option.</p>
 RHEL/CentOS 7 the procedure looks like this:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat &gt;/etc/yum.repos.d/ceph.repo <span class="s">&lt;&lt;EOF</span>
 <span class="s">[ceph]</span>
-<span class="s">name=Ceph packages for $basearch</span>
-<span class="s">baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/$basearch</span>
+<span class="s">name=Ceph packages for \$basearch</span>
+<span class="s">baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/\$basearch</span>
 <span class="s">enabled=1</span>
 <span class="s">priority=2</span>
 <span class="s">gpgcheck=1</span>
