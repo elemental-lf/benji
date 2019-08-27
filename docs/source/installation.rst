@@ -98,9 +98,10 @@ are available:
 - The Ceph project no longer supplies Debian packages but unofficial packages can be found at
   https://mirror.croit.io/debian-mimic/ (Mimic) and https://mirror.croit.io/debian-nautilus/ (Nautilus). Usage
   instructions are given in this `blog post <https://croit.io/2018/09/23/2018-09-23-debian-mirror>`_.
+- Proxmox 6.0 includes packages for Ceph Nautilus (`python3-rados` and `python3-rbd`).
 - Some distributions also provide packages for recent versions of Ceph directly via their official
   repositories. For Fedora 30 the packages are named `python3-rados` and `python3-rbd` for example and are based
-  on Nautilus.
+  on Nautilus. Debian Buster includes packages for Ceph Luminous (`python3-rados` and `python3-rbd`).
 
 .. NOTE:: If Benji is installed in a virtual environment as suggested above, system-wide Python packages are not
    available by default. To access system-wide Python packages like Ceph's Python bindings the virtual environment
