@@ -111,8 +111,8 @@ RHEL/CentOS 7 the procedure looks like this::
 
     cat >/etc/yum.repos.d/ceph.repo <<EOF
     [ceph]
-    name=Ceph packages for $basearch
-    baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/$basearch
+    name=Ceph packages for \$basearch
+    baseurl=https://download.ceph.com/rpm-{ceph-release}/{distro}/\$basearch
     enabled=1
     priority=2
     gpgcheck=1
