@@ -157,14 +157,13 @@ class Config:
                 raise ConfigurationError('Configuration string is empty.')
 
         if self._CONFIGURATION_VERSION_KEY not in config:
-            raise ConfigurationError('Configuration is missing required key "{}".'.format(
-                self._CONFIGURATION_VERSION_KEY))
+            raise ConfigurationError('Configuration is missing required key "{}".'.format(self._CONFIGURATION_VERSION_KEY))
 
         version = str(config[self._CONFIGURATION_VERSION_KEY])
         if not re.fullmatch(self._CONFIGURATION_VERSION_REGEX, version):
             raise ConfigurationError('Configuration has invalid version of "{}".'.format(version))
 
-        version_obj = semantic_version.Version(version, partial=True)
+        version_obj = semantic_version.Version.coerce(version)
         if version_obj not in VERSIONS.configuration.supported:
             raise ConfigurationError('Configuration has unsupported version of "{}".'.format(version))
 
