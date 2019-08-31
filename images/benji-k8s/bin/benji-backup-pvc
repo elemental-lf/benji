@@ -298,15 +298,28 @@ for pvc in pvcs:
         continue
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    if not hasattr(pv.spec, 'rbd') or not hasattr(pv.spec.rbd, 'pool') or not hasattr(pv.spec.rbd, 'image'):
+
+    pool, image = None, None
+
+    if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
+        # Native Kubernetes RBD PV
+        pool, image = spec.rbd.pool, spec.rbd.image
+    elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(pv.spec.flex_volume, 'driver'):
+        # Rook Ceph PV
+        options = pv.spec.flex_volume.options
+        driver = pv.spec.flex_volume.driver
+        if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
+            pool, image = options['pool'], options['image']
+
+    if pool is None or image is None:
         continue
 
     version_name = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
 
     version_labels = {
         'benji-backup.me/instance': settings.benji_instance,
-        'benji-backup.me/ceph-pool': pv.spec.rbd.pool,
-        'benji-backup.me/ceph-rbd-image': pv.spec.rbd.image,
+        'benji-backup.me/ceph-pool': pool,
+        'benji-backup.me/ceph-rbd-image': image,
         'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
         'benji-backup.me/k8s-pvc-name': pvc.metadata.name,
         'benji-backup.me/k8s-pv': pv.metadata.name
@@ -314,8 +327,7 @@ for pvc in pvcs:
 
     context = {'pvc': pvc}
     ceph.backup(version_name=version_name,
-                pool=pv.spec.rbd.pool,
-                image=pv.spec.rbd.image,
+                pool=pool, image=image,
                 version_labels=version_labels,
                 context=context)
 
