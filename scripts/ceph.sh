@@ -59,7 +59,7 @@ function benji::backup::ceph::initial {
         || return $?
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" \
-        $(printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
+        $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
         "$VERSION_NAME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid | benji::version::uid::format)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
@@ -98,7 +98,7 @@ function benji::backup::ceph::differential {
         || return $?
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" -f "$BENJI_VERSION_UID_LAST" \
-        $(printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
+        $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
         "$VERSION_NAME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid  | benji::version::uid::format)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
