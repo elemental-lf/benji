@@ -6,7 +6,7 @@ import random
 from io import StringIO
 from unittest import TestCase
 
-from benji.database import VersionUid, VersionStatus, Block, Version, Label
+from benji.database import VersionUid, VersionStatus, Block, Label
 from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff
@@ -429,7 +429,7 @@ class ImportExportTestCase():
               "versions": [
                 {
                   "uid": 1,
-                  "date": "2018-12-19T20:28:18.123456",
+                  "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
                   "snapshot_name": "snapshot-name",
                   "size": 670293,
@@ -460,7 +460,7 @@ class ImportExportTestCase():
                 },
                 {
                   "uid": 2,
-                  "date": "2018-12-19T20:28:18.123456",
+                  "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
                   "snapshot_name": "snapshot-name",
                   "size": 670293,
@@ -491,7 +491,7 @@ class ImportExportTestCase():
                 },
                 {
                   "uid": 3,
-                  "date": "2018-12-19T20:28:18.123456",
+                  "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
                   "snapshot_name": "snapshot-name",
                   "size": 670293,

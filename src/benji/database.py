@@ -915,7 +915,7 @@ class DatabaseBackend(ReprMixIn):
 
             def default(self, obj):
                 if isinstance(obj, datetime.datetime):
-                    return obj.isoformat(timespec='microseconds')
+                    return obj.isoformat(timespec='microseconds') + 'Z'
 
                 if isinstance(obj, VersionUid):
                     return obj.integer
@@ -1025,6 +1025,12 @@ class DatabaseBackend(ReprMixIn):
             # Will raise ValueError when invalid
             version_uid = VersionUid(version_dict['uid'])
 
+            attributes_to_check = ['labels', 'blocks', 'date']
+
+            for attribute in attributes_to_check:
+                if attribute not in version_dict:
+                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
+
             # Starting with 1.1.0 the statistics where folded into the versions table, fake them for 1.0.x
             if metadata_version.minor == 0:
                 version_dict['bytes_read'] = None
@@ -1057,6 +1063,11 @@ class DatabaseBackend(ReprMixIn):
                 if 'id' not in block_dict:
                     raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid.v_string))
                 del (block_dict['id'])
+
+            if not isinstance(version_dict['date'], str):
+                raise InputDataError('Wrong data type for date in version {}.'.format(version_uid.v_string))
+
+            version_dict['date'] = version_dict['date'] + 'Z'
 
         return self.import_v2(metadata_version, json_input)
 
@@ -1132,7 +1143,7 @@ class DatabaseBackend(ReprMixIn):
 
             version = Version(
                 uid=version_uid,
-                date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S.%f'),
+                date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S.%fZ'),
                 name=version_dict['name'],
                 snapshot_name=version_dict['snapshot_name'],
                 size=version_dict['size'],
