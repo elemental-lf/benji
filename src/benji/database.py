@@ -900,6 +900,14 @@ class DatabaseBackend(ReprMixIn):
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
     def new_benji_encoder(ignore_fields: List, ignore_relationships: List):
+        ignore_fields = list(ignore_fields) if ignore_fields is not None else []
+        ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
+
+        # These are always ignored because they'd lead to a circle
+        ignore_fields.append(((Label, Block), ('version_uid',)))
+        ignore_relationships.append(((Label, Block), ('version',)))
+        # Ignore these as we favor the composite attribute
+        ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -957,15 +965,6 @@ class DatabaseBackend(ReprMixIn):
 
     def export_any(self, root_dict: Dict, f: TextIO, ignore_fields: List = None,
                    ignore_relationships: List = None) -> None:
-        ignore_fields = list(ignore_fields) if ignore_fields is not None else []
-        ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
-
-        # These are always ignored because they'd lead to a circle
-        ignore_fields.append(((Label, Block), ('version_uid',)))
-        ignore_relationships.append(((Label, Block), ('version',)))
-        # Ignore these as we favor the composite attribute
-        ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
-
         root_dict = root_dict.copy()
         root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
 
