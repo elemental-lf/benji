@@ -1050,6 +1050,9 @@ class DatabaseBackend(ReprMixIn):
                 labels_dict[name_value_dict['name']] = name_value_dict['value']
             version_dict['labels'] = labels_dict
 
+            if not isinstance(version_dict['blocks'], list):
+                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid.v_string))
+
             for block_dict in version_dict['blocks']:
                 if 'id' not in block_dict:
                     raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid.v_string))
