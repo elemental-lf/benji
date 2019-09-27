@@ -184,7 +184,9 @@ Reference to a storage module name. See below.
 * type: integer
 * default: none
 
-This sets the internal storage id for this storage configuration.
+This sets the internal storage id for this storage configuration. It is no longer necessary to populate
+this configuration key as the storage id is now assigned automatically. This option only exists for
+backward compatibility with older configurations and should not be used in new configurations.
 
 * key: **configuration**
 * type: list of dictionaries
@@ -694,6 +696,17 @@ option are mutually exclusive.
 
 Sets the application key from a file. This option and the **applicationKey**
 option are mutually exclusive.
+
+* name: **accountInfoFile**
+* type: string
+* default: none
+
+Sets the file for caching the authorization token.  If unset, the `b2` module
+will always authorize the user with the provided account id and application
+key.  But the latter operation is rate limited by BackBlaze, so if Benji is
+invoked repeatably in a short time frame the login will fail. In this case
+configure  this option to cache and use the authorization token in subsequent
+calls of  Benji. The token will be renewed automatically when it expires.
 
 * name: **bucketName**
 * type: string

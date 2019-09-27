@@ -95,11 +95,11 @@ Please see :ref:`configuration` for a full list of configuration options.
 
     $ benji ls
         INFO: $ benji ls
-    +---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
-    |         date        |     uid     | name              | snapshot_name |     size | block_size | valid | protected | tags |
-    +---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
-    | 2018-06-06T21:41:41 | V0000000001 | myfirsttestbackup |               | 41943040 |    4194304 |  True |   False   |      |
-    +---------------------+-------------+-------------------+---------------+----------+------------+-------+-----------+------+
+    +---------------------+-------------+-------------------+----------+----------+------------+--------+-----------+
+    |         date        |     uid     | name              | snapshot |     size | block_size | status | protected |
+    +---------------------+-------------+-------------------+----------+----------+------------+--------+-----------+
+    | 2018-06-06T21:41:41 | V0000000001 | myfirsttestbackup |          | 41943040 |    4194304 | valid  |   False   |
+    +---------------------+-------------+-------------------+----------+----------+------------+--------+-----------+
 
 ``benji ls`` supports various options to filter the output:
 
@@ -107,22 +107,28 @@ Please see :ref:`configuration` for a full list of configuration options.
 
 Some commands can also produce machine readable JSON output for usage in scripts::
 
-    $ benji -m ls
+    INFO: $ /home/lf/src/backy2/venv/bin/benji -m ls
     {
-      "metadataVersion": "1.0.0",
       "versions": [
         {
           "uid": 1,
-          "date": "2018-06-06T21:41:41",
+          "date": "2018-06-06T19:41:41.936087Z",
           "name": "myfirsttestbackup",
-          "snapshot_name": "",
+          "snapshot": "",
           "size": 41943040,
           "block_size": 4194304,
-          "valid": true,
+          "storage_id": 1,
+          "status": "valid",
           "protected": false,
-          "tags": []
+          "bytes_read": 41943040,
+          "bytes_written": 41943040,
+          "bytes_dedup": 0,
+          "bytes_sparse": 0,
+          "duration": 0,
+          "labels": {}
         }
-      ]
+      ],
+      "metadata_version": "2.0.0"
     }
 
 Specifying ``-m`` also automatically turns down the verbosity level to only output
@@ -178,10 +184,11 @@ Also, the version is marked invalid as you can see here::
 
     $ benji ls
         INFO: $ benji ls
-    +---------------------+-------------+---------------+---------------+---------+------------+-------+-----------+------+
-    |         date        |     uid     | name          | snapshot_name |    size | block_size | valid | protected | tags |
-    +---------------------+-------------+---------------+---------------+---------+------------+-------+-----------+------+
-    | 2018-06-13T15:23:00 | V0000000001 | myfirstbackup |               | 40.0MiB |     4.0MiB |  True |   False   |      |
+    +---------------------+-------------+-------------------+----------+----------+------------+----------+-----------+
+    |         date        |     uid     | name              | snapshot |     size | block_size | status   | protected |
+    +---------------------+-------------+-------------------+----------+----------+------------+----------+-----------+
+    | 2018-06-06T21:41:41 | V0000000001 | myfirsttestbackup |          | 41943040 |    4194304 | invalid  |   False   |
+    +---------------------+-------------+-------------------+----------+----------+------------+----------+-----------+
 
 
 Just in case you are able to fix the error, just scrub again and Benji will mark the version as valid again.
