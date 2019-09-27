@@ -98,7 +98,7 @@ class ImportExportTestCase():
         version = export['versions'][0]
         self.assertEqual(1, version['uid'])
         self.assertEqual('data-backup', version['name'])
-        self.assertEqual('snapshot-name', version['snapshot_name'])
+        self.assertEqual('snapshot-name', version['snapshot'])
         self.assertEqual(4096, version['block_size'])
         self.assertEqual(version['status'], VersionStatus.valid.name)
         self.assertFalse(version['protected'])
@@ -112,7 +112,7 @@ class ImportExportTestCase():
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(1, version.uid)
         self.assertEqual('data-backup', version.name)
-        self.assertEqual('snapshot-name', version.snapshot_name)
+        self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
@@ -144,7 +144,7 @@ class ImportExportTestCase():
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(1, version.uid)
         self.assertEqual('data-backup', version.name)
-        self.assertEqual('snapshot-name', version.snapshot_name)
+        self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
@@ -187,7 +187,7 @@ class ImportExportTestCase():
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(1, version.uid)
         self.assertEqual('data-backup', version.name)
-        self.assertEqual('snapshot-name', version.snapshot_name)
+        self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
@@ -229,7 +229,7 @@ class ImportExportTestCase():
                   "uid": 1,
                   "date": "2018-12-19T20:28:18.123456",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -253,7 +253,7 @@ class ImportExportTestCase():
                   "uid": 2,
                   "date": "2018-12-19T20:28:19.123456",
                   "name": "test",
-                  "snapshot_name": "",
+                  "snapshot": "",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -277,7 +277,7 @@ class ImportExportTestCase():
                   "uid": 3,
                   "date": "2018-12-19T20:28:21.123456",
                   "name": "test",
-                  "snapshot_name": "",
+                  "snapshot": "",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -309,7 +309,7 @@ class ImportExportTestCase():
                   "uid": 1,
                   "date": "2018-12-19T20:28:18.123456",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -347,7 +347,7 @@ class ImportExportTestCase():
                   "uid": 2,
                   "date": "2018-12-19T20:28:18.123456",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -385,7 +385,7 @@ class ImportExportTestCase():
                   "uid": 3,
                   "date": "2018-12-19T20:28:18.123456",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -431,7 +431,7 @@ class ImportExportTestCase():
                   "uid": 1,
                   "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -462,7 +462,7 @@ class ImportExportTestCase():
                   "uid": 2,
                   "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,
@@ -493,7 +493,7 @@ class ImportExportTestCase():
                   "uid": 3,
                   "date": "2018-12-19T20:28:18.123456Z",
                   "name": "data-backup",
-                  "snapshot_name": "snapshot-name",
+                  "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
                   "storage_id": 1,

@@ -26,7 +26,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         version = self.database_backend.get_version(version.uid)
         self.assertEqual('backup-name', version.name)
-        self.assertEqual('snapshot-name', version.snapshot_name)
+        self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(16 * 1024 * 4096, version.size)
         self.assertEqual(4 * 1024 * 4096, version.block_size)
         self.assertEqual(version.status, VersionStatus.incomplete)
@@ -303,26 +303,26 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = self.database_backend.get_versions_with_filter('labels["label-key-2"] == 9')
         self.assertEqual(1, len(versions))
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.1"')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.1"')
         self.assertEqual(1, len(versions))
         self.assertEqual(VersionUid(2), versions[0].uid)
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.1" and labels["label-key-2"] == 1')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.1" and labels["label-key-2"] == 1')
         self.assertEqual(1, len(versions))
         self.assertEqual(VersionUid(2), versions[0].uid)
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.1" and labels["label-key-2"] == "2"')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.1" and labels["label-key-2"] == "2"')
         self.assertEqual(0, len(versions))
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.1" or labels["label-key-2"] == 2')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.1" or labels["label-key-2"] == 2')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
 
-        versions = self.database_backend.get_versions_with_filter('name == "backup-name" and snapshot_name == "snapshot-name.1"')
+        versions = self.database_backend.get_versions_with_filter('name == "backup-name" and snapshot == "snapshot-name.1"')
         self.assertEqual(1, len(versions))
         self.assertEqual(VersionUid(2), versions[0].uid)
 
-        versions = self.database_backend.get_versions_with_filter('name == "backup-name" and (snapshot_name == "snapshot-name.1" or snapshot_name == "snapshot-name.2")')
+        versions = self.database_backend.get_versions_with_filter('name == "backup-name" and (snapshot == "snapshot-name.1" or snapshot == "snapshot-name.2")')
         self.assertEqual(2, len(versions))
         self.assertSetEqual(set([VersionUid(2), VersionUid(3)]), set([version.uid for version in versions]))
 
@@ -359,10 +359,10 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name" and status == "valid"')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.2" and name == "backup-name" and status == "valid"')
         self.assertEqual(1, len(versions))
 
-        versions = self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" or name == "backup-name" or status == "valid"')
+        versions = self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.2" or name == "backup-name" or status == "valid"')
         self.assertEqual(3, len(versions))
 
     # Issue https://github.com/elemental-lf/benji/issues/9 (slowness part)
@@ -378,10 +378,10 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             version_uids.add(version.uid)
 
         t1 = timeit.timeit(
-            lambda: self.database_backend.get_versions_with_filter('snapshot_name == "snapshot-name.2" and name == "backup-name"'),
+            lambda: self.database_backend.get_versions_with_filter('snapshot == "snapshot-name.2" and name == "backup-name"'),
             number=1)
         t2 = timeit.timeit(
-            lambda: self.database_backend.get_versions_with_filter('(snapshot_name == "snapshot-name.2" and name == "backup-name")'),
+            lambda: self.database_backend.get_versions_with_filter('(snapshot == "snapshot-name.2" and name == "backup-name")'),
             number=1)
         logger.debug('test_version_filter_issue_9_slowness: t1 {}, t2 {}'.format(t1, t2))
         self.assertLess(t1 - t2, 5)

@@ -223,7 +223,7 @@ class Commands:
     def _ls_versions_table_output(versions: List[Version], include_labels: bool, include_stats: bool) -> None:
         tbl = PrettyTable()
 
-        field_names = ['date', 'uid', 'name', 'snapshot_name', 'size', 'block_size', 'status', 'protected', 'storage']
+        field_names = ['date', 'uid', 'name', 'snapshot', 'size', 'block_size', 'status', 'protected', 'storage']
         if include_stats:
             field_names.extend(['read', 'written', 'dedup', 'sparse', 'duration'])
         if include_labels:
@@ -231,7 +231,7 @@ class Commands:
         tbl.field_names = field_names
 
         tbl.align['name'] = 'l'
-        tbl.align['snapshot_name'] = 'l'
+        tbl.align['snapshot'] = 'l'
         tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
         tbl.align['block_size'] = 'r'
@@ -249,7 +249,7 @@ class Commands:
                 PrettyPrint.local_time(version.date),
                 version.uid.v_string,
                 version.name,
-                version.snapshot_name,
+                version.snapshot,
                 PrettyPrint.bytes(version.size),
                 PrettyPrint.bytes(version.block_size),
                 version.status,

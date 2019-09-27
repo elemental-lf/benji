@@ -329,7 +329,7 @@ class Version(Base):
     uid = sqlalchemy.Column(VersionUidType, primary_key=True, autoincrement=True, nullable=False)
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
-    snapshot_name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
+    snapshot = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     size = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
     block_size = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
     storage_id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
@@ -622,7 +622,7 @@ class DatabaseBackend(ReprMixIn):
                        protected: bool = False) -> Version:
         version = Version(
             name=version_name,
-            snapshot_name=snapshot_name,
+            snapshot=snapshot_name,
             size=size,
             storage_id=storage_id,
             block_size=block_size,
@@ -690,7 +690,7 @@ class DatabaseBackend(ReprMixIn):
         if version_name:
             query = query.filter_by(name=version_name)
         if version_snapshot_name:
-            query = query.filter_by(snapshot_name=version_snapshot_name)
+            query = query.filter_by(snapshot=version_snapshot_name)
         if version_labels:
             for version_label in version_labels:
                 label_query = self._session.query(Label.version_uid).filter((Label.name == version_label[0]) &
@@ -1086,7 +1086,7 @@ class DatabaseBackend(ReprMixIn):
             attributes_to_check = [
                 'date',
                 'name',
-                'snapshot_name',
+                'snapshot',
                 'size',
                 'storage_id',
                 'block_size',
@@ -1109,9 +1109,9 @@ class DatabaseBackend(ReprMixIn):
                 raise InputDataError('Backup name {} in version {} is invalid.'.format(
                     version_dict['name'], version_uid.v_string))
 
-            if not InputValidation.is_snapshot_name(version_dict['snapshot_name']):
+            if not InputValidation.is_snapshot_name(version_dict['snapshot']):
                 raise InputDataError('Snapshot name {} in version {} is invalid.'.format(
-                    version_dict['snapshot_name'], version_uid.v_string))
+                    version_dict['snapshot'], version_uid.v_string))
 
             if not isinstance(version_dict['labels'], dict):
                 raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
@@ -1145,7 +1145,7 @@ class DatabaseBackend(ReprMixIn):
                 uid=version_uid,
                 date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S.%fZ'),
                 name=version_dict['name'],
-                snapshot_name=version_dict['snapshot_name'],
+                snapshot=version_dict['snapshot'],
                 size=version_dict['size'],
                 storage_id=version_dict['storage_id'],
                 block_size=version_dict['block_size'],

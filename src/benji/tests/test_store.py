@@ -71,7 +71,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.assertEqual(version.size, cow_version.size)
         self.assertEqual(version.block_size, cow_version.block_size)
         self.assertEqual(version.storage_id, cow_version.storage_id)
-        self.assertNotEqual(version.snapshot_name, cow_version.snapshot_name)
+        self.assertNotEqual(version.snapshot, cow_version.snapshot)
         store.fixate(cow_version)
         store.close(version)
         benji_obj.close()

@@ -143,7 +143,7 @@ def backup(*, version_name: str, pool: str, image: str, version_labels: Dict[str
 
             benji_ls = subprocess_run([
                 'benji', '--machine-output', '--log-level', benji_log_level, 'ls',
-                f'name == "{version_name}" and snapshot_name == "{last_snapshot}" and status == "valid"'
+                f'name == "{version_name}" and snapshot == "{last_snapshot}" and status == "valid"'
             ],
                                       decode_json=True)
             assert isinstance(benji_ls, dict)

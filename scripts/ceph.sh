@@ -125,7 +125,7 @@ function benji::backup::ceph {
     else
         echo "Snapshot found for $CEPH_POOL/$CEPH_RBD_IMAGE is $CEPH_RBD_SNAPSHOT_LAST."
         # check if a valid version of this RBD snapshot exists
-        BENJI_SNAP_VERSION_UID=$(benji -m ls 'name == "'"$VERSION_NAME"'" and snapshot_name == "'"$CEPH_RBD_SNAPSHOT_LAST"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
+        BENJI_SNAP_VERSION_UID=$(benji -m ls 'name == "'"$VERSION_NAME"'" and snapshot == "'"$CEPH_RBD_SNAPSHOT_LAST"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
         EC=$?
 
         if [[ $EC == 0 ]]; then
