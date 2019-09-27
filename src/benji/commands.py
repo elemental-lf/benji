@@ -267,7 +267,8 @@ class Commands:
                 ])
 
             if include_labels:
-                row.append('\n'.join(sorted(['{}={}'.format(label.name, label.value) for label in version.labels])))
+                row.append('\n'.join(
+                    sorted(['{}={}'.format(label.name, label.value) for label in version.labels.values()])))
             tbl.add_row(row)
         print(tbl)
 

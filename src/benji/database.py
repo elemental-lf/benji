@@ -27,6 +27,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
@@ -346,21 +347,18 @@ class Version(Base):
     bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger)
     duration = sqlalchemy.Column(sqlalchemy.BigInteger)
 
-    labels = sqlalchemy.orm.relationship(
-        'Label',
-        backref='version',
-        order_by='asc(Label.name)',
-        passive_deletes=True,
-        cascade='all, delete-orphan',
-    )
+    labels = sqlalchemy.orm.relationship('Label',
+                                         backref='version',
+                                         order_by='asc(Label.name)',
+                                         passive_deletes=True,
+                                         cascade='all, delete-orphan',
+                                         collection_class=attribute_mapped_collection('name'))
 
-    blocks = sqlalchemy.orm.relationship(
-        'Block',
-        backref='version',
-        order_by='asc(Block.id)',
-        passive_deletes=True,
-        cascade='all, delete-orphan',
-    )
+    blocks = sqlalchemy.orm.relationship('Block',
+                                         backref='version',
+                                         order_by='asc(Block.id)',
+                                         passive_deletes=True,
+                                         cascade='all, delete-orphan')
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Version):
@@ -906,6 +904,21 @@ class DatabaseBackend(ReprMixIn):
         class BenjiEncoder(json.JSONEncoder):
 
             def default(self, obj):
+                if isinstance(obj, datetime.datetime):
+                    return obj.isoformat(timespec='microseconds')
+
+                if isinstance(obj, VersionUid):
+                    return obj.integer
+
+                if isinstance(obj, BlockUid):
+                    return {'left': obj.left, 'right': obj.right}
+
+                if isinstance(obj, VersionStatus):
+                    return obj.name
+
+                if isinstance(obj, Label):
+                    return obj.value
+
                 if isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
                     fields = {}
 
@@ -937,15 +950,6 @@ class DatabaseBackend(ReprMixIn):
                             fields[relationship.key] = getattr(obj, relationship.key)
 
                     return fields
-
-                if isinstance(obj, datetime.datetime):
-                    return obj.isoformat(timespec='microseconds')
-                elif isinstance(obj, VersionUid):
-                    return obj.integer
-                elif isinstance(obj, BlockUid):
-                    return {'left': obj.left, 'right': obj.right}
-                elif isinstance(obj, VersionStatus):
-                    return obj.name
 
                 return super().default(obj)
 
@@ -1009,6 +1013,45 @@ class DatabaseBackend(ReprMixIn):
         return version_uids
 
     def import_v1(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+        for version_dict in json_input['versions']:
+            # We only do enough input validation for the key we access here, the rest will be done by import_v2
+            if not isinstance(version_dict, dict):
+                raise InputDataError('Wrong data type for versions list element.')
+
+            if 'uid' not in version_dict:
+                raise InputDataError('Missing attribute uid in version.')
+
+            # Will raise ValueError when invalid
+            version_uid = VersionUid(version_dict['uid'])
+
+            # Starting with 1.1.0 the statistics where folded into the versions table, fake them for 1.0.x
+            if metadata_version.minor == 0:
+                version_dict['bytes_read'] = None
+                version_dict['bytes_written'] = None
+                version_dict['bytes_dedup'] = None
+                version_dict['bytes_sparse'] = None
+                version_dict['duration'] = None
+
+            if not isinstance(version_dict['labels'], list):
+                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
+
+            # Convert label list to dictionary
+            labels_dict: Dict[str, str] = {}
+            for name_value_dict in version_dict['labels']:
+                if not isinstance(name_value_dict, dict):
+                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(
+                        version_uid.v_string))
+                for attribute in ['name', 'value']:
+                    if attribute not in name_value_dict:
+                        raise InputDataError('Missing attribute {} in labels list in version {}.'.format(
+                            attribute, version_uid.v_string))
+
+                labels_dict[name_value_dict['name']] = name_value_dict['value']
+            version_dict['labels'] = labels_dict
+
+        return self.import_v2(metadata_version, json_input)
+
+    def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
@@ -1031,11 +1074,12 @@ class DatabaseBackend(ReprMixIn):
                 'protected',
                 'blocks',
                 'labels',
+                'bytes_read',
+                'bytes_written',
+                'bytes_dedup',
+                'bytes_sparse',
+                'duration',
             ]
-
-            # Starting with 1.1.0 the statistics where folded into the versions table
-            if metadata_version.minor >= 1:
-                attributes_to_check.extend(['bytes_read', 'bytes_written', 'bytes_dedup', 'bytes_sparse', 'duration'])
 
             for attribute in attributes_to_check:
                 if attribute not in version_dict:
@@ -1049,26 +1093,17 @@ class DatabaseBackend(ReprMixIn):
                 raise InputDataError('Snapshot name {} in version {} is invalid.'.format(
                     version_dict['snapshot_name'], version_uid.v_string))
 
-            if not isinstance(version_dict['labels'], list):
+            if not isinstance(version_dict['labels'], dict):
                 raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
 
             if not isinstance(version_dict['blocks'], list):
                 raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid.v_string))
 
-            for label_dict in version_dict['labels']:
-                if not isinstance(label_dict, dict):
-                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(
-                        version_uid.v_string))
-                for attribute in ['name', 'value']:
-                    if attribute not in label_dict:
-                        raise InputDataError('Missing attribute {} in labels list in version {}.'.format(
-                            attribute, version_uid.v_string))
-                if not InputValidation.is_label_name(label_dict['name']):
-                    raise InputDataError('Label name {} in labels list in version {} is invalid.'.format(
-                        label_dict['name'], version_uid.v_string))
-                if not InputValidation.is_label_value(label_dict['value']):
-                    raise InputDataError('Label value {} in labels list in version {} is invalid.'.format(
-                        label_dict['value'], version_uid.v_string))
+            for name, value in version_dict['labels'].items():
+                if not InputValidation.is_label_name(name):
+                    raise InputDataError('Label name {} in version {} is invalid.'.format(name, version_uid.v_string))
+                if not InputValidation.is_label_value(value):
+                    raise InputDataError('Label value {} in version {} is invalid.'.format(value, version_uid.v_string))
 
             for block_dict in version_dict['blocks']:
                 if not isinstance(block_dict, dict):
@@ -1096,13 +1131,12 @@ class DatabaseBackend(ReprMixIn):
                 block_size=version_dict['block_size'],
                 status=VersionStatus[version_dict['status']],
                 protected=version_dict['protected'],
+                bytes_read=version_dict['bytes_read'],
+                bytes_written=version_dict['bytes_written'],
+                bytes_dedup=version_dict['bytes_dedup'],
+                bytes_sparse=version_dict['bytes_sparse'],
+                duration=version_dict['duration'],
             )
-            if metadata_version.minor >= 1:
-                version.bytes_read = version_dict['bytes_read']
-                version.bytes_written = version_dict['bytes_written']
-                version.bytes_dedup = version_dict['bytes_dedup']
-                version.bytes_sparse = version_dict['bytes_sparse']
-                version.duration = version_dict['duration']
             self._session.add(version)
             self._session.flush()
 
@@ -1112,12 +1146,12 @@ class DatabaseBackend(ReprMixIn):
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right
                 del block_dict['uid']
-
             self._session.bulk_insert_mappings(Block, version_dict['blocks'])
 
-            for label_dict in version_dict['labels']:
-                label_dict['version_uid'] = version_uid
-            self._session.bulk_insert_mappings(Label, version_dict['labels'])
+            labels: List[Dict[str, Any]] = []
+            for name, value in version_dict['labels'].items():
+                labels.append({'version_uid': version_uid, 'name': name, 'value': value})
+            self._session.bulk_insert_mappings(Label, labels)
 
             version_uids.append(version_uid)
 

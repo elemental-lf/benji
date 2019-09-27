@@ -17,12 +17,11 @@ from benji.tests.testcase import DatabaseBackendTestCaseBase
 class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version(self):
-        version = self.database_backend.create_version(
-            version_name='backup-name',
-            snapshot_name='snapshot-name',
-            size=16 * 1024 * 4096,
-            storage_id=1,
-            block_size=4 * 1024 * 4096)
+        version = self.database_backend.create_version(version_name='backup-name',
+                                                       snapshot_name='snapshot-name',
+                                                       size=16 * 1024 * 4096,
+                                                       storage_id=1,
+                                                       block_size=4 * 1024 * 4096)
         self.database_backend.commit()
 
         version = self.database_backend.get_version(version.uid)
@@ -53,18 +52,18 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.database_backend.add_label(version.uid, 'label-2', '')
         version = self.database_backend.get_version(version.uid)
         self.assertEqual(2, len(version.labels))
-        self.assertEqual(version.uid, version.labels[0].version_uid)
-        self.assertEqual('label-1', version.labels[0].name)
-        self.assertEqual('bla', version.labels[0].value)
-        self.assertEqual(version.uid, version.labels[1].version_uid)
-        self.assertEqual('label-2', version.labels[1].name)
-        self.assertEqual('', version.labels[1].value)
+        self.assertEqual(version.uid, version.labels['label-1'].version_uid)
+        self.assertEqual('label-1', version.labels['label-1'].name)
+        self.assertEqual('bla', version.labels['label-1'].value)
+        self.assertEqual(version.uid, version.labels['label-2'].version_uid)
+        self.assertEqual('label-2', version.labels['label-2'].name)
+        self.assertEqual('', version.labels['label-2'].value)
 
         self.database_backend.add_label(version.uid, 'label-2', 'test123')
         version = self.database_backend.get_version(version.uid)
-        self.assertEqual(version.uid, version.labels[1].version_uid)
-        self.assertEqual('label-2', version.labels[1].name)
-        self.assertEqual('test123', version.labels[1].value)
+        self.assertEqual(version.uid, version.labels['label-2'].version_uid)
+        self.assertEqual('label-2', version.labels['label-2'].name)
+        self.assertEqual('test123', version.labels['label-2'].value)
 
         self.database_backend.rm_label(version.uid, 'label-1')
         version = self.database_backend.get_version(version.uid)
@@ -80,23 +79,21 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         version_uids = set()
         for _ in range(256):
-            version = self.database_backend.create_version(
-                version_name='backup-name',
-                snapshot_name='snapshot-name',
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096)
+            version = self.database_backend.create_version(version_name='backup-name',
+                                                           snapshot_name='snapshot-name',
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096)
             version = self.database_backend.get_version(version.uid)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
     def test_block(self):
-        version = self.database_backend.create_version(
-            version_name='name-' + self.random_string(12),
-            snapshot_name='snapshot-name-' + self.random_string(12),
-            size=256 * 1024 * 4096,
-            block_size=1024 * 4096,
-            storage_id=1)
+        version = self.database_backend.create_version(version_name='name-' + self.random_string(12),
+                                                       snapshot_name='snapshot-name-' + self.random_string(12),
+                                                       size=256 * 1024 * 4096,
+                                                       block_size=1024 * 4096,
+                                                       storage_id=1)
 
         checksums = []
         uids = []
@@ -248,13 +245,12 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
     def test_version_filter(self):
         version_uids = set()
         for i in range(256):
-            version = self.database_backend.create_version(
-                version_name='backup-name',
-                snapshot_name='snapshot-name.{}'.format(i),
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096,
-                status=VersionStatus.valid)
+            version = self.database_backend.create_version(version_name='backup-name',
+                                                           snapshot_name='snapshot-name.{}'.format(i),
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096,
+                                                           status=VersionStatus.valid)
             version = self.database_backend.get_version(version.uid)
             self.assertEqual(0, len(version.labels))
             self.database_backend.add_label(version.uid, 'label-key', 'label-value')
@@ -354,13 +350,12 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
     def test_version_filter_issue_9(self):
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(
-                version_name='backup-name',
-                snapshot_name='snapshot-name.{}'.format(i),
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096,
-                status=VersionStatus.valid)
+            version = self.database_backend.create_version(version_name='backup-name',
+                                                           snapshot_name='snapshot-name.{}'.format(i),
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096,
+                                                           status=VersionStatus.valid)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
@@ -374,12 +369,11 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
     def test_version_filter_issue_9_slowness(self):
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(
-                version_name='backup-name',
-                snapshot_name='snapshot-name.{}'.format(i),
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096)
+            version = self.database_backend.create_version(version_name='backup-name',
+                                                           snapshot_name='snapshot-name.{}'.format(i),
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 
@@ -395,12 +389,11 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
     def test_version_filter_dateparse(self):
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(
-                version_name='backup-name',
-                snapshot_name='snapshot-name.{}'.format(i),
-                size=16 * 1024 * 4096,
-                storage_id=1,
-                block_size=4 * 1024 * 4096)
+            version = self.database_backend.create_version(version_name='backup-name',
+                                                           snapshot_name='snapshot-name.{}'.format(i),
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096)
             self.assertNotIn(version.uid, version_uids)
             version_uids.add(version.uid)
 

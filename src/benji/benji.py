@@ -1148,7 +1148,7 @@ class Benji(ReprMixIn):
         if dismissed_versions and group_label is not None:
             additional_versions: Set[Version] = set()
             for version in dismissed_versions:
-                label_match = list(filter(lambda label: label.name == group_label, version.labels))
+                label_match = list(filter(lambda label: label.name == group_label, version.labels.values()))
                 if not label_match:
                     continue
                 assert len(label_match) == 1
