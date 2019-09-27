@@ -908,6 +908,8 @@ class DatabaseBackend(ReprMixIn):
         ignore_relationships.append(((Label, Block), ('version',)))
         # Ignore these as we favor the composite attribute
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
+        # Ignore id as we export as a list which is ordered by definition
+        ignore_fields.append(((Block,), ('id')))
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -1048,6 +1050,11 @@ class DatabaseBackend(ReprMixIn):
                 labels_dict[name_value_dict['name']] = name_value_dict['value']
             version_dict['labels'] = labels_dict
 
+            for block_dict in version_dict['blocks']:
+                if 'id' not in block_dict:
+                    raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid.v_string))
+                del (block_dict['id'])
+
         return self.import_v2(metadata_version, json_input)
 
     def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
@@ -1106,11 +1113,11 @@ class DatabaseBackend(ReprMixIn):
 
             for block_dict in version_dict['blocks']:
                 if not isinstance(block_dict, dict):
-                    raise InputDataError('Wrong data type for blocks list element in version {}.'.format(
+                    raise InputDataError('Wrong data type for block list element in version {}.'.format(
                         version_uid.v_string))
-                for attribute in ['id', 'uid', 'size', 'valid', 'checksum']:
+                for attribute in ['uid', 'size', 'valid', 'checksum']:
                     if attribute not in block_dict:
-                        raise InputDataError('Missing attribute {} in blocks list in version {}.'.format(
+                        raise InputDataError('Missing attribute {} in block list in version {}.'.format(
                             attribute, version_uid.v_string))
 
             try:
@@ -1139,8 +1146,9 @@ class DatabaseBackend(ReprMixIn):
             self._session.add(version)
             self._session.flush()
 
-            for block_dict in version_dict['blocks']:
+            for block_id, block_dict in enumerate(version_dict['blocks']):
                 block_dict['version_uid'] = version_uid
+                block_dict['id'] = block_id
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right

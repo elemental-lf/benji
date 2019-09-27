@@ -452,7 +452,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "id": 0,
                       "size": 670293,
                       "valid": true,
                       "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
@@ -484,7 +483,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "id": 0,
                       "size": 670293,
                       "valid": true,
                       "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
@@ -516,7 +514,6 @@ class ImportExportTestCase():
                         "left": 1,
                         "right": 1
                       },
-                      "id": 0,
                       "size": 670293,
                       "valid": true,
                       "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
