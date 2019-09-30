@@ -134,7 +134,7 @@ class SmokeTestCase(BenjiTestCaseBase):
 
             benji_obj = self.benjiOpen()
             blocks = list(benji_obj._database_backend.get_blocks_by_version(version_uid))
-            self.assertEqual(list(range(len(blocks))), sorted([block.id for block in blocks]))
+            self.assertEqual(list(range(len(blocks))), sorted([block.idx for block in blocks]))
             self.assertTrue(len(blocks) > 0)
             if len(blocks) > 1:
                 self.assertTrue(reduce(and_, [block.size == block_size for block in blocks[:-1]]))

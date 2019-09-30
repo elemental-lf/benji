@@ -126,12 +126,12 @@ class Benji(ReprMixIn):
             valid: bool
             blocks: List[Dict[str, Any]] = []
             old_version_exhausted = old_blocks_iter is None
-            for id in range(num_blocks):
+            for idx in range(num_blocks):
                 if not old_version_exhausted:
                     assert old_blocks_iter is not None
                     old_block = next(old_blocks_iter, None)
                     if old_block is not None:
-                        assert old_block.id == id
+                        assert old_block.idx == idx
                         uid = old_block.uid
                         checksum = old_block.checksum
                         block_size = old_block.size
@@ -149,7 +149,7 @@ class Benji(ReprMixIn):
                     valid = True
 
                 # the last block can differ in size, so let's check
-                _offset = id * self._block_size
+                _offset = idx * self._block_size
                 new_block_size = min(self._block_size, new_size - _offset)
                 if new_block_size != block_size:
                     # last block changed, so set back all info
@@ -159,7 +159,7 @@ class Benji(ReprMixIn):
                     valid = False
 
                 blocks.append({
-                    'id': id,
+                    'idx': idx,
                     'version_uid': version.uid,
                     'uid_left': uid.left if uid is not None else None,
                     'uid_right': uid.right if uid is not None else None,
@@ -169,7 +169,7 @@ class Benji(ReprMixIn):
                 })
 
                 notify(self._process_name, 'Preparing version {} ({:.1f}%)'.format(version.uid.v_string,
-                                                                                   (id + 1) / num_blocks * 100))
+                                                                                   (idx + 1) / num_blocks * 100))
 
                 if len(blocks) == self._BLOCKS_CREATE_WORK_PACKAGE:
                     self._database_backend.create_blocks(blocks=blocks)
@@ -218,16 +218,16 @@ class Benji(ReprMixIn):
                                                               version.uid.v_string, (i + 1) / blocks_count * 100))
             if not block.uid:
                 logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep-scrub' if deep_scrub else 'Scrub',
-                                                                                block.id, block.uid))
+                                                                                block.idx, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
                 logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
-                    'Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid))
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid))
                 continue
             # i != 0 makes sure that we always scrub at least one block (the first in this case)
             if i != 0 and block_percentage < 100 and random.randint(1, 100) > block_percentage:
                 logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
-                    'Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid, block_percentage))
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid, block_percentage))
             else:
                 storage.read_block_async(block, metadata_only=(not deep_scrub))
                 read_jobs += 1
@@ -235,7 +235,7 @@ class Benji(ReprMixIn):
 
     def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, read_jobs: int,
                                done_read_jobs: int, deep_scrub: bool) -> None:
-        logger.debug('{} of block {} (UID {}) ok.'.format('Deep-scrub' if deep_scrub else 'Scrub', block.id, block.uid))
+        logger.debug('{} of block {} (UID {}) ok.'.format('Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid))
 
         notify(
             self._process_name, '{} version {} ({:.1f}%)'.format('Deep-scrubbing' if deep_scrub else 'Scrubbing',
@@ -272,7 +272,7 @@ class Benji(ReprMixIn):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.id, entry.block.uid, entry))
+                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.idx, entry.block.uid, entry))
                         affected_version_uids.extend(self._database_backend.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
@@ -285,7 +285,7 @@ class Benji(ReprMixIn):
                     storage.check_block_metadata(block=block, data_length=None, metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
-                        block.id, block.uid, exception))
+                        block.idx, block.uid, exception))
                     affected_version_uids.extend(self._database_backend.set_block_invalid(block.uid))
                     valid = False
                     continue
@@ -361,7 +361,7 @@ class Benji(ReprMixIn):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.id, entry.block.uid, entry))
+                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.idx, entry.block.uid, entry))
                         affected_version_uids.extend(self._database_backend.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
@@ -374,7 +374,7 @@ class Benji(ReprMixIn):
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
-                        block.id, block.uid, exception))
+                        block.idx, block.uid, exception))
                     self._database_backend.set_block_invalid(block.uid)
                     valid = False
                     continue
@@ -385,7 +385,7 @@ class Benji(ReprMixIn):
                 if data_checksum != block.checksum:
                     logger.error(
                         'Checksum mismatch during deep-scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
-                            block.id, block.uid, data_checksum[:16],
+                            block.idx, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
                     affected_version_uids.extend(self._database_backend.set_block_invalid(block.uid))
                     valid = False
@@ -396,7 +396,7 @@ class Benji(ReprMixIn):
                     if source_data != data:
                         logger.error('Source data has changed for block {} (UID {}) (is: {}... should-be: {}...). '
                                      'Won\'t set this block to invalid, because the source looks wrong.'.format(
-                                         block.id, block.uid,
+                                         block.idx, block.uid,
                                          self._block_hash.data_hexdigest(source_data)[:16], data_checksum[:16]))
                         valid = False
                         # We are not setting the block invalid here because
@@ -538,14 +538,14 @@ class Benji(ReprMixIn):
                 if block.uid:
                     storage.read_block_async(block)
                     read_jobs += 1
-                    logger.debug('Queued read for block {} successfully ({} bytes).'.format(block.id, block.size))
+                    logger.debug('Queued read for block {} successfully ({} bytes).'.format(block.idx, block.size))
                 elif not sparse:
                     io.write(block, sparse_data_block)
                     write_jobs += 1
                     logger.debug('Queued write for sparse block {} successfully ({} bytes).'.format(
-                        block.id, block.size))
+                        block.idx, block.size))
                 else:
-                    logger.debug('Ignored sparse block {}.'.format(block.id))
+                    logger.debug('Ignored sparse block {}.'.format(block.idx))
 
                 if sparse:
                     # Version might be completely sparse
@@ -626,11 +626,11 @@ class Benji(ReprMixIn):
                 if data_checksum != block.checksum:
                     logger.error('Checksum mismatch during restore for block {} (UID {}) (is: {}... should-be: {}..., '
                                  'block.valid: {}). Block restored is invalid.'.format(
-                                     block.id, block.uid, data_checksum[:16],
+                                     block.idx, block.uid, data_checksum[:16],
                                      cast(str, block.checksum)[:16], block.valid))  # We know that block.checksum is set
                     self._database_backend.set_block_invalid(block.uid)
                 else:
-                    logger.debug('Restored block {} successfully ({} bytes).'.format(block.id, block.size))
+                    logger.debug('Restored block {} successfully ({} bytes).'.format(block.idx, block.size))
 
                 try:
                     for written_block in io.write_get_completed(timeout=0):
@@ -822,7 +822,7 @@ class Benji(ReprMixIn):
             # and 50% from random locations
             check_blocks = check_blocks.union(random.sample(ignored_blocks, check_blocks_count // 2))
             read_jobs = 0
-            for block in [self._database_backend.get_block_by_id(version.uid, id) for id in check_blocks]:
+            for block in [self._database_backend.get_block_by_idx(version.uid, idx) for idx in check_blocks]:
                 if block.uid and block.valid:  # no uid = sparse block in backup. Can't check.
                     io.read(block)
                     read_jobs += 1
@@ -839,7 +839,7 @@ class Benji(ReprMixIn):
                     logger.error("Source and backup don't match in regions outside of the ones indicated by the hints.")
                     logger.error("Looks like the hints don't match or the source is different.")
                     logger.error("Found wrong source data at block {}: offset {}, length {}".format(
-                        source_block.id, source_block.id * self._block_size, self._block_size))
+                        source_block.idx, source_block.idx * self._block_size, self._block_size))
                     # remove version
                     self._database_backend.rm_version(version.uid)
                     self._locking.unlock_version(version.uid)
@@ -852,33 +852,33 @@ class Benji(ReprMixIn):
             blocks_iter = self._database_backend.get_blocks_by_version(version.uid,
                                                                        yield_per=self._BLOCKS_READ_WORK_PACKAGE)
             for block in blocks_iter:
-                if block.id in read_blocks or not block.valid:
+                if block.idx in read_blocks or not block.valid:
                     io.read(block)
                     read_jobs += 1
-                elif block.id in sparse_blocks:
+                elif block.idx in sparse_blocks:
                     # This "elif" is very important. Because if the block is in read_blocks AND sparse_blocks,
                     # it *must* be read.
 
                     # Only update the database when the block wasn't sparse to begin with
                     if block.uid is not None:
-                        self._database_backend.set_block(id=block.id,
+                        self._database_backend.set_block(idx=block.idx,
                                                          version_uid=version.uid,
                                                          block_uid=None,
                                                          checksum=None,
                                                          size=block.size,
                                                          valid=True)
-                        logger.debug('Skipping block (had data, turned sparse) {}'.format(block.id))
+                        logger.debug('Skipping block (had data, turned sparse) {}'.format(block.idx))
                     else:
                         assert block.checksum is None
-                        logger.debug('Skipping block (sparse) {}'.format(block.id))
+                        logger.debug('Skipping block (sparse) {}'.format(block.idx))
                     stats['bytes_sparse'] += block.size
 
                 else:
                     # Block is already in database, no need to update it
-                    logger.debug('Keeping block {}'.format(block.id))
+                    logger.debug('Keeping block {}'.format(block.idx))
                 notify(
                     self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
-                        version.uid.v_string, source, (block.id + 1) / blocks_count * 100))
+                        version.uid.v_string, source, (block.idx + 1) / blocks_count * 100))
 
             # precompute checksum of a sparse block
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
@@ -901,28 +901,28 @@ class Benji(ReprMixIn):
                 if data_checksum == sparse_block_checksum and block.size == self._block_size:
                     # if the block is only \0, set it as a sparse block.
                     stats['bytes_sparse'] += block.size
-                    logger.debug('Skipping block (detected sparse) {}'.format(block.id))
-                    self._database_backend.set_block(id=block.id,
+                    logger.debug('Skipping block (detected sparse) {}'.format(block.idx))
+                    self._database_backend.set_block(idx=block.idx,
                                                      version_uid=version.uid,
                                                      block_uid=None,
                                                      checksum=None,
                                                      size=block.size,
                                                      valid=True)
                 elif existing_block:
-                    self._database_backend.set_block(id=block.id,
+                    self._database_backend.set_block(idx=block.idx,
                                                      version_uid=version.uid,
                                                      block_uid=existing_block.uid,
                                                      checksum=existing_block.checksum,
                                                      size=existing_block.size,
                                                      valid=True)
                     stats['bytes_dedup'] += len(data)
-                    logger.debug('Found existing block for id {} with UID {}'.format(block.id, existing_block.uid))
+                    logger.debug('Found existing block for id {} with UID {}'.format(block.idx, existing_block.uid))
                 else:
-                    block.uid = BlockUid(version.uid.integer, block.id + 1)
+                    block.uid = BlockUid(version.uid.integer, block.idx + 1)
                     block.checksum = data_checksum
                     storage.write_block_async(block, data)
                     write_jobs += 1
-                    logger.debug('Queued block {} for write (checksum {}...)'.format(block.id, data_checksum[:16]))
+                    logger.debug('Queued block {} for write (checksum {}...)'.format(block.idx, data_checksum[:16]))
 
                 done_read_jobs += 1
 
@@ -933,7 +933,7 @@ class Benji(ReprMixIn):
 
                         written_block = cast(DereferencedBlock, written_block)
 
-                        self._database_backend.set_block(id=written_block.id,
+                        self._database_backend.set_block(idx=written_block.idx,
                                                          version_uid=written_block.version_uid,
                                                          block_uid=written_block.uid,
                                                          checksum=written_block.checksum,
@@ -959,7 +959,7 @@ class Benji(ReprMixIn):
 
                     written_block = cast(DereferencedBlock, written_block)
 
-                    self._database_backend.set_block(id=written_block.id,
+                    self._database_backend.set_block(idx=written_block.idx,
                                                      version_uid=written_block.version_uid,
                                                      block_uid=written_block.uid,
                                                      checksum=written_block.checksum,
@@ -1299,7 +1299,7 @@ class BenjiStore(ReprMixIn):
                 length_in_block = min(block.size - block_offset, length)
                 chunks.append((None, 0, length_in_block))  # hint: return \0s
             else:
-                assert block.id == block_number
+                assert block.idx == block_number
                 length_in_block = min(block.size - block_offset, length)
                 chunks.append((block, block_offset, length_in_block))
             block_number += 1
@@ -1321,14 +1321,14 @@ class BenjiStore(ReprMixIn):
         block: Optional[Union[Block, DereferencedBlock]]
         for block, offset_in_block, length_in_block in read_list:
             # Read block from COW
-            if block is not None and cow is not None and block.id in cow:
-                logger.debug('Reading block from COW {}/{} {}:{}.'.format(block.version_uid.v_string, block.id,
+            if block is not None and cow is not None and block.idx in cow:
+                logger.debug('Reading block from COW {}/{} {}:{}.'.format(block.version_uid.v_string, block.idx,
                                                                           offset_in_block, length_in_block))
-                block = cow[block.id]
+                block = cow[block.idx]
             # Read block from original version
             elif block is not None:
                 logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '',
-                                                                   block.version_uid.v_string, block.id,
+                                                                   block.version_uid.v_string, block.idx,
                                                                    offset_in_block, length_in_block))
 
             # Block lies beyond end of device
@@ -1372,12 +1372,12 @@ class BenjiStore(ReprMixIn):
                     'COW: Tried to save data beyond device, it will be lost (version {}, size {}, offset {}).'.format(
                         cow_version.uid.v_string, cow_version.size, offset))
                 break
-            if block.id in cow:
+            if block.idx in cow:
                 # The block is already copied, so update in the cache
-                update_block = cow[block.id]
+                update_block = cow[block.idx]
                 self._block_cache.update(update_block.uid, offset_in_block,
                                          data[position_in_data:position_in_data + length_in_block])
-                logger.debug('COW: Updated block {}/{} {}:{}.'.format(block.version_uid.v_string, block.id,
+                logger.debug('COW: Updated block {}/{} {}:{}.'.format(block.version_uid.v_string, block.idx,
                                                                       offset_in_block, length_in_block))
             else:
                 # Read the block from the original
@@ -1395,11 +1395,11 @@ class BenjiStore(ReprMixIn):
 
                 # Save a copy of the changed data and record the changed block UID
                 new_block = block.deref()
-                new_block.uid = BlockUid(cow_version.uid.integer, block.id + 1)
+                new_block.uid = BlockUid(cow_version.uid.integer, block.idx + 1)
                 new_block.checksum = None
                 self._block_cache.write(new_block.uid, write_data.read())
-                cow[block.id] = new_block
-                logger.debug('COW: Wrote block {}/{} {}:{} into {}.'.format(block.version_uid.v_string, block.id,
+                cow[block.idx] = new_block
+                logger.debug('COW: Wrote block {}/{} {}:{} into {}.'.format(block.version_uid.v_string, block.idx,
                                                                             offset_in_block, length_in_block,
                                                                             new_block.uid))
             position_in_data += length_in_block
@@ -1415,12 +1415,12 @@ class BenjiStore(ReprMixIn):
         sparse_block_checksum = self._benji_obj._block_hash.data_hexdigest(b'\0' * cow_version.block_size)
         storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
         for block in self._cow[cow_version.uid.integer].values():
-            logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid.v_string, block.id, block.uid))
+            logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid.v_string, block.idx, block.uid))
             data = self._block_cache.read(block.uid)
 
             block.checksum = self._benji_obj._block_hash.data_hexdigest(data)
             if block.checksum == sparse_block_checksum:
-                logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid.v_string, block.id))
+                logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid.v_string, block.idx))
                 self._block_cache.rm(block.uid)
                 block.checksum = None
                 block.uid = BlockUid(None, None)
@@ -1429,7 +1429,7 @@ class BenjiStore(ReprMixIn):
                 self._block_cache.rm(block.uid)
 
             try:
-                self._benji_obj._database_backend.set_block(id=block.id,
+                self._benji_obj._database_backend.set_block(idx=block.idx,
                                                             version_uid=cow_version.uid,
                                                             block_uid=block.uid,
                                                             checksum=block.checksum,

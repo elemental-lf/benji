@@ -130,7 +130,7 @@ class ImportExportTestCase():
         self.assertTrue(len(blocks) > 0)
         block = blocks[0]
         self.assertEqual(VersionUid(1), block.version_uid)
-        self.assertEqual(0, block.id)
+        self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
 
@@ -173,7 +173,7 @@ class ImportExportTestCase():
         block = version.blocks[0]
         self.assertIsInstance(block, Block)
         self.assertEqual(VersionUid(1), block.version_uid)
-        self.assertEqual(0, block.id)
+        self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
 
@@ -216,7 +216,7 @@ class ImportExportTestCase():
         block = version.blocks[0]
         self.assertIsInstance(block, Block)
         self.assertEqual(VersionUid(1), block.version_uid)
-        self.assertEqual(0, block.id)
+        self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
 

@@ -99,45 +99,45 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         uids = []
         num_blocks = 256
         blocks: List[Dict[str, Any]] = []
-        for id in range(num_blocks):
+        for idx in range(num_blocks):
             checksums.append(self.random_hex(64))
-            uids.append(BlockUid(1, id))
+            uids.append(BlockUid(1, idx))
             blocks.append({
-                'id': id,
+                'idx': idx,
                 'version_uid': version.uid,
-                'uid_left': uids[id].left,
-                'uid_right': uids[id].right,
-                'checksum': checksums[id],
+                'uid_left': uids[idx].left,
+                'uid_right': uids[idx].right,
+                'checksum': checksums[idx],
                 'size': 1024 * 4096,
                 'valid': True
             })
         self.database_backend.create_blocks(blocks=blocks)
         self.database_backend.commit()
 
-        for id, checksum in enumerate(checksums):
+        for idx, checksum in enumerate(checksums):
             block = self.database_backend.get_block_by_checksum(checksum, 1)
-            self.assertEqual(id, block.id)
+            self.assertEqual(idx, block.idx)
             self.assertEqual(version.uid, block.version_uid)
-            self.assertEqual(uids[id], block.uid)
+            self.assertEqual(uids[idx], block.uid)
             self.assertEqual(checksum, block.checksum)
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        for id, uid in enumerate(uids):
+        for idx, uid in enumerate(uids):
             block = self.database_backend.get_block(uid)
-            self.assertEqual(id, block.id)
+            self.assertEqual(idx, block.idx)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uid, block.uid)
-            self.assertEqual(checksums[id], block.checksum)
+            self.assertEqual(checksums[idx], block.checksum)
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        for id, uid in enumerate(uids):
-            block = self.database_backend.get_block_by_id(version.uid, id)
-            self.assertEqual(id, block.id)
+        for idx, uid in enumerate(uids):
+            block = self.database_backend.get_block_by_idx(version.uid, idx)
+            self.assertEqual(idx, block.idx)
             self.assertEqual(version.uid, block.version_uid)
             self.assertEqual(uid, block.uid)
-            self.assertEqual(checksums[id], block.checksum)
+            self.assertEqual(checksums[idx], block.checksum)
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
@@ -149,22 +149,22 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertEqual(0, sparse_blocks_count)
 
         blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
-        for id, block in enumerate(blocks_iter):
-            self.assertEqual(id, block.id)
+        for idx, block in enumerate(blocks_iter):
+            self.assertEqual(idx, block.idx)
             self.assertEqual(version.uid, block.version_uid)
-            self.assertEqual(uids[id], block.uid)
-            self.assertEqual(checksums[id], block.checksum)
+            self.assertEqual(uids[idx], block.uid)
+            self.assertEqual(checksums[idx], block.checksum)
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
         blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
-        for id, block in enumerate(blocks_iter):
+        for idx, block in enumerate(blocks_iter):
             dereferenced_block = block.deref()
-            self.assertEqual(id, dereferenced_block.id)
+            self.assertEqual(idx, dereferenced_block.idx)
             self.assertEqual(version.uid, dereferenced_block.version_uid)
-            self.assertEqual(uids[id].left, dereferenced_block.uid.left)
-            self.assertEqual(uids[id].right, dereferenced_block.uid.right)
-            self.assertEqual(checksums[id], dereferenced_block.checksum)
+            self.assertEqual(uids[idx].left, dereferenced_block.uid.left)
+            self.assertEqual(uids[idx].right, dereferenced_block.uid.right)
+            self.assertEqual(checksums[idx], dereferenced_block.checksum)
             self.assertEqual(1024 * 4096, dereferenced_block.size)
             self.assertTrue(dereferenced_block.valid)
 

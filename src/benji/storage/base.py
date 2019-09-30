@@ -213,7 +213,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             try:
                 self._check_write(key=key, metadata_key=metadata_key, data_expected=data)
             except (KeyError, ValueError) as exception:
-                raise InvalidBlockException('Check write of block {} (UID {}) failed.'.format(block.id, block.uid),
+                raise InvalidBlockException('Check write of block {} (UID {}) failed.'.format(block.idx, block.uid),
                                             block) from exception
 
         return block
@@ -249,19 +249,19 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             t2 = time.time()
         except FileNotFoundError as exception:
             raise InvalidBlockException(
-                'Object metadata or data of block {} (UID{}) not found.'.format(block.id, block.uid),
+                'Object metadata or data of block {} (UID{}) not found.'.format(block.idx, block.uid),
                 block) from exception
 
         try:
             metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
         except (KeyError, ValueError) as exception:
-            raise InvalidBlockException('Object metadata of block {} (UID{}) is invalid.'.format(block.id, block.uid),
+            raise InvalidBlockException('Object metadata of block {} (UID{}) is invalid.'.format(block.idx, block.uid),
                                         block) from exception
 
         if self._CHECKSUM_KEY not in metadata:
             raise InvalidBlockException(
                 'Required object metadata key {} is missing for block {} (UID {}).'.format(
-                    self._CHECKSUM_KEY, block.id, block.uid), block)
+                    self._CHECKSUM_KEY, block.idx, block.uid), block)
 
         if not metadata_only and self._TRANSFORMS_KEY in metadata:
             data = self._decapsulate(data, metadata[self._TRANSFORMS_KEY])  # type: ignore
@@ -289,16 +289,16 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         # Existence of keys has already been checked in _decode_metadata() and _read()
         if metadata[self._SIZE_KEY] != block.size:
             raise ValueError('Mismatch between recorded block size and data length in object metadata for block {} (UID {}). '
-                             'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, metadata[self._SIZE_KEY]))
+                             'Expected: {}, got: {}.'.format(block.idx, block.uid, block.size, metadata[self._SIZE_KEY]))
 
         if data_length and data_length != block.size:
             raise ValueError('Mismatch between recorded block size and actual data length for block {} (UID {}). '
-                             'Expected: {}, got: {}.'.format(block.id, block.uid, block.size, data_length))
+                             'Expected: {}, got: {}.'.format(block.idx, block.uid, block.size, data_length))
 
         if block.checksum != metadata[self._CHECKSUM_KEY]:
             raise ValueError('Mismatch between recorded block checksum and checksum in object metadata for block {} (UID {}). '
                              'Expected: {}, got: {}.'.format(
-                                 block.id,
+                                 block.idx,
                                  block.uid,
                                  cast(str, block.checksum)[:16],  # We know that block.checksum is set
                                  metadata[self._CHECKSUM_KEY][:16]))

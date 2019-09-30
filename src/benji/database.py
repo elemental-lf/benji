@@ -356,7 +356,7 @@ class Version(Base):
 
     blocks = sqlalchemy.orm.relationship('Block',
                                          backref='version',
-                                         order_by='asc(Block.id)',
+                                         order_by='asc(Block.idx)',
                                          passive_deletes=True,
                                          cascade='all, delete-orphan')
 
@@ -393,11 +393,11 @@ class Label(Base):
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, id: int, checksum: Optional[str], size: int,
+    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, idx: int, checksum: Optional[str], size: int,
                  valid: bool) -> None:
         self.uid = uid if uid is not None else BlockUid(None, None)
         self.version_uid = version_uid
-        self.id = id
+        self.idx = idx
         self.checksum = checksum
         self.size = size
         self.valid = valid
@@ -430,11 +430,11 @@ class Block(Base):
     __tablename__ = 'blocks'
 
     MAXIMUM_CHECKSUM_LENGTH = 64
-    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'id']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'idx']
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
-    # id and uid_right are first because they are most likely to go to BigInteger in the future
-    id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)  # 4 bytes
+    # idx and uid_right are first because they are most likely to go to BigInteger in the future
+    idx = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)  # 4 bytes
     uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     uid_left = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     size = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
@@ -446,7 +446,7 @@ class Block(Base):
 
     uid = cast(BlockUid, sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
-        sqlalchemy.PrimaryKeyConstraint('version_uid', 'id'),
+        sqlalchemy.PrimaryKeyConstraint('version_uid', 'idx'),
         sqlalchemy.Index(None, 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
         # Index(None, 'checksum', postgresql_using='hash'),
@@ -460,7 +460,7 @@ class Block(Base):
         return DereferencedBlock(
             uid=self.uid,
             version_uid=self.version_uid,
-            id=self.id,
+            idx=self.idx,
             checksum=self.checksum,
             size=self.size,
             valid=self.valid,
@@ -735,13 +735,13 @@ class DatabaseBackend(ReprMixIn):
             logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
             self._last_blocks_commit = current_clock
 
-    def set_block(self, *, id: int, version_uid: VersionUid, block_uid: Optional[BlockUid], checksum: Optional[str],
+    def set_block(self, *, idx: int, version_uid: VersionUid, block_uid: Optional[BlockUid], checksum: Optional[str],
                   size: int, valid: bool) -> None:
         try:
-            block = self._session.query(Block).filter_by(id=id, version_uid=version_uid).first()
+            block = self._session.query(Block).filter_by(idx=idx, version_uid=version_uid).first()
             if not block:
                 raise InternalError('Block {} of version {} does not exist when it should.'.format(
-                    id, version_uid.v_string))
+                    idx, version_uid.v_string))
 
             block.uid = block_uid
             block.checksum = checksum
@@ -785,8 +785,8 @@ class DatabaseBackend(ReprMixIn):
     def get_block(self, block_uid: BlockUid) -> Block:
         return self._session.query(Block).filter_by(uid=block_uid).first()
 
-    def get_block_by_id(self, version_uid: VersionUid, block_id: int) -> Block:
-        return self._session.query(Block).filter_by(version_uid=version_uid, id=block_id).first()
+    def get_block_by_idx(self, version_uid: VersionUid, block_idx: int) -> Block:
+        return self._session.query(Block).filter_by(version_uid=version_uid, idx=block_idx).first()
 
     def get_block_by_checksum(self, checksum, storage_id):
         return self._session.query(Block).filter_by(checksum=checksum,
@@ -795,17 +795,17 @@ class DatabaseBackend(ReprMixIn):
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
     def _yield_blocks(self, version_uid: VersionUid, yield_per: int):
-        last_id = None
+        last_idx = None
         while True:
             query = self._session.query(Block).filter_by(version_uid=version_uid)
-            if last_id is not None:
-                query = query.filter(Block.id > last_id)
+            if last_idx is not None:
+                query = query.filter(Block.idx > last_idx)
             block = None
-            for block in query.order_by(Block.id).limit(yield_per):
+            for block in query.order_by(Block.idx).limit(yield_per):
                 yield block
             if block is None:
                 break
-            last_id = block.id if block else None
+            last_idx = block.idx if block else None
 
     def get_blocks_by_version(self, version_uid: VersionUid, yield_per: int = 10000) -> Iterator[Block]:
         yield from self._yield_blocks(version_uid, yield_per)
@@ -908,8 +908,8 @@ class DatabaseBackend(ReprMixIn):
         ignore_relationships.append(((Label, Block), ('version',)))
         # Ignore these as we favor the composite attribute
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
-        # Ignore id as we export as a list which is ordered by definition
-        ignore_fields.append(((Block,), ('id')))
+        # Ignore idx as we export as a list which is ordered by definition
+        ignore_fields.append(((Block,), ('idx')))
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -1160,9 +1160,9 @@ class DatabaseBackend(ReprMixIn):
             self._session.add(version)
             self._session.flush()
 
-            for block_id, block_dict in enumerate(version_dict['blocks']):
+            for block_idx, block_dict in enumerate(version_dict['blocks']):
                 block_dict['version_uid'] = version_uid
-                block_dict['id'] = block_id
+                block_dict['idx'] = block_idx
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right

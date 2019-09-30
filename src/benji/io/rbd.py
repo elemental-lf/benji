@@ -133,7 +133,7 @@ class IO(IOBase):
         return size
 
     def _read(self, block: DereferencedBlock) -> Tuple[DereferencedBlock, bytes]:
-        offset = block.id * self.block_size
+        offset = block.idx * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
@@ -145,7 +145,7 @@ class IO(IOBase):
 
         logger.debug('{} read block {} in {:.3f}s'.format(
             threading.current_thread().name,
-            block.id,
+            block.idx,
             t2 - t1,
         ))
 
@@ -170,7 +170,7 @@ class IO(IOBase):
         return self._read_executor.get_completed(timeout=timeout)
 
     def _write(self, block: DereferencedBlock, data: bytes) -> DereferencedBlock:
-        offset = block.id * self.block_size
+        offset = block.idx * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name) as image:
@@ -179,7 +179,7 @@ class IO(IOBase):
 
         logger.debug('{} wrote block {} in {:.3f}s'.format(
             threading.current_thread().name,
-            block.id,
+            block.idx,
             t2 - t1,
         ))
 
