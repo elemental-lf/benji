@@ -16,7 +16,6 @@ class StorageTestB2(StorageTestCase, TestCase):
         storages:
         - name: b2-1
           module: b2
-          storageId: 1
           configuration:
             accountIdFile: ../../../.b2-account-id.txt
             applicationKeyFile: ../../../.b2-application-key.txt

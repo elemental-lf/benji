@@ -25,13 +25,11 @@ storages:
 #        shards:
 #
 #  - name:
-#    storageId:
 #    module: file
 #    configuration:
 #      path:
 #
 #  - name:
-#    storageId:
 #    module: s3
 #    configuration:
 #      awsAccessKeyId:
@@ -53,7 +51,6 @@ storages:
 #      disableEncodingType: true
 #
 #  - name:
-#    storageId:
 #    module: b2
 #    configuration:
 #      accountId:

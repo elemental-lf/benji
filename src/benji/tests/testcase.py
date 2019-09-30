@@ -42,10 +42,9 @@ class TestCaseBase:
 
     def setUp(self):
         self.testpath = self.TestPath()
-        init_logging(
-            None,
-            logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
-            console_formatter='console-plain')
+        init_logging(None,
+                     logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
+                     console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 
     def tearDown(self):
@@ -57,10 +56,10 @@ class StorageTestCaseBase(TestCaseBase):
     def setUp(self):
         super().setUp()
 
-        default_storage = self.config.get('defaultStorage', types=str)
+        default_storage_name = self.config.get('defaultStorage', types=str)
         StorageFactory.initialize(self.config)
 
-        self.storage = StorageFactory.get_by_name(default_storage)
+        self.storage = StorageFactory.get_by_name(default_storage_name)
         for block_uid in self.storage.list_blocks():
             self.storage.rm_block(block_uid)
         for version_uid in self.storage.list_versions():
@@ -97,10 +96,9 @@ class BenjiTestCaseBase(TestCaseBase):
         super().tearDown()
 
     def benjiOpen(self, init_database=False, block_size=None, in_memory_database=False):
-        self.benji = Benji(
-            self.config,
-            block_size=block_size,
-            init_database=init_database,
-            in_memory_database=in_memory_database,
-            _destroy_database=init_database)
+        self.benji = Benji(self.config,
+                           block_size=block_size,
+                           init_database=init_database,
+                           in_memory_database=in_memory_database,
+                           _destroy_database=init_database)
         return self.benji

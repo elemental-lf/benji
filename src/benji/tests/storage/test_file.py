@@ -12,7 +12,6 @@ class StorageTestFile(StorageTestCase, TestCase):
         
         storages:
           - name: storage-1
-            storageId: 1
             module: file
             configuration:
               path: {testpath}/data

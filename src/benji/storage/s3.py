@@ -18,7 +18,7 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict):
         aws_access_key_id = Config.get_from_dict(module_configuration, 'awsAccessKeyId', None, types=str)
         if aws_access_key_id is None:
             aws_access_key_id_file = Config.get_from_dict(module_configuration, 'awsAccessKeyIdFile', types=str)
@@ -64,7 +64,7 @@ class Storage(ReadCacheStorageBase):
         self._init_connection()
         self._local.bucket = self._local.resource.Bucket(self._bucket_name)
 
-        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
+        super().__init__(config=config, name=name, module_configuration=module_configuration)
 
     def _init_connection(self) -> None:
         if not hasattr(self._local, 'session'):

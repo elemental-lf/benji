@@ -61,9 +61,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
     _META_SUFFIX = '.meta'
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         self._name = name
-        self._storage_id = storage_id
         self._active_transforms: List[TransformBase] = []
 
         active_transforms = Config.get_from_dict(module_configuration, 'activeTransforms', None, types=list)
@@ -115,10 +114,6 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
     @property
     def name(self) -> str:
         return self._name
-
-    @property
-    def storage_id(self) -> int:
-        return self._storage_id
 
     def _build_metadata(self,
                         *,
@@ -501,7 +496,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
 class ReadCacheStorageBase(StorageBase):
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict) -> None:
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         read_cache_directory = Config.get_from_dict(module_configuration, 'readCache.directory', None, types=str)
         read_cache_maximum_size = Config.get_from_dict(module_configuration, 'readCache.maximumSize', None, types=int)
         read_cache_shards = Config.get_from_dict(module_configuration, 'readCache.shards', None, types=int)
@@ -527,7 +522,7 @@ class ReadCacheStorageBase(StorageBase):
         self._use_read_cache = True
 
         # Start reader and write threads after the disk cached is created, so that they see it.
-        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
+        super().__init__(config=config, name=name, module_configuration=module_configuration)
 
     def _read(self, block: DereferencedBlock, metadata_only: bool) -> Tuple[DereferencedBlock, Optional[bytes], Dict]:
         key = block.uid.storage_object_to_path()

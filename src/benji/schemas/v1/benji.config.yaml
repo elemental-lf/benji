@@ -67,7 +67,6 @@ configuration:
             regex: '^(?!-)[-a-zA-Z0-9_.:/@]+(?<!-)$'
           storageId:
             type: integer
-            required: True
             empty: False
             min: 1
           module:

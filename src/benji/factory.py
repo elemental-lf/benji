@@ -12,6 +12,17 @@ from benji.repr import ReprMixIn
 
 class _StorageFactoryModule(NamedTuple):
     module: Any
+    storage_id: int
+    arguments: Dict[str, Any]
+
+
+class _TransformFactoryModule(NamedTuple):
+    module: Any
+    arguments: Dict[str, Any]
+
+
+class _IOFactoryModule(NamedTuple):
+    module: Any
     arguments: Dict[str, Any]
 
 
@@ -19,10 +30,8 @@ class StorageFactory(ReprMixIn):
 
     _MODULE = 'storage'
 
-    _modules: Dict[int, _StorageFactoryModule] = {}
-    _name_to_storage_id: Dict[str, int] = {}
-    _storage_id_to_name: Dict[int, str] = {}
-    _instances: Dict[int, Any] = {}
+    _modules: Dict[str, _StorageFactoryModule] = {}
+    _instances: Dict[str, Any] = {}
 
     def __init__(self) -> None:
         raise InternalError('StorageFactory constructor called.')
@@ -42,6 +51,7 @@ class StorageFactory(ReprMixIn):
                                         index=index)
             storage_id = Config.get_from_dict(module_dict,
                                               'storageId',
+                                              None,
                                               types=int,
                                               full_name_override=modules.full_name,
                                               index=index)
@@ -52,26 +62,21 @@ class StorageFactory(ReprMixIn):
                                                  full_name_override=modules.full_name,
                                                  index=index)
 
-            if name in cls._name_to_storage_id:
+            if name in cls._modules:
                 raise ConfigurationError('Duplicate name "{}" in list {}.'.format(name, modules.full_name))
-
-            if storage_id in cls._storage_id_to_name:
-                raise ConfigurationError('Duplicate id {} in list {}.'.format(storage_id, modules.full_name))
 
             module = importlib.import_module('{}.{}.{}'.format(__package__, cls._MODULE, module))
             try:
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for storage {} is invalid.'.format(name)) from exception
-            cls._modules[storage_id] = _StorageFactoryModule(module=module,
-                                                             arguments={
-                                                                 'config': config,
-                                                                 'name': name,
-                                                                 'storage_id': storage_id,
-                                                                 'module_configuration': configuration
-                                                             })
-            cls._name_to_storage_id[name] = storage_id
-            cls._storage_id_to_name[storage_id] = name
+            cls._modules[name] = _StorageFactoryModule(module=module,
+                                                       storage_id=storage_id,
+                                                       arguments={
+                                                           'config': config,
+                                                           'name': name,
+                                                           'module_configuration': configuration
+                                                       })
 
     @classmethod
     def initialize(cls, config: Config) -> None:
@@ -85,55 +90,32 @@ class StorageFactory(ReprMixIn):
             storage.close()
 
         cls._modules = {}
-        cls._name_to_storage_id = {}
-        cls._storage_id_to_name = {}
         cls._instances = {}
 
         TransformFactory.close()
 
     @classmethod
-    def get_by_storage_id(cls, storage_id: int) -> Any:
-        if storage_id not in cls._instances:
-            if storage_id not in cls._modules:
-                raise ConfigurationError('Storage id {} is undefined.'.format(storage_id))
-
-            module = cls._modules[storage_id].module
-            module_arguments = cls._modules[storage_id].arguments
-            cls._instances[storage_id] = module.Storage(**module_arguments)
-
-        return cls._instances[storage_id]
-
-    @classmethod
     def get_by_name(cls, name: str) -> Any:
-        if name not in cls._name_to_storage_id:
-            raise ConfigurationError('Storage name {} is undefined.'.format(name))
+        if name not in cls._instances:
+            if name not in cls._modules:
+                raise ConfigurationError('Storage {} is undefined.'.format(name))
 
-        return cls.get_by_storage_id(cls._name_to_storage_id[name])
+            module = cls._modules[name].module
+            module_arguments = cls._modules[name].arguments
+            cls._instances[name] = module.Storage(**module_arguments)
 
-    @classmethod
-    def storage_id_to_name(cls, storage_id: int) -> str:
-        if storage_id in cls._storage_id_to_name:
-            return cls._storage_id_to_name[storage_id]
-        else:
-            raise ConfigurationError('Storage id {} is undefined.'.format(storage_id))
+        return cls._instances[name]
 
     @classmethod
-    def name_to_storage_id(cls, name: str) -> int:
-        if name in cls._name_to_storage_id:
-            return cls._name_to_storage_id[name]
-        else:
-            raise ConfigurationError('Storage name {} is undefined.'.format(name))
-
-    @classmethod
-    def list_by_name(cls) -> List[str]:
-        return cls._name_to_storage_id.keys()
+    def get_modules(cls) -> Dict[str, _StorageFactoryModule]:
+        return cls._modules
 
 
 class TransformFactory(ReprMixIn):
 
     _MODULE = 'transform'
 
-    _modules: Dict[str, _StorageFactoryModule] = {}
+    _modules: Dict[str, _TransformFactoryModule] = {}
     _instances: Dict[str, Any] = {}
 
     def __init__(self) -> None:
@@ -167,12 +149,12 @@ class TransformFactory(ReprMixIn):
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for transform {} is invalid.'.format(name)) from exception
-            cls._modules[name] = _StorageFactoryModule(module=module,
-                                                       arguments={
-                                                           'config': config,
-                                                           'name': name,
-                                                           'module_configuration': configuration
-                                                       })
+            cls._modules[name] = _TransformFactoryModule(module=module,
+                                                         arguments={
+                                                             'config': config,
+                                                             'name': name,
+                                                             'module_configuration': configuration
+                                                         })
 
     @classmethod
     def initialize(cls, config: Config) -> None:
@@ -202,7 +184,7 @@ class IOFactory(ReprMixIn):
 
     _MODULE = 'io'
 
-    _modules: Dict[str, _StorageFactoryModule] = {}
+    _modules: Dict[str, _IOFactoryModule] = {}
 
     def __init__(self) -> None:
         raise InternalError('IOFactory constructor called.')
@@ -235,12 +217,12 @@ class IOFactory(ReprMixIn):
                 configuration = config.validate(module=module.__name__, config=configuration)
             except ConfigurationError as exception:
                 raise ConfigurationError('Configuration for IO {} is invalid.'.format(name)) from exception
-            cls._modules[name] = _StorageFactoryModule(module=module,
-                                                       arguments={
-                                                           'config': config,
-                                                           'name': name,
-                                                           'module_configuration': configuration
-                                                       })
+            cls._modules[name] = _IOFactoryModule(module=module,
+                                                  arguments={
+                                                      'config': config,
+                                                      'name': name,
+                                                      'module_configuration': configuration
+                                                  })
 
     @classmethod
     def initialize(cls, config: Config) -> None:

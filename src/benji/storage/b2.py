@@ -24,8 +24,8 @@ class Storage(ReadCacheStorageBase):
     WRITE_QUEUE_LENGTH = 20
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
-        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict):
+        super().__init__(config=config, name=name, module_configuration=module_configuration)
 
         account_id = Config.get_from_dict(module_configuration, 'accountId', None, types=str)
         if account_id is None:
@@ -159,8 +159,8 @@ class Storage(ReadCacheStorageBase):
 
     def _list_objects(self, prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
-        for file_version_info, folder_name in self.bucket.ls(
-                folder_to_list=prefix if prefix is not None else '', recursive=True):
+        for file_version_info, folder_name in self.bucket.ls(folder_to_list=prefix if prefix is not None else '',
+                                                             recursive=True):
             if include_size:
                 yield file_version_info.file_name, file_version_info.size
             else:

@@ -14,8 +14,8 @@ class Storage(StorageBase):
     WRITE_QUEUE_LENGTH = 10
     READ_QUEUE_LENGTH = 20
 
-    def __init__(self, *, config: Config, name: str, storage_id: int, module_configuration: ConfigDict):
-        super().__init__(config=config, name=name, storage_id=storage_id, module_configuration=module_configuration)
+    def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict):
+        super().__init__(config=config, name=name, module_configuration=module_configuration)
 
         if os.sep != '/':
             raise RuntimeError('This module only works with / as a path separator.')

@@ -254,7 +254,7 @@ class Commands:
                 PrettyPrint.bytes(version.block_size),
                 version.status,
                 version.protected,
-                StorageFactory.storage_id_to_name(version.storage_id),
+                version.storage.name,
             ]
 
             if include_stats:

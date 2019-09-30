@@ -257,7 +257,6 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
             defaultStorage: s1
             storages:
             - name: s1
-              storageId: 1
               module: file
               configuration:
                 path: {testpath}/data
@@ -272,7 +271,67 @@ class SmokeTestCaseSQLLite_File(SmokeTestCase, TestCase):
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
-              storageId: 2
+              module: file
+              configuration:
+                path: {testpath}/data-2
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
+                  kdfIterations: 1000
+                  password: Hallo123
+            transforms:
+            - name: zstd
+              module: zstd
+              configuration:
+                level: 1
+            - name: k1
+              module: aes_256_gcm
+              configuration:
+                kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
+                kdfIterations: 20000
+                password: "this is a very secret password"
+            databaseEngine: sqlite:///{testpath}/benji.sqlite
+            """
+
+
+# Test for older configurations with hardcoded storage ids
+class SmokeTestCaseSQLLite_File_storageId(SmokeTestCase, TestCase):
+
+    CONFIG = """
+            configurationVersion: '1'
+            processName: benji
+            logFile: /dev/stderr
+            hashFunction: BLAKE2b,digest_bits=256
+            blockSize: 4096
+            ios:
+            - name: file
+              module: file
+              configuration:
+                simultaneousReads: 2
+            defaultStorage: s1
+            storages:
+            - name: s1
+              storageId: 11
+              module: file
+              configuration:
+                path: {testpath}/data
+                consistencyCheckWrites: True
+                simultaneousWrites: 5
+                simultaneousReads: 5
+                activeTransforms:
+                  - zstd
+                  - k1
+                hmac:
+                  kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
+                  kdfIterations: 1000
+                  password: Hallo123
+            - name: s2
+              storageId: 22
               module: file
               configuration:
                 path: {testpath}/data-2
@@ -318,7 +377,6 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
             defaultStorage: s1
             storages:
             - name: s1
-              storageId: 1
               module: file
               configuration:
                 path: {testpath}/data
@@ -334,7 +392,6 @@ class SmokeTestCasePostgreSQL_File(SmokeTestCase, TestCase):
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
-              storageId: 2
               module: file
               configuration:
                 path: {testpath}/data-2
@@ -383,7 +440,6 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
             defaultStorage: s1
             storages:
             - name: s1
-              storageId: 1
               module: s3
               configuration:
                 awsAccessKeyId: minio
@@ -404,7 +460,6 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
-              storageId: 2
               module: s3
               configuration:
                 awsAccessKeyId: minio
@@ -423,7 +478,7 @@ class SmokeTestCasePostgreSQL_S3(SmokeTestCase, TestCase):
                 hmac:
                   kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
-                  password: Hallo123        
+                  password: Hallo123
             transforms:
             - name: zstd
               module: zstd
@@ -458,7 +513,6 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
             defaultStorage: s1
             storages:
             - name: s1
-              storageId: 1
               module: s3
               configuration:
                 awsAccessKeyId: minio
@@ -483,7 +537,6 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
                   maximumSize: 16777216
                   shards: 8
             - name: s2
-              storageId: 2
               module: s3
               configuration:
                 awsAccessKeyId: minio
@@ -541,7 +594,6 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
             defaultStorage: s1
             storages:
             - name: s1
-              storageId: 1
               module: b2
               configuration:
                 accountIdFile: ../../../.b2-account-id.txt
@@ -560,7 +612,6 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
                   kdfIterations: 1000
                   password: Hallo123
             - name: s2
-              storageId: 2
               module: b2
               configuration:
                 accountIdFile: ../../../.b2-account-id.txt
@@ -577,7 +628,7 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
                 hmac:
                   kdfSalt: BBiZ+lIVSefMCdE4eOPX211n/04KY1M4c2SM/9XHUcA=
                   kdfIterations: 1000
-                  password: Hallo123        
+                  password: Hallo123
             transforms:
             - name: zstd
               module: zstd

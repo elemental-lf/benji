@@ -17,6 +17,7 @@ from benji.tests.testcase import DatabaseBackendTestCaseBase
 class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version = self.database_backend.create_version(version_name='backup-name',
                                                        snapshot_name='snapshot-name',
                                                        size=16 * 1024 * 4096,
@@ -89,6 +90,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             version_uids.add(version.uid)
 
     def test_block(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version = self.database_backend.create_version(version_name='name-' + self.random_string(12),
                                                        snapshot_name='snapshot-name-' + self.random_string(12),
                                                        size=256 * 1024 * 4096,
@@ -243,6 +245,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertEqual(VersionUid(1), VersionUid('V1'))
 
     def test_version_filter(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(256):
             version = self.database_backend.create_version(version_name='backup-name',
@@ -348,6 +351,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     # Issue https://github.com/elemental-lf/benji/issues/9
     def test_version_filter_issue_9(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
             version = self.database_backend.create_version(version_name='backup-name',
@@ -367,6 +371,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     # Issue https://github.com/elemental-lf/benji/issues/9 (slowness part)
     def test_version_filter_issue_9_slowness(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
             version = self.database_backend.create_version(version_name='backup-name',
@@ -387,6 +392,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertLess(t1 - t2, 5)
 
     def test_version_filter_dateparse(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
             version = self.database_backend.create_version(version_name='backup-name',

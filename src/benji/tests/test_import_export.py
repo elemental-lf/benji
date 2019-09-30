@@ -102,7 +102,7 @@ class ImportExportTestCase():
         self.assertEqual(4096, version['block_size'])
         self.assertEqual(version['status'], VersionStatus.valid.name)
         self.assertFalse(version['protected'])
-        self.assertEqual(1, version['storage_id'])
+        self.assertEqual('file', version['storage'])
 
     def test_import_1_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
@@ -434,7 +434,7 @@ class ImportExportTestCase():
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
-                  "storage_id": 1,
+                  "storage": "file",
                   "status": "valid",
                   "protected": false,
                   "bytes_read": 1,
@@ -465,7 +465,7 @@ class ImportExportTestCase():
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
-                  "storage_id": 1,
+                  "storage": "file",
                   "status": "valid",
                   "protected": false,
                   "bytes_read": 1,
@@ -496,7 +496,7 @@ class ImportExportTestCase():
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
-                  "storage_id": 1,
+                  "storage": "file",
                   "status": "valid",
                   "protected": false,
                   "bytes_read": 1,

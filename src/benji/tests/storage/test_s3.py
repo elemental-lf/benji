@@ -16,7 +16,6 @@ class test_s3(StorageTestCase, TestCase):
         storages:
         - name: s1
           module: s3
-          storageId: 1
           configuration:
             awsAccessKeyId: minio
             awsSecretAccessKey: minio123

@@ -16,7 +16,7 @@ from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import DatabaseBackend, VersionUid, Version, Block, \
     BlockUid, DereferencedBlock, VersionStatus
-from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError, ConfigurationError
 from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
 from benji.repr import ReprMixIn
@@ -51,10 +51,6 @@ class Benji(ReprMixIn):
 
         IOFactory.initialize(config)
 
-        StorageFactory.initialize(self.config)
-        default_storage = self.config.get('defaultStorage', types=str)
-        self._default_storage_id = StorageFactory.name_to_storage_id(default_storage)
-
         database_backend = DatabaseBackend(config, in_memory=in_memory_database)
         if init_database or in_memory_database:
             database_backend.init(_destroy=_destroy_database)
@@ -64,6 +60,16 @@ class Benji(ReprMixIn):
 
         self._database_backend = database_backend.open()
         self._locking = self._database_backend.locking()
+
+        StorageFactory.initialize(self.config)
+        # Ensure that all defined storages are present
+        storage_modules = StorageFactory.get_modules()
+        for name, module in storage_modules.items():
+            self._database_backend.sync_storage(name, storage_id=module.storage_id)
+        default_storage_name = self.config.get('defaultStorage', types=str)
+        if default_storage_name not in storage_modules.keys():
+            raise ConfigurationError('Default storage {} is undefined.'.format(default_storage_name))
+        self._default_storage_name = default_storage_name
 
         notify(self._process_name)
 
@@ -78,7 +84,7 @@ class Benji(ReprMixIn):
         If base_version_uid is given, this is taken as the base, otherwise
         a pure sparse version is created.
         """
-        storage_id = StorageFactory.name_to_storage_id(storage_name) if storage_name else None
+        storage_id = self._database_backend.get_storage_by_name(storage_name).id if storage_name else None
         old_blocks_iter: Optional[Iterator[Block]] = None
         if base_version_uid:
             if not base_version_locking and not self._locking.is_version_locked(base_version_uid):
@@ -100,7 +106,8 @@ class Benji(ReprMixIn):
             else:
                 new_size = old_version.size
         else:
-            new_storage_id = storage_id if storage_id is not None else self._default_storage_id
+            new_storage_id = storage_id if storage_id is not None else self._database_backend.get_storage_by_name(
+                self._default_storage_name).id
             if size is None:
                 raise InternalError('Size needs to be specified if there is no base version.')
             new_size = size
@@ -206,7 +213,7 @@ class Benji(ReprMixIn):
                        history: BlockUidHistory = None,
                        block_percentage: int,
                        deep_scrub: bool) -> int:
-        storage = StorageFactory.get_by_storage_id(version.storage_id)
+        storage = StorageFactory.get_by_name(version.storage.name)
         read_jobs = 0
         blocks_count = self._database_backend.get_blocks_count_by_version(version.uid)
         blocks_iter = self._database_backend.get_blocks_by_version(version.uid,
@@ -260,7 +267,7 @@ class Benji(ReprMixIn):
         valid = True
         affected_version_uids = []
         try:
-            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            storage = StorageFactory.get_by_name(version.storage.name)
             read_jobs = self._scrub_prepare(version=version,
                                             history=history,
                                             block_percentage=block_percentage,
@@ -348,7 +355,7 @@ class Benji(ReprMixIn):
         source_mismatch = False
         affected_version_uids = []
         try:
-            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            storage = StorageFactory.get_by_name(version.storage.name)
             old_use_read_cache = storage.use_read_cache(False)
             read_jobs = self._scrub_prepare(version=version,
                                             history=history,
@@ -520,7 +527,7 @@ class Benji(ReprMixIn):
             raise
 
         try:
-            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            storage = StorageFactory.get_by_name(version.storage.name)
 
             sparse_blocks_count = self._database_backend.get_blocks_count_by_version(version_uid, sparse_only=True)
             read_blocks_count = self._database_backend.get_blocks_count_by_version(version_uid) - sparse_blocks_count
@@ -718,7 +725,7 @@ class Benji(ReprMixIn):
 
             if not keep_metadata_backup:
                 try:
-                    storage = StorageFactory.get_by_storage_id(version.storage_id)
+                    storage = StorageFactory.get_by_name(version.storage.name)
                     storage.rm_version(version_uid)
                     logger.info('Removed version {} metadata backup from storage.'.format(version_uid.v_string))
                 except FileNotFoundError:
@@ -847,7 +854,7 @@ class Benji(ReprMixIn):
             logger.info('Finished sanity check. Checked {} blocks.'.format(read_jobs))
 
         try:
-            storage = StorageFactory.get_by_storage_id(version.storage_id)
+            storage = StorageFactory.get_by_name(version.storage.name)
             read_jobs = 0
             blocks_iter = self._database_backend.get_blocks_by_version(version.uid,
                                                                        yield_per=self._BLOCKS_READ_WORK_PACKAGE)
@@ -1016,9 +1023,9 @@ class Benji(ReprMixIn):
                                      override_lock=override_lock):
             notify(self._process_name, 'Cleanup')
             for hit_list in self._database_backend.get_delete_candidates(dt):
-                for storage_id, uids in hit_list.items():
-                    storage = StorageFactory.get_by_storage_id(storage_id)
-                    logger.debug('Deleting UIDs from storage {}: {}'.format(storage.name,
+                for storage_name, uids in hit_list.items():
+                    storage = StorageFactory.get_by_name(storage_name)
+                    logger.debug('Deleting UIDs from storage {}: {}'.format(storage_name,
                                                                             ', '.join([str(uid) for uid in uids])))
 
                     for uid in uids:
@@ -1033,7 +1040,7 @@ class Benji(ReprMixIn):
 
                     if no_del_uids:
                         logger.info('Unable to delete these UIDs from storage {}: {}'.format(
-                            storage.name, ', '.join([str(uid) for uid in no_del_uids])))
+                            storage_name, ', '.join([str(uid) for uid in no_del_uids])))
             notify(self._process_name)
 
     def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
@@ -1075,7 +1082,7 @@ class Benji(ReprMixIn):
             for version in versions:
                 with StringIO() as metadata_export:
                     self._database_backend.export([version.uid], metadata_export)
-                    storage = StorageFactory.get_by_storage_id(version.storage_id)
+                    storage = StorageFactory.get_by_name(version.storage.name)
                     storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
                 logger.info('Backed up metadata of version {}.'.format(version.uid.v_string))
         finally:
@@ -1095,7 +1102,7 @@ class Benji(ReprMixIn):
         if storage_name is not None:
             storage = StorageFactory.get_by_name(storage_name)
         else:
-            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
+            storage = StorageFactory.get_by_name(self._default_storage_name)
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -1115,7 +1122,7 @@ class Benji(ReprMixIn):
         if storage_name is not None:
             storage = StorageFactory.get_by_name(storage_name)
         else:
-            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
+            storage = StorageFactory.get_by_name(self._default_storage_name)
         return storage.list_versions()
 
     def enforce_retention_policy(self,
@@ -1180,12 +1187,12 @@ class Benji(ReprMixIn):
         if storage_name is not None:
             storage = StorageFactory.get_by_name(storage_name)
         else:
-            storage = StorageFactory.get_by_storage_id(self._default_storage_id)
+            storage = StorageFactory.get_by_name(self._default_storage_name)
         return storage.storage_stats()
 
     @staticmethod
     def list_storages() -> List[str]:
-        return StorageFactory.list_by_name()
+        return StorageFactory.get_modules().keys()
 
 
 class _BlockCache:
@@ -1342,7 +1349,7 @@ class BenjiStore(ReprMixIn):
             else:
                 # Block isn't cached already, fetch it
                 if self._block_cache.in_cache(block.uid):
-                    storage = StorageFactory.get_by_storage_id(version.storage_id)
+                    storage = StorageFactory.get_by_name(version.storage.name)
                     data = storage.read_block(block)
                     self._block_cache.write(block.uid, data)
 
@@ -1382,7 +1389,7 @@ class BenjiStore(ReprMixIn):
             else:
                 # Read the block from the original
                 if block.uid:
-                    storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
+                    storage = StorageFactory.get_by_name(cow_version.storage.name)
                     write_data = BytesIO(storage.read_block(block))
                 # Was a sparse block
                 else:
@@ -1413,7 +1420,7 @@ class BenjiStore(ReprMixIn):
                                                                               len(self._cow[cow_version.uid.integer])))
 
         sparse_block_checksum = self._benji_obj._block_hash.data_hexdigest(b'\0' * cow_version.block_size)
-        storage = StorageFactory.get_by_storage_id(cow_version.storage_id)
+        storage = StorageFactory.get_by_name(cow_version.storage.name)
         for block in self._cow[cow_version.uid.integer].values():
             logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid.v_string, block.idx, block.uid))
             data = self._block_cache.read(block.uid)

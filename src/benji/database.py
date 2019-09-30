@@ -30,7 +30,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
-from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError
+from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ConfigurationError
 from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
@@ -332,7 +332,9 @@ class Version(Base):
     snapshot = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     size = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
     block_size = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
-    storage_id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
+    storage_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('storages.id'), nullable=False)
+    # Force loading of storage so that the attribute can be accessed even when there is no associated session anymore.
+    storage = sqlalchemy.orm.relationship('Storage', lazy='joined')
     status = sqlalchemy.Column(VersionStatusType,
                                sqlalchemy.CheckConstraint('status >= {} AND status <= {}'.format(
                                    VersionStatus.min.value, VersionStatus.max.value),
@@ -474,12 +476,15 @@ class DeletedBlock(Base):
 
     date = sqlalchemy.Column("date", BenjiDateTime, nullable=False)
     # BigInteger as the id could get large over time
-    # Use INTEGER with SQLLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
+    # Use INTEGER with SQLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
     id = sqlalchemy.Column(sqlalchemy.BigInteger().with_variant(sqlalchemy.Integer, "sqlite"),
                            primary_key=True,
                            autoincrement=True,
                            nullable=False)
-    storage_id = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
+    storage_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('storages.id'), nullable=False)
+    # Force loading of storage so that the attribute can be accessed even when there is no associated session anymore.
+    storage = sqlalchemy.orm.relationship('Storage', lazy='joined')
+
     uid_left = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
     uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
 
@@ -497,6 +502,18 @@ class Lock(Base):
     process_id = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     reason = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
+
+
+class Storage(Base):
+    __tablename__ = 'storages'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['name']
+
+    # # Use INTEGER to get AUTOINCREMENT on SQLite.
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
+
+    __table_args__ = (sqlalchemy.UniqueConstraint('name'),)
 
 
 class DatabaseBackend(ReprMixIn):
@@ -839,7 +856,7 @@ class DatabaseBackend(ReprMixIn):
 
         return num_blocks
 
-    def get_delete_candidates(self, dt: int = 3600) -> Iterator[Dict[int, Set[BlockUid]]]:
+    def get_delete_candidates(self, dt: int = 3600) -> Iterator[Dict[str, Set[BlockUid]]]:
         rounds = 0
         false_positives_count = 0
         hit_list_count = 0
@@ -871,9 +888,9 @@ class DatabaseBackend(ReprMixIn):
                     false_positives.add(candidate.uid)
                     false_positives_count += 1
                 else:
-                    if candidate.storage_id not in hit_list:
-                        hit_list[candidate.storage_id] = set()
-                    hit_list[candidate.storage_id].add(candidate.uid)
+                    if candidate.storage.name not in hit_list:
+                        hit_list[candidate.storage.name] = set()
+                    hit_list[candidate.storage.name].add(candidate.uid)
                     hit_list_count += 1
 
             if false_positives:
@@ -896,6 +913,32 @@ class DatabaseBackend(ReprMixIn):
             hit_list_count,
         ))
 
+    def sync_storage(self, storage_name: str, storage_id: int = None) -> Storage:
+        try:
+            storage = self._session.query(Storage).filter_by(name=storage_name).first()
+            if storage:
+                if storage_id is not None and storage.id != storage_id:
+                    raise ConfigurationError(
+                        'Storage ids of {} do not match between configuration and database ({} != {}).'.format(
+                            storage_id, storage.id))
+                logger.debug('Found existing storage {} with id {}.'.format(storage.name, storage.id))
+            else:
+                storage = Storage(name=storage_name, id=storage_id)
+                self._session.add(storage)
+                self._session.commit()
+                logger.debug('Created new storage {} with id {}.'.format(storage.name, storage.id))
+
+            return storage
+        except:
+            self._session.rollback()
+            raise
+
+    def get_storage_by_name(self, storage_name: str) -> Storage:
+        return self._session.query(Storage).filter_by(name=storage_name).first()
+
+    def get_storage_by_id(self, storage_id: int) -> Storage:
+        return self._session.query(Storage).get(storage_id)
+
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
@@ -910,6 +953,8 @@ class DatabaseBackend(ReprMixIn):
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
         # Ignore idx as we export as a list which is ordered by definition
         ignore_fields.append(((Block,), ('idx')))
+        # Ignore storage_id as we export the storage attribute
+        ignore_fields.append(((Version), ('storage_id')))
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -928,6 +973,9 @@ class DatabaseBackend(ReprMixIn):
 
                 if isinstance(obj, Label):
                     return obj.value
+
+                if isinstance(obj, Storage):
+                    return obj.name
 
                 if isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
                     fields = {}
@@ -1025,7 +1073,7 @@ class DatabaseBackend(ReprMixIn):
             # Will raise ValueError when invalid
             version_uid = VersionUid(version_dict['uid'])
 
-            attributes_to_check = ['labels', 'blocks', 'date']
+            attributes_to_check = ['labels', 'blocks', 'date', 'storage_id']
 
             for attribute in attributes_to_check:
                 if attribute not in version_dict:
@@ -1069,6 +1117,9 @@ class DatabaseBackend(ReprMixIn):
 
             version_dict['date'] = version_dict['date'] + 'Z'
 
+            version_dict['storage'] = self._session.query(Storage).get(version_dict['storage_id']).name
+            del version_dict['storage_id']
+
         return self.import_v2(metadata_version, json_input)
 
     def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
@@ -1088,7 +1139,7 @@ class DatabaseBackend(ReprMixIn):
                 'name',
                 'snapshot',
                 'size',
-                'storage_id',
+                'storage',
                 'block_size',
                 'status',
                 'protected',
@@ -1134,6 +1185,10 @@ class DatabaseBackend(ReprMixIn):
                         raise InputDataError('Missing attribute {} in block list in version {}.'.format(
                             attribute, version_uid.v_string))
 
+            storage = self._session.query(Storage).filter_by(name=version_dict['storage']).first()
+            if not storage:
+                raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
+
             try:
                 self.get_version(version_dict['uid'])
             except KeyError:
@@ -1147,7 +1202,7 @@ class DatabaseBackend(ReprMixIn):
                 name=version_dict['name'],
                 snapshot=version_dict['snapshot'],
                 size=version_dict['size'],
-                storage_id=version_dict['storage_id'],
+                storage=storage,
                 block_size=version_dict['block_size'],
                 status=VersionStatus[version_dict['status']],
                 protected=version_dict['protected'],

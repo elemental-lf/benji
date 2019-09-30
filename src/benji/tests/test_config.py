@@ -17,7 +17,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
         storages:
           - name: file
             module: file
-            storageId: 1
             configuration:
               path: /var/lib/benji/data
               simultaneousWrites: 5
@@ -45,7 +44,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
         storages:
           - name: file
             module: file
-            storageId: 1
             configuration:
               path: /var/lib/benji/data
               simultaneousWrites: 5
@@ -73,7 +71,34 @@ class ConfigTestCase(TestCaseBase, TestCase):
         storages:
           - name: file
             module: file
-            storageId: 1
+            configuration:
+              path: /var/lib/benji/data
+              simultaneousWrites: 5
+              simultaneousReads: 5
+        nbd:
+          cacheDirectory: /tmp
+        ios:
+          - name: rbd
+            module: rbd
+            configuration:
+              cephConfigFile: /etc/ceph/ceph.conf
+              simultaneousReads: 10
+              simultaneousWrites: 10
+              newImageFeatures:
+                - RBD_FEATURE_LAYERING
+                - RBD_FEATURE_EXCLUSIVE_LOCK
+        """
+
+    CONFIG_WITH_STORAGE_ID = """
+        configurationVersion: '1'
+        logFile: /var/log/benji.log
+        blockSize: 4194304
+        defaultStorage: s1
+        databaseEngine: sqlite:////var/lib/benji/benji.sqlite
+        storages:
+          - name: file
+            module: file
+            storageId: 33
             configuration:
               path: /var/lib/benji/data
               simultaneousWrites: 5
@@ -105,13 +130,13 @@ class ConfigTestCase(TestCaseBase, TestCase):
     def test_lists(self):
         config = Config(ad_hoc_config=self.CONFIG)
         ios = config.get('ios', types=list)
-        self.assertTrue(isinstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'), ConfigList))
+        self.assertIsInstance(Config.get_from_dict(ios[0], 'configuration.newImageFeatures'), ConfigList)
         self.assertRaises(TypeError, lambda: Config.get_from_dict(ios[0], 'configuration.newImageFeatures', types=int))
         self.assertEqual('RBD_FEATURE_EXCLUSIVE_LOCK',
                          Config.get_from_dict(ios[0], 'configuration.newImageFeatures')[1])
 
     def test_correct_version(self):
-        self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG), Config))
+        self.assertIsInstance(Config(ad_hoc_config=self.CONFIG), Config)
 
     def test_wrong_version(self):
         self.assertRaises(ConfigurationError, lambda: Config(ad_hoc_config=self.CONFIG_INVALID_VERSION))
@@ -141,15 +166,16 @@ class ConfigTestCase(TestCaseBase, TestCase):
     def test_validation(self):
         config = Config(ad_hoc_config=self.CONFIG)
         module_configuration = {'path': '/var/tmp'}
-        self.assertEqual({
-            'bandwidthRead': 0,
-            'bandwidthWrite': 0,
-            'consistencyCheckWrites': False,
-            'path': '/var/tmp',
-            'simultaneousReads': 3,
-            'simultaneousWrites': 3,
-            'simultaneousRemovals': 5,
-        }, config.validate(module='benji.storage.file', config=module_configuration))
+        self.assertEqual(
+            {
+                'bandwidthRead': 0,
+                'bandwidthWrite': 0,
+                'consistencyCheckWrites': False,
+                'path': '/var/tmp',
+                'simultaneousReads': 3,
+                'simultaneousWrites': 3,
+                'simultaneousRemovals': 5,
+            }, config.validate(module='benji.storage.file', config=module_configuration))
         module_configuration = {'asdasdas': 'dasdasd'}
         self.assertRaises(ConfigurationError,
                           lambda: config.validate(module='benji.storage.file', config=module_configuration))
@@ -167,17 +193,24 @@ class ConfigTestCase(TestCaseBase, TestCase):
     def test_validation_io_rbd(self):
         config = Config(ad_hoc_config=self.CONFIG)
         module_configuration = config.get('ios')[0]['configuration']
-        self.assertEqual({
-            'cephConfigFile': '/etc/ceph/ceph.conf',
-            'clientIdentifier': 'admin',
-            'newImageFeatures': ['RBD_FEATURE_LAYERING', 'RBD_FEATURE_EXCLUSIVE_LOCK'],
-            'simultaneousReads': 10,
-            'simultaneousWrites': 10,
-        }, config.validate(module='benji.io.rbd', config=module_configuration))
+        self.assertEqual(
+            {
+                'cephConfigFile': '/etc/ceph/ceph.conf',
+                'clientIdentifier': 'admin',
+                'newImageFeatures': ['RBD_FEATURE_LAYERING', 'RBD_FEATURE_EXCLUSIVE_LOCK'],
+                'simultaneousReads': 10,
+                'simultaneousWrites': 10,
+            }, config.validate(module='benji.io.rbd', config=module_configuration))
         module_configuration['newImageFeatures'] = ['ASASA', 'DDASAD']
         self.assertRaises(ConfigurationError,
                           lambda: config.validate(module='benji.io.rbd', config=module_configuration))
 
+    def test_integer_version(self):
+        self.assertIsInstance(Config(ad_hoc_config=self.CONFIG_INTEGER), Config)
 
-def test_integer_version(self):
-    self.assertTrue(isinstance(Config(ad_hoc_config=self.CONFIG_INTEGER), Config))
+    def test_with_storage_id(self):
+        config = Config(ad_hoc_config=self.CONFIG_WITH_STORAGE_ID)
+        self.assertIsInstance(config, Config)
+        storage_instance = config.get('storages')[0]
+        self.assertIsInstance(storage_instance, dict)
+        self.assertEqual(33, storage_instance['storageId'])
