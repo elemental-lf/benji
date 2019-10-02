@@ -10,5 +10,5 @@ VERSIONS = _VersionsTuple(configuration=_VersionSpecPair(current=semantic_versio
                                                          supported=semantic_version.SimpleSpec('>=1,<2')),
                           database_metadata=_VersionSpecPair(current=semantic_version.Version('2.0.0'),
                                                              supported=semantic_version.SimpleSpec('>=1,<3')),
-                          object_metadata=_VersionSpecPair(current=semantic_version.Version('1.0.0'),
-                                                           supported=semantic_version.SimpleSpec('>=1,<2')))
+                          object_metadata=_VersionSpecPair(current=semantic_version.Version('2.0.0'),
+                                                           supported=semantic_version.SimpleSpec('>=1,<3')))

@@ -122,7 +122,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                         transforms_metadata: List[Dict] = None,
                         checksum: str = None) -> Tuple[Dict, bytes]:
 
-        timestamp = datetime.datetime.utcnow().isoformat(timespec='microseconds')
+        timestamp = datetime.datetime.utcnow().isoformat(timespec='microseconds') + 'Z'
         metadata: Dict = {
             self._CREATED_KEY: timestamp,
             self._METADATA_VERSION_KEY: str(VERSIONS.object_metadata.current),
