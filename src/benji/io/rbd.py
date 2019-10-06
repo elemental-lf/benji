@@ -7,6 +7,7 @@ from typing import Tuple, Optional, Union, Iterator
 
 import rados
 import rbd
+
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError

@@ -11,7 +11,7 @@ import benji.exception
 from benji import __version__
 from benji.benji import Benji
 from benji.database import Version, VersionUid
-from benji.utils import hints_from_rbd_diff, InputValidation
+from benji.utils import hints_from_rbd_diff, InputValidation, random_string
 from benji.versions import VERSIONS
 
 
@@ -109,16 +109,16 @@ class RestAPI:
         return json.dumps(result)
 
     @route('/api/v1/versions', method='POST')
-    def _backup(self, version_name: fields.Str(required=True), snapshot_name: fields.Str(required=True),
-                source: fields.Str(required=True), rbd_hints: fields.Str(missing=None),
-                base_version_uid: fields.Str(missing=None), block_size: fields.Int(missing=None),
-                labels: fields.DelimitedList(fields.Str(), missing=None), storage_name: fields.Str(missing=None)) -> str:
-        # Validate version_name and snapshot_name
-        if not InputValidation.is_backup_name(version_name):
-            raise benji.exception.UsageError('Version name {} is invalid.'.format(version_name))
-        if not InputValidation.is_snapshot_name(snapshot_name):
-            raise benji.exception.UsageError('Snapshot name {} is invalid.'.format(snapshot_name))
+    def _backup(self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
+                snapshot: fields.Str(required=True), source: fields.Str(required=True),
+                rbd_hints: fields.Str(missing=None), base_version_uid: fields.Str(missing=None),
+                block_size: fields.Int(missing=None), labels: fields.DelimitedList(fields.Str(), missing=None),
+                storage_name: fields.Str(missing=None)) -> str:
+        if version_uid is None:
+            version_uid = '{}-{}'.format(volume, random_string(6))
+        version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
+
         if labels:
             label_add, label_remove = self._parse_labels(labels)
         benji_obj = None
@@ -128,8 +128,13 @@ class RestAPI:
             if rbd_hints:
                 with open(rbd_hints, 'r') as f:
                     hints = hints_from_rbd_diff(f.read())
-            backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj,
-                                              storage_name)
+            backup_version = benji_obj.backup(version_uid=version_uid_obj,
+                                              volume=volume,
+                                              snapshot=snapshot,
+                                              source=source,
+                                              hints=hints,
+                                              base_version_uid=base_version_uid_obj,
+                                              storage_name=storage_name)
 
             result = StringIO()
             benji_obj.export_any({'versions': [backup_version]},
@@ -390,7 +395,7 @@ class RestAPI:
         try:
             benji_obj = Benji(self._config)
             version_uids = benji_obj.metadata_ls(storage_name)
-            return [version_uid.v_string for version_uid in version_uids]
+            return [version_uid for version_uid in version_uids]
         finally:
             if benji_obj:
                 benji_obj.close()

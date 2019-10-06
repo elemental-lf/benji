@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 import random
+import uuid
 from io import StringIO
 from unittest import TestCase
 
@@ -29,7 +30,6 @@ class ImportExportTestCase():
             f.write(data)
 
     def generate_versions(self, testpath):
-        base_version = None
         version_uids = []
         old_size = 0
         init_database = True
@@ -68,8 +68,11 @@ class ImportExportTestCase():
             benji_obj = self.benjiOpen(init_database=init_database)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version = benji_obj.backup('data-backup', 'snapshot-name', 'file:' + image_filename,
-                                           hints_from_rbd_diff(hints.read()), base_version)
+                version = benji_obj.backup(version_uid=VersionUid(str(uuid.uuid4())),
+                                           volume='data-backup',
+                                           snapshot='snapshot-name',
+                                           source='file:' + image_filename,
+                                           hints=hints_from_rbd_diff(hints.read()))
             version_uids.append((version.uid, size))
             benji_obj.close()
         return version_uids
@@ -96,8 +99,9 @@ class ImportExportTestCase():
         self.assertIsInstance(export['versions'], list)
         self.assertTrue(len(export['versions']) == 3)
         version = export['versions'][0]
-        self.assertEqual(1, version['uid'])
-        self.assertEqual('data-backup', version['name'])
+        expected_version_uid = self.version_uids[0][0]
+        self.assertEqual(expected_version_uid, version['uid'])
+        self.assertEqual('data-backup', version['volume'])
         self.assertEqual('snapshot-name', version['snapshot'])
         self.assertEqual(4096, version['block_size'])
         self.assertEqual(version['status'], VersionStatus.valid.name)
@@ -107,11 +111,12 @@ class ImportExportTestCase():
     def test_import_1_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
+        version_uid = VersionUid('v000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
-        version = benji_obj.ls(version_uid=VersionUid(1))[0]
+        version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
-        self.assertEqual(1, version.uid)
-        self.assertEqual('data-backup', version.name)
+        self.assertEqual(version_uid, version.uid)
+        self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
@@ -126,10 +131,9 @@ class ImportExportTestCase():
         self.assertIsNone(version.bytes_sparse)
         self.assertIsNone(version.duration)
 
-        blocks = list(benji_obj._database_backend.get_blocks_by_version(VersionUid(1)))
-        self.assertTrue(len(blocks) > 0)
-        block = blocks[0]
-        self.assertEqual(VersionUid(1), block.version_uid)
+        self.assertTrue(len(version.blocks) > 0)
+        block = version.blocks[0]
+        self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
@@ -139,11 +143,12 @@ class ImportExportTestCase():
     def test_import_1_1_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
+        version_uid = VersionUid('v000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
-        version = benji_obj.ls(version_uid=VersionUid(1))[0]
+        version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
-        self.assertEqual(1, version.uid)
-        self.assertEqual('data-backup', version.name)
+        self.assertEqual(version_uid, version.uid)
+        self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
@@ -166,13 +171,13 @@ class ImportExportTestCase():
         self.assertEqual('label-2', version.labels['label-2'].name)
         self.assertEqual('bla', version.labels['label-1'].value)
         self.assertEqual('blub', version.labels['label-2'].value)
-        self.assertEqual(VersionUid(1), version.labels['label-1'].version_uid)
-        self.assertEqual(VersionUid(1), version.labels['label-2'].version_uid)
+        self.assertEqual(version.id, version.labels['label-1'].version_id)
+        self.assertEqual(version.id, version.labels['label-2'].version_id)
 
         self.assertTrue(len(version.blocks) > 0)
         block = version.blocks[0]
         self.assertIsInstance(block, Block)
-        self.assertEqual(VersionUid(1), block.version_uid)
+        self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
@@ -182,11 +187,12 @@ class ImportExportTestCase():
     def test_import_2_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
+        version_uid = VersionUid('v000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_2_0_0))
-        version = benji_obj.ls(version_uid=VersionUid(1))[0]
+        version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
-        self.assertEqual(1, version.uid)
-        self.assertEqual('data-backup', version.name)
+        self.assertEqual(version_uid, version.uid)
+        self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
@@ -209,13 +215,13 @@ class ImportExportTestCase():
         self.assertEqual('label-2', version.labels['label-2'].name)
         self.assertEqual('bla', version.labels['label-1'].value)
         self.assertEqual('blub', version.labels['label-2'].value)
-        self.assertEqual(VersionUid(1), version.labels['label-1'].version_uid)
-        self.assertEqual(VersionUid(1), version.labels['label-2'].version_uid)
+        self.assertEqual(version.id, version.labels['label-1'].version_id)
+        self.assertEqual(version.id, version.labels['label-2'].version_id)
 
         self.assertTrue(len(version.blocks) > 0)
         block = version.blocks[0]
         self.assertIsInstance(block, Block)
-        self.assertEqual(VersionUid(1), block.version_uid)
+        self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
@@ -428,9 +434,9 @@ class ImportExportTestCase():
             {
               "versions": [
                 {
-                  "uid": 1,
+                  "uid": "v000000001",
                   "date": "2018-12-19T20:28:18.123456Z",
-                  "name": "data-backup",
+                  "volume": "data-backup",
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
@@ -459,9 +465,9 @@ class ImportExportTestCase():
                   ]
                 },
                 {
-                  "uid": 2,
+                  "uid": "v000000002",
                   "date": "2018-12-19T20:28:18.123456Z",
-                  "name": "data-backup",
+                  "volume": "data-backup",
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,
@@ -490,9 +496,9 @@ class ImportExportTestCase():
                   ]
                 },
                 {
-                  "uid": 3,
+                  "uid": "v000000003",
                   "date": "2018-12-19T20:28:18.123456Z",
-                  "name": "data-backup",
+                  "volume": "data-backup",
                   "snapshot": "snapshot-name",
                   "size": 670293,
                   "block_size": 4194304,

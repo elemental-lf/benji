@@ -7,6 +7,7 @@ import math
 import os
 import random
 import time
+from collections import defaultdict
 from concurrent.futures import CancelledError, TimeoutError
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
@@ -22,7 +23,7 @@ from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
-from benji.utils import notify, BlockHash, PrettyPrint
+from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
 
 
 class Benji(ReprMixIn):
@@ -74,8 +75,9 @@ class Benji(ReprMixIn):
         notify(self._process_name)
 
     def _prepare_version(self,
-                         version_name: str,
-                         version_snapshot_name: str,
+                         version_uid: VersionUid,
+                         volume: str,
+                         snapshot: str,
                          storage_name: str = None,
                          size: int = None,
                          base_version_uid: VersionUid = None,
@@ -114,13 +116,15 @@ class Benji(ReprMixIn):
 
         num_blocks = int(math.ceil(new_size / self._block_size))
 
+        version = None
         try:
             if base_version_locking and base_version_uid:
                 self._locking.lock_version(base_version_uid, reason='Base version cloning')
 
             # We always start with invalid versions, then mark them valid after the backup succeeds.
-            version = self._database_backend.create_version(version_name=version_name,
-                                                            snapshot_name=version_snapshot_name,
+            version = self._database_backend.create_version(version_uid=version_uid,
+                                                            volume=volume,
+                                                            snapshot=snapshot,
                                                             size=new_size,
                                                             block_size=self._block_size,
                                                             storage_id=new_storage_id,
@@ -167,7 +171,6 @@ class Benji(ReprMixIn):
 
                 blocks.append({
                     'idx': idx,
-                    'version_uid': version.uid,
                     'uid_left': uid.left if uid is not None else None,
                     'uid_right': uid.right if uid is not None else None,
                     'checksum': checksum,
@@ -175,16 +178,16 @@ class Benji(ReprMixIn):
                     'valid': valid
                 })
 
-                notify(self._process_name, 'Preparing version {} ({:.1f}%)'.format(version.uid.v_string,
+                notify(self._process_name, 'Preparing version {} ({:.1f}%)'.format(version.uid,
                                                                                    (idx + 1) / num_blocks * 100))
 
                 if len(blocks) == self._BLOCKS_CREATE_WORK_PACKAGE:
-                    self._database_backend.create_blocks(blocks=blocks)
+                    self._database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
                     blocks = []
-            self._database_backend.create_blocks(blocks=blocks)
+            self._database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
             self._database_backend.commit()
         except:
-            if self._locking.is_version_locked(version.uid):
+            if version and self._locking.is_version_locked(version.uid):
                 self._locking.unlock_version(version.uid)
             raise
         finally:
@@ -196,13 +199,13 @@ class Benji(ReprMixIn):
 
     def ls(self,
            version_uid: VersionUid = None,
-           version_name: str = None,
-           version_snapshot_name: str = None,
-           version_labels: List[Tuple[str, str]] = None) -> List[Version]:
+           volume: str = None,
+           snapshot: str = None,
+           labels: List[Tuple[str, str]] = None) -> List[Version]:
         return self._database_backend.get_versions(version_uid=version_uid,
-                                                   version_name=version_name,
-                                                   version_snapshot_name=version_snapshot_name,
-                                                   version_labels=version_labels)
+                                                   volume=volume,
+                                                   snapshot=snapshot,
+                                                   labels=labels)
 
     def ls_with_filter(self, filter_expression: str = None) -> List[Version]:
         return self._database_backend.get_versions_with_filter(filter_expression)
@@ -221,8 +224,8 @@ class Benji(ReprMixIn):
         for i, block in enumerate(blocks_iter):
             notify(
                 self._process_name,
-                'Preparing {} of version {} ({:.1f}%)'.format('deep-scrub' if deep_scrub else 'scrub',
-                                                              version.uid.v_string, (i + 1) / blocks_count * 100))
+                'Preparing {} of version {} ({:.1f}%)'.format('deep-scrub' if deep_scrub else 'scrub', version.uid,
+                                                              (i + 1) / blocks_count * 100))
             if not block.uid:
                 logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep-scrub' if deep_scrub else 'Scrub',
                                                                                 block.idx, block.uid))
@@ -246,7 +249,7 @@ class Benji(ReprMixIn):
 
         notify(
             self._process_name, '{} version {} ({:.1f}%)'.format('Deep-scrubbing' if deep_scrub else 'Scrubbing',
-                                                                 version_uid.v_string, done_read_jobs / read_jobs * 100))
+                                                                 version_uid, done_read_jobs / read_jobs * 100))
         log_every_jobs = read_jobs // 200 + 1  # about every half percent
         if done_read_jobs % log_every_jobs == 0 or done_read_jobs == read_jobs:
             logger.info('{} {}/{} blocks ({:.1f}%)'.format('Deep-scrubbed' if deep_scrub else 'Scrubbed',
@@ -258,7 +261,7 @@ class Benji(ReprMixIn):
             version = self._database_backend.get_version(version_uid)
             if not version.status.is_scrubbable():
                 raise ScrubbingError('Version {} cannot be scrubbed, it has a status of {}.'.format(
-                    version_uid.v_string, version.status.name))
+                    version_uid, version.status.name))
 
         except:
             self._locking.unlock_version(version_uid)
@@ -321,14 +324,14 @@ class Benji(ReprMixIn):
         # A scrub (in contrast to a deep-scrub) can only ever mark a version as invalid. To mark it as valid
         # there is not enough information.
         if valid:
-            logger.info('Scrub of version {} successful.'.format(version.uid.v_string))
+            logger.info('Scrub of version {} successful.'.format(version.uid))
         else:
-            logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+            logger.error('Marked version {} as invalid because it has errors.'.format(version_uid))
             affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
-                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids)])))
-            raise ScrubbingError('Scrub of version {} failed.'.format(version_uid.v_string))
+                             .format(', '.join([affected_version for affected_version in sorted(affected_version_uids)])))
+            raise ScrubbingError('Scrub of version {} failed.'.format(version_uid))
 
     def deep_scrub(self,
                    version_uid: VersionUid,
@@ -340,9 +343,9 @@ class Benji(ReprMixIn):
             version = self._database_backend.get_version(version_uid)
             if not version.status.is_deep_scrubbable():
                 raise ScrubbingError('Version {} cannot be deep-scrubbed, it has a status of {}.'.format(
-                    version_uid.v_string, version.status.name))
+                    version_uid, version.status.name))
             if not version.status.is_valid():
-                logger.warn('Version {} has a status of {}.'.format(version_uid.v_string, version.status.name))
+                logger.warn('Version {} has a status of {}.'.format(version_uid, version.status.name))
 
             if source:
                 io = IOFactory.get(source, version.block_size)
@@ -441,21 +444,21 @@ class Benji(ReprMixIn):
                 except:
                     self._locking.unlock_version(version_uid)
                     raise
-            logger.info('Deep-scrub of version {} successful.'.format(version.uid.v_string))
+            logger.info('Deep-scrub of version {} successful.'.format(version.uid))
         else:
             if source_mismatch:
-                logger.error('Version {} had source mismatches.'.format(version_uid.v_string))
-            logger.error('Marked version {} as invalid because it has errors.'.format(version_uid.v_string))
+                logger.error('Version {} had source mismatches.'.format(version_uid))
+            logger.error('Marked version {} as invalid because it has errors.'.format(version_uid))
             if version_uid in affected_version_uids:
                 affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
-                             .format(', '.join([affected_version.v_string for affected_version in sorted(affected_version_uids)])))
+                             .format(', '.join([affected_version for affected_version in sorted(affected_version_uids)])))
 
         self._locking.unlock_version(version_uid)
 
         if not valid:
-            raise ScrubbingError('Deep-scrub of version {} failed.'.format(version_uid.v_string))
+            raise ScrubbingError('Deep-scrub of version {} failed.'.format(version_uid))
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                      block_percentage: int, group_label: Optional[str]) -> Tuple[List[Version], List[Version]]:
@@ -471,7 +474,7 @@ class Benji(ReprMixIn):
                     continue
                 assert len(label_match) == 1
                 additional_versions |= set(
-                    self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
+                    self._database_backend.get_versions(labels=[(group_label, label_match[0].value)]))
             versions |= additional_versions
 
         if version_percentage and versions:
@@ -483,9 +486,9 @@ class Benji(ReprMixIn):
 
         for version in versions:
             try:
-                logger.info('{} {}% of version {} with name {}.'.format(
-                    'Scrubbing' if method == 'scrub' else 'Deep-scrubbing', block_percentage, version.uid.v_string,
-                    version.name))
+                logger.info('{} {}% of version {} (volume {}).'.format(
+                    'Scrubbing' if method == 'scrub' else 'Deep-scrubbing', block_percentage, version.uid,
+                    version.volume))
                 getattr(self, method)(version.uid, block_percentage=block_percentage, history=history)
             except ScrubbingError as exception:
                 logger.error(exception)
@@ -515,8 +518,7 @@ class Benji(ReprMixIn):
         self._locking.lock_version(version_uid, reason='Restoring version')
         try:
             version = self._database_backend.get_version(version_uid)  # raise if version not exists
-            notify(self._process_name,
-                   'Restoring version {} to {}: Getting blocks'.format(version_uid.v_string, target))
+            notify(self._process_name, 'Restoring version {} to {}: Getting blocks'.format(version_uid, target))
 
             self._storage = version.storage_id
 
@@ -559,7 +561,7 @@ class Benji(ReprMixIn):
                     if read_blocks_count > 0:
                         notify(
                             self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
-                                version_uid.v_string, target, read_jobs / read_blocks_count * 100))
+                                version_uid, target, read_jobs / read_blocks_count * 100))
                 else:
                     try:
                         for written_block in io.write_get_completed(timeout=0):
@@ -570,7 +572,7 @@ class Benji(ReprMixIn):
 
                             notify(
                                 self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                                    version_uid.v_string, target, done_write_jobs / sparse_blocks_count * 100))
+                                    version_uid, target, done_write_jobs / sparse_blocks_count * 100))
                             if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
                                 logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
                                     done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
@@ -587,7 +589,7 @@ class Benji(ReprMixIn):
                     assert sparse_blocks_count > 0
                     notify(
                         self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                            version_uid.v_string, target, done_write_jobs / sparse_blocks_count * 100))
+                            version_uid, target, done_write_jobs / sparse_blocks_count * 100))
                     if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
                         logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
                             done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
@@ -648,7 +650,7 @@ class Benji(ReprMixIn):
 
                         notify(
                             self._process_name,
-                            'Restoring version {} to {} ({:.1f}%)'.format(version_uid.v_string, target,
+                            'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
                                                                           done_write_jobs / read_jobs * 100))
                         if done_write_jobs % log_every_jobs == 0 or done_write_jobs == read_jobs:
                             logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
@@ -665,7 +667,7 @@ class Benji(ReprMixIn):
 
                     notify(
                         self._process_name,
-                        'Restoring version {} to {} ({:.1f}%)'.format(version_uid.v_string, target,
+                        'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
                                                                       done_write_jobs / read_jobs * 100))
                     if done_write_jobs % log_every_jobs == 0 or done_write_jobs == read_jobs:
                         logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
@@ -692,7 +694,7 @@ class Benji(ReprMixIn):
                     write_jobs, done_write_jobs))
 
         logger.info('Successfully restored version {} in {} with {}/s.'.format(
-            version.uid.v_string, PrettyPrint.duration(max(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
+            version.uid, PrettyPrint.duration(max(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
 
     def protect(self, version_uid: VersionUid) -> None:
         self._database_backend.set_version(version_uid, protected=True)
@@ -710,16 +712,16 @@ class Benji(ReprMixIn):
             version = self._database_backend.get_version(version_uid)
 
             if version.protected:
-                raise RuntimeError('Version {} is protected, will not delete it.'.format(version_uid.v_string))
+                raise RuntimeError('Version {} is protected, will not delete it.'.format(version_uid))
 
             if not force:
                 # check if disallow_rm_when_younger_than_days allows deletion
                 age_days = (datetime.datetime.now() - version.date).days
                 if disallow_rm_when_younger_than_days > age_days:
-                    raise RuntimeError('Version {} is too young. Will not delete.'.format(version_uid.v_string))
+                    raise RuntimeError('Version {} is too young. Will not delete.'.format(version_uid))
                 if not version.status.is_removable():
                     raise RuntimeError('Version {} cannot be removed without force, it has status {}.'.format(
-                        version_uid.v_string, version.status.name))
+                        version_uid, version.status.name))
 
             num_blocks = self._database_backend.rm_version(version_uid)
 
@@ -727,14 +729,13 @@ class Benji(ReprMixIn):
                 try:
                     storage = StorageFactory.get_by_name(version.storage.name)
                     storage.rm_version(version_uid)
-                    logger.info('Removed version {} metadata backup from storage.'.format(version_uid.v_string))
+                    logger.info('Removed version {} metadata backup from storage.'.format(version_uid))
                 except FileNotFoundError:
                     logger.warning(
-                        'Unable to remove version {} metadata backup from storage, the object wasn\'t found.'.format(
-                            version_uid.v_string))
+                        'Unable to remove version {} metadata backup from storage, the object wasn\'t found.'.format(version_uid))
                     pass
 
-            logger.info('Removed backup version {} with {} blocks.'.format(version_uid.v_string, num_blocks))
+            logger.info('Removed backup version {} with {} blocks.'.format(version_uid, num_blocks))
 
     @staticmethod
     def _blocks_from_hints(hints: Sequence[Tuple[int, int, bool]], block_size: int) -> Tuple[Set[int], Set[int]]:
@@ -761,8 +762,10 @@ class Benji(ReprMixIn):
         return sparse_blocks, read_blocks
 
     def backup(self,
-               version_name: str,
-               version_snapshot_name: str,
+               *,
+               version_uid: VersionUid,
+               volume: str,
+               snapshot: str,
                source: str,
                hints: List[Tuple[int, int, bool]] = None,
                base_version_uid: VersionUid = None,
@@ -772,6 +775,11 @@ class Benji(ReprMixIn):
         exists is a boolean. In this case only data within hints will be backed up.
         Otherwise, the backup reads source and looks if checksums match with the target.
         """
+        if not InputValidation.is_volume_name(volume):
+            raise UsageError('Version name {} is invalid.'.format(volume))
+        if not InputValidation.is_snapshot_name(snapshot):
+            raise UsageError('Snapshot name {} is invalid.'.format(snapshot))
+
         block: Union[DereferencedBlock, Block]
 
         stats: Dict[str, Any] = {
@@ -804,8 +812,9 @@ class Benji(ReprMixIn):
             sparse_blocks = set()
             read_blocks = set(range(blocks_count))
 
-        version = self._prepare_version(version_name=version_name,
-                                        version_snapshot_name=version_snapshot_name,
+        version = self._prepare_version(version_uid=version_uid,
+                                        volume=volume,
+                                        snapshot=snapshot,
                                         size=source_size,
                                         base_version_uid=base_version_uid,
                                         storage_name=storage_name)
@@ -819,7 +828,7 @@ class Benji(ReprMixIn):
             # or source doesn't match. In any case, the resulting backup won't
             # be good.
             logger.info('Starting sanity check with 0.1% of the ignored blocks.')
-            notify(self._process_name, 'Sanity checking hints of version {}'.format(version.uid.v_string))
+            notify(self._process_name, 'Sanity checking hints of version {}'.format(version.uid))
 
             ignored_blocks = sorted(set(range(blocks_count)) - read_blocks - sparse_blocks)
             # 0.1% but at least ten. If there are less than ten blocks check them all.
@@ -869,7 +878,7 @@ class Benji(ReprMixIn):
                     # Only update the database when the block wasn't sparse to begin with
                     if block.uid is not None:
                         self._database_backend.set_block(idx=block.idx,
-                                                         version_uid=version.uid,
+                                                         version_id=version.id,
                                                          block_uid=None,
                                                          checksum=None,
                                                          size=block.size,
@@ -885,7 +894,7 @@ class Benji(ReprMixIn):
                     logger.debug('Keeping block {}'.format(block.idx))
                 notify(
                     self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
-                        version.uid.v_string, source, (block.idx + 1) / blocks_count * 100))
+                        version.uid, source, (block.idx + 1) / blocks_count * 100))
 
             # precompute checksum of a sparse block
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
@@ -910,14 +919,14 @@ class Benji(ReprMixIn):
                     stats['bytes_sparse'] += block.size
                     logger.debug('Skipping block (detected sparse) {}'.format(block.idx))
                     self._database_backend.set_block(idx=block.idx,
-                                                     version_uid=version.uid,
+                                                     version_id=version.id,
                                                      block_uid=None,
                                                      checksum=None,
                                                      size=block.size,
                                                      valid=True)
                 elif existing_block:
                     self._database_backend.set_block(idx=block.idx,
-                                                     version_uid=version.uid,
+                                                     version_id=version.id,
                                                      block_uid=existing_block.uid,
                                                      checksum=existing_block.checksum,
                                                      size=existing_block.size,
@@ -925,7 +934,7 @@ class Benji(ReprMixIn):
                     stats['bytes_dedup'] += len(data)
                     logger.debug('Found existing block for id {} with UID {}'.format(block.idx, existing_block.uid))
                 else:
-                    block.uid = BlockUid(version.uid.integer, block.idx + 1)
+                    block.uid = BlockUid(version.id, block.idx + 1)
                     block.checksum = data_checksum
                     storage.write_block_async(block, data)
                     write_jobs += 1
@@ -941,7 +950,7 @@ class Benji(ReprMixIn):
                         written_block = cast(DereferencedBlock, written_block)
 
                         self._database_backend.set_block(idx=written_block.idx,
-                                                         version_uid=written_block.version_uid,
+                                                         version_id=written_block.version_id,
                                                          block_uid=written_block.uid,
                                                          checksum=written_block.checksum,
                                                          size=written_block.size,
@@ -953,7 +962,7 @@ class Benji(ReprMixIn):
 
                 notify(
                     self._process_name,
-                    'Backing up version {} from {} ({:.1f}%)'.format(version.uid.v_string, source,
+                    'Backing up version {} from {} ({:.1f}%)'.format(version.uid, source,
                                                                      done_read_jobs / read_jobs * 100))
                 if done_read_jobs % log_every_jobs == 0 or done_read_jobs == read_jobs:
                     logger.info('Backed up {}/{} blocks ({:.1f}%)'.format(done_read_jobs, read_jobs,
@@ -967,7 +976,7 @@ class Benji(ReprMixIn):
                     written_block = cast(DereferencedBlock, written_block)
 
                     self._database_backend.set_block(idx=written_block.idx,
-                                                     version_uid=written_block.version_uid,
+                                                     version_id=written_block.version_id,
                                                      block_uid=written_block.uid,
                                                      checksum=written_block.checksum,
                                                      size=written_block.size,
@@ -995,10 +1004,10 @@ class Benji(ReprMixIn):
                 'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
                     write_jobs, done_write_jobs))
 
-        notify(self._process_name, 'Marking version {} as valid'.format(version.uid.v_string))
+        notify(self._process_name, 'Marking version {} as valid'.format(version.uid))
         self._database_backend.set_version(version.uid, status=VersionStatus.valid)
 
-        notify(self._process_name, 'Backing up metadata of version {}'.format(version.uid.v_string))
+        notify(self._process_name, 'Backing up metadata of version {}'.format(version.uid))
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
         logger.debug('Stats: {}'.format(stats))
@@ -1013,7 +1022,7 @@ class Benji(ReprMixIn):
 
         self._locking.unlock_version(version.uid)
         notify(self._process_name)
-        logger.info('New version {} created, backup successful.'.format(version.uid.v_string))
+        logger.info('New version {} created, backup successful.'.format(version.uid))
         return version
 
     def cleanup(self, dt: int = 3600, override_lock: bool = False) -> None:
@@ -1065,7 +1074,7 @@ class Benji(ReprMixIn):
 
             self._database_backend.export(version_uids, f)
             logger.info('Exported metadata of version(s): {}.'.format(', '.join(
-                [version_uid.v_string for version_uid in version_uids])))
+                [str(version_uid) for version_uid in version_uids])))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1084,7 +1093,7 @@ class Benji(ReprMixIn):
                     self._database_backend.export([version.uid], metadata_export)
                     storage = StorageFactory.get_by_name(version.storage.name)
                     storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
-                logger.info('Backed up metadata of version {}.'.format(version.uid.v_string))
+                logger.info('Backed up metadata of version {}.'.format(version.uid))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1096,7 +1105,7 @@ class Benji(ReprMixIn):
         # TODO: Find a good way to lock here
         version_uids = self._database_backend.import_(f)
         logger.info('Imported metadata of version(s): {}.'.format(', '.join(
-            [version_uid.v_string for version_uid in version_uids])))
+            [str(version_uid) for version_uid in version_uids])))
 
     def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
         if storage_name is not None:
@@ -1113,7 +1122,7 @@ class Benji(ReprMixIn):
                 metadata_import_data = storage.read_version(version_uid)
                 with StringIO(metadata_import_data) as metadata_import:
                     self._database_backend.import_(metadata_import)
-                logger.info('Restored metadata of version {}.'.format(version_uid.v_string))
+                logger.info('Restored metadata of version {}.'.format(version_uid))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1133,23 +1142,21 @@ class Benji(ReprMixIn):
                                  group_label: str = None) -> List[Version]:
         versions = self._database_backend.get_versions_with_filter(filter_expression)
 
-        versions_by_name: Dict[str, List[Version]] = {}
+        versions_by_volume: Dict[str, List[Version]] = defaultdict(list)
         for version in versions:
             if version.protected:
-                logger.info('Not considering version {}, it is protected.'.format(version.uid.v_string))
+                logger.info('Not considering version {}, it is protected.'.format(version.uid))
                 continue
 
             if not version.status.is_removable():
                 logger.info('Not considering version {}, it has a status of {}.'.format(
-                    version.uid.v_string, version.status.name))
+                    version.uid, version.status.name))
                 continue
 
-            if version.name not in versions_by_name:
-                versions_by_name[version.name] = []
-            versions_by_name[version.name].append(version)
+            versions_by_volume[version.volume].append(version)
 
         dismissed_versions: Set[Version] = set()
-        for versions_slice in versions_by_name.values():
+        for versions_slice in versions_by_volume.values():
             dismissed_versions |= set(RetentionFilter(rules_spec).filter(versions_slice))
 
         if dismissed_versions and group_label is not None:
@@ -1160,12 +1167,12 @@ class Benji(ReprMixIn):
                     continue
                 assert len(label_match) == 1
                 additional_versions |= set(
-                    self._database_backend.get_versions(version_labels=[(group_label, label_match[0].value)]))
+                    self._database_backend.get_versions(labels=[(group_label, label_match[0].value)]))
             dismissed_versions |= additional_versions
 
         if dismissed_versions:
             logger.info('Removing versions: {}.'.format(', '.join(
-                map(lambda version: version.uid.v_string, sorted(dismissed_versions)))))
+                map(lambda version: str(version.uid), sorted(dismissed_versions)))))
         else:
             logger.info('All versions are conforming to the retention policy.')
 
@@ -1320,7 +1327,7 @@ class BenjiStore(ReprMixIn):
 
     def read(self, version: Version, cow_version: Optional[Version], offset: int, length: int) -> bytes:
         if cow_version:
-            cow: Optional[Dict[int, DereferencedBlock]] = self._cow[cow_version.uid.integer]
+            cow: Optional[Dict[int, DereferencedBlock]] = self._cow[cow_version.uid]
         else:
             cow = None
         read_list = self._block_list(version, offset, length)
@@ -1329,19 +1336,18 @@ class BenjiStore(ReprMixIn):
         for block, offset_in_block, length_in_block in read_list:
             # Read block from COW
             if block is not None and cow is not None and block.idx in cow:
-                logger.debug('Reading block from COW {}/{} {}:{}.'.format(block.version_uid.v_string, block.idx,
-                                                                          offset_in_block, length_in_block))
+                logger.debug('Reading block from COW {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
+                                                                          length_in_block))
                 block = cow[block.idx]
             # Read block from original version
             elif block is not None:
-                logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '',
-                                                                   block.version_uid.v_string, block.idx,
-                                                                   offset_in_block, length_in_block))
+                logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '', version.uid,
+                                                                   block.idx, offset_in_block, length_in_block))
 
             # Block lies beyond end of device
             if block is None:
                 logger.warning('Tried to read data beyond device (version {}, size {}, offset {}).'.format(
-                    version.uid.v_string, version.size, offset_in_block))
+                    version.uid, version.size, offset_in_block))
                 data_chunks.append(b'\0' * length_in_block)
             # Block is sparse
             elif not block.uid:
@@ -1358,34 +1364,34 @@ class BenjiStore(ReprMixIn):
         return b''.join(data_chunks)
 
     def get_cow_version(self, base_version: Version) -> Version:
-        cow_version = self._benji_obj._prepare_version(version_name=base_version.name,
-                                                       version_snapshot_name='nbd-cow-{}-{}'.format(
-                                                           base_version.uid.v_string,
-                                                           datetime.datetime.now().isoformat(timespec='seconds')),
-                                                       base_version_uid=base_version.uid,
-                                                       base_version_locking=False)
+        cow_version = self._benji_obj._prepare_version(
+            version_uid='nbd-cow-{}-{}'.format(base_version.uid, random_string(6)),
+            volume=base_version.volume,
+            snapshot=datetime.datetime.now().isoformat(timespec='microseconds') + 'Z',
+            base_version_uid=base_version.uid,
+            base_version_locking=False)
         self._benji_obj._locking.update_version_lock(cow_version.uid, reason='NBD COW')
-        self._cow[cow_version.uid.integer] = {}  # contains version_uid: dict() of block id -> uid
+        self._cow[cow_version.uid] = {}  # contains version_uid: dict() of block id -> uid
         return cow_version
 
     def write(self, cow_version: Version, offset: int, data: bytes) -> None:
         """ Copy on write backup writer """
-        cow = self._cow[cow_version.uid.integer]
+        cow = self._cow[cow_version.uid]
         write_list = self._block_list(cow_version, offset, len(data))
         position_in_data = 0
         for block, offset_in_block, length_in_block in write_list:
             if block is None:
                 logger.warning(
                     'COW: Tried to save data beyond device, it will be lost (version {}, size {}, offset {}).'.format(
-                        cow_version.uid.v_string, cow_version.size, offset))
+                        cow_version.uid, cow_version.size, offset))
                 break
             if block.idx in cow:
                 # The block is already copied, so update in the cache
                 update_block = cow[block.idx]
                 self._block_cache.update(update_block.uid, offset_in_block,
                                          data[position_in_data:position_in_data + length_in_block])
-                logger.debug('COW: Updated block {}/{} {}:{}.'.format(block.version_uid.v_string, block.idx,
-                                                                      offset_in_block, length_in_block))
+                logger.debug('COW: Updated block {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
+                                                                      length_in_block))
             else:
                 # Read the block from the original
                 if block.uid:
@@ -1402,13 +1408,12 @@ class BenjiStore(ReprMixIn):
 
                 # Save a copy of the changed data and record the changed block UID
                 new_block = block.deref()
-                new_block.uid = BlockUid(cow_version.uid.integer, block.idx + 1)
+                new_block.uid = BlockUid(cow_version.id, block.idx + 1)
                 new_block.checksum = None
                 self._block_cache.write(new_block.uid, write_data.read())
                 cow[block.idx] = new_block
-                logger.debug('COW: Wrote block {}/{} {}:{} into {}.'.format(block.version_uid.v_string, block.idx,
-                                                                            offset_in_block, length_in_block,
-                                                                            new_block.uid))
+                logger.debug('COW: Wrote block {}/{} {}:{} into {}.'.format(cow_version.uid, block.idx, offset_in_block,
+                                                                            length_in_block, new_block.uid))
             position_in_data += length_in_block
 
     def flush(self, cow_version: Version) -> None:
@@ -1416,18 +1421,18 @@ class BenjiStore(ReprMixIn):
 
     def fixate(self, cow_version: Version) -> None:
         # save blocks into version
-        logger.info('Fixating version {} with {} blocks, please wait.'.format(cow_version.uid.v_string,
-                                                                              len(self._cow[cow_version.uid.integer])))
+        logger.info('Fixating version {} with {} blocks, please wait.'.format(cow_version.uid,
+                                                                              len(self._cow[cow_version.uid])))
 
         sparse_block_checksum = self._benji_obj._block_hash.data_hexdigest(b'\0' * cow_version.block_size)
         storage = StorageFactory.get_by_name(cow_version.storage.name)
-        for block in self._cow[cow_version.uid.integer].values():
-            logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid.v_string, block.idx, block.uid))
+        for block in self._cow[cow_version.uid].values():
+            logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid, block.idx, block.uid))
             data = self._block_cache.read(block.uid)
 
             block.checksum = self._benji_obj._block_hash.data_hexdigest(data)
             if block.checksum == sparse_block_checksum:
-                logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid.v_string, block.idx))
+                logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid, block.idx))
                 self._block_cache.rm(block.uid)
                 block.checksum = None
                 block.uid = BlockUid(None, None)
@@ -1437,7 +1442,7 @@ class BenjiStore(ReprMixIn):
 
             try:
                 self._benji_obj._database_backend.set_block(idx=block.idx,
-                                                            version_uid=cow_version.uid,
+                                                            version_id=cow_version.id,
                                                             block_uid=block.uid,
                                                             checksum=block.checksum,
                                                             size=len(data),
@@ -1451,5 +1456,5 @@ class BenjiStore(ReprMixIn):
         self._benji_obj._database_backend.set_version(cow_version.uid, status=VersionStatus.valid, protected=True)
         self._benji_obj.metadata_backup([cow_version.uid], overwrite=True, locking=False)
         self._benji_obj._locking.unlock_version(cow_version.uid)
-        del self._cow[cow_version.uid.integer]
+        del self._cow[cow_version.uid]
         logger.info('Finished.')

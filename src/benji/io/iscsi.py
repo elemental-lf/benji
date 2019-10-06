@@ -5,6 +5,7 @@ import time
 from typing import Tuple, Optional, Callable, Any, List, Union, Iterator
 
 import libiscsi.libiscsi as libiscsi
+
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import ConfigurationError, UsageError

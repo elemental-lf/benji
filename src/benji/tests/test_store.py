@@ -1,6 +1,7 @@
 import os
 import random
 import unittest
+import uuid
 from unittest import TestCase
 
 from parameterized import parameterized
@@ -22,7 +23,10 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         with open(image_filename, 'wb') as f:
             f.write(self.image)
         benji_obj = self.benjiOpen(init_database=True)
-        version = benji_obj.backup('data-backup', 'snapshot-name', 'file:' + image_filename, None, None)
+        version = benji_obj.backup(version_uid=str(uuid.uuid4()),
+                                   volume='data-backup',
+                                   snapshot='snapshot-name',
+                                   source='file:' + image_filename)
         version_uid = version.uid
         benji_obj.close()
         return version_uid, size, image_filename
@@ -67,7 +71,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         version = store.get_versions(version_uid=self.version_uid)[0]
         store.open(version)
         cow_version = store.get_cow_version(version)
-        self.assertEqual(version.name, cow_version.name)
+        self.assertEqual(version.volume, cow_version.volume)
         self.assertEqual(version.size, cow_version.size)
         self.assertEqual(version.block_size, cow_version.block_size)
         self.assertEqual(version.storage_id, cow_version.storage_id)

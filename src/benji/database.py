@@ -117,59 +117,37 @@ class VersionStatusType(sqlalchemy.types.TypeDecorator):
 @total_ordering
 class VersionUid(StorageKeyMixIn['VersionUid']):
 
-    def __init__(self, value: Union[str, int]) -> None:
-        value_int: int
-        if isinstance(value, int):
-            value_int = value
-        elif isinstance(value, str):
-            try:
-                value_int = int(value)
-            except ValueError:
-                if len(value) < 2:
-                    raise ValueError('Version UID {} is too short.'.format(value)) from None
-                if value[0].lower() != 'v':
-                    raise ValueError(
-                        'Version UID {} is invalid. A Version UID string has to start with the letter V.'.format(value)) from None
-                try:
-                    value_int = int(value[1:])
-                except ValueError:
-                    raise ValueError('Version UID {} is invalid.'.format(value)) from None
-        else:
-            raise ValueError('Version UID {} has unsupported type {}.'.format(str(value), type(value)))
-        self._value = value_int
-
-    @property
-    def integer(self) -> int:
-        return self._value
-
-    @property
-    def v_string(self) -> str:
-        return 'V' + str(self._value).zfill(10)
+    def __init__(self, name: str) -> None:
+        if not isinstance(name, str):
+            raise InternalError(f'Unexpected type {type(name)} in constructor.')
+        if not InputValidation.is_version_uid(name):
+            raise InputDataError('Version name {} is invalid.'.format(name))
+        self._value = name
 
     def __str__(self) -> str:
-        return self.v_string
+        return self._value
 
     def __repr__(self) -> str:
-        return str(self.integer)
+        return self._value
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, VersionUid):
-            return self.integer == other.integer
-        elif isinstance(other, int):
-            return self.integer == other
+            return self._value == other._value
+        elif isinstance(other, str):
+            return self._value == other
         else:
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
         if isinstance(other, VersionUid):
-            return self.integer < other.integer
-        elif isinstance(other, int):
-            return self.integer < other
+            return self._value < other._value
+        elif isinstance(other, str):
+            return self._value < other
         else:
             return NotImplemented
 
     def __hash__(self) -> int:
-        return self.integer
+        return hash(self._value)
 
     # Start: Implements StorageKeyMixIn
     _STORAGE_PREFIX = 'versions/'
@@ -179,13 +157,10 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
         return cls._STORAGE_PREFIX
 
     def _storage_object_to_key(self) -> str:
-        return self.v_string
+        return str(self)
 
     @classmethod
     def _storage_key_to_object(cls, key: str) -> 'VersionUid':
-        vl = len(VersionUid(1).v_string)
-        if len(key) != vl:
-            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(key, vl))
         return VersionUid(key)
 
     # End: Implements StorageKeyMixIn
@@ -193,17 +168,15 @@ class VersionUid(StorageKeyMixIn['VersionUid']):
 
 class VersionUidType(sqlalchemy.types.TypeDecorator):
 
-    impl = sqlalchemy.Integer
+    impl = sqlalchemy.String(255)
 
-    def process_bind_param(self, value: Optional[Union[int, str, VersionUid]], dialect) -> Optional[int]:
+    def process_bind_param(self, value: Optional[Union[int, str, VersionUid]], dialect) -> Optional[str]:
         if value is None:
             return None
-        elif isinstance(value, int):
-            return value
         elif isinstance(value, str):
-            return VersionUid(value).integer
+            return value
         elif isinstance(value, VersionUid):
-            return value.integer
+            return str(value)
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
@@ -322,13 +295,15 @@ Base: Any = sqlalchemy.ext.declarative.declarative_base(metadata=metadata)
 class Version(Base):
     __tablename__ = 'versions'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['uid', 'name', 'snapshot_name']
+    REPR_SQL_ATTR_SORT_FIRST = ['uid', 'volume', 'snapshot']
 
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
-    uid = sqlalchemy.Column(VersionUidType, primary_key=True, autoincrement=True, nullable=False)
+
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
+    uid = sqlalchemy.Column(VersionUidType, index=True, unique=True, nullable=False)
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
+    volume = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
     snapshot = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     size = sqlalchemy.Column(sqlalchemy.BigInteger, nullable=False)
     block_size = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
@@ -375,30 +350,28 @@ class Version(Base):
             return NotImplemented
 
     def __hash__(self) -> int:
-        return self.uid.integer
+        return self.id
 
 
 class Label(Base):
     __tablename__ = 'labels'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'name', 'value']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'name', 'value']
 
-    version_uid = sqlalchemy.Column(VersionUidType,
-                                    sqlalchemy.ForeignKey('versions.uid', ondelete='CASCADE'),
-                                    primary_key=True,
-                                    nullable=False)
+    version_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                   sqlalchemy.ForeignKey('versions.id', ondelete='CASCADE'),
+                                   primary_key=True,
+                                   nullable=False)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, primary_key=True)
     value = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
-
-    __table_args__ = (sqlalchemy.UniqueConstraint('version_uid', 'name'),)
 
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: Optional[BlockUid], version_uid: VersionUid, idx: int, checksum: Optional[str], size: int,
+    def __init__(self, uid: Optional[BlockUid], version_id: int, idx: int, checksum: Optional[str], size: int,
                  valid: bool) -> None:
         self.uid = uid if uid is not None else BlockUid(None, None)
-        self.version_uid = version_uid
+        self.version_id = version_id
         self.idx = idx
         self.checksum = checksum
         self.size = size
@@ -432,7 +405,7 @@ class Block(Base):
     __tablename__ = 'blocks'
 
     MAXIMUM_CHECKSUM_LENGTH = 64
-    REPR_SQL_ATTR_SORT_FIRST = ['version_uid', 'idx']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'idx']
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
     # idx and uid_right are first because they are most likely to go to BigInteger in the future
@@ -440,15 +413,15 @@ class Block(Base):
     uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     uid_left = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
     size = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
-    version_uid = sqlalchemy.Column(VersionUidType,
-                                    sqlalchemy.ForeignKey('versions.uid', ondelete='CASCADE'),
-                                    nullable=False)  # 4 bytes
+    version_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                   sqlalchemy.ForeignKey('versions.id', ondelete='CASCADE'),
+                                   nullable=False)  # 4 bytes
     valid = sqlalchemy.Column(sqlalchemy.Boolean(name='valid'), nullable=False)  # 1 byte
     checksum = sqlalchemy.Column(ChecksumType(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
     uid = cast(BlockUid, sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
-        sqlalchemy.PrimaryKeyConstraint('version_uid', 'idx'),
+        sqlalchemy.PrimaryKeyConstraint('version_id', 'idx'),
         sqlalchemy.Index(None, 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
         # Index(None, 'checksum', postgresql_using='hash'),
@@ -461,7 +434,7 @@ class Block(Base):
         """
         return DereferencedBlock(
             uid=self.uid,
-            version_uid=self.version_uid,
+            version_id=self.version_id,
             idx=self.idx,
             checksum=self.checksum,
             size=self.size,
@@ -472,15 +445,10 @@ class Block(Base):
 class DeletedBlock(Base):
     __tablename__ = 'deleted_blocks'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['id']
+    REPR_SQL_ATTR_SORT_FIRST = ['storage_id', 'uid']
 
     date = sqlalchemy.Column("date", BenjiDateTime, nullable=False)
-    # BigInteger as the id could get large over time
-    # Use INTEGER with SQLite to get AUTOINCREMENT and the INTEGER type of SQLLite can store huge values anyway.
-    id = sqlalchemy.Column(sqlalchemy.BigInteger().with_variant(sqlalchemy.Integer, "sqlite"),
-                           primary_key=True,
-                           autoincrement=True,
-                           nullable=False)
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
     storage_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('storages.id'), nullable=False)
     # Force loading of storage so that the attribute can be accessed even when there is no associated session anymore.
     storage = sqlalchemy.orm.relationship('Storage', lazy='joined')
@@ -489,7 +457,7 @@ class DeletedBlock(Base):
     uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
 
     uid = sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
-    __table_args__ = (sqlalchemy.Index(None, 'uid_left', 'uid_right'), {'sqlite_autoincrement': True})
+    __table_args__ = (sqlalchemy.Index(None, 'uid_left', 'uid_right'),)
 
 
 class Lock(Base):
@@ -630,16 +598,18 @@ class DatabaseBackend(ReprMixIn):
         self._session.commit()
 
     def create_version(self,
-                       version_name: str,
-                       snapshot_name: str,
+                       version_uid: VersionUid,
+                       volume: str,
+                       snapshot: str,
                        size: int,
                        storage_id: int,
                        block_size: int,
                        status: VersionStatus = VersionStatus.incomplete,
                        protected: bool = False) -> Version:
         version = Version(
-            name=version_name,
-            snapshot=snapshot_name,
+            uid=version_uid,
+            volume=volume,
+            snapshot=snapshot,
             size=size,
             storage_id=storage_id,
             block_size=block_size,
@@ -680,16 +650,15 @@ class DatabaseBackend(ReprMixIn):
             self._session.commit()
             if status is not None:
                 logger_func = logger.info if version.status.is_valid() else logger.error
-                logger_func('Set status of version {} to {}.'.format(version_uid.v_string, version.status.name))
+                logger_func('Set status of version {} to {}.'.format(version_uid, version.status.name))
             if protected is not None:
-                logger.info('Marked version {} as {}.'.format(version_uid.v_string,
-                                                              'protected' if protected else 'unprotected'))
+                logger.info('Marked version {} as {}.'.format(version_uid, 'protected' if protected else 'unprotected'))
         except:
             self._session.rollback()
             raise
 
     def get_version(self, version_uid: VersionUid) -> Version:
-        version = self._session.query(Version).filter_by(uid=version_uid).first()
+        version = self._session.query(Version).filter(Version.uid == version_uid).first()
 
         if version is None:
             raise KeyError('Version {} not found.'.format(version_uid))
@@ -698,35 +667,39 @@ class DatabaseBackend(ReprMixIn):
 
     def get_versions(self,
                      version_uid: VersionUid = None,
-                     version_name: str = None,
-                     version_snapshot_name: str = None,
-                     version_labels: List[Tuple[str, str]] = None) -> List[Version]:
+                     volume: str = None,
+                     snapshot: str = None,
+                     labels: List[Tuple[str, str]] = None) -> List[Version]:
         query = self._session.query(Version)
         if version_uid:
-            query = query.filter_by(uid=version_uid)
-        if version_name:
-            query = query.filter_by(name=version_name)
-        if version_snapshot_name:
-            query = query.filter_by(snapshot=version_snapshot_name)
-        if version_labels:
-            for version_label in version_labels:
-                label_query = self._session.query(Label.version_uid).filter((Label.name == version_label[0]) &
-                                                                            (Label.value == version_label[1]))
+            query = query.filter(Version.uid == version_uid)
+        if volume:
+            query = query.filter(Version.volume == volume)
+        if snapshot:
+            query = query.filterby(Version.snapshot == snapshot)
+        if labels:
+            for label in labels:
+                label_query = self._session.query(Label.version_uid).filter((Label.name == label[0]) &
+                                                                            (Label.value == label[1]))
                 query = query.filter(Version.uid.in_(label_query))
 
-        return query.order_by(Version.name, Version.date).all()
+        return query.order_by(Version.volume, Version.date).all()
 
     def get_versions_with_filter(self, filter_expression: str = None):
         builder = _QueryBuilder(self._session)
-        return builder.build(filter_expression).order_by(Version.name, Version.date).all()
+        return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
 
     def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
         try:
-            label = self._session.query(Label).filter_by(version_uid=version_uid, name=name).first()
+            label = self._session.query(Label).join(Version).filter(Version.uid == version_uid,
+                                                                    Label.name == name).first()
             if label:
                 label.value = value
             else:
-                label = Label(version_uid=version_uid, name=name, value=value)
+                version = self._session.query(Version).filter(Version.uid == version_uid).first()
+                if version is None:
+                    raise KeyError('Version {} not found.'.format(version_uid))
+                label = Label(version_id=version.id, name=name, value=value)
                 self._session.add(label)
 
             self._session.commit()
@@ -736,7 +709,9 @@ class DatabaseBackend(ReprMixIn):
 
     def rm_label(self, version_uid: VersionUid, name: str) -> None:
         try:
-            deleted = self._session.query(Label).filter_by(version_uid=version_uid, name=name).delete()
+            version = self._session.query(Version).filter(Version.uid == version_uid).first()
+            self._session.query(Label).filter(Label.version_id == version.id,
+                                              Label.name == name).delete(synchronize_session=False)
             self._session.commit()
         except:
             self._session.rollback()
@@ -752,13 +727,13 @@ class DatabaseBackend(ReprMixIn):
             logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
             self._last_blocks_commit = current_clock
 
-    def set_block(self, *, idx: int, version_uid: VersionUid, block_uid: Optional[BlockUid], checksum: Optional[str],
-                  size: int, valid: bool) -> None:
+    def set_block(self, *, idx: int, version_id: int, block_uid: Optional[BlockUid], checksum: Optional[str], size: int,
+                  valid: bool) -> None:
         try:
-            block = self._session.query(Block).filter_by(idx=idx, version_uid=version_uid).first()
+            block = self._session.query(Block).filter(Block.idx == idx, Block.version_id == version_id).first()
             if not block:
-                raise InternalError('Block {} of version {} does not exist when it should.'.format(
-                    idx, version_uid.v_string))
+                version = self._session.query(Version).filter(Version.id == version_id).first()
+                raise InternalError('Block {} of version {} does not exist when it should.'.format(idx, version.uid))
 
             block.uid = block_uid
             block.checksum = checksum
@@ -770,8 +745,13 @@ class DatabaseBackend(ReprMixIn):
             self._session.rollback()
             raise
 
-    def create_blocks(self, *, blocks: List[Dict[str, Any]]) -> None:
+    def create_blocks(self, *, version_uid: VersionUid, blocks: List[Dict[str, Any]]) -> None:
         try:
+            version = self._session.query(Version).filter(Version.uid == version_uid).first()
+            assert version is not None
+            for block in blocks:
+                block['version_id'] = version.id
+
             self._session.bulk_insert_mappings(Block, blocks)
 
             self._conditional_blocks_commit()
@@ -782,13 +762,14 @@ class DatabaseBackend(ReprMixIn):
     def set_block_invalid(self, block_uid: BlockUid) -> List[VersionUid]:
         try:
             affected_version_uids = self._session.query(sqlalchemy.distinct(
-                Block.version_uid)).filter_by(uid=block_uid).all()
+                Block.version_uid)).filter(Block.uid == block_uid).all()
             affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]
-            self._session.query(Block).filter_by(uid=block_uid).update({'valid': False}, synchronize_session='fetch')
+            self._session.query(Block).filter(Block.uid == block_uid).update({'valid': False},
+                                                                             synchronize_session=False)
             self._session.commit()
 
             logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join([version_uid.v_string for version_uid in affected_version_uids])))
+                block_uid, ', '.join([version_uid for version_uid in affected_version_uids])))
 
             for version_uid in affected_version_uids:
                 self.set_version(version_uid, status=VersionStatus.invalid)
@@ -800,21 +781,22 @@ class DatabaseBackend(ReprMixIn):
         return affected_version_uids
 
     def get_block(self, block_uid: BlockUid) -> Block:
-        return self._session.query(Block).filter_by(uid=block_uid).first()
+        return self._session.query(Block).filter(Block.uid == block_uid).first()
 
     def get_block_by_idx(self, version_uid: VersionUid, block_idx: int) -> Block:
-        return self._session.query(Block).filter_by(version_uid=version_uid, idx=block_idx).first()
+        return self._session.query(Block).join(Version).filter(Version.uid == version_uid,
+                                                               Block.idx == block_idx).first()
 
     def get_block_by_checksum(self, checksum, storage_id):
-        return self._session.query(Block).filter_by(checksum=checksum,
-                                                    valid=True).join(Version).filter_by(storage_id=storage_id).first()
+        return self._session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
+                                                               Version.storage_id == storage_id).first()
 
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
     def _yield_blocks(self, version_uid: VersionUid, yield_per: int):
         last_idx = None
         while True:
-            query = self._session.query(Block).filter_by(version_uid=version_uid)
+            query = self._session.query(Block).join(Version).filter(Version.uid == version_uid)
             if last_idx is not None:
                 query = query.filter(Block.idx > last_idx)
             block = None
@@ -828,15 +810,15 @@ class DatabaseBackend(ReprMixIn):
         yield from self._yield_blocks(version_uid, yield_per)
 
     def get_blocks_count_by_version(self, version_uid: VersionUid, sparse_only: bool = False) -> int:
-        query = self._session.query(Block).filter_by(version_uid=version_uid)
+        query = self._session.query(Block).join(Version).filter(Version.uid == version_uid)
         if sparse_only:
-            query = query.filter_by(uid_left=None, uid_right=None)
+            query = query.filter(Block.uid_left == None, Block.uid_right == None)
         return query.count()
 
     def rm_version(self, version_uid: VersionUid) -> int:
         try:
-            version = self._session.query(Version).filter_by(uid=version_uid).first()
-            affected_blocks = self._session.query(Block).filter_by(version_uid=version.uid)
+            version = self._session.query(Version).filter(Version.uid == version_uid).first()
+            affected_blocks = self._session.query(Block).filter(Block.version_id == version.id)
             num_blocks = affected_blocks.count()
             for affected_block in affected_blocks:
                 if affected_block.uid:
@@ -848,7 +830,7 @@ class DatabaseBackend(ReprMixIn):
                     self._session.add(deleted_block)
             # The following delete statement will cascade this delete to the blocks table
             # and delete all blocks
-            self._session.query(Version).filter_by(uid=version_uid).delete()
+            self._session.query(Version).filter(Version.id == version.id).delete()
             self._session.commit()
         except:
             self._session.rollback()
@@ -915,7 +897,7 @@ class DatabaseBackend(ReprMixIn):
 
     def sync_storage(self, storage_name: str, storage_id: int = None) -> Storage:
         try:
-            storage = self._session.query(Storage).filter_by(name=storage_name).first()
+            storage = self._session.query(Storage).filter(Storage.name == storage_name).first()
             if storage:
                 if storage_id is not None and storage.id != storage_id:
                     raise ConfigurationError(
@@ -934,7 +916,7 @@ class DatabaseBackend(ReprMixIn):
             raise
 
     def get_storage_by_name(self, storage_name: str) -> Storage:
-        return self._session.query(Storage).filter_by(name=storage_name).first()
+        return self._session.query(Storage).filter(Storage.name == storage_name).first()
 
     def get_storage_by_id(self, storage_id: int) -> Storage:
         return self._session.query(Storage).get(storage_id)
@@ -963,7 +945,7 @@ class DatabaseBackend(ReprMixIn):
                     return obj.isoformat(timespec='microseconds') + 'Z'
 
                 if isinstance(obj, VersionUid):
-                    return obj.integer
+                    return str(obj)
 
                 if isinstance(obj, BlockUid):
                     return {'left': obj.left, 'right': obj.right}
@@ -1071,13 +1053,17 @@ class DatabaseBackend(ReprMixIn):
                 raise InputDataError('Missing attribute uid in version.')
 
             # Will raise ValueError when invalid
-            version_uid = VersionUid(version_dict['uid'])
+            version_uid = VersionUid(f'v{version_dict["uid"]:09d}')
+            version_dict['uid'] = str(version_uid)
 
-            attributes_to_check = ['labels', 'blocks', 'date', 'storage_id']
+            attributes_to_check = ['labels', 'blocks', 'date', 'storage_id', 'name']
 
             for attribute in attributes_to_check:
                 if attribute not in version_dict:
-                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
+                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid))
+
+            version_dict['volume'] = version_dict['name']
+            del version_dict['name']
 
             # Starting with 1.1.0 the statistics where folded into the versions table, fake them for 1.0.x
             if metadata_version.minor == 0:
@@ -1088,32 +1074,31 @@ class DatabaseBackend(ReprMixIn):
                 version_dict['duration'] = None
 
             if not isinstance(version_dict['labels'], list):
-                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
+                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid))
 
             # Convert label list to dictionary
             labels_dict: Dict[str, str] = {}
             for name_value_dict in version_dict['labels']:
                 if not isinstance(name_value_dict, dict):
-                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(
-                        version_uid.v_string))
+                    raise InputDataError('Wrong data type for labels list element in version {}.'.format(version_uid))
                 for attribute in ['name', 'value']:
                     if attribute not in name_value_dict:
                         raise InputDataError('Missing attribute {} in labels list in version {}.'.format(
-                            attribute, version_uid.v_string))
+                            attribute, version_uid))
 
                 labels_dict[name_value_dict['name']] = name_value_dict['value']
             version_dict['labels'] = labels_dict
 
             if not isinstance(version_dict['blocks'], list):
-                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid.v_string))
+                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid))
 
             for block_dict in version_dict['blocks']:
                 if 'id' not in block_dict:
-                    raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid.v_string))
+                    raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid))
                 del (block_dict['id'])
 
             if not isinstance(version_dict['date'], str):
-                raise InputDataError('Wrong data type for date in version {}.'.format(version_uid.v_string))
+                raise InputDataError('Wrong data type for date in version {}.'.format(version_uid))
 
             version_dict['date'] = version_dict['date'] + 'Z'
 
@@ -1136,7 +1121,7 @@ class DatabaseBackend(ReprMixIn):
 
             attributes_to_check = [
                 'date',
-                'name',
+                'volume',
                 'snapshot',
                 'size',
                 'storage',
@@ -1154,38 +1139,37 @@ class DatabaseBackend(ReprMixIn):
 
             for attribute in attributes_to_check:
                 if attribute not in version_dict:
-                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid.v_string))
+                    raise InputDataError('Missing attribute {} in version {}.'.format(attribute, version_uid))
 
-            if not InputValidation.is_backup_name(version_dict['name']):
-                raise InputDataError('Backup name {} in version {} is invalid.'.format(
-                    version_dict['name'], version_uid.v_string))
+            if not InputValidation.is_volume_name(version_dict['volume']):
+                raise InputDataError('Volume name {} in version {} is invalid.'.format(
+                    version_dict['name'], version_uid))
 
             if not InputValidation.is_snapshot_name(version_dict['snapshot']):
                 raise InputDataError('Snapshot name {} in version {} is invalid.'.format(
-                    version_dict['snapshot'], version_uid.v_string))
+                    version_dict['snapshot'], version_uid))
 
             if not isinstance(version_dict['labels'], dict):
-                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid.v_string))
+                raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid))
 
             if not isinstance(version_dict['blocks'], list):
-                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid.v_string))
+                raise InputDataError('Wrong data type for blocks in version {}.'.format(version_uid))
 
             for name, value in version_dict['labels'].items():
                 if not InputValidation.is_label_name(name):
-                    raise InputDataError('Label name {} in version {} is invalid.'.format(name, version_uid.v_string))
+                    raise InputDataError('Label name {} in version {} is invalid.'.format(name, version_uid))
                 if not InputValidation.is_label_value(value):
-                    raise InputDataError('Label value {} in version {} is invalid.'.format(value, version_uid.v_string))
+                    raise InputDataError('Label value {} in version {} is invalid.'.format(value, version_uid))
 
             for block_dict in version_dict['blocks']:
                 if not isinstance(block_dict, dict):
-                    raise InputDataError('Wrong data type for block list element in version {}.'.format(
-                        version_uid.v_string))
+                    raise InputDataError('Wrong data type for block list element in version {}.'.format(version_uid))
                 for attribute in ['uid', 'size', 'valid', 'checksum']:
                     if attribute not in block_dict:
                         raise InputDataError('Missing attribute {} in block list in version {}.'.format(
-                            attribute, version_uid.v_string))
+                            attribute, version_uid))
 
-            storage = self._session.query(Storage).filter_by(name=version_dict['storage']).first()
+            storage = self._session.query(Storage).filter(Storage.name == version_dict['storage']).first()
             if not storage:
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
@@ -1194,12 +1178,12 @@ class DatabaseBackend(ReprMixIn):
             except KeyError:
                 pass  # does not exist
             else:
-                raise FileExistsError('Version {} already exists and so cannot be imported.'.format(version_uid.v_string))
+                raise FileExistsError('Version {} already exists and so cannot be imported.'.format(version_uid))
 
             version = Version(
                 uid=version_uid,
                 date=datetime.datetime.strptime(version_dict['date'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-                name=version_dict['name'],
+                volume=version_dict['volume'],
                 snapshot=version_dict['snapshot'],
                 size=version_dict['size'],
                 storage=storage,
@@ -1216,7 +1200,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.flush()
 
             for block_idx, block_dict in enumerate(version_dict['blocks']):
-                block_dict['version_uid'] = version_uid
+                block_dict['version_id'] = version.id
                 block_dict['idx'] = block_idx
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
                 block_dict['uid_left'] = block_uid.left
@@ -1226,7 +1210,7 @@ class DatabaseBackend(ReprMixIn):
 
             labels: List[Dict[str, Any]] = []
             for name, value in version_dict['labels'].items():
-                labels.append({'version_uid': version_uid, 'name': name, 'value': value})
+                labels.append({'version_id': version.id, 'name': name, 'value': value})
             self._session.bulk_insert_mappings(Label, labels)
 
             version_uids.append(version_uid)
@@ -1254,8 +1238,8 @@ class DatabaseBackendLocking:
 
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False):
         try:
-            lock = self._session.query(Lock).filter_by(host=self._host, lock_name=lock_name,
-                                                       process_id=self._uuid).first()
+            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                                    Lock.process_id == self._uuid).first()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
@@ -1283,7 +1267,7 @@ class DatabaseBackendLocking:
 
     def is_locked(self, *, lock_name: str) -> bool:
         try:
-            lock = self._session.query(Lock).filter_by(lock_name=lock_name).first()
+            lock = self._session.query(Lock).filter(Lock.lock_name == lock_name).first()
         except:
             self._session.rollback()
             raise
@@ -1292,8 +1276,8 @@ class DatabaseBackendLocking:
 
     def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
-            lock = self._session.query(Lock).filter_by(host=self._host, lock_name=lock_name,
-                                                       process_id=self._uuid).with_for_update().first()
+            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                                    Lock.process_id == self._uuid).with_for_update().first()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
@@ -1304,8 +1288,8 @@ class DatabaseBackendLocking:
 
     def unlock(self, *, lock_name: str) -> None:
         try:
-            lock = self._session.query(Lock).filter_by(host=self._host, lock_name=lock_name,
-                                                       process_id=self._uuid).first()
+            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                                    Lock.process_id == self._uuid).first()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             self._session.delete(lock)
@@ -1316,7 +1300,7 @@ class DatabaseBackendLocking:
 
     def unlock_all(self) -> None:
         try:
-            locks = self._session.query(Lock).filter_by(host=self._host, process_id=self._uuid).all()
+            locks = self._session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid).all()
             for lock in locks:
                 logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
                 self._session.delete(lock)
@@ -1325,19 +1309,19 @@ class DatabaseBackendLocking:
             pass
 
     def lock_version(self, version_uid: VersionUid, reason: str = None, override_lock: bool = False) -> None:
-        self.lock(lock_name=version_uid.v_string,
+        self.lock(lock_name='Version {}'.format(version_uid),
                   reason=reason,
-                  locked_msg='Version {} is already locked.'.format(version_uid.v_string),
+                  locked_msg='Version {} is already locked.'.format(version_uid),
                   override_lock=override_lock)
 
     def is_version_locked(self, version_uid: VersionUid) -> bool:
-        return self.is_locked(lock_name=version_uid.v_string)
+        return self.is_locked(lock_name='Version {}'.format(version_uid))
 
     def update_version_lock(self, version_uid: VersionUid, reason: str = None) -> None:
-        self.update_lock(lock_name=version_uid.v_string, reason=reason)
+        self.update_lock(lock_name='Version {}'.format(version_uid), reason=reason)
 
     def unlock_version(self, version_uid: VersionUid) -> None:
-        self.unlock(lock_name=version_uid.v_string)
+        self.unlock(lock_name='Version {}'.format(version_uid))
 
     @contextmanager
     def with_lock(self,
@@ -1438,9 +1422,9 @@ class _QueryBuilder:
             def op(self, op, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 if isinstance(other, Token):
                     raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
-                label_query = session.query(Label.version_uid).filter((Label.name == self.name) &
-                                                                      op(Label.value, str(other)))
-                return Version.uid.in_(label_query)
+                label_query = session.query(Label.version_id).filter((Label.name == self.name) &
+                                                                     op(Label.value, str(other)))
+                return Version.id.in_(label_query)
 
             def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.eq, other)
@@ -1450,8 +1434,8 @@ class _QueryBuilder:
 
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
-                label_query = session.query(Label.version_uid).filter(Label.name == self.name)
-                return Version.uid.in_(label_query)
+                label_query = session.query(Label.version_id).filter(Label.name == self.name)
+                return Version.id.in_(label_query)
 
         attributes = []
         for attribute in sqlalchemy.inspect(Version).mapper.composites:

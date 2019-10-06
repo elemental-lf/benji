@@ -10,6 +10,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, Iterator, Iterable
 
 import semantic_version
+from diskcache import FanoutCache
+
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.exception import ConfigurationError, BenjiException
@@ -21,7 +23,6 @@ from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
 from benji.utils import TokenBucket, derive_key
 from benji.versions import VERSIONS
-from diskcache import FanoutCache
 
 
 class InvalidBlockException(BenjiException, IOError):
@@ -387,7 +388,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             except FileNotFoundError:
                 pass
             else:
-                raise FileExistsError('Version {} already exists in storage.'.format(version_uid.v_string))
+                raise FileExistsError('Version {} already exists in storage.'.format(version_uid))
 
         data_bytes = data.encode('utf-8')
         size = len(data_bytes)

@@ -2,7 +2,9 @@
 # -*- encoding: utf-8 -*-
 import concurrent
 import json
+import random
 import re
+import string
 import sys
 from ast import literal_eval
 from concurrent.futures import Future
@@ -65,6 +67,10 @@ def future_results_as_completed(futures: List[Future], semaphore=None, timeout: 
 
 def derive_key(*, password, salt, iterations, key_length):
     return PBKDF2(password=password, salt=salt, dkLen=key_length, count=iterations, hmac_hash_module=SHA512)
+
+
+def random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
+    return ''.join(random.choice(characters) for _ in range(length))
 
 
 class BlockHash:
@@ -185,12 +191,16 @@ class InputValidation:
     DNS1123_SUBDOMAIN_MAX_LENGTH = 253
 
     @classmethod
-    def is_backup_name(cls, label):
-        return re.fullmatch(cls.VALUE_REGEXP, label) is not None
+    def is_version_uid(cls, name):
+        return re.fullmatch(cls.VALUE_REGEXP, name) is not None
 
     @classmethod
-    def is_snapshot_name(cls, label):
-        return re.fullmatch(cls.OPTIONAL_VALUE_REGEXP, label) is not None
+    def is_volume_name(cls, name):
+        return re.fullmatch(cls.VALUE_REGEXP, name) is not None
+
+    @classmethod
+    def is_snapshot_name(cls, name):
+        return re.fullmatch(cls.OPTIONAL_VALUE_REGEXP, name) is not None
 
     @classmethod
     def is_label_value(cls, value: str) -> bool:

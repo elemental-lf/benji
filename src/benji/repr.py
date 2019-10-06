@@ -5,12 +5,11 @@
 # License: Apache-2.0
 # Copyright (c) 2015-2017 Alex Prengère
 import io
-
 from inspect import getmro
+from reprlib import Repr as _Repr
 from typing import List, Set, Any
 
 import sqlalchemy
-from reprlib import Repr as _Repr
 
 
 class Repr(_Repr):

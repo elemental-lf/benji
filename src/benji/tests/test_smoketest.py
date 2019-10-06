@@ -3,6 +3,7 @@ import json
 import os
 import random
 import unittest
+import uuid
 from functools import reduce
 from operator import and_
 from shutil import copyfile
@@ -104,8 +105,9 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj = self.benjiOpen(init_database=init_database, block_size=block_size)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version = benji_obj.backup(version_name='data-backup',
-                                           version_snapshot_name='snapshot-name',
+                version = benji_obj.backup(version_uid=str(uuid.uuid4()),
+                                           volume='data-backup',
+                                           snapshot='snapshot-name',
                                            source='file:' + image_filename,
                                            hints=hints_from_rbd_diff(hints.read()) if base_version_uid else None,
                                            base_version_uid=base_version_uid,
@@ -144,7 +146,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj = self.benjiOpen()
             versions = benji_obj.ls()
             self.assertEqual(set(), set([version.uid for version in versions]) ^ set(version_uids))
-            self.assertTrue(reduce(and_, [version.name == 'data-backup' for version in versions]))
+            self.assertTrue(reduce(and_, [version.volume == 'data-backup' for version in versions]))
             self.assertTrue(reduce(and_, [version.snapshot == 'snapshot-name' for version in versions]))
             self.assertTrue(reduce(and_, [version.block_size == block_size for version in versions]))
             self.assertTrue(reduce(and_, [version.size > 0 for version in versions]))
@@ -177,12 +179,12 @@ class SmokeTestCase(BenjiTestCaseBase):
             logger.debug('Deep scrub with history successful')
 
             benji_obj = self.benjiOpen()
-            benji_obj.batch_scrub('uid == {}'.format(version_uid.integer), 100, 100)
+            benji_obj.batch_scrub('uid == "{}"'.format(version_uid), 100, 100)
             benji_obj.close()
             logger.debug('Batch scrub with history successful')
 
             benji_obj = self.benjiOpen()
-            benji_obj.batch_deep_scrub('uid == {}'.format(version_uid.integer), 100, 100)
+            benji_obj.batch_deep_scrub('uid == "{}"'.format(version_uid), 100, 100)
             benji_obj.close()
             logger.debug('Batch deep scrub with history successful')
 
@@ -221,7 +223,8 @@ class SmokeTestCase(BenjiTestCaseBase):
             # delete old versions
             if len(version_uids) > 10:
                 benji_obj = self.benjiOpen()
-                dismissed_versions = benji_obj.enforce_retention_policy('name=="data-backup"', 'latest10,hours24,days30')
+                dismissed_versions = benji_obj.enforce_retention_policy('volume == "data-backup"',
+                                                                        'latest10,hours24,days30')
                 for dismissed_version in dismissed_versions:
                     version_uids.remove(dismissed_version.uid)
                 benji_obj.close()

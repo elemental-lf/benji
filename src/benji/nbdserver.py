@@ -217,7 +217,7 @@ class NbdServer(ReprMixIn):
                         yield from writer.drain()
                         continue
 
-                    self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid.v_string))
+                    self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid))
 
                     # We have negotiated a version and it will be used until the client disconnects
                     version = self.store.get_versions(version_uid=version_uid)[0]
@@ -245,7 +245,7 @@ class NbdServer(ReprMixIn):
                 elif opt == self.NBD_OPT_LIST:
                     # Don't use version as a loop variable so we don't conflict with the outer scope usage
                     for list_version in self.store.get_versions():
-                        list_version_encoded = list_version.uid.v_string.encode("ascii")
+                        list_version_encoded = list_version.uid.encode("ascii")
                         writer.write(
                             struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_SERVER,
                                         len(list_version_encoded) + 4))

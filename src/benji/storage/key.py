@@ -1,6 +1,6 @@
 import hashlib
 from abc import ABCMeta, abstractmethod
-from typing import TypeVar, Generic, Type
+from typing import TypeVar, Generic
 
 StorageObject = TypeVar('StorageObject')
 

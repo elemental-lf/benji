@@ -82,13 +82,13 @@ def init_logging(logfile: Optional[str],
             },
             "legacy": {
                 "()":
-                structlog.stdlib.ProcessorFormatter,
+                    structlog.stdlib.ProcessorFormatter,
                 "processor":
-                FormatRenderer(
-                    colors=False,
-                    fmt='{timestamp_local_ctime} {process:d}/{thread_name:s} {file:s}:{line:d} {level_uc:s} {event:s}'),
+                    FormatRenderer(
+                        colors=False,
+                        fmt='{timestamp_local_ctime} {process:d}/{thread_name:s} {file:s}:{line:d} {level_uc:s} {event:s}'),
                 "foreign_pre_chain":
-                _sl_foreign_pre_chain,
+                    _sl_foreign_pre_chain,
             },
             "json": {
                 "()": structlog.stdlib.ProcessorFormatter,

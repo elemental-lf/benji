@@ -31,7 +31,7 @@ class RetentionFilterTestCase(TestCase):
         version.uid = VersionUid(uid)
         version.date = date
         version.__repr__ = Mock()
-        version.__repr__.return_value = '{} - {}'.format(version.uid.v_string,
+        version.__repr__.return_value = '{} - {}'.format(version.uid,
                                                          version.date.isoformat(timespec='seconds'))
         return version
 

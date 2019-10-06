@@ -1,5 +1,6 @@
-from sparsebitfield import SparseBitfield
 from typing import Dict
+
+from sparsebitfield import SparseBitfield
 
 from benji.database import BlockUid
 from benji.repr import ReprMixIn

@@ -15,7 +15,7 @@ function _extract_version_uid {
 }
 
 function benji::backup::ceph::snapshot::create {
-    local VERSION_NAME="$1"
+    local VOLUME="$1"
     local CEPH_POOL="$2"
     local CEPH_RBD_IMAGE="$3"
     local CEPH_RBD_SNAPSHOT="$4"
@@ -39,7 +39,7 @@ function benji::backup::ceph::snapshot::create {
 # - version uid in global variable VERSION_UID (empty string on error)
 # - stderr output of benji backup in BENJI_BACKUP_STDERR
 function benji::backup::ceph::initial {
-    local VERSION_NAME="$1"
+    local VOLUME="$1"
     local CEPH_POOL="$2"
     local CEPH_RBD_IMAGE="$3"
     shift 3
@@ -51,16 +51,16 @@ function benji::backup::ceph::initial {
 
     trap "{ rm -f \"$CEPH_RBD_DIFF_FILE\" \"$BENJI_BACKUP_STDERR_FILE\"; }" RETURN EXIT
 
-    echo "Performing initial backup of $VERSION_NAME:$CEPH_POOL/$CEPH_RBD_IMAGE."
+    echo "Performing initial backup of $VOLUME:$CEPH_POOL/$CEPH_RBD_IMAGE."
 
-    benji::backup::ceph::snapshot::create "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
+    benji::backup::ceph::snapshot::create "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
         || return $?
     rbd diff --whole-object "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" --format=json >"$CEPH_RBD_DIFF_FILE" \
         || return $?
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" \
         $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
-        "$VERSION_NAME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid | benji::version::uid::format)"
+        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid | benji::version::uid::format)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
     [[ $EC == 0 ]] || return $EC
@@ -72,7 +72,7 @@ function benji::backup::ceph::initial {
 # - version uid in global variable VERSION_UID (empty string on error)
 # - stderr output of benji backup in BENJI_BACKUP_STDERR
 function benji::backup::ceph::differential {
-    local VERSION_NAME="$1"
+    local VOLUME="$1"
     local CEPH_POOL="$2"
     local CEPH_RBD_IMAGE="$3"
     local CEPH_RBD_SNAPSHOT_LAST="$4"
@@ -86,10 +86,10 @@ function benji::backup::ceph::differential {
 
     trap "{ rm -f \"$CEPH_RBD_DIFF_FILE\" \"$BENJI_BACKUP_STDERR_FILE\"; }" RETURN EXIT
 
-    echo "Performing differential backup of $VERSION_NAME:$CEPH_POOL/$CEPH_RBD_IMAGE from RBD snapshot" \
+    echo "Performing differential backup of $VOLUME:$CEPH_POOL/$CEPH_RBD_IMAGE from RBD snapshot" \
         "$CEPH_RBD_SNAPSHOT_LAST and Benji version $(benji::version::uid::format <<<"$BENJI_VERSION_UID_LAST")."
 
-    benji::backup::ceph::snapshot::create "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
+    benji::backup::ceph::snapshot::create "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
         || return $?
     rbd diff --whole-object "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" --from-snap "$CEPH_RBD_SNAPSHOT_LAST" \
         --format=json >"$CEPH_RBD_DIFF_FILE" \
@@ -99,7 +99,7 @@ function benji::backup::ceph::differential {
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" -f "$BENJI_VERSION_UID_LAST" \
         $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
-        "$VERSION_NAME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid  | benji::version::uid::format)"
+        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid  | benji::version::uid::format)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
     [[ $EC == 0 ]] || return $EC
@@ -108,7 +108,7 @@ function benji::backup::ceph::differential {
 }
 
 function benji::backup::ceph {
-    local VERSION_NAME="$1"
+    local VOLUME="$1"
     local CEPH_POOL="$2"
     local CEPH_RBD_IMAGE="$3"
     shift 3
@@ -120,12 +120,12 @@ function benji::backup::ceph {
 
     if [[ ! $CEPH_RBD_SNAPSHOT_LAST ]]; then
         echo 'No previous RBD snapshot found, reverting to initial backup.'
-        benji::backup::ceph::initial "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "${VERSION_LABELS[@]}"
+        benji::backup::ceph::initial "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "${VERSION_LABELS[@]}"
         EC=$?
     else
         echo "Snapshot found for $CEPH_POOL/$CEPH_RBD_IMAGE is $CEPH_RBD_SNAPSHOT_LAST."
         # check if a valid version of this RBD snapshot exists
-        BENJI_SNAP_VERSION_UID=$(benji -m ls 'name == "'"$VERSION_NAME"'" and snapshot == "'"$CEPH_RBD_SNAPSHOT_LAST"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
+        BENJI_SNAP_VERSION_UID=$(benji -m ls 'volume == "'"$VOLUME"'" and snapshot == "'"$CEPH_RBD_SNAPSHOT_LAST"'"' | jq -r '.versions[0] | select(.status == "valid") | .uid // ""')
         EC=$?
 
         if [[ $EC == 0 ]]; then
@@ -134,11 +134,11 @@ function benji::backup::ceph {
                 rbd snap rm "$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT_LAST"
                 EC=$?
                 if [[ $EC == 0 ]]; then
-                    benji::backup::ceph::initial "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "${VERSION_LABELS[@]}"
+                    benji::backup::ceph::initial "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "${VERSION_LABELS[@]}"
                     EC=$?
                 fi
             else
-                    benji::backup::ceph::differential "$VERSION_NAME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT_LAST" "$BENJI_SNAP_VERSION_UID" "${VERSION_LABELS[@]}"
+                    benji::backup::ceph::differential "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT_LAST" "$BENJI_SNAP_VERSION_UID" "${VERSION_LABELS[@]}"
                     EC=$?
             fi
         fi

@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Union, Optional, List, Iterator
+from typing import Tuple, Union, Optional, Iterator
 from urllib import parse
 
 from benji.config import ConfigDict, Config
 from benji.database import Block, DereferencedBlock
-from benji.jobexecutor import JobExecutor
-from benji.logging import logger
 from benji.repr import ReprMixIn
 
 

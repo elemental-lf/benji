@@ -64,7 +64,12 @@ def main():
 
     # BACKUP
     p = subparsers_root.add_parser('backup', help='Perform a backup')
-    p.add_argument('-s', '--snapshot-name', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
+    p.add_argument('-u',
+                   '--uid',
+                   dest='version_uid',
+                   default=None,
+                   help='Unique ID of created version (will be generated automatically if not specified)')
+    p.add_argument('-s', '--snapshot', default='', help='Snapshot name (e.g. the name of the RBD snapshot)')
     p.add_argument('-r', '--rbd-hints', default=None, help='Hints in rbd diff JSON format')
     p.add_argument('-f', '--base-version', dest='base_version_uid', default=None, help='Base version UID')
     p.add_argument('-b', '--block-size', type=int, default=None, help='Block size in bytes')
@@ -77,7 +82,7 @@ def main():
                    help='Labels for this version (can be repeated)')
     p.add_argument('-S', '--storage', default='', help='Destination storage (if unspecified the default is used)')
     p.add_argument('source', help='Source URL')
-    p.add_argument('version_name', help='Backup version name (e.g. the hostname)')
+    p.add_argument('volume', help='Volume name')
     p.set_defaults(func='backup')
 
     # BATCH-DEEP-SCRUB

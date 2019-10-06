@@ -10,10 +10,9 @@ import benji.exception
 from benji import __version__
 from benji.benji import Benji, BenjiStore
 from benji.database import Version, VersionUid
-from benji.factory import StorageFactory
 from benji.logging import logger
 from benji.nbdserver import NbdServer
-from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation
+from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation, random_string
 from benji.versions import VERSIONS
 
 
@@ -29,14 +28,13 @@ class Commands:
         self.machine_output = machine_output
         self.config = config
 
-    def backup(self, version_name: str, snapshot_name: str, source: str, rbd_hints: str, base_version_uid: str,
+    def backup(self, version_uid: str, volume: str, snapshot: str, source: str, rbd_hints: str, base_version_uid: str,
                block_size: int, labels: List[str], storage: str) -> None:
-        # Validate version_name and snapshot_name
-        if not InputValidation.is_backup_name(version_name):
-            raise benji.exception.UsageError('Version name {} is invalid.'.format(version_name))
-        if not InputValidation.is_snapshot_name(snapshot_name):
-            raise benji.exception.UsageError('Snapshot name {} is invalid.'.format(snapshot_name))
+        if version_uid is None:
+            version_uid = '{}-{}'.format(volume, random_string(6))
+        version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
+
         if labels:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         benji_obj = None
@@ -47,7 +45,13 @@ class Commands:
                 logger.debug(f'Loading RBD hints from file {rbd_hints}.')
                 with open(rbd_hints, 'r') as f:
                     hints = hints_from_rbd_diff(f.read())
-            backup_version = benji_obj.backup(version_name, snapshot_name, source, hints, base_version_uid_obj, storage)
+            backup_version = benji_obj.backup(version_uid=version_uid_obj,
+                                              volume=volume,
+                                              snapshot=snapshot,
+                                              source=source,
+                                              hints=hints,
+                                              base_version_uid=base_version_uid_obj,
+                                              storage_name=storage)
 
             if labels:
                 for key, value in label_add:
@@ -56,10 +60,9 @@ class Commands:
                     benji_obj.rm_label(backup_version.uid, key)
                 if label_add:
                     logger.info('Added label(s) to version {}: {}.'.format(
-                        backup_version.uid.v_string,
-                        ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                        backup_version.uid, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
                 if label_remove:
-                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version.uid.v_string,
+                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version.uid,
                                                                                ', '.join(label_remove)))
 
             if self.machine_output:
@@ -198,7 +201,7 @@ class Commands:
                                          sys.stdout,
                                          ignore_relationships=[((Version,), ('blocks',))])
                 raise benji.exception.ScrubbingError('One or more version had scrubbing errors: {}.'.format(', '.join(
-                    [version.uid.v_string for version in errors])))
+                    [version.uid for version in errors])))
             else:
                 if self.machine_output:
                     benji_obj.export_any({
@@ -223,14 +226,14 @@ class Commands:
     def _ls_versions_table_output(versions: List[Version], include_labels: bool, include_stats: bool) -> None:
         tbl = PrettyTable()
 
-        field_names = ['date', 'uid', 'name', 'snapshot', 'size', 'block_size', 'status', 'protected', 'storage']
+        field_names = ['date', 'uid', 'volume', 'snapshot', 'size', 'block_size', 'status', 'protected', 'storage']
         if include_stats:
             field_names.extend(['read', 'written', 'dedup', 'sparse', 'duration'])
         if include_labels:
             field_names.append('labels')
         tbl.field_names = field_names
 
-        tbl.align['name'] = 'l'
+        tbl.align['volume'] = 'l'
         tbl.align['snapshot'] = 'l'
         tbl.align['storage'] = 'l'
         tbl.align['size'] = 'r'
@@ -247,8 +250,8 @@ class Commands:
         for version in versions:
             row = [
                 PrettyPrint.local_time(version.date),
-                version.uid.v_string,
-                version.name,
+                version.uid,
+                version.volume,
                 version.snapshot,
                 PrettyPrint.bytes(version.size),
                 PrettyPrint.bytes(version.block_size),
@@ -354,7 +357,7 @@ class Commands:
         tbl.field_names = ['uid']
         tbl.align['uid'] = 'l'
         for version_uid in version_uids:
-            tbl.add_row([version_uid.v_string])
+            tbl.add_row([version_uid])
         print(tbl)
 
     def metadata_ls(self, storage: str = None) -> None:
@@ -364,7 +367,7 @@ class Commands:
             version_uids = benji_obj.metadata_ls(storage)
             if self.machine_output:
                 json.dump(
-                    [version_uid.v_string for version_uid in version_uids],
+                    [version_uid for version_uid in version_uids],
                     sys.stdout,
                     indent=2,
                 )
@@ -386,10 +389,9 @@ class Commands:
                 benji_obj.rm_label(version_uid_obj, name)
             if label_add:
                 logger.info('Added label(s) to version {}: {}.'.format(
-                    version_uid_obj.v_string, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                    version_uid_obj, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
             if label_remove:
-                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj.v_string,
-                                                                           ', '.join(label_remove)))
+                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj, ', '.join(label_remove)))
         finally:
             if benji_obj:
                 benji_obj.close()

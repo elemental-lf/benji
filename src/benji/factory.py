@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import importlib
-from typing import Dict, NamedTuple, Any, List
+from typing import Dict, NamedTuple, Any
 from urllib import parse
 
 from benji.config import Config, ConfigList

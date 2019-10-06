@@ -119,11 +119,11 @@ class RetentionFilter(ReprMixIn):
                 td = _Timedelta(version.date.replace(tzinfo=datetime.timezone.utc), self.reference_time, tz=self.tz)
             except ValueError as exception:
                 # Err on the safe side, ignore this versions (i.e. it won't be dismissed)
-                logger.warning('Version {}: {}.'.format(version.uid.v_string, exception))
+                logger.warning('Version {}: {}.'.format(version.uid, exception))
                 continue
 
             logger.debug('Time and time delta for version {} are {} and {}.'.format(
-                version.uid.v_string, version.date.isoformat(timespec='seconds'), td))
+                version.uid, version.date.isoformat(timespec='seconds'), td))
 
             for category in categories:
                 timecount = getattr(td, category)
