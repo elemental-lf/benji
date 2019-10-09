@@ -55,6 +55,10 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
         if pv_fsfreeze:
             pods = core_v1_api.list_namespaced_pod(benji.helpers.kubernetes.service_account_namespace(),
                                                    label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
+
+            if not pods:
+                logger.error('No fsfreeze pods found (label selector {FSFREEZE_POD_LABEL_SELECTOR}).')
+
             for pod in pods:
                 if not hasattr(pod.status, 'host_ip') or not hasattr(pod.status, 'phase'):
                     continue
@@ -206,7 +210,7 @@ def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, ve
         benji.helpers.kubernetes.create_pvc_event(
             type='Normal',
             reason='SuccessfulBackup',
-            message=f'Backup to V{version["uid"]:09d} completed successfully (took {completion_time - start_time:.0f} seconds).',
+            message=f'Backup to {version["uid"]} completed successfully (took {completion_time - start_time:.0f} seconds).',
             pvc_namespace=pvc_namespace,
             pvc_name=pvc_name,
             pvc_uid=pvc_uid)
@@ -303,7 +307,7 @@ for pvc in pvcs:
 
     if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
         # Native Kubernetes RBD PV
-        pool, image = spec.rbd.pool, spec.rbd.image
+        pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
     elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
             pv.spec.flex_volume, 'driver'):
         # Rook Ceph PV
@@ -322,7 +326,7 @@ for pvc in pvcs:
         'benji-backup.me/ceph-pool': pool,
         'benji-backup.me/ceph-rbd-image': image,
         'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
-        'benji-backup.me/k8s-pvc-name': pvc.metadata.name,
+        'benji-backup.me/k8s-pvc': pvc.metadata.name,
         'benji-backup.me/k8s-pv': pv.metadata.name
     }
 

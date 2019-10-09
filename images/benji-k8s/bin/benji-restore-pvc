@@ -22,7 +22,7 @@ parser.add_argument('-f',
                     action='store_true',
                     default=False,
                     help='Overwrite content of existing persistent volumes')
-parser.add_argument(metavar='version', dest='version', help='Version name')
+parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
 parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
 
@@ -31,17 +31,17 @@ args = parser.parse_args()
 benji.helpers.kubernetes.load_config()
 core_v1_api = kubernetes.client.CoreV1Api()
 
-logger.info(f'Restoring version {args.version} to PVC {args.pvc_namespace}/{args.pvc_name}.')
+logger.info(f'Restoring version {args.version_uid} to PVC {args.pvc_namespace}/{args.pvc_name}.')
 
 benji_ls = utils.subprocess_run(
-    ['benji', '--machine-output', '--log-level', settings.benji_log_level, 'ls', f'uid == "{args.version}"'],
+    ['benji', '--machine-output', '--log-level', settings.benji_log_level, 'ls', f'uid == "{args.version_uid}"'],
     decode_json=True)
 assert isinstance(benji_ls, dict)
 assert 'versions' in benji_ls
 assert isinstance(benji_ls['versions'], list)
 
 if len(benji_ls['versions']) == 0:
-    raise RuntimeError(f'Size of {args.version} could not be determined.')
+    raise RuntimeError(f'Size of {args.version_uid} could not be determined.')
 
 assert isinstance(benji_ls['versions'][0], dict)
 assert isinstance(benji_ls['versions'][0]['size'], int)
@@ -63,9 +63,11 @@ else:
         raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
 
     # I don't really understand why capacity is a regular dict and not an object. Oh, well.
-    pvc_size = benji.helpers.kubernetes.parse_quantity(pvc.status.capacity['storage'])
+    pvc_size = int(benji.helpers.kubernetes.parse_quantity(pvc.status.capacity['storage']))
     if pvc_size < version_size:
-        raise RuntimeError(f'Existing PVC is too small to hold version {args.version} ({pvc_size} < {version_size}).')
+        raise RuntimeError(f'Existing PVC is too small to hold version {args.version_uid} ({pvc_size} < {version_size}).')
+    elif pvc_size > version_size:
+        logger.warning(f'Existing PVC is {pvc_size - version_size} bytes bigger than version {args.version_uid}.')
 
 while True:
     pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
@@ -77,7 +79,7 @@ while True:
 pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
 
 utils.subprocess_run([
-    'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version,
+    'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version_uid,
     f'rbd:{pv.spec.rbd.pool}/{pv.spec.rbd.image}'
 ])
 sys.exit(0)

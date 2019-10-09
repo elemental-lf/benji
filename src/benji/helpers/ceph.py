@@ -62,7 +62,7 @@ def backup_initial(*, volume: str, pool: str, image: str, version_labels: Dict[s
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
-            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot-name', snapshot,
+            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot', snapshot,
             '--rbd-hints', rbd_hints.name
         ]
         for label_name, label_value in version_labels.items():
@@ -79,11 +79,11 @@ def backup_differential(*,
                         pool: str,
                         image: str,
                         last_snapshot: str,
-                        last_version_uid: int,
+                        last_version_uid: str,
                         version_labels: Dict[str, str],
                         context: Any = None) -> Dict[str, str]:
     logger.info(f'Performing differential backup of {volume}:{pool}/{image} from RBD snapshot" \
-        "{last_snapshot} and Benji version V{last_version_uid:09d}.')
+        "{last_snapshot} and Benji version {last_version_uid}.')
 
     now = datetime.utcnow()
     snapshot = now.strftime(RBD_SNAP_NAME_PREFIX + '%Y-%m-%dT%H:%M:%SZ')
@@ -97,9 +97,8 @@ def backup_differential(*,
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
-            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot-name', snapshot,
-            '--rbd-hints', rbd_hints.name, '--base-version',
-            str(last_version_uid)
+            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshote ', snapshot,
+            '--rbd-hints', rbd_hints.name, '--base-version', last_version_uid
         ]
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
@@ -143,7 +142,7 @@ def backup(*, volume: str, pool: str, image: str, version_labels: Dict[str, str]
 
             benji_ls = subprocess_run([
                 'benji', '--machine-output', '--log-level', benji_log_level, 'ls',
-                f'name == "{volume}" and snapshot == "{last_snapshot}" and status == "valid"'
+                f'volume == "{volume}" and snapshot == "{last_snapshot}" and status == "valid"'
             ],
                                       decode_json=True)
             assert isinstance(benji_ls, dict)
