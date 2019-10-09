@@ -21,6 +21,12 @@ rules:
 - apiGroups:
     - ""
   resources:
+    - persistentvolumeclaims
+  verbs:
+    - create
+- apiGroups:
+    - ""
+  resources:
     - events
   verbs:
     - create
@@ -39,4 +45,6 @@ rules:
   - pods/exec
   verbs:
   - create
+  # Also needs GET where kubectl doesn't, see https://github.com/kubernetes-client/python/issues/690#issuecomment-459010364
+  - get
 {{- end}}
