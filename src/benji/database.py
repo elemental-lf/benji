@@ -117,10 +117,10 @@ class VersionStatusType(sqlalchemy.types.TypeDecorator):
 @total_ordering
 class VersionUid(StorageKeyMixIn['VersionUid']):
 
-    def __init__(self, name: str, validation: bool = True) -> None:
+    def __init__(self, name: str) -> None:
         if not isinstance(name, str):
             raise InternalError(f'Unexpected type {type(name)} in constructor.')
-        if validation and not InputValidation.is_version_uid(name):
+        if not InputValidation.is_version_uid(name):
             raise InputDataError('Version name {} is invalid.'.format(name))
         self._value = name
 
@@ -1052,8 +1052,8 @@ class DatabaseBackend(ReprMixIn):
             if 'uid' not in version_dict:
                 raise InputDataError('Missing attribute uid in version.')
 
-            # This disables validation to allow old version names to work
-            version_uid = VersionUid(f'V{version_dict["uid"]:09d}', validate=False)
+            # Will raise ValueError when invalid
+            version_uid = VersionUid(f'v{version_dict["uid"]:09d}')
             version_dict['uid'] = str(version_uid)
 
             attributes_to_check = ['labels', 'blocks', 'date', 'storage_id', 'name']
