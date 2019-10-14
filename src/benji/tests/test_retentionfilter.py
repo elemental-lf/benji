@@ -26,19 +26,18 @@ class RetentionFilterTestCase(TestCase):
     versions: Set[Version]
 
     @staticmethod
-    def _make_version(uid: int, date: datetime.datetime) -> Version:
+    def _make_version(uid: str, date: datetime.datetime) -> Version:
         version = MagicMock(spec=('uid', 'date', '__repr__'))
         version.uid = VersionUid(uid)
         version.date = date
         version.__repr__ = Mock()
-        version.__repr__.return_value = '{} - {}'.format(version.uid,
-                                                         version.date.isoformat(timespec='seconds'))
+        version.__repr__.return_value = '{} - {}'.format(version.uid, version.date.isoformat(timespec='seconds'))
         return version
 
     @classmethod
     def setUpClass(cls) -> None:
         timestamps = (cls.REF_TIME - dateutil.relativedelta.relativedelta(minutes=n * 15) for n in range(0, 8640 + 1))
-        cls.versions = set([cls._make_version(c, t) for c, t in zip(count(start=1), timestamps)])
+        cls.versions = set([cls._make_version(f'v{c}', t) for c, t in zip(count(start=1), timestamps)])
 
     @parameterized.expand([
         ('latest3', 3, 15 * 60),
@@ -164,7 +163,7 @@ class RetentionFilterTestCase(TestCase):
             # Add four new versions
             for minute in (15, 30, 45, 60):
                 remaining_versions.add(
-                    self._make_version(1000000 + hour * 60 + minute,
+                    self._make_version('v{}'.format(1000000 + hour * 60 + minute),
                                        current_time + dateutil.relativedelta.relativedelta(minutes=minute)))
 
             previous_versions_by_category_remaining = versions_by_category_remaining
