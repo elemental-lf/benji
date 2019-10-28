@@ -97,7 +97,7 @@ def backup_differential(*,
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
-            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshote ', snapshot,
+            'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot', snapshot,
             '--rbd-hints', rbd_hints.name, '--base-version', last_version_uid
         ]
         for label_name, label_value in version_labels.items():
