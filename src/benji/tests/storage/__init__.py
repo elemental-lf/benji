@@ -113,13 +113,13 @@ class StorageTestCase(StorageTestCaseBase):
 
     def test_version_uid_to_key(self):
         for i in range(100):
-            version_uid = VersionUid(random.randint(1, pow(2, 32) - 1))
+            version_uid = VersionUid('v{}'.format(random.randint(1, pow(2, 32) - 1)))
             key = version_uid.storage_object_to_path()
             version_uid_2 = VersionUid.storage_path_to_object(key)
             self.assertEqual(version_uid, version_uid_2)
 
     def test_version(self):
-        version_uid = VersionUid(1)
+        version_uid = VersionUid('v1')
         self.storage.write_version(version_uid, 'Hallo')
         data = self.storage.read_version(version_uid)
         self.assertEqual('Hallo', data)
