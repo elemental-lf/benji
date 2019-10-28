@@ -233,6 +233,7 @@ class Commands:
             field_names.append('labels')
         tbl.field_names = field_names
 
+        tbl.align['uid'] = 'l'
         tbl.align['volume'] = 'l'
         tbl.align['snapshot'] = 'l'
         tbl.align['storage'] = 'l'
