@@ -228,7 +228,7 @@ class Commands:
 
         field_names = ['date', 'uid', 'volume', 'snapshot', 'size', 'block_size', 'status', 'protected', 'storage']
         if include_stats:
-            field_names.extend(['read', 'written', 'dedup', 'sparse', 'duration'])
+            field_names.extend(['read', 'written', 'deduplicated', 'sparse', 'duration'])
         if include_labels:
             field_names.append('labels')
         tbl.field_names = field_names
@@ -242,7 +242,7 @@ class Commands:
 
         tbl.align['read'] = 'r'
         tbl.align['written'] = 'r'
-        tbl.align['dedup'] = 'r'
+        tbl.align['deduplicated'] = 'r'
         tbl.align['sparse'] = 'r'
         tbl.align['duration'] = 'r'
 
@@ -265,7 +265,7 @@ class Commands:
                 row.extend([
                     PrettyPrint.bytes(version.bytes_read) if version.bytes_read is not None else '',
                     PrettyPrint.bytes(version.bytes_written) if version.bytes_written is not None else '',
-                    PrettyPrint.bytes(version.bytes_dedup) if version.bytes_dedup is not None else '',
+                    PrettyPrint.bytes(version.bytes_deduplicated) if version.bytes_deduplicated is not None else '',
                     PrettyPrint.bytes(version.bytes_sparse) if version.bytes_sparse is not None else '',
                     PrettyPrint.duration(version.duration) if version.duration is not None else '',
                 ])

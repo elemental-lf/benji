@@ -320,7 +320,7 @@ class Version(Base):
     # Statistics
     bytes_read = sqlalchemy.Column(sqlalchemy.BigInteger)
     bytes_written = sqlalchemy.Column(sqlalchemy.BigInteger)
-    bytes_dedup = sqlalchemy.Column(sqlalchemy.BigInteger)
+    bytes_deduplicated = sqlalchemy.Column(sqlalchemy.BigInteger)
     bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger)
     duration = sqlalchemy.Column(sqlalchemy.BigInteger)
 
@@ -626,13 +626,13 @@ class DatabaseBackend(ReprMixIn):
 
         return version
 
-    def set_version_stats(self, *, version_uid: VersionUid, bytes_read: int, bytes_written: int, bytes_dedup: int,
-                          bytes_sparse: int, duration: int) -> None:
+    def set_version_stats(self, *, version_uid: VersionUid, bytes_read: int, bytes_written: int,
+                          bytes_deduplicated: int, bytes_sparse: int, duration: int) -> None:
         try:
             version = self.get_version(version_uid)
             version.bytes_read = bytes_read
             version.bytes_written = bytes_written
-            version.bytes_dedup = bytes_dedup
+            version.bytes_deduplicated = bytes_deduplicated
             version.bytes_sparse = bytes_sparse
             version.duration = duration
             self._session.commit()
@@ -1069,9 +1069,12 @@ class DatabaseBackend(ReprMixIn):
             if metadata_version.minor == 0:
                 version_dict['bytes_read'] = None
                 version_dict['bytes_written'] = None
-                version_dict['bytes_dedup'] = None
+                version_dict['bytes_deduplicated'] = None
                 version_dict['bytes_sparse'] = None
                 version_dict['duration'] = None
+            else:
+                version_dict['bytes_deduplicated'] = version_dict['bytes_dedup']
+                del version_dict['bytes_dedup']
 
             if not isinstance(version_dict['labels'], list):
                 raise InputDataError('Wrong data type for labels in version {}.'.format(version_uid))
@@ -1132,7 +1135,7 @@ class DatabaseBackend(ReprMixIn):
                 'labels',
                 'bytes_read',
                 'bytes_written',
-                'bytes_dedup',
+                'bytes_deduplicated',
                 'bytes_sparse',
                 'duration',
             ]
@@ -1192,7 +1195,7 @@ class DatabaseBackend(ReprMixIn):
                 protected=version_dict['protected'],
                 bytes_read=version_dict['bytes_read'],
                 bytes_written=version_dict['bytes_written'],
-                bytes_dedup=version_dict['bytes_dedup'],
+                bytes_deduplicated=version_dict['bytes_deduplicated'],
                 bytes_sparse=version_dict['bytes_sparse'],
                 duration=version_dict['duration'],
             )

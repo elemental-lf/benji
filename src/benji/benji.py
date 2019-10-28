@@ -785,7 +785,7 @@ class Benji(ReprMixIn):
         stats: Dict[str, Any] = {
             'bytes_read': 0,
             'bytes_written': 0,
-            'bytes_dedup': 0,
+            'bytes_deduplicated': 0,
             'bytes_sparse': 0,
             'start_time': time.time(),
         }
@@ -931,7 +931,7 @@ class Benji(ReprMixIn):
                                                      checksum=existing_block.checksum,
                                                      size=existing_block.size,
                                                      valid=True)
-                    stats['bytes_dedup'] += len(data)
+                    stats['bytes_deduplicated'] += len(data)
                     logger.debug('Found existing block for id {} with UID {}'.format(block.idx, existing_block.uid))
                 else:
                     block.uid = BlockUid(version.id, block.idx + 1)
@@ -1015,7 +1015,7 @@ class Benji(ReprMixIn):
             version_uid=version.uid,
             bytes_read=stats['bytes_read'],
             bytes_written=stats['bytes_written'],
-            bytes_dedup=stats['bytes_dedup'],
+            bytes_deduplicated=stats['bytes_deduplicated'],
             bytes_sparse=stats['bytes_sparse'],
             duration=int(time.time() - stats['start_time']),
         )

@@ -127,7 +127,7 @@ class ImportExportTestCase():
 
         self.assertIsNone(version.bytes_read)
         self.assertIsNone(version.bytes_written)
-        self.assertIsNone(version.bytes_dedup)
+        self.assertIsNone(version.bytes_deduplicated)
         self.assertIsNone(version.bytes_sparse)
         self.assertIsNone(version.duration)
 
@@ -159,7 +159,7 @@ class ImportExportTestCase():
 
         self.assertEqual(1, version.bytes_read)
         self.assertEqual(2, version.bytes_written)
-        self.assertEqual(3, version.bytes_dedup)
+        self.assertEqual(3, version.bytes_deduplicated)
         self.assertEqual(4, version.bytes_sparse)
         self.assertEqual(5, version.duration)
 
@@ -203,7 +203,7 @@ class ImportExportTestCase():
 
         self.assertEqual(1, version.bytes_read)
         self.assertEqual(2, version.bytes_written)
-        self.assertEqual(3, version.bytes_dedup)
+        self.assertEqual(3, version.bytes_deduplicated)
         self.assertEqual(4, version.bytes_sparse)
         self.assertEqual(5, version.duration)
 
@@ -445,7 +445,7 @@ class ImportExportTestCase():
                   "protected": false,
                   "bytes_read": 1,
                   "bytes_written": 2,
-                  "bytes_dedup": 3,
+                  "bytes_deduplicated": 3,
                   "bytes_sparse": 4,
                   "duration": 5,
                   "labels": {
@@ -476,7 +476,7 @@ class ImportExportTestCase():
                   "protected": false,
                   "bytes_read": 1,
                   "bytes_written": 2,
-                  "bytes_dedup": 3,
+                  "bytes_deduplicated": 3,
                   "bytes_sparse": 4,
                   "duration": 5,
                    "labels": {
@@ -507,7 +507,7 @@ class ImportExportTestCase():
                   "protected": false,
                   "bytes_read": 1,
                   "bytes_written": 2,
-                  "bytes_dedup": 3,
+                  "bytes_deduplicated": 3,
                   "bytes_sparse": 4,
                   "duration": 5,
                   "labels": {
