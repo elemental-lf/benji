@@ -1108,6 +1108,9 @@ class DatabaseBackend(ReprMixIn):
             version_dict['storage'] = self._session.query(Storage).get(version_dict['storage_id']).name
             del version_dict['storage_id']
 
+            version_dict['snapshot'] = version_dict['snapshot_name']
+            del version_dict['snapshot_name']
+
         return self.import_v2(metadata_version, json_input)
 
     def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
