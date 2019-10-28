@@ -111,7 +111,7 @@ class ImportExportTestCase():
     def test_import_1_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
-        version_uid = VersionUid('V000000001')
+        version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
         version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
@@ -143,7 +143,7 @@ class ImportExportTestCase():
     def test_import_1_1_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
-        version_uid = VersionUid('V000000001')
+        version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
         version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
@@ -187,7 +187,7 @@ class ImportExportTestCase():
     def test_import_2_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
-        version_uid = VersionUid('v000000001')
+        version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_2_0_0))
         version = benji_obj.ls(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
@@ -434,7 +434,7 @@ class ImportExportTestCase():
             {
               "versions": [
                 {
-                  "uid": "v000000001",
+                  "uid": "V0000000001",
                   "date": "2018-12-19T20:28:18.123456Z",
                   "volume": "data-backup",
                   "snapshot": "snapshot-name",

@@ -49,7 +49,7 @@ def upgrade():
     versions_new = sa.Table('versions_new', metadata, autoload_with=conn)
 
     for version in conn.execute(versions.select()):
-        conn.execute(versions_new.insert().values(uid=f'V{version.uid:09d}',
+        conn.execute(versions_new.insert().values(uid=f'V{version.uid:010d}',
                                                   uid_old=version.uid,
                                                   date=version.date,
                                                   volume=version.name,

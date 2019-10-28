@@ -1053,7 +1053,7 @@ class DatabaseBackend(ReprMixIn):
                 raise InputDataError('Missing attribute uid in version.')
 
             # Will raise ValueError when invalid
-            version_uid = VersionUid(f'V{version_dict["uid"]:09d}')
+            version_uid = VersionUid(f'V{version_dict["uid"]:010d}')
             version_dict['uid'] = str(version_uid)
 
             attributes_to_check = ['labels', 'blocks', 'date', 'storage_id', 'name']
