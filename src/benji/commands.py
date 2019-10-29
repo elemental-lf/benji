@@ -31,7 +31,7 @@ class Commands:
     def backup(self, version_uid: str, volume: str, snapshot: str, source: str, rbd_hints: str, base_version_uid: str,
                block_size: int, labels: List[str], storage: str) -> None:
         if version_uid is None:
-            version_uid = '{}-{}'.format(volume, random_string(6))
+            version_uid = '{}-{}'.format(volume[:248], random_string(6))
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 

@@ -115,7 +115,7 @@ class RestAPI:
                 block_size: fields.Int(missing=None), labels: fields.DelimitedList(fields.Str(), missing=None),
                 storage_name: fields.Str(missing=None)) -> str:
         if version_uid is None:
-            version_uid = '{}-{}'.format(volume, random_string(6))
+            version_uid = '{}-{}'.format(volume[:248], random_string(6))
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
