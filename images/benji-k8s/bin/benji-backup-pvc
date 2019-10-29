@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import random
+import string
 import sys
 import time
 from typing import Any, Dict, Optional, Tuple
@@ -23,6 +25,10 @@ KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/r
 
 utils.setup_logging()
 logger = logging.getLogger()
+
+
+def _random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
+    return ''.join(random.choice(characters) for _ in range(length))
 
 
 def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
@@ -320,6 +326,8 @@ for pvc in pvcs:
         continue
 
     volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
+    # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
+    version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}' [:246], _random_string(6))
 
     version_labels = {
         'benji-backup.me/instance': settings.benji_instance,
@@ -331,7 +339,12 @@ for pvc in pvcs:
     }
 
     context = {'pvc': pvc}
-    ceph.backup(volume=volume, pool=pool, image=image, version_labels=version_labels, context=context)
+    ceph.backup(volume=volume,
+                pool=pool,
+                image=image,
+                version_uid=version_uid,
+                version_labels=version_labels,
+                context=context)
 
 prometheus.push(prometheus.backup_registry)
 sys.exit(0)

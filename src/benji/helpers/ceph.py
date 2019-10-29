@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from tempfile import NamedTemporaryFile
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from blinker import signal
 
@@ -48,7 +48,12 @@ def snapshot_create(*, volume: str, pool: str, image: str, snapshot: str, contex
                                                  context=context)
 
 
-def backup_initial(*, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def backup_initial(*,
+                   volume: str,
+                   pool: str,
+                   image: str,
+                   version_labels: Dict[str, str],
+                   version_uid: Optional[str],
                    context: Any = None) -> Dict[str, str]:
     logger.info(f'Performing initial backup of {volume}:{pool}/{image}')
 
@@ -65,6 +70,8 @@ def backup_initial(*, volume: str, pool: str, image: str, version_labels: Dict[s
             'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot', snapshot,
             '--rbd-hints', rbd_hints.name
         ]
+        if version_uid is not None:
+            benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
         benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
@@ -81,6 +88,7 @@ def backup_differential(*,
                         last_snapshot: str,
                         last_version_uid: str,
                         version_labels: Dict[str, str],
+                        version_uid: Optional[str],
                         context: Any = None) -> Dict[str, str]:
     logger.info(f'Performing differential backup of {volume}:{pool}/{image} from RBD snapshot" \
         "{last_snapshot} and Benji version {last_version_uid}.')
@@ -100,6 +108,8 @@ def backup_differential(*,
             'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot', snapshot,
             '--rbd-hints', rbd_hints.name, '--base-version', last_version_uid
         ]
+        if version_uid is not None:
+            benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
         benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
@@ -109,7 +119,13 @@ def backup_differential(*,
     return result
 
 
-def backup(*, volume: str, pool: str, image: str, version_labels: Dict[str, str] = {}, context: Any = None):
+def backup(*,
+           volume: str,
+           pool: str,
+           image: str,
+           version_labels: Dict[str, str] = {},
+           version_uid: str = None,
+           context: Any = None):
     signal_backup_pre.send(SIGNAL_SENDER,
                            volume=volume,
                            pool=pool,
@@ -129,6 +145,7 @@ def backup(*, volume: str, pool: str, image: str, version_labels: Dict[str, str]
             result = backup_initial(volume=volume,
                                     pool=pool,
                                     image=image,
+                                    version_uid=version_uid,
                                     version_labels=version_labels,
                                     context=context)
         else:
@@ -150,11 +167,14 @@ def backup(*, volume: str, pool: str, image: str, version_labels: Dict[str, str]
             assert isinstance(benji_ls['versions'], list)
             if len(benji_ls['versions']) > 0:
                 assert 'uid' in benji_ls['versions'][0]
+                last_version_uid = benji_ls['versions'][0]['uid']
+                assert isinstance(last_version_uid, str)
                 result = backup_differential(volume=volume,
                                              pool=pool,
                                              image=image,
                                              last_snapshot=last_snapshot,
-                                             last_version_uid=benji_ls['versions'][0]['uid'],
+                                             last_version_uid=last_version_uid,
+                                             version_uid=version_uid,
                                              version_labels=version_labels,
                                              context=context)
             else:
@@ -163,6 +183,7 @@ def backup(*, volume: str, pool: str, image: str, version_labels: Dict[str, str]
                 result = backup_initial(volume=volume,
                                         pool=pool,
                                         image=image,
+                                        version_uid=version_uid,
                                         version_labels=version_labels,
                                         context=context)
         assert 'versions' in result and isinstance(result['versions'], list)
