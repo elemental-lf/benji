@@ -1365,7 +1365,7 @@ class BenjiStore(ReprMixIn):
 
     def get_cow_version(self, base_version: Version) -> Version:
         cow_version = self._benji_obj._prepare_version(
-            version_uid='{}-{}'.format(f'nbd-cow-{base_version.uid}' [:248], random_string(6)),
+            version_uid=VersionUid('{}-{}'.format(f'nbd-cow-{base_version.uid}' [:248], random_string(6))),
             volume=base_version.volume,
             snapshot=datetime.datetime.now().isoformat(timespec='microseconds') + 'Z',
             base_version_uid=base_version.uid,
