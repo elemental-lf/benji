@@ -38,9 +38,9 @@ def upgrade():
                     sa.ForeignKeyConstraint(['storage_id'], ['storages.id'],
                                             name=op.f('fk_versions_storage_id_storages')),
                     sa.PrimaryKeyConstraint('id', name=op.f('pk_versions')),
+                    sa.UniqueConstraint('uid', name=op.f('uq_versions_uid')),
                     sqlite_autoincrement=True)
     with op.batch_alter_table('versions_new', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_versions_uid'), ['uid'], unique=True)
         batch_op.create_index(batch_op.f('ix_versions_volume'), ['volume'], unique=False)
 
     conn = op.get_bind()

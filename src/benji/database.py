@@ -301,7 +301,7 @@ class Version(Base):
     __table_args__ = {'sqlite_autoincrement': True}
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
-    uid = sqlalchemy.Column(VersionUidType, index=True, unique=True, nullable=False)
+    uid = sqlalchemy.Column(VersionUidType, unique=True, nullable=False)
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
     volume = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
     snapshot = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
