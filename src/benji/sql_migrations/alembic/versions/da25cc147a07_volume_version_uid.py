@@ -16,8 +16,13 @@ depends_on = None
 
 
 def upgrade():
-    # As we're going to change the primary key we need a new table first
-    # as SQLite 3 doesn't allow changing the primary key.
+    # Constraint names need to be globally unique with PostgreSQL (and they share the same namespace as tables)
+    # For the benefit of PostgreSQL drop the primary key constraints before recreating them below to avoid collisions.
+    if (op.get_context().dialect.name == 'psycopg2'):
+        op.execute('ALTER TABLE versions RENAME CONSTRAINT "pk_versions" TO "pk_versions_old"')
+        op.execute('ALTER TABLE blocks RENAME CONSTRAINT "pk_blocks" TO "pk_blocks_old"')
+        op.execute('ALTER TABLE blocks RENAME CONSTRAINT "pk_labels" TO "pk_labels_old"')
+
     op.create_table('versions_new',
                     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
                     sa.Column('uid', sa.String(length=255), nullable=False),
