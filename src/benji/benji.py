@@ -330,7 +330,7 @@ class Benji(ReprMixIn):
             affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
-                             .format(', '.join([affected_version for affected_version in sorted(affected_version_uids)])))
+                             .format(', '.join([str(affected_version) for affected_version in sorted(affected_version_uids)])))
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid))
 
     def deep_scrub(self,
@@ -453,7 +453,7 @@ class Benji(ReprMixIn):
                 affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
-                             .format(', '.join([affected_version for affected_version in sorted(affected_version_uids)])))
+                             .format(', '.join([str(affected_version) for affected_version in sorted(affected_version_uids)])))
 
         self._locking.unlock_version(version_uid)
 
