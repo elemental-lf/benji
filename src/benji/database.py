@@ -479,9 +479,7 @@ class Storage(Base):
 
     # # Use INTEGER to get AUTOINCREMENT on SQLite.
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
-
-    __table_args__ = (sqlalchemy.UniqueConstraint('name'),)
+    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, unique=True)
 
 
 class DatabaseBackend(ReprMixIn):
