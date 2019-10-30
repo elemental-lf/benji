@@ -132,6 +132,7 @@ class IO(IOBase):
         return self._rbd_image.size()
 
     def _submit_aio_reads(self):
+        assert self._rbd_image is not None
         while len(self._read_queue) > 0 and self._outstanding_aio_reads < self._simultaneous_reads:
             block = self._read_queue.pop()
             t1 = time.time()
