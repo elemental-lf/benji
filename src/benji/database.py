@@ -514,6 +514,10 @@ class DatabaseBackend(ReprMixIn):
         return [table for table in self._engine.table_names() if table != 'sqlite_sequence']
 
     def _migration_needed(self, alembic_config: alembic_config_Config) -> Tuple[bool, str, str]:
+        table_names = self._database_tables()
+        if not table_names:
+            raise RuntimeError('Database schema appears to be empty, it needs to be initialized.')
+
         with self._engine.begin() as connection:
             alembic_config.attributes['connection'] = connection
             script = ScriptDirectory.from_config(alembic_config)
@@ -532,10 +536,6 @@ class DatabaseBackend(ReprMixIn):
         return ((head_revision != current_revision), current_revision, head_revision)
 
     def migrate(self) -> None:
-        table_names = self._database_tables()
-        if not table_names:
-            raise RuntimeError('Database schema appears to be empty. Not touching anything.')
-
         alembic_config = self._alembic_config()
         migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
         if migration_needed:
@@ -549,6 +549,7 @@ class DatabaseBackend(ReprMixIn):
 
     def open(self) -> 'DatabaseBackend':
         alembic_config = self._alembic_config()
+
         migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
         if migration_needed:
             logger.info('Current database schema revision: {}.'.format(current_revision))
