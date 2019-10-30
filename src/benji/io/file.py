@@ -83,17 +83,15 @@ class IO(IOBase):
         return block, data
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
-        block_deref = block.deref() if isinstance(block, Block) else block
 
         def job():
-            return self._read(block_deref)
+            return self._read(block.deref())
 
         assert self._read_executor is not None
         self._read_executor.submit(job)
 
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
-        block_deref = block.deref() if isinstance(block, Block) else block
-        return self._read(block_deref)[1]
+        return self._read(block.deref())[1]
 
     def read_get_completed(self, timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
@@ -118,16 +116,16 @@ class IO(IOBase):
         assert written == len(data)
         return block
 
-    def write(self, block: DereferencedBlock, data: bytes) -> None:
+    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
 
         def job():
-            return self._write(block, data)
+            return self._write(block.deref(), data)
 
         assert self._write_executor is not None
         self._write_executor.submit(job)
 
-    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
-        self._write(block, data)
+    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        self._write(block.deref(), data)
 
     def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         assert self._write_executor is not None

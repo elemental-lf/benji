@@ -174,12 +174,10 @@ class IO(IOBase):
         return block, data
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
-        block_deref = block.deref() if isinstance(block, Block) else block
-        self._read_queue.append(block_deref)
+        self._read_queue.append(block.deref())
 
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
-        block_deref = block.deref() if isinstance(block, Block) else block
-        return self._read(block_deref)[1]
+        return self._read(block.deref())[1]
 
     def read_get_completed(self, timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
@@ -214,12 +212,12 @@ class IO(IOBase):
 
         return block
 
-    def write(self, block: DereferencedBlock, data: bytes) -> None:
+    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         assert self._outstanding_write is None
-        self._outstanding_write = (block, data)
+        self._outstanding_write = (block.deref(), data)
 
-    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
-        self._write(block, data)
+    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        self._write(block.deref(), data)
 
     def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         if self._outstanding_write is not None:

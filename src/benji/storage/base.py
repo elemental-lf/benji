@@ -215,16 +215,14 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         return block
 
     def write_block_async(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
-        block_deref = block.deref() if isinstance(block, Block) else block
 
         def job():
-            return self._write(block_deref, data)
+            return self._write(block.deref(), data)
 
         self._write_executor.submit(job)
 
     def write_block(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
-        block_deref = block.deref() if isinstance(block, Block) else block
-        self._write(block_deref, data)
+        self._write(block.deref(), data)
 
     def write_get_completed(self, timeout: int = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         return self._write_executor.get_completed(timeout=timeout)

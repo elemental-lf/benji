@@ -145,8 +145,7 @@ class IO(IOBase):
             self._outstanding_aio_reads += 1
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
-        block_deref = block.deref() if isinstance(block, Block) else block
-        self._read_queue.appendleft(block_deref)
+        self._read_queue.appendleft(block.deref())
         self._submit_aio_reads()
 
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
@@ -224,11 +223,12 @@ class IO(IOBase):
             self._rbd_image.aio_write(data, offset, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
             self._outstanding_aio_writes += 1
 
-    def write(self, block: DereferencedBlock, data: bytes) -> None:
-        self._write_queue.appendleft((block, data))
+    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        assert self._rbd_image is not None
+        self._write_queue.appendleft((block.deref(), data))
         self._submit_aio_writes()
 
-    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
+    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         assert self._rbd_image is not None
         offset = block.idx * self.block_size
         t1 = time.time()

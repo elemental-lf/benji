@@ -59,19 +59,18 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def read_get_completed(
-            self, timeout: Optional[int] = None) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
+    def read_get_completed(self, timeout: Optional[int] = None
+                          ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         raise NotImplementedError
 
     @abstractmethod
-    def write(self, block: DereferencedBlock, data: bytes) -> None:
+    def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def write_sync(self, block: DereferencedBlock, data: bytes) -> None:
+    def write_sync(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         raise NotImplementedError
-

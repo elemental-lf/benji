@@ -405,6 +405,9 @@ class DereferencedBlock(ReprMixIn):
     def uid_right(self) -> Optional[int]:
         return self._uid.right
 
+    def deref(self) -> 'DereferencedBlock':
+        return self
+
 
 class Block(Base):
     __tablename__ = 'blocks'
