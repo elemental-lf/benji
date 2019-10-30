@@ -567,6 +567,7 @@ class Benji(ReprMixIn):
                         for written_block in io.write_get_completed(timeout=0):
                             if isinstance(written_block, Exception):
                                 raise written_block
+                            assert isinstance(written_block, DereferencedBlock)
                             done_write_jobs += 1
                             written += written_block.size
 
@@ -583,6 +584,7 @@ class Benji(ReprMixIn):
                 for written_block in io.write_get_completed():
                     if isinstance(written_block, Exception):
                         raise written_block
+                    assert isinstance(written_block, DereferencedBlock)
                     done_write_jobs += 1
                     written += written_block.size
 
@@ -645,6 +647,7 @@ class Benji(ReprMixIn):
                     for written_block in io.write_get_completed(timeout=0):
                         if isinstance(written_block, Exception):
                             raise written_block
+                        assert isinstance(written_block, DereferencedBlock)
                         done_write_jobs += 1
                         written += written_block.size
 
@@ -662,6 +665,7 @@ class Benji(ReprMixIn):
                 for written_block in io.write_get_completed():
                     if isinstance(written_block, Exception):
                         raise written_block
+                    assert isinstance(written_block, DereferencedBlock)
                     done_write_jobs += 1
                     written += written_block.size
 
@@ -1211,6 +1215,7 @@ class _BlockCache:
         self._block_cache = set()
 
     def _cache_filename(self, block_uid: BlockUid) -> str:
+        assert block_uid.left is not None and block_uid.right is not None
         filename = '{:016x}-{:016x}'.format(block_uid.left, block_uid.right)
         digest = hashlib.md5(filename.encode('ascii')).hexdigest()
         return os.path.join(self._cache_directory, '{}/{}/{}'.format(digest[0:2], digest[2:4], filename))
@@ -1336,6 +1341,7 @@ class BenjiStore(ReprMixIn):
         for block, offset_in_block, length_in_block in read_list:
             # Read block from COW
             if block is not None and cow is not None and block.idx in cow:
+                assert cow_version is not None
                 logger.debug('Reading block from COW {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
                                                                           length_in_block))
                 block = cow[block.idx]

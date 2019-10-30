@@ -64,6 +64,7 @@ def backup_initial(*,
     stdout = subprocess_run(['rbd', 'diff', '--whole-object', '--format=json', f'{pool}/{image}@{snapshot}'])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
+        assert isinstance(stdout, str)
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
@@ -102,6 +103,7 @@ def backup_differential(*,
     subprocess_run(['rbd', 'snap', 'rm', f'{pool}/{image}@{last_snapshot}'])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
+        assert isinstance(stdout, str)
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [

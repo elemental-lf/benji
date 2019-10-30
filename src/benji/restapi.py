@@ -1,7 +1,7 @@
 import functools
 import json
 from io import StringIO
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from bottle import Bottle, response, HTTPError, request
 from webargs import fields
@@ -200,7 +200,7 @@ class RestAPI:
 
     @route('/api/v1/versions/<version_uid>', method='DELETE')
     def _rm(self, version_uid: str, force: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
-            override_lock: fields.Bool(missing=False)) -> None:
+            override_lock: fields.Bool(missing=False)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         disallow_rm_when_younger_than_days = self._config.get('disallowRemoveWhenYounger', types=int)
         benji_obj = None
@@ -403,7 +403,7 @@ class RestAPI:
     def _enforce_retention_policy(self, rules_spec: fields.Str(required=True),
                                   filter_expression: fields.Str(missing=None), dry_run: fields.Bool(missing=False),
                                   keep_metadata_backup: fields.Bool(missing=False),
-                                  group_label: fields.Str(missing=None)) -> None:
+                                  group_label: fields.Str(missing=None)) -> StringIO:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
@@ -426,7 +426,7 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/version-info', method='GET')
-    def _version_info(self) -> str:
+    def _version_info(self) -> Dict:
         result = {
             'version': __version__,
             'configuration_version': {
@@ -446,7 +446,7 @@ class RestAPI:
         return result
 
     @route('/api/v1/storages/<storage_name>/stats', method='GET')
-    def _storage_stats(self, storage_name: str) -> str:
+    def _storage_stats(self, storage_name: str) -> Dict:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)

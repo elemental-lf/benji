@@ -170,7 +170,7 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.String(255)
 
-    def process_bind_param(self, value: Optional[Union[int, str, VersionUid]], dialect) -> Optional[str]:
+    def process_bind_param(self, value: Optional[Union[str, VersionUid]], dialect) -> Optional[str]:
         if value is None:
             return None
         elif isinstance(value, str):
@@ -180,7 +180,7 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
-    def process_result_value(self, value: Optional[int], dialect) -> Optional[VersionUid]:
+    def process_result_value(self, value: Optional[str], dialect) -> Optional[VersionUid]:
         if value is not None:
             return VersionUid(value)
         else:
@@ -216,7 +216,11 @@ class BlockUidComparator(sqlalchemy.orm.CompositeProperty.Comparator):
 @total_ordering
 class BlockUid(sqlalchemy.ext.mutable.MutableComposite, StorageKeyMixIn['BlockUid']):
 
+    left: Optional[int]
+    right: Optional[int]
+
     def __init__(self, left: Optional[int], right: Optional[int]) -> None:
+        assert (left is None and right is None) or (left is not None and right is not None)
         self.left = left
         self.right = right
 
@@ -267,6 +271,7 @@ class BlockUid(sqlalchemy.ext.mutable.MutableComposite, StorageKeyMixIn['BlockUi
         return cls._STORAGE_PREFIX
 
     def _storage_object_to_key(self) -> str:
+        assert self.left is not None and self.right is not None
         return '{:016x}-{:016x}'.format(self.left, self.right)
 
     @classmethod
@@ -854,7 +859,7 @@ class DatabaseBackend(ReprMixIn):
                 break
 
             false_positives = set()
-            hit_list: Dict[int, Set[BlockUid]] = {}
+            hit_list: Dict[str, Set[BlockUid]] = {}
             for candidate in delete_candidates:
                 rounds += 1
                 if rounds % 1000 == 0:
@@ -925,7 +930,7 @@ class DatabaseBackend(ReprMixIn):
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
-    def new_benji_encoder(ignore_fields: List, ignore_relationships: List):
+    def new_benji_encoder(ignore_fields: Optional[List], ignore_relationships: Optional[List]):
         ignore_fields = list(ignore_fields) if ignore_fields is not None else []
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
@@ -965,7 +970,7 @@ class DatabaseBackend(ReprMixIn):
 
                     for field in sqlalchemy.inspect(obj).mapper.composites:
                         ignore = False
-                        for types, names in ignore_fields:
+                        for types, names in ignore_fields:  # type: ignore
                             if isinstance(obj, types) and field.key in names:
                                 ignore = True
                                 break
@@ -974,7 +979,7 @@ class DatabaseBackend(ReprMixIn):
 
                     for field in sqlalchemy.inspect(obj).mapper.column_attrs:
                         ignore = False
-                        for types, names in ignore_fields:
+                        for types, names in ignore_fields:  # type: ignore
                             if isinstance(obj, types) and field.key in names:
                                 ignore = True
                                 break
@@ -983,7 +988,7 @@ class DatabaseBackend(ReprMixIn):
 
                     for relationship in sqlalchemy.inspect(obj).mapper.relationships:
                         ignore = False
-                        for types, names in ignore_relationships:
+                        for types, names in ignore_relationships:  # type: ignore
                             if isinstance(obj, types) and relationship.key in names:
                                 ignore = True
                                 break
@@ -1229,7 +1234,8 @@ class DatabaseBackend(ReprMixIn):
 
     def close(self):
         self._session.commit()
-        self._locking.unlock_all()
+        if self._locking is not None:
+            self._locking.unlock_all()
         self._locking = None
         self._session.close()
         self._session = None
