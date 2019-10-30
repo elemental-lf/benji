@@ -505,6 +505,8 @@ class DatabaseBackend(ReprMixIn):
             logger.info('Running with ephemeral in-memory database.')
             self._engine = sqlalchemy.create_engine('sqlite://')
 
+        self._config = config
+
     def _alembic_config(self):
         return alembic_config_Config(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
@@ -540,6 +542,7 @@ class DatabaseBackend(ReprMixIn):
             logger.info('Migrating from database schema revision {} to {}.'.format(current_revision, head_revision))
             with self._engine.begin() as connection:
                 alembic_config.attributes['connection'] = connection
+                alembic_config.attributes['benji_config'] = self._config
                 alembic_command.upgrade(alembic_config, "head")
         else:
             logger.info('Current database schema revision: {}.'.format(current_revision))
@@ -589,6 +592,7 @@ class DatabaseBackend(ReprMixIn):
         alembic_config = self._alembic_config()
         with self._engine.begin() as connection:
             alembic_config.attributes['connection'] = connection
+            alembic_config.attributes['benji_config'] = self._config
             alembic_command.stamp(alembic_config, "head")
 
     def commit(self) -> None:

@@ -7,14 +7,15 @@ from sqlalchemy import create_engine
 from benji.config import Config as BenjiConfig
 from benji.database import Base
 
-config = context.config
-
 # Only load configuration when we're running standalone
+config = context.config
 if config.attributes.get('connection', None) is None:
     benji_config = BenjiConfig()
+    config.attributes['benji_config'] = benji_config
     database_engine = benji_config.get('databaseEngine', types=str)
+    connectable = create_engine(database_engine)
 else:
-    database_engine = None
+    connectable = config.attributes['connection']
 
 target_metadata = Base.metadata
 
@@ -65,24 +66,16 @@ def run_migrations_online():
             # otherwise if not filtered, yield out the directive
             yield directive
 
-    connectable = config.attributes.get('connection', None)
-
-    if connectable is None:
-        # only create Engine if we don't have a Connection
-        # from the outside
-        connectable = create_engine(database_engine)
-
     with connectable.connect() as connection:
         if isinstance(connection.connection, sqlite3.Connection):
             connection.execute('PRAGMA foreign_keys=OFF')
 
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            compare_server_default=True,
-            process_revision_directives=process_revision_directives,
-            render_as_batch=True)
+        context.configure(connection=connection,
+                          target_metadata=target_metadata,
+                          compare_type=True,
+                          compare_server_default=True,
+                          process_revision_directives=process_revision_directives,
+                          render_as_batch=True)
 
         with context.begin_transaction():
             context.run_migrations()
