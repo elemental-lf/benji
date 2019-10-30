@@ -129,11 +129,11 @@ class IO(IOBase):
 
     def close(self) -> None:
         if len(self._read_queue) > 0:
-            logger.warning('Closing IO module with {} read outstanding jobs.'.format(self._name, len(self._read_queue)))
+            logger.warning('Closing IO module with {} outstanding read jobs.'.format(len(self._read_queue)))
             self._read_queue = []
 
         if self._outstanding_write is not None:
-            logger.warning('Closing IO module with one outstanding write.'.format(self._name))
+            logger.warning('Closing IO module with one outstanding write.')
             self._outstanding_write = None
 
         self._iscsi_context = None
