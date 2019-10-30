@@ -1199,7 +1199,7 @@ class Benji(ReprMixIn):
 
     @staticmethod
     def list_storages() -> List[str]:
-        return StorageFactory.get_modules().keys()
+        return list(StorageFactory.get_modules().keys())
 
 
 class _BlockCache:
