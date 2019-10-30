@@ -362,7 +362,7 @@ class Label(Base):
                                    sqlalchemy.ForeignKey('versions.id', ondelete='CASCADE'),
                                    primary_key=True,
                                    nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, primary_key=True)
+    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True, primary_key=True)
     value = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
 
 
