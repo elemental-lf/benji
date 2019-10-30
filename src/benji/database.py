@@ -527,13 +527,11 @@ class DatabaseBackend(ReprMixIn):
                 migration_context = env_context.get_context()
                 current_revision = migration_context.get_current_revision()
 
-        if current_revision is None:
-            current_revision = '<unknown>'
-
-        logger.debug('Current database schema revision: {}.'.format(current_revision))
+        logger.debug(
+            'Current database schema revision: {}.'.format(current_revision if current_revision is not None else '<unknown>'))
         logger.debug('Expected database schema revision: {}.'.format(head_revision))
 
-        return ((head_revision != current_revision), current_revision, head_revision)
+        return ((current_revision is not None and current_revision != head_revision), current_revision, head_revision)
 
     def migrate(self) -> None:
         alembic_config = self._alembic_config()
