@@ -112,15 +112,12 @@ class RestAPI:
     def _backup(self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
                 snapshot: fields.Str(required=True), source: fields.Str(required=True),
                 rbd_hints: fields.Str(missing=None), base_version_uid: fields.Str(missing=None),
-                block_size: fields.Int(missing=None), labels: fields.DelimitedList(fields.Str(), missing=None),
-                storage_name: fields.Str(missing=None)) -> str:
+                block_size: fields.Int(missing=None), storage_name: fields.Str(missing=None)) -> str:
         if version_uid is None:
             version_uid = '{}-{}'.format(volume[:248], random_string(6))
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
-        if labels:
-            label_add, label_remove = self._parse_labels(labels)
         benji_obj = None
         try:
             benji_obj = Benji(self._config, block_size=block_size)
