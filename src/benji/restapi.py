@@ -389,17 +389,6 @@ class RestAPI:
             if benji_obj:
                 benji_obj.close()
 
-    @route('/api/v1/storages/<storage_name>', method='GET')
-    def metadata_ls(self, storage_name: str = None) -> List[str]:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
-            version_uids = benji_obj.metadata_ls(storage_name)
-            return [version_uid for version_uid in version_uids]
-        finally:
-            if benji_obj:
-                benji_obj.close()
-
     @route('/api/v1/database', method='POST')
     def _database_init(self) -> None:
         benji_obj = Benji(self._config, init_database=True)
