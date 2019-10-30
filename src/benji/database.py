@@ -903,7 +903,7 @@ class DatabaseBackend(ReprMixIn):
                 if storage_id is not None and storage.id != storage_id:
                     raise ConfigurationError(
                         'Storage ids of {} do not match between configuration and database ({} != {}).'.format(
-                            storage_id, storage.id))
+                            storage_name, storage_id, storage.id))
                 logger.debug('Found existing storage {} with id {}.'.format(storage.name, storage.id))
             else:
                 storage = Storage(name=storage_name, id=storage_id)
