@@ -930,7 +930,7 @@ class DatabaseBackend(ReprMixIn):
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
         # These are always ignored because they'd lead to a circle
-        ignore_fields.append(((Label, Block), ('version_uid',)))
+        ignore_fields.append(((Label, Block), ('version_id',)))
         ignore_relationships.append(((Label, Block), ('version',)))
         # Ignore these as we favor the composite attribute
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
