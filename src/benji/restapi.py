@@ -344,7 +344,7 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/metadata/backup', method='POST')
-    def metadata_backup(self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
+    def _metadata_backup(self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
@@ -355,7 +355,7 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/metadata/import', method='POST')
-    def metadata_import(self) -> None:
+    def _metadata_import(self) -> None:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
@@ -365,8 +365,8 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/metadata/restore', method='POST')
-    def metadata_restore(self, version_uids: fields.DelimitedList(fields.Str, required=True),
-                         storage_name: fields.Str(missing=None)) -> None:
+    def _metadata_restore(self, version_uids: fields.DelimitedList(fields.Str, required=True),
+                          storage_name: fields.Str(missing=None)) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
@@ -377,7 +377,7 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/storages', method='GET')
-    def metadata_ls(self) -> List[str]:
+    def _list_storages(self) -> List[str]:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
