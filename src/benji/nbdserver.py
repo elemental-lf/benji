@@ -202,7 +202,7 @@ class NbdServer(ReprMixIn):
                 else:
                     data = None
 
-                self.log.debug("[%s:%s]: opt=%s, length=%s, data=%s" % (host, port, opt, length, data))
+                self.log.debug("[%s:%s]: opt=%s, length=%s, data=%r" % (host, port, opt, length, data))
 
                 if opt == self.NBD_OPT_EXPORTNAME:
                     if not data:
@@ -283,8 +283,8 @@ class NbdServer(ReprMixIn):
                 cmd_flags = cmd & self.NBD_CMD_MASK_FLAGS
                 cmd = cmd & self.NBD_CMD_MASK_COMMAND
 
-                self.log.debug(
-                    "[%s:%s]: cmd=%s, cmd_flags=%s, handle=%s, offset=%s, len=%s" % (host, port, cmd, cmd_flags, handle, offset, length))
+                self.log.debug("[%s:%s]: cmd=%s, cmd_flags=%s, handle=%s, offset=%s, len=%s" %
+                               (host, port, cmd, cmd_flags, handle, offset, length))
 
                 # We don't support any command flags
                 if cmd_flags != 0:
@@ -309,8 +309,8 @@ class NbdServer(ReprMixIn):
                     try:
                         self.store.write(cow_version, offset, data)
                     except Exception as exception:
-                        self.log.error(
-                            "[%s:%s] NBD_CMD_WRITE: %s\n%s." % (host, port, exception, traceback.format_exc()))
+                        self.log.error("[%s:%s] NBD_CMD_WRITE: %s\n%s." %
+                                       (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(writer, handle, error=self.EIO)
                         continue
 
@@ -335,8 +335,8 @@ class NbdServer(ReprMixIn):
                     try:
                         self.store.flush(cow_version)
                     except Exception as exception:
-                        self.log.error(
-                            "[%s:%s] NBD_CMD_FLUSH: %s\n%s." % (host, port, exception, traceback.format_exc()))
+                        self.log.error("[%s:%s] NBD_CMD_FLUSH: %s\n%s." %
+                                       (host, port, exception, traceback.format_exc()))
                         yield from self.nbd_response(writer, handle, error=self.EIO)
                         continue
 
