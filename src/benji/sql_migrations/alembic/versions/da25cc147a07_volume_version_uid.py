@@ -5,6 +5,8 @@ Revises: dd844d630d49
 Create Date: 2019-10-28 15:20:15.455215
 
 """
+from functools import lru_cache
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -108,13 +110,17 @@ def upgrade():
     blocks = sa.Table('blocks', metadata, autoload_with=conn)
     blocks_new = sa.Table('blocks_new', metadata, autoload_with=conn)
 
+    @lru_cache(maxsize=8192)
+    def version_id_lookup(version_uid: int) -> int:
+        version = conn.execute(versions.select().where(versions.c.uid_old == version_uid)).first()
+        return version.id
+
     for block in conn.execute(blocks.select()):
-        version = conn.execute(versions.select().where(versions.c.uid_old == block.version_uid)).first()
         conn.execute(blocks_new.insert().values(idx=block.idx,
                                                 uid_left=block.uid_left,
                                                 uid_right=block.uid_right,
                                                 size=block.size,
-                                                version_id=version.id,
+                                                version_id=version_id_lookup(block.version_uid),
                                                 valid=block.valid,
                                                 checksum=block.checksum))
 
@@ -141,8 +147,9 @@ def upgrade():
     labels_new = sa.Table('labels_new', metadata, autoload_with=conn)
 
     for label in conn.execute(labels.select()):
-        version = conn.execute(versions.select().where(versions.c.uid_old == label.version_uid)).first()
-        conn.execute(labels_new.insert().values(name=label.name, value=label.value, version_id=version.id))
+        conn.execute(labels_new.insert().values(name=label.name,
+                                                value=label.value,
+                                                version_id=version_id_lookup(label.version_uid)))
 
     op.drop_table('labels')
     op.rename_table('labels_new', 'labels')
