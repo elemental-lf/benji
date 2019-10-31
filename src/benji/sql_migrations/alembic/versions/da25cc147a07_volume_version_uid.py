@@ -23,7 +23,7 @@ def upgrade():
     if (op.get_context().dialect.name == 'psycopg2'):
         op.execute('ALTER TABLE versions RENAME CONSTRAINT "pk_versions" TO "pk_versions_old"')
         op.execute('ALTER TABLE blocks RENAME CONSTRAINT "pk_blocks" TO "pk_blocks_old"')
-        op.execute('ALTER TABLE blocks RENAME CONSTRAINT "pk_labels" TO "pk_labels_old"')
+        op.execute('ALTER TABLE labels RENAME CONSTRAINT "pk_labels" TO "pk_labels_old"')
 
     op.create_table('versions_new',
                     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
