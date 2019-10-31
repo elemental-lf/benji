@@ -13,6 +13,7 @@ import time
 import uuid
 from abc import abstractmethod
 from binascii import hexlify, unhexlify
+from collections import OrderedDict
 from contextlib import contextmanager
 from functools import total_ordering
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
@@ -942,8 +943,6 @@ class DatabaseBackend(ReprMixIn):
         ignore_relationships.append(((Label, Block), ('version',)))
         # Ignore these as we favor the composite attribute
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
-        # Ignore idx as we export as a list which is ordered by definition
-        ignore_fields.append(((Block,), ('idx')))
         # Ignore storage_id as we export the storage attribute
         ignore_fields.append(((Version), ('storage_id')))
 
@@ -969,7 +968,8 @@ class DatabaseBackend(ReprMixIn):
                     return obj.name
 
                 if isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
-                    fields = {}
+                    # Use ordered dictionary to make iterative JSON parsing possible. See below.
+                    fields = OrderedDict()
 
                     for field in sqlalchemy.inspect(obj).mapper.composites:
                         ignore = False
@@ -998,27 +998,43 @@ class DatabaseBackend(ReprMixIn):
                         if not ignore:
                             fields[relationship.key] = getattr(obj, relationship.key)
 
+                    # Force ordering for versions to make iterative JSON parsing possible.
+                    if isinstance(obj, Version):
+                        if 'labels' in fields:
+                            fields.move_to_end('labels')
+                        if 'blocks' in fields:
+                            fields.move_to_end('blocks')
+
                     return fields
 
                 return super().default(obj)
 
         return BenjiEncoder
 
-    def export_any(self, root_dict: Dict, f: TextIO, ignore_fields: List = None,
-                   ignore_relationships: List = None) -> None:
-        root_dict = root_dict.copy()
+    def export_any(self,
+                   root_dict: Dict,
+                   f: TextIO,
+                   ignore_fields: List = None,
+                   ignore_relationships: List = None,
+                   compact: bool = False) -> None:
+        # Metadata output is ordered in such a way as to make it possible to use an iterative JSON parser
+        # on import for version metadata. This is also the reason for using an OrderedDict for database objects
+        # and moving the labels and blocks relationship to the end for versions.
+        root_dict = OrderedDict(root_dict.copy())
         root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
+        root_dict.move_to_end(self._METADATA_VERSION_KEY, last=False)
 
         json.dump(
             root_dict,
             f,
             cls=self.new_benji_encoder(ignore_fields, ignore_relationships),
             check_circular=True,
-            indent=2,
+            separators=(',', ':') if compact else (',', ': '),
+            indent=None if compact else 2,
         )
 
     def export(self, version_uids: Sequence[VersionUid], f: TextIO):
-        self.export_any({'versions': [self.get_version(version_uid) for version_uid in version_uids]}, f)
+        self.export_any({'versions': [self.get_version(version_uid) for version_uid in version_uids]}, f, compact=True)
 
     def import_(self, f: TextIO) -> List[VersionUid]:
         try:
