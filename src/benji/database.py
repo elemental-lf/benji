@@ -1107,7 +1107,8 @@ class DatabaseBackend(ReprMixIn):
             for block_dict in version_dict['blocks']:
                 if 'id' not in block_dict:
                     raise InputDataError('Missing id attribute in block list of version {}.'.format(version_uid))
-                del (block_dict['id'])
+                block_dict['idx'] = block_dict['id']
+                del block_dict['id']
 
             if not isinstance(version_dict['date'], str):
                 raise InputDataError('Wrong data type for date in version {}.'.format(version_uid))
@@ -1214,9 +1215,21 @@ class DatabaseBackend(ReprMixIn):
             self._session.add(version)
             self._session.flush()
 
-            for block_idx, block_dict in enumerate(version_dict['blocks']):
+            assert isinstance(version_dict['blocks'], list)
+            for block_dict in version_dict['blocks']:
+                assert isinstance(block_dict, dict)
+                for attribute in ('idx', 'uid', 'size', 'checksum'):
+                    if attribute not in block_dict:
+                        raise InputDataError('Missing attribute {} in block of version {}.'.format(
+                            attribute, str(version_uid)))
+
+                assert isinstance(block_dict['uid'], dict)
+                for attribute in ('left', 'right'):
+                    if attribute not in block_dict['uid']:
+                        raise InputDataError('Missing attribute {} in block uid of version {}.'.format(
+                            attribute, str(version_uid)))
+
                 block_dict['version_id'] = version.id
-                block_dict['idx'] = block_idx
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right
@@ -1224,6 +1237,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.bulk_insert_mappings(Block, version_dict['blocks'])
 
             labels: List[Dict[str, Any]] = []
+            assert isinstance(version_dict['labels'], dict)
             for name, value in version_dict['labels'].items():
                 labels.append({'version_id': version.id, 'name': name, 'value': value})
             self._session.bulk_insert_mappings(Label, labels)
