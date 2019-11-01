@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.7.0.dev13+g9b9e21d.dirty documentation</title>
+  <title>Administration &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
   
 
   
@@ -355,22 +355,31 @@ information to troubleshoot the problem.</p></li>
 <div class="section" id="machine-output">
 <span id="id2"></span><h3>Machine output<a class="headerlink" href="#machine-output" title="Permalink to this headline">¶</a></h3>
 <p>Some commands can produce machine readable JSON output for usage in scripts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ benji -m ls
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>INFO: $ /home/lf/src/backy2/venv/bin/benji -m ls
 {
-  &quot;metadataVersion&quot;: &quot;1.0.0&quot;,
   &quot;versions&quot;: [
     {
       &quot;uid&quot;: 1,
-      &quot;date&quot;: &quot;2018-06-07T12:51:19&quot;,
+      &quot;date&quot;: &quot;2019-09-27T18:05:21.936087Z&quot;,
       &quot;name&quot;: &quot;test&quot;,
-      &quot;snapshot_name&quot;: &quot;&quot;,
-      &quot;size&quot;: 41943040,
+      &quot;snapshot&quot;: &quot;&quot;,
+      &quot;size&quot;: 692241,
       &quot;block_size&quot;: 4194304,
-      &quot;valid&quot;: true,
+      &quot;storage_id&quot;: 1,
+      &quot;status&quot;: &quot;valid&quot;,
       &quot;protected&quot;: false,
-      &quot;tags&quot;: []
+      &quot;bytes_read&quot;: 692241,
+      &quot;bytes_written&quot;: 692241,
+      &quot;bytes_dedup&quot;: 0,
+      &quot;bytes_sparse&quot;: 0,
+      &quot;duration&quot;: 0,
+      &quot;labels&quot;: {
+        &quot;label-1&quot;: &quot;bla&quot;,
+        &quot;label-2&quot;: &quot;blub&quot;
+      }
     }
-  ]
+  ],
+  &quot;metadata_version&quot;: &quot;2.0.0&quot;
 }
 </pre></div>
 </div>

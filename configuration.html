@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.7.0.dev13+g9b9e21d.dirty documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
   
 
   
@@ -452,7 +452,9 @@ on the command line.</p>
 <li><p>type: integer</p></li>
 <li><p>default: none</p></li>
 </ul>
-<p>This sets the internal storage id for this storage configuration.</p>
+<p>This sets the internal storage id for this storage configuration. It is no longer necessary to populate
+this configuration key as the storage id is now assigned automatically. This option only exists for
+backward compatibility with older configurations and should not be used in new configurations.</p>
 <ul class="simple">
 <li><p>key: <strong>configuration</strong></p></li>
 <li><p>type: list of dictionaries</p></li>
@@ -941,6 +943,17 @@ option are mutually exclusive.</p>
 </ul>
 <p>Sets the application key from a file. This option and the <strong>applicationKey</strong>
 option are mutually exclusive.</p>
+<ul class="simple">
+<li><p>name: <strong>accountInfoFile</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: none</p></li>
+</ul>
+<p>Sets the file for caching the authorization token.  If unset, the <cite>b2</cite> module
+will always authorize the user with the provided account id and application
+key.  But the latter operation is rate limited by BackBlaze, so if Benji is
+invoked repeatably in a short time frame the login will fail. In this case
+configure  this option to cache and use the authorization token in subsequent
+calls of  Benji. The token will be renewed automatically when it expires.</p>
 <ul class="simple">
 <li><p>name: <strong>bucketName</strong></p></li>
 <li><p>type: string</p></li>

@@ -18,7 +18,7 @@ A number of CLI command accept a filter expression to select the *versions* to d
 
 The filter expression syntax is a subset of Python's expression syntax. The following tokens are recognized:
 
-* Identifiers: These reference version metadata columns and are named ``date``, ``uid``, ``name``, ``snapshot_name``,
+* Identifiers: These reference version metadata columns and are named ``date``, ``uid``, ``name``, ``snapshot``,
   ``size``, ``block_size``, ``status``, ``protected`` and ``storage``, ``read``, ``written``, ``dedup``, ``sparse``, and
   ``duration``.
 

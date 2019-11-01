@@ -101,6 +101,11 @@ There are some known issues with ``nbd-client``:
 * Some problems have been reported with ``nbd-client`` 3.18. Please see https://github.com/elemental-lf/benji/issues/12.
   Older versions like 3.16 and 3.17 (needs ``-t``, see below) and newer versions like 3.19 seems to be fine.
 
+* Debian 10 ("Buster") has an `nbd-client` package with version 3.19-3. The binary reports 3.18 as its version for
+  whatever reason. This version does not work with Benji at all. See https://github.com/elemental-lf/benji/issues/56.
+  Currently (10/08/2019) the development version of Debian contains a newer `nbd-client` package which works without
+  problems. This version will hopefully propagate into testing and then into Buster.
+
 * Some versions of ``nbd-client`` (like 3.17) use a timeout value of zero which also leads to problems. Please
   explicitly specify a timeout with ``-t`` in these cases. To make the confusion complete some distributions have
   back-ported the fix for this issue. So 3.17 on Fedora is actually fine without ``-t``.
@@ -192,14 +197,14 @@ The newly created *version* can be seen in the output of ``benji ls``::
     $ benji ls
         INFO: $ benji ls
     +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
-    |         date        |     uid     | name | snapshot_name                           |     size | block_size | valid | protected | tags |
+    |         date        |     uid     | name | snapshot                                |     size | block_size | valid | protected | tags |
     +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
     | 2018-06-10T01:00:43 | V0000000001 | test |                                         | 41943040 |    4194304 |  True |   False   |      |
     | 2018-06-10T01:01:16 | V0000000002 | test | nbd-cow-V0000000001-2018-06-10T01:01:16 | 41943040 |    4194304 |  True |    True   |      |
     +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
 
-The name will be the same as the original *version*. The snapshot_name will start with the prefix *nbd-cow-* followed
-by the *version* UID followed by a timestamp.
+The name will be the same as the original *version*. The snapshot will start with the prefix *nbd-cow-* followed by the 
+*version* UID followed by a timestamp.
 
 The COW *version* will automatically be marked as protected by Benji to prevent removal by any automatic retention
 policy enforcement configured. This ensures the new *version* won't be destroyed accidentally. To be able to remove

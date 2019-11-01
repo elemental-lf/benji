@@ -93,22 +93,31 @@ Machine output
 
 Some commands can produce machine readable JSON output for usage in scripts::
 
-    $ benji -m ls
+    INFO: $ /home/lf/src/backy2/venv/bin/benji -m ls
     {
-      "metadataVersion": "1.0.0",
       "versions": [
         {
           "uid": 1,
-          "date": "2018-06-07T12:51:19",
+          "date": "2019-09-27T18:05:21.936087Z",
           "name": "test",
-          "snapshot_name": "",
-          "size": 41943040,
+          "snapshot": "",
+          "size": 692241,
           "block_size": 4194304,
-          "valid": true,
+          "storage_id": 1,
+          "status": "valid",
           "protected": false,
-          "tags": []
+          "bytes_read": 692241,
+          "bytes_written": 692241,
+          "bytes_dedup": 0,
+          "bytes_sparse": 0,
+          "duration": 0,
+          "labels": {
+            "label-1": "bla",
+            "label-2": "blub"
+          }
         }
-      ]
+      ],
+      "metadata_version": "2.0.0"
     }
 
 .. NOTE:: Take care to put the ``-m`` between ``benji`` and ``ls``.

@@ -31,7 +31,7 @@ fields describing it:
 * **uid**: Unique identifier for this version (always starts with the letter ``V`` followed by a number with optional
   leading zeros)
 * **name**: Name as specified on the ``benji backup`` command line
-* **snapshot_name**: Snapshot name as specified on the ``benji backup`` command line with the ``--snapshot-name`` option
+* **snapshot**: Snapshot name as specified on the ``benji backup`` command line with the ``--snapshot-name`` option
 * **size**: Size of the backed up image in bytes
 * **block_size**: Block size in bytes
 * **valid**: Validity of this version (either ``valid``, ``invalid``, or ``incomplete``)
@@ -43,11 +43,11 @@ You can output this data with::
 
     $ benji ls
         INFO: $ benji ls
-    +---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
-    |         date        |     uid     | name | snapshot_name |     size | block_size | valid | protected | tags |
-    +---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
-    | 2018-06-07T12:51:19 | V0000000001 | test |               | 41943040 |    4194304 |  True |   False   |      |
-    +---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
+    +---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
+    |         date        |     uid     | name | snapshot |     size | block_size | valid | protected | tags |
+    +---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
+    | 2018-06-07T12:51:19 | V0000000001 | test |          | 41943040 |    4194304 |  True |   False   |      |
+    +---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
 
 
 .. HINT::
@@ -132,7 +132,7 @@ In this example, we will backup an RBD image called ``vm1`` which is in the pool
     $ rbd snap rm pool/vm1@backup1
 
     # Identify the UID of the version corresponding to the last RBD snapshot
-    $ benji ls 'name == "vm1" and snapshot_name == "backup1"'
+    $ benji ls 'name == "vm1" and snapshot == "backup1"'
 
     # And backup (replace V001234567 with the version UID you identified in the last step)
     $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd:pool/vm1@backup2 vm1

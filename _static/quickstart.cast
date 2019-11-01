@@ -235,7 +235,7 @@
 [64.812705, "o", "s"]
 [66.596974, "o", "\r\n"]
 [67.432233, "o", "{\r\n  \"stats\": [\r\n    {\r\n      \"version_date\": \"2018-06-22T16:41:57\",\r\n      \"version_uid\": 1,\r\n      \"base_version_uid\": null,\r\n      \"hints_supplied\": false,\r\n      \"version_name\": \"myfirsttestbackup\",\r\n      \"version_snapshot_name\": \"\",\r\n      \"version_size\": 41943040,\r\n      "]
-[67.432415, "o", "\"version_block_size\": 4194304,\r\n      \"bytes_read\": 41943040,\r\n      \"bytes_written\": 41943040,\r\n      \"bytes_dedup\": 0,\r\n      \"bytes_sparse\": 0,\r\n      \"duration_seconds\": 0\r\n    }\r\n  ],\r\n  \"metadataVersion\": \"1.0.0\"\r\n"]
+[67.432415, "o", "\"version_block_size\": 4194304,\r\n      \"bytes_read\": 41943040,\r\n      \"bytes_written\": 41943040,\r\n      \"bytes_deduplicated\": 0,\r\n      \"bytes_sparse\": 0,\r\n      \"duration_seconds\": 0\r\n    }\r\n  ],\r\n  \"metadataVersion\": \"1.0.0\"\r\n"]
 [67.432799, "o", "}"]
 [67.492383, "o", "root@benji:/# "]
 [68.95665, "o", "b"]

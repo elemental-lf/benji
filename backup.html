@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Backup &mdash; Benji Backup 0.7.0.dev13+g9b9e21d.dirty documentation</title>
+  <title>Backup &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
   
 
   
@@ -279,9 +279,35 @@
             
   <div class="section" id="backup">
 <h1>Backup<a class="headerlink" href="#backup" title="Permalink to this headline">¶</a></h1>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/backup.rst</span>, line 10)</p>
-<p>Command 'benji backup --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji backup --help
+usage: benji backup [-h] [-u VERSION_UID] [-s SNAPSHOT] [-r RBD_HINTS]
+                    [-f BASE_VERSION_UID] [-b BLOCK_SIZE] [-l label]
+                    [-S STORAGE]
+                    source volume
+
+positional arguments:
+  source                Source URL
+  volume                Volume name
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u VERSION_UID, --uid VERSION_UID
+                        Unique ID of created version (will be generated
+                        automatically if not specified)
+  -s SNAPSHOT, --snapshot SNAPSHOT
+                        Snapshot name (e.g. the name of the RBD snapshot)
+  -r RBD_HINTS, --rbd-hints RBD_HINTS
+                        Hints in rbd diff JSON format
+  -f BASE_VERSION_UID, --base-version BASE_VERSION_UID
+                        Base version UID
+  -b BLOCK_SIZE, --block-size BLOCK_SIZE
+                        Block size in bytes
+  -l label, --label label
+                        Labels for this version (can be repeated)
+  -S STORAGE, --storage STORAGE
+                        Destination storage (if unspecified the default is
+                        used)
+</pre></div>
 </div>
 <div class="section" id="simple-backup">
 <h2>Simple Backup<a class="headerlink" href="#simple-backup" title="Permalink to this headline">¶</a></h2>
@@ -307,7 +333,7 @@ fields describing it:</p>
 <li><p><strong>uid</strong>: Unique identifier for this version (always starts with the letter <code class="docutils literal notranslate"><span class="pre">V</span></code> followed by a number with optional
 leading zeros)</p></li>
 <li><p><strong>name</strong>: Name as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line</p></li>
-<li><p><strong>snapshot_name</strong>: Snapshot name as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line with the <code class="docutils literal notranslate"><span class="pre">--snapshot-name</span></code> option</p></li>
+<li><p><strong>snapshot</strong>: Snapshot name as specified on the <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code> command line with the <code class="docutils literal notranslate"><span class="pre">--snapshot-name</span></code> option</p></li>
 <li><p><strong>size</strong>: Size of the backed up image in bytes</p></li>
 <li><p><strong>block_size</strong>: Block size in bytes</p></li>
 <li><p><strong>valid</strong>: Validity of this version (either <code class="docutils literal notranslate"><span class="pre">valid</span></code>, <code class="docutils literal notranslate"><span class="pre">invalid</span></code>, or <code class="docutils literal notranslate"><span class="pre">incomplete</span></code>)</p></li>
@@ -318,11 +344,11 @@ option or by using <code class="docutils literal notranslate"><span class="pre">
 <p>You can output this data with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji ls
     INFO: $ benji ls
-+---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
-<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name <span class="p">|</span> snapshot_name <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
-+---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
-<span class="p">|</span> <span class="m">2018</span>-06-07T12:51:19 <span class="p">|</span> V0000000001 <span class="p">|</span> <span class="nb">test</span> <span class="p">|</span>               <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
-+---------------------+-------------+------+---------------+----------+------------+-------+-----------+------+
++---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
+<span class="p">|</span>         date        <span class="p">|</span>     uid     <span class="p">|</span> name <span class="p">|</span> snapshot <span class="p">|</span>     size <span class="p">|</span> block_size <span class="p">|</span> valid <span class="p">|</span> protected <span class="p">|</span> tags <span class="p">|</span>
++---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
+<span class="p">|</span> <span class="m">2018</span>-06-07T12:51:19 <span class="p">|</span> V0000000001 <span class="p">|</span> <span class="nb">test</span> <span class="p">|</span>          <span class="p">|</span> <span class="m">41943040</span> <span class="p">|</span>    <span class="m">4194304</span> <span class="p">|</span>  True <span class="p">|</span>   False   <span class="p">|</span>      <span class="p">|</span>
++---------------------+-------------+------+----------+----------+------------+-------+-----------+------+
 </pre></div>
 </div>
 <div class="admonition hint">
@@ -406,7 +432,7 @@ $ rbd diff --whole-object pool/vm1@backup2 --from-snap backup1 --format<span cla
 $ rbd snap rm pool/vm1@backup1
 
 <span class="c1"># Identify the UID of the version corresponding to the last RBD snapshot</span>
-$ benji ls <span class="s1">&#39;name == &quot;vm1&quot; and snapshot_name == &quot;backup1&quot;&#39;</span>
+$ benji ls <span class="s1">&#39;name == &quot;vm1&quot; and snapshot == &quot;backup1&quot;&#39;</span>
 
 <span class="c1"># And backup (replace V001234567 with the version UID you identified in the last step)</span>
 $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd:pool/vm1@backup2 vm1

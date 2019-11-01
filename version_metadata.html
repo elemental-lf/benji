@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Version Metadata &mdash; Benji Backup 0.7.0.dev13+g9b9e21d.dirty documentation</title>
+  <title>Version Metadata &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
   
 
   
@@ -280,64 +280,102 @@
 <p>At this stage Benji has backed up all image data to a (hopefully) safe place. However, the blocks are of no use without
 the corresponding metadata. Benji will need this information to get the blocks back in the correct order and
 restore the image.</p>
-<p>This information is stored in the database backend. Additionally Benji will backup the metadata itself to the storage
+<p>This information is stored in the database. Additionally Benji will backup the metadata itself to the storage
 automatically. Should you lose your database backend, you can restore these metadata backups by using
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-restore</span></code>.</p>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/version_metadata.rst</span>, line 18)</p>
-<p>Command 'benji metadata-restore --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-restore --help
+usage: benji metadata-restore [-h] [-S STORAGE] VERSION_UID [VERSION_UID ...]
+
+positional arguments:
+  VERSION_UID           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -S STORAGE, --storage STORAGE
+                        Source storage (if unspecified the default is used)
+</pre></div>
 </div>
-<p>There is currently no mechanism to import the backup of all version’s
-metadata from the storage, but you could get a list of all versions
-manually from the storage.</p>
+<p>There is currently no mechanism to import the metadata backups of all <em>versions</em> from the storage, but you could get a
+list of all metadata backups on a specific storage with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-ls</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-ls --help
+usage: benji metadata-ls [-h] [-S STORAGE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -S STORAGE, --storage STORAGE
+                        Source storage (if unspecified the default is used)
+</pre></div>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This metadata backup is compressed and encrypted like the blocks
 if you have these features enabled.</p>
 </div>
-<p>If you want to make your own copies of your metadata you can do so by using
-<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>.</p>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/version_metadata.rst</span>, line 30)</p>
-<p>Command 'benji metadata-export --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</p>
+<p>It is also possible to export extra metadata backups with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-export --help
+usage: benji metadata-export [-h] [-f] [-o OUTPUT_FILE] [filter_expression]
+
+positional arguments:
+  filter_expression     Version filter expression
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f, --force           Overwrite an existing output file
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Output file (standard output if missing)
+</pre></div>
 </div>
-<p>If you’re doing this programmatically and are exporting to STDOUT you should
-probably add <code class="docutils literal notranslate"><span class="pre">-m</span></code> to your export command to reduce the logging level of Benji.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji -m metadata-export V1
+<p>By default <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-export</span></code> exports to standard output. But it can also write directly into a file by
+specifying the <code class="docutils literal notranslate"><span class="pre">--output-file</span></code> option.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji --log-level ERROR metadata-export <span class="s1">&#39;uid == &quot;V1&quot;&#39;</span>
 <span class="o">{</span>
-  <span class="s2">&quot;metadataVersion&quot;</span>: <span class="s2">&quot;1.0.0&quot;</span>,
   <span class="s2">&quot;versions&quot;</span>: <span class="o">[</span>
     <span class="o">{</span>
       <span class="s2">&quot;uid&quot;</span>: <span class="m">1</span>,
-      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T12:51:19&quot;</span>,
+      <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2019-09-27T18:05:21.936087Z&quot;</span>,
       <span class="s2">&quot;name&quot;</span>: <span class="s2">&quot;test&quot;</span>,
-      <span class="s2">&quot;snapshot_name&quot;</span>: <span class="s2">&quot;&quot;</span>,
-      <span class="s2">&quot;size&quot;</span>: <span class="m">41943040</span>,
+      <span class="s2">&quot;snapshot&quot;</span>: <span class="s2">&quot;&quot;</span>,
+      <span class="s2">&quot;size&quot;</span>: <span class="m">692241</span>,
       <span class="s2">&quot;block_size&quot;</span>: <span class="m">4194304</span>,
-      <span class="s2">&quot;valid&quot;</span>: true,
+      <span class="s2">&quot;storage_id&quot;</span>: <span class="m">1</span>,
+      <span class="s2">&quot;status&quot;</span>: <span class="s2">&quot;valid&quot;</span>,
       <span class="s2">&quot;protected&quot;</span>: false,
-      <span class="s2">&quot;tags&quot;</span>: <span class="o">[]</span>,
+      <span class="s2">&quot;bytes_read&quot;</span>: <span class="m">692241</span>,
+      <span class="s2">&quot;bytes_written&quot;</span>: <span class="m">692241</span>,
+      <span class="s2">&quot;bytes_deduplicated&quot;</span>: <span class="m">0</span>,
+      <span class="s2">&quot;bytes_sparse&quot;</span>: <span class="m">0</span>,
+      <span class="s2">&quot;duration&quot;</span>: <span class="m">0</span>,
+      <span class="s2">&quot;labels&quot;</span>: <span class="o">{</span>
+        <span class="s2">&quot;label-1&quot;</span>: <span class="s2">&quot;bla&quot;</span>,
+        <span class="s2">&quot;label-2&quot;</span>: <span class="s2">&quot;blub&quot;</span>
+      <span class="o">}</span>,
       <span class="s2">&quot;blocks&quot;</span>: <span class="o">[</span>
         <span class="o">{</span>
           <span class="s2">&quot;uid&quot;</span>: <span class="o">{</span>
             <span class="s2">&quot;left&quot;</span>: <span class="m">1</span>,
             <span class="s2">&quot;right&quot;</span>: <span class="m">1</span>
           <span class="o">}</span>,
-          <span class="s2">&quot;date&quot;</span>: <span class="s2">&quot;2018-06-07T14:51:20&quot;</span>,
-          <span class="s2">&quot;id&quot;</span>: <span class="m">0</span>,
-          <span class="s2">&quot;size&quot;</span>: <span class="m">4194304</span>,
+          <span class="s2">&quot;size&quot;</span>: <span class="m">692241</span>,
           <span class="s2">&quot;valid&quot;</span>: true,
-          <span class="s2">&quot;checksum&quot;</span>: <span class="s2">&quot;aed3116b4e7fad9a3188f5ba7c8e73bf158dabec387ef1a7bca84c58fe72f319&quot;</span>
-        <span class="o">}</span>,
-<span class="o">[</span>...<span class="o">]</span>
+          <span class="s2">&quot;checksum&quot;</span>: <span class="s2">&quot;d0d2b5d75e846ebfd7bc30784dfc1b727af47833c2d2ff9a2eac398db50dc3e0&quot;</span>
+        <span class="o">}</span>
+      <span class="o">]</span>
+    <span class="o">}</span>
+  <span class="o">]</span>,
+  <span class="s2">&quot;metadata_version&quot;</span>: <span class="s2">&quot;2.0.0&quot;</span>
 </pre></div>
 </div>
-<p>You can import such a dump of a version’s metadata with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/version_metadata.rst</span>, line 67)</p>
-<p>Command 'benji metadata-import --help' failed: [Errno 2] No such file or directory: 'benji': 'benji'</p>
+<p>Such a dump can be imported with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji metadata-import --help
+usage: benji metadata-import [-h] [-i INPUT_FILE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Input file (standard input if missing)
+</pre></div>
 </div>
-<p>You can’t import versions that already exist in the database backend.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">metadata-import</span></code> only imports the metadata of <em>versions</em> which do not already exist in the database.</p>
 </div>
 
 
