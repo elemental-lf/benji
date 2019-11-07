@@ -476,9 +476,13 @@ bucket algorithm.  A value of ``0`` disables this feature.
 * type: list of strings
 * default: empty list
 
-Sets a list of transform which are applied to each data object before it is
-written to the storage. The transformations are performed in order. In
-forward direction when writing data and in reverse direction when reading.
+Sets a list of transformations which are applied to each data object before it is
+written to the storage. The transformations are performed in order from first to
+last when writing to the storage. On read the list of transformations recorded in
+the object's metadata is used in reverse order to decode the data. This makes
+it possible to change the list of ``activeTransforms`` and so enable compression or
+encryption even when there are data objects present in a storage already. The changed
+transformation list will only be applied to new data objects.
 
 * name: **consistencyCheckWrites**
 * type: bool
