@@ -215,9 +215,13 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         return block
 
     def write_block_async(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        # We do need to dereference the block outside of the closure otherwise a reference to the block will be held
+        # inside of the closure leading to database troubles.
+        # See https://github.com/elemental-lf/benji/issues/61.
+        block_deref = block.deref()
 
         def job():
-            return self._write(block.deref(), data)
+            return self._write(block_deref, data)
 
         self._write_executor.submit(job)
 
@@ -266,9 +270,13 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         return block, data, metadata
 
     def read_block_async(self, block: Block, metadata_only: bool = False) -> None:
+        # We do need to dereference the block outside of the closure otherwise a reference to the block will be held
+        # inside of the closure leading to database troubles.
+        # See https://github.com/elemental-lf/benji/issues/61.
+        block_deref = block.deref()
 
         def job():
-            return self._read(block.deref(), metadata_only)
+            return self._read(block_deref, metadata_only)
 
         self._read_executor.submit(job)
 

@@ -153,9 +153,13 @@ class IO(IOBase):
         return block, data
 
     def read(self, block: Union[DereferencedBlock, Block]) -> None:
+        # We do need to dereference the block outside of the closure otherwise a reference to the block will be held
+        # inside of the closure leading to database troubles.
+        # See https://github.com/elemental-lf/benji/issues/61.
+        block_deref = block.deref()
 
         def job():
-            return self._read(block.deref())
+            return self._read(block_deref)
 
         assert self._read_executor is not None
         self._read_executor.submit(job)
@@ -186,9 +190,13 @@ class IO(IOBase):
         return block
 
     def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
+        # We do need to dereference the block outside of the closure otherwise a reference to the block will be held
+        # inside of the closure leading to database troubles.
+        # See https://github.com/elemental-lf/benji/issues/61.
+        block_deref = block.deref()
 
         def job():
-            return self._write(block.deref(), data)
+            return self._write(block_deref, data)
 
         assert self._write_executor is not None
         self._write_executor.submit(job)
