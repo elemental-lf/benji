@@ -69,6 +69,12 @@ Notable changes:
 
 * ``benji-k8s``: The Prometheus label ``version_name`` has been renamed to ``volume``.
 
+## 0.7.1, 29.08.2019
+
+This release pins two package dependencies to older versions as newer releases of these dependencies broke Benji.\
+Fixes #49.\
+Fixes #51.
+
 ## 0.7.0, 26.07.2019
 
 Notable changes:
