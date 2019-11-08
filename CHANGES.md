@@ -1,9 +1,80 @@
+## 0.8.0, unreleased
+
+This release contains significant changes related to the naming, format and structure of internal and external
+data representations. They derive from the experience of using Benji in the last few months and from the challenges
+uncovered by the ongoing Kubernetes integration efforts. The changes have been bundled to avoid multiple metadata
+version changes and migrations.
+
+Old metadata backups and exports and old object metadata can still be read by this version of Benji. Existing databases
+can be migrated to the new database structure with ``benji database-migrate``. While this process has been tested
+with both PostgreSQL and SQLite it is strongly recommended to make a consistent backup of the database before
+attempting the migration. The migration process requires a significant amount of time and disk space when there
+are a lot of old backups in the database. The ``versions`` and ``blocks`` tables are completely recreated and the
+old data is moved over. Expect the disk usage to more than double during the migration.
+
+Notable changes:
+
+* Database and metadata changes:
+
+  * The version of metadata exports has changed from ``1.1.0`` to ``2.0.0``. Old exports (``1.0.0`` and ``1.1.0``) can
+    still be imported.
+
+  * ``snapshot_name`` in the ``versions`` table has been renamed to ``snapshot`` in the database and in metadata
+    exports. The long version of the corresponding command line option has also been renamed from ``--snapshot-name``
+    to ``--snapshot``.
+
+  * ``name`` in the ``versions`` table has been renamed to ``volume`` in the database and in metadata exports.
+
+  * ``bytes_dedup`` in the ``versions`` table has been renamed to ``bytes_deduplicated`` in the database and in
+    metadata exports.
+
+  * ``id`` of the ``blocks`` table has been renamed to ``idx`` in the database and in metadata exports.
+
+  * The type of ``uid`` in the ``versions`` table has been changed from integer to string. This also affects any
+    metadata exports. This removes the inconsistency where ``uid`` was represented as a string in some places and
+    as an integer in others. ``uid``s are automatically generated for new versions, but there is also the
+    option to set the ``uid`` of a version on backup via the new ``-u``/``--uid`` option.
+
+  * Storages are now always represented by their name. This changes the key name in metadata exports from ``storage_id``
+    to ``storage`` and the corresponding value is now of type string and not of type integer anymore.
+
+  * A new table ``storages`` is introduced to hold the internal mapping of storage ids to storage names. It is no
+    longer necessary to specify a storage id in the configuration but existing storage ids are imported from the
+    configuration into the database.
+
+  * Labels are now exported as a dictionaries instead of lists.
+
+  * The letter ``Z`` has been appended to the ``date`` value in metadata exports to signify the UTC timezone.
+
+  * These name changes also affect the specification of version filters on the command line.
+
+  * The format of metadata exports is now more compact and has been optimized to facilitate efficient imports in a
+    future version of Benji by ordering the entries in a specific way.
+
+* Object metadata changes:
+
+  * The object metadata version has been changed from ``1.0.0`` to ``2.0.0``. Benji can still read version ``1.0.0``
+    object metadata.
+
+  * The timestamps in the ``created`` and ``modified`` fields of the object metadata have also been augmented with
+    timezone information by appending a ``Z`` to the timestamp.
+
+* The naming of automatically generated copy-on-write versions for writable NBD exports has changed.
+
+* ``benji-k8s``: ``benji-restore-pvc`` has been converted from Bash to Python and now runs in-cluster only. To execute
+  it and other commands connect to the Benji maintenance pod.
+
+* ``benji-k8s``: Rook persistent volumes provisioned by the FlexVolume provisioner are now detected by
+  ``benji-backup-pvc`` and can be backed up with Benji. (Contributed by @q3k. Thanks!)
+
+* ``benji-k8s``: The Prometheus label ``version_name`` has been renamed to ``volume``.
+
 ## 0.7.0, 26.07.2019
 
 Notable changes:
 
 * Added a new I/O module `rbdaio` which uses the asynchronous API of `librbd`.  Performance results in relation to `rbd`
-  have been mixed but performance should be at least 10-20% higher on restore.  In one case performance has been 
+  have been mixed but performance should be at least 10-20% higher on restore.  In one case performance has been
   increased tenfold.
 
 * Almost all Bash helper scripts have been rewritten in Python. The new scripts are calling Benji via the command line

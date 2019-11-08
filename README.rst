@@ -15,23 +15,23 @@ Benji Backup
 
 Benji Backup is a block based deduplicating  backup software. It builds on the
 excellent foundations and concepts of `backy² <http://backy2.com/>`_ by Daniel Kraft.
-Many thanks go to him for making his work public and releasing backy² as
-open-source software!
 
-The primary use cases for Benji are:
+While Benji can backup any block device or image file (this includes LVM logical
+volumes and snapshots) it excels at backing up Ceph RBD images and it also includes
+preliminary support to backup iSCSI targets.
 
-* Fast and resource-efficient backup of Ceph RBD images to object or file storage
-* Backup of LVM volumes (e.g. from servers or personal computers) to external hard
-  drives or the cloud
+Benji is written in Python and is available in `PyPI <https://pypi.org/project/benji/>`_
+for installation with ``pip``. Benji also features a generic container image with all
+dependencies included as well as an image and Helm chart to integrate Benji into a
+`Kubernetes <https://kubernetes.io/>`_ environment to backup Ceph RBD based persistent
+volumes.
 
-Benji features a Docker image and Helm chart for integration with
-`Kubernetes <https://kubernetes.io/>`_. This makes it easy to setup a backup solution 
-for your persistent volumes.
+The documentation is available `here <https://benji-backup.me/>`_.
 
 Status
 ------
 
-Benji is currently nearing beta quality. It passes all included tests. The
+Benji is slowly nearing beta quality. It passes all included tests. The
 documentation isn't completely up-to-date. Please open an issue on GitHub if you have
 a usage question that is not or incorrectly covered by the documentation. And have a
 look at the CHANGES file for any upgrade notes.
@@ -40,124 +40,86 @@ Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
 excessive memory usage.
 
-Older versions contained a Docker image for integrating with `Rook <https://rook.io/>`_.
-As I no longer have access to a Rook installation and Rook changed its Docker base
-image in the meantime I've dropped this support for the time being. The new generic
-Kubernetes image (``benji-k8s``) can be used instead, but it will require some work to get
-the Ceph credentials into the container. I'd accept patches for a third Docker
-image (resurrecting the old ``benji-rook`` image) or maybe it's also possible to integrate
-the changes into the ``benji-k8s`` image without too much fuss.
-
+The Kubernetes integration is currently in the process of being completely rewritten
+to use an operator based approach. In the meantime the ``benji-k8s`` container
+image together with the Helm chart already provides a solid way of backing up
+persistent volumes provided by Ceph RBD. Benji will detect both normal RBD
+volumes and volumes provisioned by Rook's FlexVolume provisioner.
 
 Main Features
 -------------
 
 **Small backups**
-    Benji deduplicates while reading from the block device and only writes
-    blocks once if they have the same checksum. Deduplication takes into
-    account all historic data present in the backup storage target and so
-    spans all backups and all backup sources. This can make deduplication
-    more effective if images are clones of a common ancestor.
+    Benji deduplicates all data read and each unique block is only written
+    to the storage location once. The deduplication takes into account all
+    historic data present on the backup storage and so spans all backups
+    and all backup sources.
+
+    In addition Benji supports fast state-of-the-art compression to further
+    reduce the storage space requirements.
 
 **Fast backups**
-    With the help of Ceph's ``rbd diff``, Benji will only read the blocks
-    that have changed since the last backup. Even when this information
-    is not available (like with LVM) Benji will still only backup
-    changed blocks.
+    With the help of snapshots and the ``rbd diff`` command Benji only
+    backups blocks that have changed since the last backup when used with
+    Ceph RBD images. The same mechanism can be extended to other backup
+    sources.
 
 **Fast restores**
-    With supporting block storage (like Ceph's RBD), a sparse restore is
-    possible. This means, sparse blocks (i.e. blocks which are holes or are
-    all zeros) will be skipped on restore.
+    Sparse blocks are be skipped on restore providing fast restores of sparsely
+    populated disk images.
 
-**NBD server facilitating file-based restores**
-    Benji brings its own NBD (network block device) server which makes backup
-    images directly mountable - even over the network on another machine. This
-    enables file-based restores without restoring the whole image.
+**Low bandwidth requirements**
+    As only changed and not yet known blocks are written to the backup storage,
+    the bandwidth requirements for the network connection between Benji and the
+    storage location are usually low. Even with newly created block devices
+    the traffic to the backup storage location is generally small as these devices
+    mostly contain sparse blocks. Enabling compression further reduces the bandwidth
+    requirements.
 
-    These mounts are read/write (unless you specify ``-r``) and writing to them
-    creates a copy-on-write backup version (**i.e. the original version is not modified**).
-    This makes it possible to do repairs on the image (``fsck``, etc.) and restore
-    the repaired copy afterwards.
-
-**Small bandwidth requirements**
-    As only changed blocks are written to the backup storage, a small connection
-    is sufficient even for larger backups. Even with newly created block devices
-    the traffic to the backup target is small, because these block devices usually
-    contain mostly zeros and are deduplicated before reaching the target storage.
-
-    In addition to this Benji supports fast state-of-the-art compression based on
-    `zstandard <https://github.com/facebook/zstd>`_. This further reduces the
-    required bandwidth and also reduces the storage space requirements.
-
-**Support for a variety of backup storage targets**
-    Benji supports AWS S3 as a data backend but also has options to enable
-    compatibility with other S3 implementations like Google Storage, Ceph's
-    RADOS Gateway or `Minio <https://www.minio.io/>`_.
+**Support for a variety of backup storage locations**
+    Benji supports AWS S3 as a backup storage location and it has options to
+    enable compatibility with other S3 implementations like Google Storage,
+    Ceph's RADOS Gateway or `Minio <https://www.minio.io/>`_.
 
     Benji also supports `Backblaze's <https://www.backblaze.com/>`_ B2 Cloud
-    Storage which opens up a very cost effective way to keep your backups.
+    Storage which opens up a very cost effective way to store backups.
 
-    Last but not least Benji can also use any file based storage including
-    external hard drives and NFS based storage solutions.
+    Benji is able to use any file based storage including external hard drives
+    and network based storage solutions like NFS, SMB or even CephFS.
+
+    Multiple different storage locations can be used simultaneously and in
+    parallel to accomodate different backup strategies.
 
 **Confidentiality**
-    Benji supports AES-256 in GCM mode to encrypt all your data on the backup
-    storage. By using envelope encryption every block is encrypted with its
-    own unique random key which makes plaintext attacks even more difficult.
+    Benji supports AES-256 in GCM mode to encrypt all data blocks on the
+    backup storage. By using envelope encryption every block is encrypted with
+    its own unique random key. This makes plaintext attacks even more difficult.
 
 **Integrity**
-    Every backed up block keeps a checksum with it. When Benji scrubs the
-    backup, it reads the block from the backup storage, calculates its
-    checksum and compares it to the stored checksum. If the checksum differs,
-    it's most likely that there was an error while storing or reading
-    the block, or because of bit rot on the backup target storage.
+    Each data block in Benji is protected by a checksum. This checksum is not
+    only used for deduplication but also to ensure the integrity of the whole
+    backup. Long-term availability of backups is ensured by regularly checking
+    existing backups for bit rot.
 
-    Benji also supports a faster light-weight scrubbing mode which only checks
-    the object's existence and metadata consistency.
+**Integrated NBD server**
+    Benji brings its own NBD (network block device) server which makes backup
+    images directly accessible as a block device - even over the network. The
+    block device can be mounted if it contains a filesystem and any individual
+    files needed can be easily restored even though Benji is a block based
+    backup solution.
 
-    If a scrubbing failure occurs, the defective block and the backups it belongs
-    to are marked as 'invalid' and the block will be re-read for the next backup
-    version even if ``rbd diff`` indicates that it hasn't changed.
+    Benji can also provide a writable version of a backup via NBD. This enables
+    repair operations like ``fsck``. The original backup is not changed in this
+    case. All changes are transparently written to a new backup via copy-on-write
+    and this new backup can be restored just like any other backup after the
+    repair is complete.
 
-    Scrubbing can also take a percentage value of how many blocks of the backup
-    it should scrub. So you can statistically scrub 16% each day and have a
-    full scrub each week (16*7 > 100).
+**Concurrency**
+    Benji supports running multiple operations simultaneously. Instances can
+    be distributed across different hosts or containers without the need
+    for a central server.
 
-**Concurrency: Backup while scrubbing while restoring**
-    As Benji is a long-running process, you don't want to wait until something has
-    finished of course. You can scrub, backup and restore at the same time and
-    multiple times each.
-
-    Benji even supports distributed operation where multiple instances run on
-    different hosts or in different containers at the same time.
-
-**Cache friendly**
-    While reading large pieces of data on Linux, buffers and caches get filled
-    up with data, which in case of backups is essentially only needed once.
-    Benji instructs Linux and Ceph to immediately forget the data once it's processed.
-
-**Simplicity: As simple as cp, but as clever as a backup solution needs to be**
-    With a small set of commands, good ``--help`` and intuitive usage,
-    Benji feels mostly like ``cp``. And that's intentional, because we think,
-    a restore must be fool-proof and succeed even if you're woken up at 3am in the
-    morning.
-
-**Prevents you from doing something stupid**
-    By providing a configuration value for how old backups need to be in order to
-    be able to remove them, you can't accidentally remove very young backups. An
-    exception to this is the enforcement of retention policies which will also
-    remove recent backups if configured.
-
-    With ``benji protect`` you can protect versions from being removed.
-    This is important when you plan to restore a version which according to the
-    retention policy may be removed soon. During restore a lock will also prevent
-    removal, however, by protecting it, it cannot be removed until you decide
-    that it is no longer needed.
-
-    Also, you'll need to use ``--force`` to overwrite existing files or volumes.
-
-**Free and Open Source Software**
-    Anyone can review the source code and audit security and functionality.
-    Benji is licensed under the LGPLv3 license. Please see the documentation
-    for a full list of licenses.
+**Extensibility**
+    Benji comes with a module framework to easily add new protocols for
+    accessing backup sources or storages. New compression and encryption
+    algorithms are also easily integrated into Benji.
