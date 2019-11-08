@@ -16,6 +16,7 @@ from benji.exception import InternalError
 class _ExceptionMapping(NamedTuple):
     exception: Type[BaseException]
     exit_code: int
+    include_stacktrace: bool
 
 
 def completion(shell: str) -> None:
@@ -313,24 +314,26 @@ def main():
     del func_args['no_color']
 
     # From most specific to least specific
+    # yapf: disable
     exception_mappings = [
-        _ExceptionMapping(exception=benji.exception.UsageError, exit_code=os.EX_USAGE),
-        _ExceptionMapping(exception=benji.exception.AlreadyLocked, exit_code=os.EX_NOPERM),
-        _ExceptionMapping(exception=benji.exception.InternalError, exit_code=os.EX_SOFTWARE),
-        _ExceptionMapping(exception=benji.exception.ConfigurationError, exit_code=os.EX_CONFIG),
-        _ExceptionMapping(exception=benji.exception.InputDataError, exit_code=os.EX_DATAERR),
-        _ExceptionMapping(exception=benji.exception.ScrubbingError, exit_code=os.EX_DATAERR),
-        _ExceptionMapping(exception=PermissionError, exit_code=os.EX_NOPERM),
-        _ExceptionMapping(exception=FileExistsError, exit_code=os.EX_CANTCREAT),
-        _ExceptionMapping(exception=FileNotFoundError, exit_code=os.EX_NOINPUT),
-        _ExceptionMapping(exception=EOFError, exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=IOError, exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=OSError, exit_code=os.EX_OSERR),
-        _ExceptionMapping(exception=ConnectionError, exit_code=os.EX_IOERR),
-        _ExceptionMapping(exception=LookupError, exit_code=os.EX_NOINPUT),
-        _ExceptionMapping(exception=KeyboardInterrupt, exit_code=os.EX_NOINPUT),
-        _ExceptionMapping(exception=BaseException, exit_code=os.EX_SOFTWARE),
+        _ExceptionMapping(exception=benji.exception.UsageError, exit_code=os.EX_USAGE, include_stacktrace=False),
+        _ExceptionMapping(exception=benji.exception.AlreadyLocked, exit_code=os.EX_NOPERM, include_stacktrace=False),
+        _ExceptionMapping(exception=benji.exception.InternalError, exit_code=os.EX_SOFTWARE, include_stacktrace=True),
+        _ExceptionMapping(exception=benji.exception.ConfigurationError, exit_code=os.EX_CONFIG, include_stacktrace=False),
+        _ExceptionMapping(exception=benji.exception.InputDataError, exit_code=os.EX_DATAERR, include_stacktrace=False),
+        _ExceptionMapping(exception=benji.exception.ScrubbingError, exit_code=os.EX_DATAERR, include_stacktrace=False),
+        _ExceptionMapping(exception=PermissionError, exit_code=os.EX_NOPERM, include_stacktrace=False),
+        _ExceptionMapping(exception=FileExistsError, exit_code=os.EX_CANTCREAT, include_stacktrace=False),
+        _ExceptionMapping(exception=FileNotFoundError, exit_code=os.EX_NOINPUT, include_stacktrace=False),
+        _ExceptionMapping(exception=EOFError, exit_code=os.EX_IOERR, include_stacktrace=True),
+        _ExceptionMapping(exception=IOError, exit_code=os.EX_IOERR, include_stacktrace=True),
+        _ExceptionMapping(exception=OSError, exit_code=os.EX_OSERR, include_stacktrace=True),
+        _ExceptionMapping(exception=ConnectionError, exit_code=os.EX_IOERR, include_stacktrace=True),
+        _ExceptionMapping(exception=LookupError, exit_code=os.EX_NOINPUT, include_stacktrace=True),
+        _ExceptionMapping(exception=KeyboardInterrupt, exit_code=os.EX_NOINPUT, include_stacktrace=False),
+        _ExceptionMapping(exception=BaseException, exit_code=os.EX_SOFTWARE, include_stacktrace=True),
     ]
+    # yapf: enable
 
     try:
         logger.debug('commands.{0}(**{1!r})'.format(args.func, func_args))
@@ -346,8 +349,11 @@ def main():
                     message = '{}: {}'.format(exception.__class__.__name__, message)
                 else:
                     message = '{} exception occurred.'.format(exception.__class__.__name__)
-                logger.debug(message, exc_info=True)
-                logger.error(message)
+                if case.include_stacktrace:
+                    logger.error(message, exc_info=True)
+                else:
+                    logger.debug(message, exc_info=True)
+                    logger.error(message)
                 sys.exit(case.exit_code)
 
 
