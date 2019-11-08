@@ -38,8 +38,10 @@ def integer_range(minimum: int, maximum: int, arg: str) -> Optional[int]:
 
 
 def main():
-    if sys.hexversion < 0x030600F0:
-        raise InternalError('Benji only supports Python 3.6 or above.')
+    if sys.hexversion < 0x030605F0:
+        # We're using features introduced with Python 3.6. In addition Python versions before 3.6.5 have some
+        # shortcomings in the concurrent.futures implementation which lead to an excessive memory usage.
+        raise InternalError('Benji only supports Python 3.6.5 or above.')
 
     enable_experimental = os.getenv('BENJI_EXPERIMENTAL', default='0') == '1'
 
@@ -297,9 +299,6 @@ def main():
     init_logging(config.get('logFile', types=(str, type(None))),
                  console_level=args.log_level,
                  console_formatter='console-plain' if args.no_color else 'console-colored')
-
-    if sys.hexversion < 0x030604F0:
-        logger.warning('The installed Python version will use excessive amounts of memory when used with Benji. Upgrade Python to at least 3.6.4.')
 
     import benji.commands
     commands = benji.commands.Commands(args.machine_output, config)
