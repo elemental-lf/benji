@@ -1318,7 +1318,7 @@ class DatabaseBackendLocking:
 
     def unlock_all(self) -> None:
         try:
-            locks = self._session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid).all()
+            locks = self._session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid)
             for lock in locks:
                 logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
                 self._session.delete(lock)
