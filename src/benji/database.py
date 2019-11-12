@@ -1156,9 +1156,12 @@ class DatabaseBackend(ReprMixIn):
             version_dict['snapshot'] = version_dict['snapshot_name']
             del version_dict['snapshot_name']
 
-        return self.import_v2(metadata_version, json_input)
+        return self.import_v3(metadata_version, json_input)
 
     def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+        return self.import_v3(metadata_version, json_input)
+
+    def import_v3(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
