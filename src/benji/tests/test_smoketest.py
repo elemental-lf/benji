@@ -137,7 +137,8 @@ class SmokeTestCase(BenjiTestCaseBase):
             logger.debug('Restore of version successful')
 
             benji_obj = self.benjiOpen()
-            blocks = list(benji_obj._database_backend.get_blocks_by_version(version_uid))
+            version = benji_obj._database_backend.get_version(version_uid)
+            blocks = list(benji_obj._database_backend.get_blocks_by_version(version))
             self.assertEqual(list(range(len(blocks))), sorted([block.idx for block in blocks]))
             self.assertTrue(len(blocks) > 0)
             if len(blocks) > 1:

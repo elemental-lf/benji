@@ -1,4 +1,5 @@
 import datetime
+import math
 import time
 import timeit
 import uuid
@@ -102,7 +103,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 'size': 1024 * 4096,
                 'valid': True
             })
-        self.database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
+        self.database_backend.create_blocks(version=version, blocks=blocks)
         self.database_backend.commit()
 
         for idx, checksum in enumerate(checksums):
@@ -124,7 +125,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertTrue(block.valid)
 
         for idx, uid in enumerate(uids):
-            block = self.database_backend.get_block_by_idx(version.uid, idx)
+            block = self.database_backend.get_block_by_idx(version, idx)
             self.assertEqual(idx, block.idx)
             self.assertEqual(version.id, block.version_id)
             self.assertEqual(uid, block.uid)
@@ -132,14 +133,12 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
-        blocks_count = self.database_backend.get_blocks_count_by_version(version.uid)
-        sparse_blocks_count = self.database_backend.get_blocks_count_by_version(version.uid, sparse_only=True)
+        blocks_iter = self.database_backend.get_blocks_by_version(version)
         self.assertEqual(num_blocks, len(list(blocks_iter)))
-        self.assertEqual(num_blocks, blocks_count)
-        self.assertEqual(0, sparse_blocks_count)
+        self.assertEqual(num_blocks, version.blocks_count)
+        self.assertEqual(0, version.sparse_blocks_count)
 
-        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        blocks_iter = self.database_backend.get_blocks_by_version(version)
         for idx, block in enumerate(blocks_iter):
             self.assertEqual(idx, block.idx)
             self.assertEqual(version.id, block.version_id)
@@ -148,7 +147,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
+        blocks_iter = self.database_backend.get_blocks_by_version(version)
         for idx, block in enumerate(blocks_iter):
             dereferenced_block = block.deref()
             self.assertEqual(idx, dereferenced_block.idx)
@@ -160,11 +159,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertTrue(dereferenced_block.valid)
 
         self.database_backend.rm_version(version.uid)
-        blocks_iter = self.database_backend.get_blocks_by_version(version.uid)
-        blocks_count = self.database_backend.get_blocks_count_by_version(version.uid)
-        self.assertEqual(0, len(list(blocks_iter)))
-        self.assertEqual(0, blocks_count)
-
         deleted_count = 0
         for uids_deleted in self.database_backend.get_delete_candidates(-1):
             for storage in uids_deleted.values():
@@ -452,6 +446,17 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         for i in range(3, 6):
             self.assertEqual(VersionStatus.valid, versions[i].status)
             self.assertTrue(versions[i].blocks[0].valid)
+
+    def test_version_num_blocks(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
+        for i in range(256):
+            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+                                                           volume='backup-name',
+                                                           snapshot='snapshot-name.{}'.format(i),
+                                                           size=i * 1111 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096)
+            self.assertEqual(math.ceil(version.size / version.block_size), version.blocks_count)
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

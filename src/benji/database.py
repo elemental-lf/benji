@@ -4,6 +4,7 @@ import datetime
 import enum
 import inspect
 import json
+import math
 import operator
 import os
 import platform
@@ -28,6 +29,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from sqlalchemy.orm import object_session
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
@@ -312,6 +314,18 @@ class Version(Base):
                                          order_by='asc(Block.idx)',
                                          passive_deletes=True,
                                          cascade='all, delete-orphan')
+
+    @property
+    def blocks_count(self) -> int:
+        return math.ceil(self.size / self.block_size)
+
+    @property
+    def sparse_blocks_count(self) -> int:
+        non_sparse_blocks_query = object_session(self).query(Block.idx).filter(Block.version_id == self.id,
+                                                                               Block.uid is not None)
+        non_sparse_blocks = set([row.idx for row in non_sparse_blocks_query])
+
+        return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Version):
@@ -707,33 +721,52 @@ class DatabaseBackend(ReprMixIn):
             logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
             self._last_blocks_commit = current_clock
 
-    def set_block(self, *, idx: int, version_id: int, block_uid: Optional[BlockUid], checksum: Optional[str], size: int,
-                  valid: bool) -> None:
-        try:
-            block = self._session.query(Block).filter(Block.idx == idx, Block.version_id == version_id).first()
-            if not block:
-                version = self._session.query(Version).filter(Version.id == version_id).first()
-                raise InternalError('Block {} of version {} does not exist when it should.'.format(idx, version.uid))
+    @staticmethod
+    def _create_sparse_block(version: Version, idx: int) -> Block:
+        # This block isn't part if the database session (yet).
+        return Block(version_id=version.id, idx=idx, uid=None, checksum=None, size=version.block_size, valid=True)
 
-            block.uid = block_uid
-            block.checksum = checksum
-            block.size = size
-            block.valid = valid
+    def set_block(self, *, idx: int, version: Version, block_uid: Optional[BlockUid], checksum: Optional[str],
+                  size: int, valid: bool) -> None:
+        try:
+            block = self._session.query(Block).filter(Block.version_id == version.id, Block.idx == idx).one_or_none()
+
+            if not block and block_uid is None and size == version.block_size:
+                # Block is not present and it should be fully sparse now -> Nothing to do.
+                return
+            elif block and block_uid is None and size == version.block_size:
+                # Block is present but it should be fully sparse now -> Delete it.
+                self._session.delete(block)
+            elif not block:
+                # Block is not present but should contain data now -> Create it.
+                block = Block(version_id=version.id, idx=idx, uid=block_uid, checksum=checksum, size=size, valid=valid)
+                self._session.add(block)
+            else:
+                # Block is present and  should contains data -> Update it.
+                block.uid = block_uid
+                block.checksum = checksum
+                block.size = size
+                block.valid = valid
 
             self._conditional_blocks_commit()
         except:
             self._session.rollback()
             raise
 
-    def create_blocks(self, *, version_uid: VersionUid, blocks: List[Dict[str, Any]]) -> None:
+    def create_blocks(self, *, version: Version, blocks: List[Dict[str, Any]]) -> None:
         try:
-            version = self._session.query(Version).filter(Version.uid == version_uid).first()
             assert version is not None
+
+            # Remove any fully sparse blocks
+            blocks = [
+                block for block in blocks
+                if block['uid_left'] is not None or block['uid_right'] is not None or block['size'] != version.block_size
+            ]
+
             for block in blocks:
                 block['version_id'] = version.id
 
             self._session.bulk_insert_mappings(Block, blocks)
-
             self._conditional_blocks_commit()
         except:
             self._session.rollback()
@@ -763,11 +796,15 @@ class DatabaseBackend(ReprMixIn):
         return affected_version_uids
 
     def get_block(self, block_uid: BlockUid) -> Block:
+        assert block_uid is not None
         return self._session.query(Block).filter(Block.uid == block_uid).first()
 
-    def get_block_by_idx(self, version_uid: VersionUid, block_idx: int) -> Block:
-        return self._session.query(Block).join(Version).filter(Version.uid == version_uid,
-                                                               Block.idx == block_idx).first()
+    def get_block_by_idx(self, version: Version, idx: int) -> Block:
+        block = self._session.query(Block).filter(Block.version_id == version.id, Block.idx == idx).one_or_none()
+        if not block:
+            block = self._create_sparse_block(version, idx)
+
+        return block
 
     def get_block_by_checksum(self, checksum, storage_id):
         return self._session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
@@ -775,27 +812,37 @@ class DatabaseBackend(ReprMixIn):
 
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
-    def _yield_blocks(self, version_uid: VersionUid, yield_per: int):
-        last_idx = None
+    def _yield_blocks(self, version: Version, yield_per: int):
+        next_start_idx = 0
         while True:
-            query = self._session.query(Block).join(Version).filter(Version.uid == version_uid)
-            if last_idx is not None:
-                query = query.filter(Block.idx > last_idx)
-            block = None
-            for block in query.order_by(Block.idx).limit(yield_per):
+            start_idx = next_start_idx
+            next_start_idx = min(start_idx + yield_per, version.blocks_count)
+
+            blocks = self._session.query(Block).filter(Block.version_id == version.id, Block.idx >= start_idx,
+                                                       Block.idx < next_start_idx).order_by(Block.idx)
+
+            idx = start_idx
+            for block in blocks:
+                if idx < block.idx:
+                    logger.debug(f'Synthesizing sparse blocks {idx} to {block.idx - 1}.')
+                while idx < block.idx:
+                    yield self._create_sparse_block(version, idx)
+                    idx += 1
                 yield block
-            if block is None:
+                idx += 1
+
+            if idx < next_start_idx:
+                logger.debug(f'Synthesizing sparse blocks {idx} to {next_start_idx - 1} at end of slice.')
+            while idx < next_start_idx:
+                yield self._create_sparse_block(version, idx)
+                idx += 1
+
+            if next_start_idx == version.blocks_count:
                 break
-            last_idx = block.idx if block else None
 
-    def get_blocks_by_version(self, version_uid: VersionUid, yield_per: int = 10000) -> Iterator[Block]:
-        yield from self._yield_blocks(version_uid, yield_per)
-
-    def get_blocks_count_by_version(self, version_uid: VersionUid, sparse_only: bool = False) -> int:
-        query = self._session.query(Block).join(Version).filter(Version.uid == version_uid)
-        if sparse_only:
-            query = query.filter(Block.uid_left == None, Block.uid_right == None)
-        return query.count()
+    def get_blocks_by_version(self, version: Version, yield_per: int = 10000) -> Iterator[Block]:
+        assert yield_per > 0
+        yield from self._yield_blocks(version, yield_per)
 
     def rm_version(self, version_uid: VersionUid) -> int:
         try:
