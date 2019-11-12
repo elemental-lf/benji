@@ -969,7 +969,7 @@ class DatabaseBackend(ReprMixIn):
 
                 if isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
                     # Use ordered dictionary to make iterative JSON parsing possible. See below.
-                    fields = OrderedDict()
+                    fields: OrderedDict[str, Any] = OrderedDict()
 
                     for field in sqlalchemy.inspect(obj).mapper.composites:
                         ignore = False
