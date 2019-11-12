@@ -638,7 +638,7 @@ class DatabaseBackend(ReprMixIn):
             raise
 
     def get_version(self, version_uid: VersionUid) -> Version:
-        version = self._session.query(Version).filter(Version.uid == version_uid).first()
+        version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
 
         if version is None:
             raise KeyError('Version {} not found.'.format(version_uid))
@@ -672,11 +672,11 @@ class DatabaseBackend(ReprMixIn):
     def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
         try:
             label = self._session.query(Label).join(Version).filter(Version.uid == version_uid,
-                                                                    Label.name == name).first()
+                                                                    Label.name == name).one_or_none()
             if label:
                 label.value = value
             else:
-                version = self._session.query(Version).filter(Version.uid == version_uid).first()
+                version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
                 if version is None:
                     raise KeyError('Version {} not found.'.format(version_uid))
                 label = Label(version_id=version.id, name=name, value=value)
@@ -689,7 +689,7 @@ class DatabaseBackend(ReprMixIn):
 
     def rm_label(self, version_uid: VersionUid, name: str) -> None:
         try:
-            version = self._session.query(Version).filter(Version.uid == version_uid).first()
+            version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
             self._session.query(Label).filter(Label.version_id == version.id,
                                               Label.name == name).delete(synchronize_session=False)
             self._session.commit()
@@ -799,7 +799,7 @@ class DatabaseBackend(ReprMixIn):
 
     def rm_version(self, version_uid: VersionUid) -> int:
         try:
-            version = self._session.query(Version).filter(Version.uid == version_uid).first()
+            version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
             affected_blocks = self._session.query(Block).filter(Block.version_id == version.id)
             num_blocks = affected_blocks.count()
             for affected_block in affected_blocks:
@@ -879,7 +879,7 @@ class DatabaseBackend(ReprMixIn):
 
     def sync_storage(self, storage_name: str, storage_id: int = None) -> Storage:
         try:
-            storage = self._session.query(Storage).filter(Storage.name == storage_name).first()
+            storage = self._session.query(Storage).filter(Storage.name == storage_name).one_or_none()
             if storage:
                 if storage_id is not None and storage.id != storage_id:
                     raise ConfigurationError(
@@ -898,7 +898,7 @@ class DatabaseBackend(ReprMixIn):
             raise
 
     def get_storage_by_name(self, storage_name: str) -> Storage:
-        return self._session.query(Storage).filter(Storage.name == storage_name).first()
+        return self._session.query(Storage).filter(Storage.name == storage_name).one_or_none()
 
     def get_storage_by_id(self, storage_id: int) -> Storage:
         return self._session.query(Storage).get(storage_id)
@@ -1173,7 +1173,7 @@ class DatabaseBackend(ReprMixIn):
                         raise InputDataError('Missing attribute {} in block list in version {}.'.format(
                             attribute, version_uid))
 
-            storage = self._session.query(Storage).filter(Storage.name == version_dict['storage']).first()
+            storage = self._session.query(Storage).filter(Storage.name == version_dict['storage']).one_or_none()
             if not storage:
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
@@ -1257,7 +1257,7 @@ class DatabaseBackendLocking:
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False):
         try:
             lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).first()
+                                                    Lock.process_id == self._uuid).one_or_none()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
@@ -1285,7 +1285,7 @@ class DatabaseBackendLocking:
 
     def is_locked(self, *, lock_name: str) -> bool:
         try:
-            lock = self._session.query(Lock).filter(Lock.lock_name == lock_name).first()
+            lock = self._session.query(Lock).filter(Lock.lock_name == lock_name).one_or_none()
         except:
             self._session.rollback()
             raise
@@ -1295,7 +1295,7 @@ class DatabaseBackendLocking:
     def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
             lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).with_for_update().first()
+                                                    Lock.process_id == self._uuid).with_for_update().one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
@@ -1307,7 +1307,7 @@ class DatabaseBackendLocking:
     def unlock(self, *, lock_name: str) -> None:
         try:
             lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).first()
+                                                    Lock.process_id == self._uuid).one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             self._session.delete(lock)
