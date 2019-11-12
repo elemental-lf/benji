@@ -417,6 +417,42 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             datetime.datetime.now(tz=tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")))
         self.assertEqual(3, len(versions))
 
+    def test_set_block_invalid(self):
+        self.database_backend.sync_storage('s-1', storage_id=1)
+        versions = []
+        good_uid = BlockUid(1, 2)
+        bad_uid = BlockUid(3, 4)
+        for i in range(6):
+            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+                                                           volume='backup-name',
+                                                           snapshot='snapshot-name.{}'.format(i),
+                                                           size=16 * 1024 * 4096,
+                                                           storage_id=1,
+                                                           block_size=4 * 1024 * 4096)
+            blocks = [{
+                'idx': 0,
+                'uid_left': bad_uid.left if i < 3 else good_uid.left,
+                'uid_right': bad_uid.right if i < 3 else good_uid.right,
+                'checksum': 'aabbcc',
+                'size': 4 * 1024 * 4096,
+                'valid': True,
+            }]
+            self.database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
+            self.database_backend.commit()
+            self.database_backend.set_version(version_uid=version.uid, status=VersionStatus.valid)
+
+            versions.append(version)
+
+        self.database_backend.set_block_invalid(bad_uid)
+
+        for i in range(3):
+            self.assertEqual(VersionStatus.invalid, versions[i].status)
+            self.assertFalse(versions[i].blocks[0].valid)
+
+        for i in range(3, 6):
+            self.assertEqual(VersionStatus.valid, versions[i].status)
+            self.assertTrue(versions[i].blocks[0].valid)
+
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
 

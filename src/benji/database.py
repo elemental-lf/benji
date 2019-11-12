@@ -771,15 +771,17 @@ class DatabaseBackend(ReprMixIn):
 
     def set_block_invalid(self, block_uid: BlockUid) -> List[VersionUid]:
         try:
-            affected_version_uids = self._session.query(sqlalchemy.distinct(
-                Block.version_uid)).filter(Block.uid == block_uid).all()
-            affected_version_uids = [version_uid[0] for version_uid in affected_version_uids]
+            affected_version_uids_query = self._session.query(sqlalchemy.distinct(
+                Version.uid).label('uid')).join(Block).filter(Block.uid == block_uid)
+            affected_version_uids = [row.uid for row in affected_version_uids_query]
+            assert len(affected_version_uids) > 0
+
             self._session.query(Block).filter(Block.uid == block_uid).update({'valid': False},
                                                                              synchronize_session=False)
             self._session.commit()
 
             logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join([version_uid for version_uid in affected_version_uids])))
+                block_uid, ', '.join([str(version_uid) for version_uid in affected_version_uids])))
 
             for version_uid in affected_version_uids:
                 self.set_version(version_uid, status=VersionStatus.invalid)
