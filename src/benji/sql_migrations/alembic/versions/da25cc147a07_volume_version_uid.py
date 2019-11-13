@@ -5,7 +5,6 @@ Revises: dd844d630d49
 Create Date: 2019-10-28 15:20:15.455215
 
 """
-from functools import lru_cache
 
 import sqlalchemy as sa
 from alembic import op
@@ -29,7 +28,6 @@ def upgrade():
     op.create_table('versions_new',
                     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
                     sa.Column('uid', sa.String(length=255), nullable=False),
-                    sa.Column('uid_old', sa.Integer(), nullable=False),
                     sa.Column('date', sa.DateTime(), nullable=False),
                     sa.Column('volume', sa.String(length=255), nullable=False),
                     sa.Column('snapshot', sa.String(length=255), nullable=False),
@@ -57,8 +55,8 @@ def upgrade():
     versions_new = sa.Table('versions_new', metadata, autoload_with=conn)
 
     for version in conn.execute(versions.select()):
-        conn.execute(versions_new.insert().values(uid=f'V{version.uid:010d}',
-                                                  uid_old=version.uid,
+        conn.execute(versions_new.insert().values(id=version.uid,
+                                                  uid=f'V{version.uid:010d}',
                                                   date=version.date,
                                                   volume=version.name,
                                                   snapshot=version.snapshot,
@@ -111,17 +109,12 @@ def upgrade():
     blocks = sa.Table('blocks', metadata, autoload_with=conn)
     blocks_new = sa.Table('blocks_new', metadata, autoload_with=conn)
 
-    @lru_cache(maxsize=8192)
-    def version_id_lookup(version_uid: int) -> int:
-        version = conn.execute(versions.select().where(versions.c.uid_old == version_uid)).first()
-        return version.id
-
     for block in conn.execute(blocks.select()):
         conn.execute(blocks_new.insert().values(idx=block.idx,
                                                 uid_left=block.uid_left,
                                                 uid_right=block.uid_right,
                                                 size=block.size,
-                                                version_id=version_id_lookup(block.version_uid),
+                                                version_id=block.version_uid,
                                                 valid=block.valid,
                                                 checksum=block.checksum))
 
@@ -148,15 +141,10 @@ def upgrade():
     labels_new = sa.Table('labels_new', metadata, autoload_with=conn)
 
     for label in conn.execute(labels.select()):
-        conn.execute(labels_new.insert().values(name=label.name,
-                                                value=label.value,
-                                                version_id=version_id_lookup(label.version_uid)))
+        conn.execute(labels_new.insert().values(name=label.name, value=label.value, version_id=label.version_uid))
 
     op.drop_table('labels')
     op.rename_table('labels_new', 'labels')
-
-    with op.batch_alter_table('versions', schema=None) as batch_op:
-        batch_op.drop_column('uid_old')
 
 
 def downgrade():
