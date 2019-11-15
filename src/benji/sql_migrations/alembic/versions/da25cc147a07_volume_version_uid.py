@@ -71,6 +71,11 @@ def upgrade():
                                                   bytes_sparse=version.bytes_sparse,
                                                   duration=version.duration))
 
+    # Reset sequence for PostgreSQL
+    # Source: https://stackoverflow.com/questions/244243/how-to-reset-postgres-primary-key-sequence-when-it-falls-out-of-sync
+    if (op.get_context().dialect.name == 'postgresql'):
+        op.execute('SELECT setval(pg_get_serial_sequence("versions_new", "id"), COALESCE(MAX(id), 0) + 1, false) FROM versions_new')
+
     with op.batch_alter_table('blocks', schema=None) as batch_op:
         batch_op.drop_constraint('fk_blocks_version_uid_versions', type_='foreignkey')
 
