@@ -311,7 +311,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         try:
             self._rm_object(key)
         except FileNotFoundError as exception:
-            raise BlockNotFoundError('Block UID {} not found on storage.'.format(str(uid)), uid) from exception
+            raise BlockNotFoundError('Block UID {} not found on storage.'.format(uid), uid) from exception
         finally:
             try:
                 self._rm_object(metadata_key)

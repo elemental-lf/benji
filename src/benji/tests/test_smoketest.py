@@ -9,6 +9,8 @@ from operator import and_
 from shutil import copyfile
 from unittest import TestCase
 
+from benji.database import VersionUid
+
 from benji.blockuidhistory import BlockUidHistory
 from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
@@ -105,7 +107,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj = self.benjiOpen(init_database=init_database, block_size=block_size)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
-                version = benji_obj.backup(version_uid=str(uuid.uuid4()),
+                version = benji_obj.backup(version_uid=VersionUid(str(uuid.uuid4())),
                                            volume='data-backup',
                                            snapshot='snapshot-name',
                                            source='file:' + image_filename,

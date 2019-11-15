@@ -330,7 +330,7 @@ class Benji(ReprMixIn):
             affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
-                             .format(', '.join([str(affected_version) for affected_version in sorted(affected_version_uids)])))
+                             .format(', '.join(sorted(affected_version_uids))))
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid))
 
     def deep_scrub(self,
@@ -453,7 +453,7 @@ class Benji(ReprMixIn):
                 affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
-                             .format(', '.join([str(affected_version) for affected_version in sorted(affected_version_uids)])))
+                             .format(', '.join(sorted(affected_version_uids))))
 
         self._locking.unlock_version(version_uid)
 
@@ -1077,8 +1077,7 @@ class Benji(ReprMixIn):
                 locked_version_uids.append(version_uid)
 
             self._database_backend.export(version_uids, f)
-            logger.info('Exported metadata of version(s): {}.'.format(', '.join(
-                [str(version_uid) for version_uid in version_uids])))
+            logger.info('Exported metadata of version(s): {}.'.format(', '.join(version_uids)))
         finally:
             for version_uid in locked_version_uids:
                 self._locking.unlock_version(version_uid)
@@ -1108,8 +1107,7 @@ class Benji(ReprMixIn):
     def metadata_import(self, f: TextIO) -> None:
         # TODO: Find a good way to lock here
         version_uids = self._database_backend.import_(f)
-        logger.info('Imported metadata of version(s): {}.'.format(', '.join(
-            [str(version_uid) for version_uid in version_uids])))
+        logger.info('Imported metadata of version(s): {}.'.format(', '.join(version_uids)))
 
     def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
         if storage_name is not None:
@@ -1176,7 +1174,7 @@ class Benji(ReprMixIn):
 
         if dismissed_versions:
             logger.info('Removing versions: {}.'.format(', '.join(
-                map(lambda version: str(version.uid), sorted(dismissed_versions)))))
+                map(lambda version: version.uid, sorted(dismissed_versions)))))
         else:
             logger.info('All versions are conforming to the retention policy.')
 

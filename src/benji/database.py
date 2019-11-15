@@ -115,40 +115,14 @@ class VersionStatusType(sqlalchemy.types.TypeDecorator):
             return None
 
 
-@total_ordering
-class VersionUid(StorageKeyMixIn['VersionUid']):
+class VersionUid(str, StorageKeyMixIn['VersionUid']):
 
-    def __init__(self, name: str) -> None:
-        if not isinstance(name, str):
-            raise InternalError(f'Unexpected type {type(name)} in constructor.')
-        if not InputValidation.is_version_uid(name):
-            raise InputDataError('Version name {} is invalid.'.format(name))
-        self._value = name
-
-    def __str__(self) -> str:
-        return self._value
-
-    def __repr__(self) -> str:
-        return self._value
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, VersionUid):
-            return self._value == other._value
-        elif isinstance(other, str):
-            return self._value == other
-        else:
-            return NotImplemented
-
-    def __lt__(self, other: Any) -> bool:
-        if isinstance(other, VersionUid):
-            return self._value < other._value
-        elif isinstance(other, str):
-            return self._value < other
-        else:
-            return NotImplemented
-
-    def __hash__(self) -> int:
-        return hash(self._value)
+    def __new__(cls, uid: str):
+        if not isinstance(uid, str):
+            raise InternalError(f'Unexpected type {type(uid)} in constructor.')
+        if not InputValidation.is_version_uid(uid):
+            raise InputDataError('Version name {} is invalid.'.format(uid))
+        return str.__new__(cls, uid)  # type: ignore
 
     # Start: Implements StorageKeyMixIn
     _STORAGE_PREFIX = 'versions/'
@@ -172,12 +146,8 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
     impl = sqlalchemy.String(255)
 
     def process_bind_param(self, value: Optional[Union[str, VersionUid]], dialect) -> Optional[str]:
-        if value is None:
-            return None
-        elif isinstance(value, str):
+        if value is None or isinstance(value, (VersionUid, str)):
             return value
-        elif isinstance(value, VersionUid):
-            return str(value)
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
 
@@ -781,7 +751,7 @@ class DatabaseBackend(ReprMixIn):
             self._session.commit()
 
             logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join([str(version_uid) for version_uid in affected_version_uids])))
+                block_uid, ', '.join(affected_version_uids)))
 
             for version_uid in affected_version_uids:
                 self.set_version(version_uid, status=VersionStatus.invalid)
@@ -1208,7 +1178,7 @@ class DatabaseBackend(ReprMixIn):
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
             try:
-                self.get_version(version_dict['uid'])
+                self.get_version(VersionUid(version_dict['uid']))
             except KeyError:
                 pass  # does not exist
             else:
@@ -1239,13 +1209,13 @@ class DatabaseBackend(ReprMixIn):
                 for attribute in ('idx', 'uid', 'size', 'checksum'):
                     if attribute not in block_dict:
                         raise InputDataError('Missing attribute {} in block of version {}.'.format(
-                            attribute, str(version_uid)))
+                            attribute, version_uid))
 
                 assert isinstance(block_dict['uid'], dict)
                 for attribute in ('left', 'right'):
                     if attribute not in block_dict['uid']:
                         raise InputDataError('Missing attribute {} in block uid of version {}.'.format(
-                            attribute, str(version_uid)))
+                            attribute, version_uid))
 
                 block_dict['version_id'] = version.id
                 block_uid = BlockUid(block_dict['uid']['left'], block_dict['uid']['right'])

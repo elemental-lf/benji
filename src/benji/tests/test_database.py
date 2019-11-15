@@ -17,7 +17,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_version(self):
         self.database_backend.sync_storage('s-1', storage_id=1)
-        version = self.database_backend.create_version(version_uid='v1',
+        version = self.database_backend.create_version(version_uid=VersionUid('v1'),
                                                        volume='backup-name',
                                                        snapshot='snapshot-name',
                                                        size=16 * 1024 * 4096,
@@ -80,7 +80,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
     def test_block(self):
         self.database_backend.sync_storage('s-1', storage_id=1)
-        version = self.database_backend.create_version(version_uid='v1',
+        version = self.database_backend.create_version(version_uid=VersionUid('v1'),
                                                        volume='name-' + self.random_string(12),
                                                        snapshot='snapshot-name-' + self.random_string(12),
                                                        size=256 * 1024 * 4096,
@@ -233,7 +233,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
     def test_version_filter(self):
         self.database_backend.sync_storage('s-1', storage_id=1)
         for i in range(256):
-            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+            version = self.database_backend.create_version(version_uid=VersionUid(f'v{i + 1}'),
                                                            volume='backup-name',
                                                            snapshot='snapshot-name.{}'.format(i),
                                                            size=16 * 1024 * 4096,
@@ -334,7 +334,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+            version = self.database_backend.create_version(version_uid=VersionUid(f'v{i + 1}'),
                                                            volume='backup-name',
                                                            snapshot='snapshot-name.{}'.format(i),
                                                            size=16 * 1024 * 4096,
@@ -355,7 +355,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+            version = self.database_backend.create_version(version_uid=VersionUid(f'v{i + 1}'),
                                                            volume='backup-name',
                                                            snapshot='snapshot-name.{}'.format(i),
                                                            size=16 * 1024 * 4096,
@@ -377,7 +377,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.database_backend.sync_storage('s-1', storage_id=1)
         version_uids = set()
         for i in range(3):
-            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+            version = self.database_backend.create_version(version_uid=VersionUid(f'v{i + 1}'),
                                                            volume='backup-name',
                                                            snapshot='snapshot-name.{}'.format(i),
                                                            size=16 * 1024 * 4096,
@@ -423,7 +423,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         good_uid = BlockUid(1, 2)
         bad_uid = BlockUid(3, 4)
         for i in range(6):
-            version = self.database_backend.create_version(version_uid=f'v{i + 1}',
+            version = self.database_backend.create_version(version_uid=VersionUid(f'v{i + 1}'),
                                                            volume='backup-name',
                                                            snapshot='snapshot-name.{}'.format(i),
                                                            size=16 * 1024 * 4096,
