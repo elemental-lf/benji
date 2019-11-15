@@ -431,7 +431,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                 'size': 4 * 1024 * 4096,
                 'valid': True,
             }]
-            self.database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
+            self.database_backend.create_blocks(version=version, blocks=blocks)
             self.database_backend.commit()
             self.database_backend.set_version(version_uid=version.uid, status=VersionStatus.valid)
 
