@@ -145,8 +145,8 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.String(255)
 
-    def process_bind_param(self, value: Optional[Union[str, VersionUid]], dialect) -> Optional[str]:
-        if value is None or isinstance(value, (VersionUid, str)):
+    def process_bind_param(self, value: Optional[str], dialect) -> Optional[str]:
+        if value is None or isinstance(value, str):
             return value
         else:
             raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
