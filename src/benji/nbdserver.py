@@ -102,8 +102,12 @@ class NbdServer(ReprMixIn):
     NBD_FLAG_FIXED_NEWSTYLE = 1 << 0
     NBD_FLAG_NO_ZEROES = 1 << 1
 
-    # Our flags
-    NBD_HANDSHAKE_FLAGS = NBD_FLAG_FIXED_NEWSTYLE
+    # Contrary to the NBD specification which states:
+    #   bit 1, NBD_FLAG_NO_ZEROES; if set, and if the client replies with NBD_FLAG_C_NO_ZEROES in the client flags
+    #   field, the server MUST NOT send the 124 bytes of zero at the end of the negotiation.
+    # at least nbd-client 3.19 will assume NBD_FLAG_NO_ZEROES even when the server doesn't advertise it.
+    # This has been fixed in nbd-client via https://github.com/NetworkBlockDevice/nbd/commit/d5b2a76775803ea7d6378a8e9caa58d756b30940.
+    NBD_HANDSHAKE_FLAGS = NBD_FLAG_FIXED_NEWSTYLE | NBD_FLAG_NO_ZEROES
 
     # Export flags
     NBD_FLAG_HAS_FLAGS = (1 << 0)
@@ -180,7 +184,11 @@ class NbdServer(ReprMixIn):
             if not fixed:
                 self.log.warning("Client did not signal fixed new-style handshake.")
 
-            client_flags ^= self.NBD_FLAG_FIXED_NEWSTYLE
+            no_zeros = (client_flags & self.NBD_FLAG_NO_ZEROES) != 0
+            if no_zeros:
+                self.log.debug("Client requested NBD_FLAG_NO_ZEROES.")
+
+            client_flags ^= self.NBD_FLAG_FIXED_NEWSTYLE | self.NBD_FLAG_NO_ZEROES
             if client_flags > 0:
                 raise IOError("Handshake failed, unknown client flags %s, disconnecting." % (client_flags))
 
@@ -236,7 +244,8 @@ class NbdServer(ReprMixIn):
                     # size of 4096
                     size = math.ceil(version.size / 4096) * 4096
                     writer.write(struct.pack('>QH', size, export_flags))
-                    writer.write(b"\x00" * 124)
+                    if not no_zeros:
+                        writer.write(b"\x00" * 124)
                     yield from writer.drain()
 
                     # Transition to transmission phase
