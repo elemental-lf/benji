@@ -271,7 +271,11 @@ class NbdServer(ReprMixIn):
 
                     raise _NbdServerAbortedNegotiationError()
                 else:
-                    # We don't support any other option
+                    # We don't support any other option.
+                    # nbd-client will always try NBD_OPT_GO before NBD_OPT_EXPORTNAME so we don't log it.
+                    if opt != self.NBD_OPT_GO:
+                        self.log.warning("[%s:%s] Received unsupported option: %s." % (host, port, opt))
+
                     if not fixed:
                         raise IOError("Unsupported option: %s." % (opt))
 
