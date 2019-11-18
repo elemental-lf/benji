@@ -1371,7 +1371,7 @@ class BenjiStore(ReprMixIn):
         cow_version = self._benji_obj._prepare_version(
             version_uid=VersionUid('{}-{}'.format(f'nbd-cow-{base_version.uid}' [:248], random_string(6))),
             volume=base_version.volume,
-            snapshot=datetime.datetime.now().isoformat(timespec='microseconds') + 'Z',
+            snapshot=datetime.datetime.utcnow().isoformat(timespec='microseconds') + 'Z',
             base_version_uid=base_version.uid,
             base_version_locking=False)
         self._benji_obj._locking.update_version_lock(cow_version.uid, reason='NBD COW')
