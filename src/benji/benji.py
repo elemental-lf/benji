@@ -1220,7 +1220,7 @@ class _BlockCache:
 
     def read(self, block_uid: BlockUid, offset: int = 0, length: int = None) -> bytes:
         filename = self._cache_filename(block_uid)
-        with open(filename, 'rb') as f:
+        with open(filename, 'rb', buffering=0) as f:
             f.seek(offset)
             if length is None:
                 return f.read()
@@ -1230,18 +1230,18 @@ class _BlockCache:
     def write(self, block_uid: BlockUid, data) -> None:
         filename = self._cache_filename(block_uid)
         try:
-            with open(filename, 'wb') as f:
+            with open(filename, 'wb', buffering=0) as f:
                 f.write(data)
         except FileNotFoundError:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
-            with open(filename, 'wb') as f:
+            with open(filename, 'wb', buffering=0) as f:
                 f.write(data)
 
         self._block_cache.add(block_uid)
 
     def update(self, block_uid: BlockUid, offset: int, data: bytes) -> None:
         filename = self._cache_filename(block_uid)
-        with open(filename, 'r+b') as f:
+        with open(filename, 'r+b', buffering=0) as f:
             f.seek(offset)
             f.write(data)
 
