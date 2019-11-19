@@ -40,6 +40,10 @@ Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
 excessive memory usage.
 
+The ``master`` branch contains the development version of Benji and may be broken at
+times and may even destroy your backups.  Please use the latest pre-releases to get
+some resemblance of stability and a migration path from one pre-release to the next.
+
 The Kubernetes integration is currently in the process of being completely rewritten
 to use an operator based approach. In the meantime the ``benji-k8s`` container
 image together with the Helm chart already provides a solid way of backing up
