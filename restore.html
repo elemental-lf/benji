@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.8.0 documentation</title>
   
 
   
@@ -381,23 +381,21 @@ optional arguments:
   -r, --read-only       NBD device is read-only (default: False)
 </pre></div>
 </div>
-<p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. These <em>versions</em> can then be
+<p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. The <em>versions</em> can then be
 mounted on any Linux host. The requirements on the Linux host are:</p>
 <ul class="simple">
 <li><p>loaded <code class="docutils literal notranslate"><span class="pre">nbd</span></code> kernel module (<code class="docutils literal notranslate"><span class="pre">modprobe</span> <span class="pre">nbd</span></code> as root)</p></li>
-<li><p>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL/CentOS7/Fedora)</p></li>
+<li><p>installed <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> program (RPM package <code class="docutils literal notranslate"><span class="pre">nbd</span></code> on RHEL, CentOS and Fedora)</p></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to am NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>)
 on the Linux host. If the image contains a filesystem it can be mounted normally. You can then search for the relevant
 files and restore them.</p>
 <p>There are some known issues with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code>:</p>
 <ul class="simple">
-<li><p>Some problems have been reported with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> 3.18. Please see <a class="reference external" href="https://github.com/elemental-lf/benji/issues/12">https://github.com/elemental-lf/benji/issues/12</a>.
-Older versions like 3.16 and 3.17 (needs <code class="docutils literal notranslate"><span class="pre">-t</span></code>, see below) and newer versions like 3.19 seems to be fine.</p></li>
-<li><p>Debian 10 (“Buster”) has an <cite>nbd-client</cite> package with version 3.19-3. The binary reports 3.18 as its version for
-whatever reason. This version does not work with Benji at all. See <a class="reference external" href="https://github.com/elemental-lf/benji/issues/56">https://github.com/elemental-lf/benji/issues/56</a>.
-Currently (10/08/2019) the development version of Debian contains a newer <cite>nbd-client</cite> package which works without
-problems. This version will hopefully propagate into testing and then into Buster.</p></li>
+<li><p>There have been numerous problems with different versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> when used together with Benji. Recent
+findings (11/18/2019) suggest that a bug in <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> introduced in <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/3c81389684bc2a4c86b4a744e8e97c6da354c44e">this commit</a>
+and fixed <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/d5b2a76775803ea7d6378a8e9caa58d756b30940">in this commit</a>
+was the reason for most of them. Benji versions 0.8.0 and newer contain a workaround for this bug.</p></li>
 <li><p>Some versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> (like 3.17) use a timeout value of zero which also leads to problems. Please
 explicitly specify a timeout with <code class="docutils literal notranslate"><span class="pre">-t</span></code> in these cases. To make the confusion complete some distributions have
 back-ported the fix for this issue. So 3.17 on Fedora is actually fine without <code class="docutils literal notranslate"><span class="pre">-t</span></code>.</p></li>
@@ -420,7 +418,7 @@ by using <code class="docutils literal notranslate"><span class="pre">nbd-client
 $ sudo modprobe nbd
 
 <span class="c1"># Connect a Benji version to a free NBD block device</span>
-$ sudo nbd-client -N V0000000001 <span class="m">127</span>.0.0.1 -p <span class="m">10809</span> -b <span class="m">512</span> -t <span class="m">10</span> /dev/nbd0
+$ sudo nbd-client -p <span class="m">10809</span> -b <span class="m">512</span> -t <span class="m">10</span> -N V0000000001 <span class="m">127</span>.0.0.1  /dev/nbd0
 Negotiation: ..size <span class="o">=</span> 10MB
 <span class="nv">bs</span><span class="o">=</span><span class="m">512</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
 

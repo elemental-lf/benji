@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.7.0.dev77+g1111276 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.8.0 documentation</title>
   
 
   
@@ -730,9 +730,13 @@ bucket algorithm.  A value of <code class="docutils literal notranslate"><span c
 <li><p>type: list of strings</p></li>
 <li><p>default: empty list</p></li>
 </ul>
-<p>Sets a list of transform which are applied to each data object before it is
-written to the storage. The transformations are performed in order. In
-forward direction when writing data and in reverse direction when reading.</p>
+<p>Sets a list of transformations which are applied to each data object before it is
+written to the storage. The transformations are performed in order from first to
+last when writing to the storage. On read the list of transformations recorded in
+the object’s metadata is used in reverse order to decode the data. This makes
+it possible to change the list of <code class="docutils literal notranslate"><span class="pre">activeTransforms</span></code> and so enable compression or
+encryption even when there are data objects present in a storage already. The changed
+transformation list will only be applied to new data objects.</p>
 <ul class="simple">
 <li><p>name: <strong>consistencyCheckWrites</strong></p></li>
 <li><p>type: bool</p></li>
