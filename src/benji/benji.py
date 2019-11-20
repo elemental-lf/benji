@@ -1200,13 +1200,14 @@ class Benji(ReprMixIn):
         return list(StorageFactory.get_modules().keys())
 
 
-class _BlockCache:
+class _BlockStore:
 
-    _block_cache: Set[BlockUid]
+    _block_present: Set[BlockUid]
 
     def __init__(self, cache_directory: str) -> None:
         self._cache_directory = cache_directory
-        self._block_cache = set()
+        self._block_present = set()
+        os.makedirs(self._cache_directory, exist_ok=True)
 
     def _cache_filename(self, block_uid: BlockUid) -> str:
         assert block_uid.left is not None and block_uid.right is not None
@@ -1233,7 +1234,7 @@ class _BlockCache:
             with open(filename, 'wb', buffering=0) as f:
                 f.write(data)
 
-        self._block_cache.add(block_uid)
+        self._block_present.add(block_uid)
 
     def update(self, block_uid: BlockUid, offset: int, data: bytes) -> None:
         filename = self._cache_filename(block_uid)
@@ -1243,8 +1244,7 @@ class _BlockCache:
 
     def rm(self, block_uid: BlockUid) -> None:
         try:
-            # Do this first, so that nobody tries to access this block anymore while we're trying to delete it
-            self._block_cache.remove(block_uid)
+            self._block_present.remove(block_uid)
         except KeyError:
             pass
         filename = self._cache_filename(block_uid)
@@ -1253,8 +1253,8 @@ class _BlockCache:
         except FileNotFoundError:
             pass
 
-    def in_cache(self, block_uid: BlockUid) -> bool:
-        return block_uid not in self._block_cache
+    def present(self, block_uid: BlockUid) -> bool:
+        return block_uid in self._block_present
 
 
 # The reason for this class being here is that it accesses private attributes of class Benji
@@ -1263,6 +1263,9 @@ class _BlockCache:
 # functionality seems very different. So we just define that BenjiStore objects may access
 # private attributes of Benji objects.
 class BenjiStore(ReprMixIn):
+
+    _BLOCK_CACHE_DIRECTORY = 'block-cache'
+    _COW_STORE_DIRECTORY = 'cow-store'
 
     _benji_obj: Benji
     _cache_directory: str
@@ -1275,7 +1278,8 @@ class BenjiStore(ReprMixIn):
         self._cow = {}  # contains version_uid: dict() of block id -> block
 
         cache_directory = self._benji_obj.config.get('nbd.cacheDirectory', types=str)
-        self._block_cache = _BlockCache(cache_directory)
+        self._block_cache = _BlockStore(os.path.join(cache_directory, self._BLOCK_CACHE_DIRECTORY))
+        self._cow_store = _BlockStore(os.path.join(cache_directory, self._COW_STORE_DIRECTORY))
 
     def open(self, version) -> None:
         self._benji_obj._locking.lock_version(version.uid, reason='NBD')
@@ -1333,33 +1337,39 @@ class BenjiStore(ReprMixIn):
         data_chunks: List[bytes] = []
         block: Optional[Union[Block, DereferencedBlock]]
         for block, offset_in_block, length_in_block in read_list:
-            # Read block from COW
-            if block is not None and cow is not None and block.idx in cow:
-                assert cow_version is not None
-                logger.debug('Reading block from COW {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
-                                                                          length_in_block))
-                block = cow[block.idx]
-            # Read block from original version
-            elif block is not None:
-                logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '', version.uid,
-                                                                   block.idx, offset_in_block, length_in_block))
-
             # Block lies beyond end of device
             if block is None:
                 logger.warning('Tried to read data beyond device (version {}, size {}, offset {}).'.format(
                     version.uid, version.size, offset_in_block))
                 data_chunks.append(b'\0' * length_in_block)
-            # Block is sparse
-            elif not block.uid:
-                data_chunks.append(b'\0' * length_in_block)
-            else:
-                # Block isn't cached already, fetch it
-                if self._block_cache.in_cache(block.uid):
-                    storage = StorageFactory.get_by_name(version.storage.name)
-                    data = storage.read_block(block)
-                    self._block_cache.write(block.uid, data)
+                continue
 
-                data_chunks.append(self._block_cache.read(block.uid, offset_in_block, length_in_block))
+            if cow is not None and block.idx in cow:
+                # Read block from COW
+                assert cow_version is not None
+
+                block = cow[block.idx]
+                logger.debug('Reading block from COW {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
+                                                                          length_in_block))
+
+                assert self._cow_store.present(block.uid)
+                data_chunks.append(self._cow_store.read(block.uid, offset_in_block, length_in_block))
+            else:
+                # Read block from original version
+                logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '', version.uid,
+                                                                   block.idx, offset_in_block, length_in_block))
+
+                # Block is sparse
+                if not block.uid:
+                    data_chunks.append(b'\0' * length_in_block)
+                else:
+                    # Block isn't cached already, fetch it
+                    if not self._block_cache.present(block.uid):
+                        storage = StorageFactory.get_by_name(version.storage.name)
+                        data = storage.read_block(block)
+                        self._block_cache.write(block.uid, data)
+
+                    data_chunks.append(self._block_cache.read(block.uid, offset_in_block, length_in_block))
 
         return b''.join(data_chunks)
 
@@ -1381,17 +1391,16 @@ class BenjiStore(ReprMixIn):
         position_in_data = 0
         for block, offset_in_block, length_in_block in write_list:
             if block is None:
-                logger.warning(
-                    'COW: Tried to save data beyond device, it will be lost (version {}, size {}, offset {}).'.format(
-                        cow_version.uid, cow_version.size, offset))
+                logger.warning('Tried to write data beyond device, it will be lost (version {}, size {}, offset {}).'.format(
+                    cow_version.uid, cow_version.size, offset))
                 break
             if block.idx in cow:
                 # The block is already copied, so update in the cache
                 update_block = cow[block.idx]
-                self._block_cache.update(update_block.uid, offset_in_block,
-                                         data[position_in_data:position_in_data + length_in_block])
-                logger.debug('COW: Updated block {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
-                                                                      length_in_block))
+                self._cow_store.update(update_block.uid, offset_in_block,
+                                       data[position_in_data:position_in_data + length_in_block])
+                logger.debug('Updated block {}/{} {}:{}.'.format(cow_version.uid, block.idx, offset_in_block,
+                                                                 length_in_block))
             else:
                 # Read the block from the original
                 if block.uid:
@@ -1410,7 +1419,7 @@ class BenjiStore(ReprMixIn):
                 new_block = block.deref()
                 new_block.uid = BlockUid(cow_version.id, block.idx + 1)
                 new_block.checksum = None
-                self._block_cache.write(new_block.uid, write_data.read())
+                self._cow_store.write(new_block.uid, write_data.read())
                 cow[block.idx] = new_block
                 logger.debug('COW: Wrote block {}/{} {}:{} into {}.'.format(cow_version.uid, block.idx, offset_in_block,
                                                                             length_in_block, new_block.uid))
@@ -1428,17 +1437,19 @@ class BenjiStore(ReprMixIn):
         storage = StorageFactory.get_by_name(cow_version.storage.name)
         for block in self._cow[cow_version.uid].values():
             logger.debug('Fixating block {}/{} with UID {}'.format(cow_version.uid, block.idx, block.uid))
-            data = self._block_cache.read(block.uid)
+            data = self._cow_store.read(block.uid)
 
             block.checksum = self._benji_obj._block_hash.data_hexdigest(data)
             if block.checksum == sparse_block_checksum:
                 logger.debug('Detected sparse block {}/{}.'.format(cow_version.uid, block.idx))
-                self._block_cache.rm(block.uid)
+                # The remove assumes that each block UID appears only once in the list and is not shared in any way.
+                self._cow_store.rm(block.uid)
                 block.checksum = None
                 block.uid = BlockUid(None, None)
             else:
                 storage.write_block(block, data)
-                self._block_cache.rm(block.uid)
+                # The remove assumes that each block UID appears only once in the list and is not shared in any way.
+                self._cow_store.rm(block.uid)
 
             try:
                 self._benji_obj._database_backend.set_block(idx=block.idx,
