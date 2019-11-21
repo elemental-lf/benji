@@ -1267,12 +1267,10 @@ class BenjiStore(ReprMixIn):
 
     _benji_obj: Benji
     _cache_directory: str
-    _blocks: Dict[VersionUid, List[Block]]
     _cow: Dict[VersionUid, Dict[int, DereferencedBlock]]
 
     def __init__(self, benji_obj: Benji) -> None:
         self._benji_obj = benji_obj
-        self._blocks = {}  # block list cache by version
         self._cow = {}  # contains version_uid: dict() of block id -> block
 
         block_cache_directory = self._benji_obj.config.get('nbd.blockCache.directory', types=str)
@@ -1298,22 +1296,13 @@ class BenjiStore(ReprMixIn):
         return self._benji_obj._database_backend.get_versions(version_uid=version_uid)
 
     def _block_list(self, version: Version, offset: int, length: int) -> List[Tuple[Optional[Block], int, int]]:
-        # Get version's blocks if they aren't in the cache already
-        if version.uid not in self._blocks:
-            # FIXME: This will be a problem for large versions with many blocks
-            self._blocks[version.uid] = list(
-                self._benji_obj._database_backend.get_blocks_by_version(
-                    version, yield_per=self._benji_obj._BLOCKS_READ_WORK_PACKAGE))
-        blocks = self._blocks[version.uid]
-
-        block_number = offset // version.block_size
+        block_idx = offset // version.block_size
         block_offset = offset % version.block_size
 
         chunks: List[Tuple[Optional[Block], int, int]] = []
         while True:
-            try:
-                block = blocks[block_number]
-            except IndexError:
+            block = self._benji_obj._database_backend.get_block_by_idx(version, block_idx)
+            if block is None:
                 # We round up the size reported by the NBD server to a multiple of 4096 which is the maximum
                 # block size supported by NBD. So we might need to fake up to 4095 bytes (of zeros) here.
                 if length > 4095:
@@ -1321,14 +1310,15 @@ class BenjiStore(ReprMixIn):
                     # to communicate it back in the NBD response.
                     raise OSError(errno.EIO)
                 length_in_block = min(block.size - block_offset, length)
-                chunks.append((None, 0, length_in_block))  # hint: return \0s
+                chunks.append((None, 0, length_in_block))
             else:
-                assert block.idx == block_number
                 length_in_block = min(block.size - block_offset, length)
                 chunks.append((block, block_offset, length_in_block))
-            block_number += 1
+
+            block_idx += 1
             block_offset = 0
             length -= length_in_block
+
             assert length >= 0
             if length == 0:
                 break
@@ -1344,7 +1334,7 @@ class BenjiStore(ReprMixIn):
         data_chunks: List[bytes] = []
         block: Optional[Union[Block, DereferencedBlock]]
         for block, offset_in_block, length_in_block in read_list:
-            # Block lies beyond end of device
+            # Access lies beyond end of version
             if block is None:
                 logger.warning('Tried to read data beyond device (version {}, size {}, offset {}).'.format(
                     version.uid, version.size, offset_in_block))
