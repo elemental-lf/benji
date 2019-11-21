@@ -111,4 +111,8 @@ io:
 #       timeout: 0
 
 # nbd:
-#   cacheDirectory:
+#   blockCache:
+#     directory: /tmp/benji/nbd/block-cache
+#     maximumSize: 2126512128
+#   cowStore:
+#     directory: /tmp/benji/nbd/cow-store
