@@ -59,7 +59,7 @@ configuration:
               type: integer
               required: True
               empty: False
-              default: 8589934592
+              default: 2126512128
         cowStore:
           type: dict
           default: {}
