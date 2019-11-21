@@ -180,7 +180,7 @@ class Benji(ReprMixIn):
                        'Preparing version {} ({:.1f}%)'.format(version.uid, (idx + 1) / version.blocks_count * 100))
 
                 if len(blocks) == self._BLOCKS_CREATE_WORK_PACKAGE:
-                    self._database_backend.create_blocks(version_uid=version.uid, blocks=blocks)
+                    self._database_backend.create_blocks(version=version, blocks=blocks)
                     blocks = []
             self._database_backend.create_blocks(version=version, blocks=blocks)
             self._database_backend.commit()
