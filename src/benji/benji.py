@@ -1266,7 +1266,6 @@ class _BlockStore:
 class BenjiStore(ReprMixIn):
 
     _benji_obj: Benji
-    _cache_directory: str
     _cow: Dict[VersionUid, Dict[int, DereferencedBlock]]
 
     def __init__(self, benji_obj: Benji) -> None:
