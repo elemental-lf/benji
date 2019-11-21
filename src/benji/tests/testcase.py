@@ -31,8 +31,10 @@ class TestCaseBase:
         def __init__(self):
             self.path = 'benji-test_' + TestCaseBase.random_string(16)
             for dir in [
-                    self.path, self.path + '/data', self.path + '/data-2', self.path + '/lock',
-                    self.path + '/nbd-cache', self.path + '/read-cache'
+                    self.path,
+                    self.path + '/data',
+                    self.path + '/data-2',
+                    self.path + '/lock',
             ]:
                 os.mkdir(dir)
 

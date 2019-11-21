@@ -12,6 +12,8 @@ from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator
 
+from diskcache import Cache
+
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import DatabaseBackend, VersionUid, Version, Block, \
@@ -1204,16 +1206,15 @@ class _BlockStore:
 
     _block_present: Set[BlockUid]
 
-    def __init__(self, cache_directory: str) -> None:
-        self._cache_directory = cache_directory
+    def __init__(self, directory: str) -> None:
+        self._directory = directory
         self._block_present = set()
-        os.makedirs(self._cache_directory, exist_ok=True)
 
     def _cache_filename(self, block_uid: BlockUid) -> str:
         assert block_uid.left is not None and block_uid.right is not None
         filename = '{:016x}-{:016x}'.format(block_uid.left, block_uid.right)
         digest = hashlib.md5(filename.encode('ascii')).hexdigest()
-        return os.path.join(self._cache_directory, '{}/{}/{}'.format(digest[0:2], digest[2:4], filename))
+        return os.path.join(self._directory, '{}/{}/{}'.format(digest[0:2], digest[2:4], filename))
 
     def read(self, block_uid: BlockUid, offset: int = 0, length: int = None) -> bytes:
         filename = self._cache_filename(block_uid)
@@ -1264,9 +1265,6 @@ class _BlockStore:
 # private attributes of Benji objects.
 class BenjiStore(ReprMixIn):
 
-    _BLOCK_CACHE_DIRECTORY = 'block-cache'
-    _COW_STORE_DIRECTORY = 'cow-store'
-
     _benji_obj: Benji
     _cache_directory: str
     _blocks: Dict[VersionUid, List[Block]]
@@ -1277,9 +1275,18 @@ class BenjiStore(ReprMixIn):
         self._blocks = {}  # block list cache by version
         self._cow = {}  # contains version_uid: dict() of block id -> block
 
-        cache_directory = self._benji_obj.config.get('nbd.cacheDirectory', types=str)
-        self._block_cache = _BlockStore(os.path.join(cache_directory, self._BLOCK_CACHE_DIRECTORY))
-        self._cow_store = _BlockStore(os.path.join(cache_directory, self._COW_STORE_DIRECTORY))
+        block_cache_directory = self._benji_obj.config.get('nbd.blockCache.directory', types=str)
+        block_cache_maximum_size = self._benji_obj.config.get('nbd.blockCache.maximumSize', types=int)
+        cow_store_directory = self._benji_obj.config.get('nbd.cowStore.directory', types=str)
+
+        os.makedirs(block_cache_directory, exist_ok=True)
+        self._block_cache = Cache(block_cache_directory,
+                                  size_limit=block_cache_maximum_size,
+                                  eviction_policy='least-frequently-used',
+                                  disk_min_file_size=0)
+
+        os.makedirs(cow_store_directory, exist_ok=True)
+        self._cow_store = _BlockStore(cow_store_directory)
 
     def open(self, version) -> None:
         self._benji_obj._locking.lock_version(version.uid, reason='NBD')
@@ -1355,21 +1362,25 @@ class BenjiStore(ReprMixIn):
                 assert self._cow_store.present(block.uid)
                 data_chunks.append(self._cow_store.read(block.uid, offset_in_block, length_in_block))
             else:
-                # Read block from original version
+                # Read block from original version (if not sparse)
                 logger.debug('Reading {}block {}/{} {}:{}.'.format('sparse ' if not block.uid else '', version.uid,
                                                                    block.idx, offset_in_block, length_in_block))
 
                 # Block is sparse
                 if not block.uid:
                     data_chunks.append(b'\0' * length_in_block)
-                else:
-                    # Block isn't cached already, fetch it
-                    if not self._block_cache.present(block.uid):
-                        storage = StorageFactory.get_by_name(version.storage.name)
-                        data = storage.read_block(block)
-                        self._block_cache.write(block.uid, data)
+                    continue
 
-                    data_chunks.append(self._block_cache.read(block.uid, offset_in_block, length_in_block))
+                block_f = self._block_cache.get(str(block.uid), read=True)
+                if block_f is not None:
+                    # Cache hit
+                    block_f.seek(offset_in_block)
+                    data_chunks.append(block_f.read(length_in_block))
+                else:
+                    storage = StorageFactory.get_by_name(version.storage.name)
+                    data = storage.read_block(block)
+                    self._block_cache[str(block.uid)] = data
+                    data_chunks.append(data[offset_in_block:offset_in_block + length_in_block])
 
         return b''.join(data_chunks)
 

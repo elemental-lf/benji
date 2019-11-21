@@ -46,11 +46,29 @@ configuration:
       type: dict
       default: {}
       schema:
-        cacheDirectory:
-          type: string
-          required: True
-          empty: False
-          default: '/tmp'
+        blockCache:
+          type: dict
+          default: {}
+          schema:
+            directory:
+              type: string
+              required: True
+              empty: False
+              default: '/tmp/benji/nbd/block-cache'
+            maximumSize:
+              type: integer
+              required: True
+              empty: False
+              default: 8589934592
+        cowStore:
+          type: dict
+          default: {}
+          schema:
+            directory:
+              type: string
+              required: True
+              empty: False
+              default: '/tmp/benji/nbd/cow-store'
 
     storages:
       type: list
