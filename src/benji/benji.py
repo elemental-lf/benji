@@ -1363,8 +1363,11 @@ class BenjiStore(ReprMixIn):
                 block_f = self._block_cache.get(str(block.uid), read=True)
                 if block_f is not None:
                     # Cache hit
-                    block_f.seek(offset_in_block)
-                    data_chunks.append(block_f.read(length_in_block))
+                    try:
+                        block_f.seek(offset_in_block)
+                        data_chunks.append(block_f.read(length_in_block))
+                    finally:
+                        block_f.close()
                 else:
                     storage = StorageFactory.get_by_name(version.storage.name)
                     data = storage.read_block(block)
