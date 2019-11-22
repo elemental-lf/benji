@@ -166,6 +166,8 @@ reachable from the outside bind it to 0.0.0.0 or the specific address of another
     benji nbd -a 0.0.0.0 -r
 
 
+.. CAUTION:: Exposing the NBD server on an external interface has security implications.
+
 Read-Write Mount
 ~~~~~~~~~~~~~~~~
 

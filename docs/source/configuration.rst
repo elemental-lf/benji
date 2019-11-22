@@ -741,15 +741,36 @@ retry reads this number of times.
 NBD
 ---
 
-Configuration options pertaining to Benji's NBD server are located under
-the top-level key **nbd**:
+Configuration options pertaining to Benji's NBD server are located under the top-level key **nbd**.
+While the defaults are suitable for testing they are not suitable for a production use of the NBD server
+functionality as ``/tmp`` generally is RAM disk today.
 
-The only configuration option currently present in the **nbd** dictionary
-is:
+The block cache is bounded by the maximum size setting. The copy-on-write store is only used if data
+is written to an NBD device and a copy-on-write *version* is created. It holds all the blocks that have
+changed and will be cleaned up when the NBD device is detached and all the changed blocks have been
+written into the COW *version*. This means that it can grow up to the size of all *versions* that
+are attached to an NBD device in read-write mode at a time.
 
-* name: **directory**
+Benji's NBD server is not protected by any form of authentication and the traffic between the NBD server
+and client is not encrypted. That is why the NBD server only listens on ``localhost`` by default.
+
+* name: **blockCache.directory**
 * type: string
-* default: ``/tmp``
+* default: ``/tmp/benji/nbd/block-cache``
+
+Sets the base directory for the block cache
+
+* name: **blockCache.maximumSize**
+* type: integer
+* default: ``2126512128``
+
+Sets the approximate maximum size of the block cache. The default is 2GB.
+
+* name: **cowStore.directory**
+* type: string
+* default: ``/tmp/benji/nbd/cow-store``
+
+Sets the base directory for the copy-on-wrote storage area.
 
 Multiple Instance Installations
 -------------------------------
