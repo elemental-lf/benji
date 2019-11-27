@@ -197,7 +197,10 @@ class NbdTestCaseSQLLite_File(NbdTestCase, BenjiTestCaseBase, TestCase):
                 password: "this is a very secret password"
             databaseEngine: sqlite:///{testpath}/benji.sqlite
             nbd:
-              cacheDirectory: {testpath}/nbd-cache
+              blockCache:
+                directory: {testpath}/nbd/block-cache
+              cowStore:
+                directory: {testpath}/nbd/cow-store
             """
 
 
@@ -253,5 +256,8 @@ class NbdTestCasePostgreSQL_S3(NbdTestCase, BenjiTestCaseBase, TestCase):
                 password: "this is a very secret password"
             databaseEngine: postgresql://benji:verysecret@localhost:15432/benji
             nbd:
-              cacheDirectory: {testpath}/nbd-cache
+              blockCache:
+                directory: {testpath}/nbd/block-cache
+              cowStore:
+                directory: {testpath}/nbd/cow-store
             """

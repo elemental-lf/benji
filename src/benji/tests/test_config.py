@@ -22,7 +22,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
               simultaneousWrites: 5
               simultaneousReads: 5
         nbd:
-          cacheDirectory: /tmp
         ios:
           - name: rbd
             module: rbd
@@ -49,7 +48,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
               simultaneousWrites: 5
               simultaneousReads: 5
         nbd:
-          cacheDirectory: /tmp
         ios:
           - name: rbd
             module: rbd
@@ -76,7 +74,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
               simultaneousWrites: 5
               simultaneousReads: 5
         nbd:
-          cacheDirectory: /tmp
         ios:
           - name: rbd
             module: rbd
@@ -104,7 +101,6 @@ class ConfigTestCase(TestCaseBase, TestCase):
               simultaneousWrites: 5
               simultaneousReads: 5
         nbd:
-          cacheDirectory: /tmp
         ios:
           - name: rbd
             module: rbd
