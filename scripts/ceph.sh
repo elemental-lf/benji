@@ -5,11 +5,6 @@ set -o pipefail
 : "${BENJI_INSTANCE:=benji-k8s}"
 : "${BENJI_LOG_LEVEL:=INFO}"
 
-function benji::version::uid::format {
-    jq -r '"V" + ("000000000" + (. | tostring))[-10:]'
-}
-
-
 function _extract_version_uid {
     jq -r '.versions[0].uid'
 }
@@ -60,7 +55,7 @@ function benji::backup::ceph::initial {
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" \
         $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
-        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid | benji::version::uid::format)"
+        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
     [[ $EC == 0 ]] || return $EC
@@ -87,7 +82,7 @@ function benji::backup::ceph::differential {
     trap "{ rm -f \"$CEPH_RBD_DIFF_FILE\" \"$BENJI_BACKUP_STDERR_FILE\"; }" RETURN EXIT
 
     echo "Performing differential backup of $VOLUME:$CEPH_POOL/$CEPH_RBD_IMAGE from RBD snapshot" \
-        "$CEPH_RBD_SNAPSHOT_LAST and Benji version $(benji::version::uid::format <<<"$BENJI_VERSION_UID_LAST")."
+        "$CEPH_RBD_SNAPSHOT_LAST and Benji version $BENJI_VERSION_UID_LAST."
 
     benji::backup::ceph::snapshot::create "$VOLUME" "$CEPH_POOL" "$CEPH_RBD_IMAGE" "$CEPH_RBD_SNAPSHOT" \
         || return $?
@@ -99,7 +94,7 @@ function benji::backup::ceph::differential {
 
     VERSION_UID="$(benji -m --log-level "$BENJI_LOG_LEVEL" backup -s "$CEPH_RBD_SNAPSHOT" -r "$CEPH_RBD_DIFF_FILE" -f "$BENJI_VERSION_UID_LAST" \
         $([[ ${#VERSION_LABELS[@]} -gt 0 ]] && printf -- "-l %s " "${VERSION_LABELS[@]}") rbd:"$CEPH_POOL"/"$CEPH_RBD_IMAGE"@"$CEPH_RBD_SNAPSHOT" \
-        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid  | benji::version::uid::format)"
+        "$VOLUME" 2> >(tee "$BENJI_BACKUP_STDERR_FILE" >&2) | _extract_version_uid)"
     local EC=$?
     BENJI_BACKUP_STDERR="$(<${BENJI_BACKUP_STDERR_FILE})"
     [[ $EC == 0 ]] || return $EC
