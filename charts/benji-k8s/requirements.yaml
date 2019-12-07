@@ -1,9 +1,9 @@
 dependencies:
       - name: postgresql
-        version: 4.2.2
+        version: 7.7.2
         repository: "@stable"
         condition: postgresql.enabled
       - name: prometheus-pushgateway
         alias: pushgateway
-        version: 0.4.1
+        version: 1.2.6
         repository: "@stable"
