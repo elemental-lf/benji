@@ -272,6 +272,12 @@ parser.add_argument('--field-selector',
                     action='append',
                     default=[],
                     help='Filter PVCs on field selector')
+parser.add_argument('--pool-filter',
+                    metavar='pool-filter',
+                    dest='pools',
+                    action='append',
+                    default=[],
+                    help='Filter PVCs on Ceph pool names')
 
 args = parser.parse_args()
 
@@ -280,6 +286,7 @@ core_v1_api = kubernetes.client.CoreV1Api()
 
 labels = ','.join(args.labels)
 fields = ','.join(args.fields)
+pools = ','.join(args.pools)
 
 if args.namespace is not None:
     logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
@@ -289,6 +296,8 @@ if labels != '':
     logger.info(f'Matching label(s) {labels}.')
 if fields != '':
     logger.info(f'Matching field(s) {fields}.')
+if pools != '':
+    logger.info(f'Matching pool(s) {pools}.')
 
 if args.namespace is not None:
     pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
@@ -323,6 +332,9 @@ for pvc in pvcs:
             pool, image = options['pool'], options['image']
 
     if pool is None or image is None:
+        continue
+
+    if args.pools and pool not in args.pools:
         continue
 
     volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
