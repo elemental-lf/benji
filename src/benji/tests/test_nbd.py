@@ -79,7 +79,7 @@ class NbdTestCase:
         self.nbd_server.serve_forever()
         self.nbd_client_thread.join()
 
-        self.assertEqual({self.version_uid[0], VersionUid(2)}, set([version.uid for version in benji_obj.ls()]))
+        self.assertEqual({self.version_uid[0], VersionUid(2)}, set([version.uid for version in benji_obj.find_versions()]))
 
         benji_obj.close()
 

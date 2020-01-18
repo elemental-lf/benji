@@ -5,6 +5,7 @@ import os
 import random
 import uuid
 from io import StringIO
+from collections.abc import Iterable
 from unittest import TestCase
 
 from benji.database import VersionUid, VersionStatus, Block, Label
@@ -92,8 +93,6 @@ class ImportExportTestCase():
             benji_obj.metadata_export([version_uid[0] for version_uid in self.version_uids], f)
             f.seek(0)
             export = json.load(f)
-            f.seek(0)
-            unused_output = f.getvalue()
         benji_obj.close()
         self.assertEqual(str(VERSIONS.database_metadata.current), export['metadata_version'])
         self.assertIsInstance(export['versions'], list)
@@ -104,16 +103,17 @@ class ImportExportTestCase():
         self.assertEqual('data-backup', version['volume'])
         self.assertEqual('snapshot-name', version['snapshot'])
         self.assertEqual(4096, version['block_size'])
-        self.assertEqual(version['status'], VersionStatus.valid.name)
+        self.assertEqual(VersionStatus.valid.name, version['status'])
         self.assertFalse(version['protected'])
         self.assertEqual('file', version['storage'])
+        self.assertIsInstance(version['blocks'], list)
 
     def test_import_1_0_0(self):
         benji_obj = self.benjiOpen(init_database=True)
 
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
-        version = benji_obj.ls(version_uid=version_uid)[0]
+        version = benji_obj.find_versions(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
@@ -121,7 +121,7 @@ class ImportExportTestCase():
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
-        self.assertIsInstance(version.blocks, list)
+        self.assertIsInstance(version.blocks, Iterable)
         self.assertIsInstance(version.labels, dict)
         self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
 
@@ -131,8 +131,8 @@ class ImportExportTestCase():
         self.assertIsNone(version.bytes_sparse)
         self.assertIsNone(version.duration)
 
-        self.assertTrue(len(version.blocks) > 0)
-        block = version.blocks[0]
+        self.assertTrue(len(list(version.blocks)) > 0)
+        block = list(version.blocks)[0]
         self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
         self.assertEqual(670293, block.size)
@@ -145,7 +145,7 @@ class ImportExportTestCase():
 
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
-        version = benji_obj.ls(version_uid=version_uid)[0]
+        version = benji_obj.find_versions(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
@@ -153,7 +153,7 @@ class ImportExportTestCase():
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
-        self.assertIsInstance(version.blocks, list)
+        self.assertIsInstance(version.blocks, Iterable)
         self.assertIsInstance(version.labels, dict)
         self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
 
@@ -174,8 +174,8 @@ class ImportExportTestCase():
         self.assertEqual(version.id, version.labels['label-1'].version_id)
         self.assertEqual(version.id, version.labels['label-2'].version_id)
 
-        self.assertTrue(len(version.blocks) > 0)
-        block = version.blocks[0]
+        self.assertTrue(len(list(version.blocks)) > 0)
+        block = list(version.blocks)[0]
         self.assertIsInstance(block, Block)
         self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
@@ -189,7 +189,7 @@ class ImportExportTestCase():
 
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_2_0_0))
-        version = benji_obj.ls(version_uid=version_uid)[0]
+        version = benji_obj.find_versions(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
@@ -197,7 +197,7 @@ class ImportExportTestCase():
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
-        self.assertIsInstance(version.blocks, list)
+        self.assertIsInstance(version.blocks, Iterable)
         self.assertIsInstance(version.labels, dict)
         self.assertEqual(datetime.datetime.strptime('2018-12-19T20:28:18.123456', '%Y-%m-%dT%H:%M:%S.%f'), version.date)
 
@@ -218,8 +218,8 @@ class ImportExportTestCase():
         self.assertEqual(version.id, version.labels['label-1'].version_id)
         self.assertEqual(version.id, version.labels['label-2'].version_id)
 
-        self.assertTrue(len(version.blocks) > 0)
-        block = version.blocks[0]
+        self.assertTrue(len(list(version.blocks)) > 0)
+        block = list(version.blocks)[0]
         self.assertIsInstance(block, Block)
         self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)

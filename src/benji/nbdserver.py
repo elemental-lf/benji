@@ -217,7 +217,7 @@ class NbdServer(ReprMixIn):
                         raise IOError("Negotiation failed: No export name was provided.")
 
                     version_uid = VersionUid(data.decode("ascii"))
-                    if version_uid not in [v.uid for v in self.store.get_versions()]:
+                    if version_uid not in [v.uid for v in self.store.find_versions()]:
                         if not fixed:
                             raise IOError("Negotiation failed: Unknown export name.")
 
@@ -228,7 +228,7 @@ class NbdServer(ReprMixIn):
                     self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid))
 
                     # We have negotiated a version and it will be used until the client disconnects
-                    version = self.store.get_versions(version_uid=version_uid)[0]
+                    version = self.store.find_versions(version_uid=version_uid)[0]
                     self.store.open(version)
 
                     self.log.info("[%s:%s] Version %s has been opened." % (host, port, version.uid))
@@ -253,7 +253,7 @@ class NbdServer(ReprMixIn):
 
                 elif opt == self.NBD_OPT_LIST:
                     # Don't use version as a loop variable so we don't conflict with the outer scope usage
-                    for list_version in self.store.get_versions():
+                    for list_version in self.store.find_versions():
                         list_version_encoded = list_version.uid.encode("ascii")
                         writer.write(
                             struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_SERVER,
@@ -318,7 +318,7 @@ class NbdServer(ReprMixIn):
                         continue
 
                     if not cow_version:
-                        cow_version = self.store.get_cow_version(version)
+                        cow_version = self.store.create_cow_version(version)
                     try:
                         self.store.write(cow_version, offset, data)
                     except Exception as exception:

@@ -137,8 +137,8 @@ class SmokeTestCase(BenjiTestCaseBase):
             logger.debug('Restore of version successful')
 
             benji_obj = self.benjiOpen()
-            version = benji_obj._database_backend.get_version(version_uid)
-            blocks = list(benji_obj._database_backend.get_blocks_by_version(version))
+            version = Version.get_by_uid(version_uid)
+            blocks = list(version.blocks)
             self.assertEqual(list(range(len(blocks))), sorted([block.idx for block in blocks]))
             self.assertTrue(len(blocks) > 0)
             if len(blocks) > 1:
@@ -147,7 +147,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             logger.debug('Block list successful')
 
             benji_obj = self.benjiOpen()
-            versions = benji_obj.ls()
+            versions = benji_obj.find_versions()
             self.assertEqual(set(), set([version.uid for version in versions]) ^ set(version_uids))
             self.assertTrue(reduce(and_, [version.volume == 'data-backup' for version in versions]))
             self.assertTrue(reduce(and_, [version.snapshot == 'snapshot-name' for version in versions]))
@@ -205,10 +205,9 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.restore(version_uid, 'file:' + restore_filename_mdl, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_mdl))
-            logger.debug('Database-less restore successful')
+            logger.debug('Database-less non-sparse restore successful')
 
-            benji_obj = self.benjiOpen(in_memory_database=True)
-            benji_obj.metadata_restore([version_uid], storage_name)
+            benji_obj = self.benji_open()
             benji_obj.restore(version_uid, 'file:' + restore_filename_sparse, sparse=True, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename_sparse))

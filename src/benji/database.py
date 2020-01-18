@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
+import collections
 import datetime
 import enum
 import inspect
@@ -14,9 +15,10 @@ import time
 import uuid
 from abc import abstractmethod
 from binascii import hexlify, unhexlify
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from contextlib import contextmanager
 from functools import total_ordering
+from itertools import chain
 from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, Optional, Sequence, Callable
 
 import pyparsing
@@ -29,7 +31,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import object_session, sessionmaker, scoped_session
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
@@ -39,6 +41,16 @@ from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 from benji.versions import VERSIONS
+
+
+# SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
+# See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
+@sqlalchemy.event.listens_for(sqlalchemy.engine.Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 class BenjiDateTime(sqlalchemy.types.TypeDecorator):
@@ -268,12 +280,18 @@ metadata = sqlalchemy.MetaData(
     })
 Base: Any = sqlalchemy.ext.declarative.declarative_base(metadata=metadata)
 
+Session = scoped_session(sessionmaker())
+
 
 @total_ordering
-class Version(Base):
+class Version(Base, ReprMixIn):
     __tablename__ = 'versions'
 
+    TIMED_COMMIT_INTERVAL = 20  # in seconds
+    BLOCKS_PER_CALL = 10000
     REPR_SQL_ATTR_SORT_FIRST = ['uid', 'volume', 'snapshot']
+
+    _last_timed_commit = time.monotonic()
 
     # This makes sure that SQLite won't reuse UIDs
     __table_args__ = {'sqlite_autoincrement': True}
@@ -302,6 +320,7 @@ class Version(Base):
     bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger)
     duration = sqlalchemy.Column(sqlalchemy.BigInteger)
 
+    # See https://docs.sqlalchemy.org/en/13/orm/collections.html#passive-deletes
     labels = sqlalchemy.orm.relationship('Label',
                                          backref='version',
                                          order_by='asc(Label.name)',
@@ -309,11 +328,203 @@ class Version(Base):
                                          cascade='all, delete-orphan',
                                          collection_class=attribute_mapped_collection('name'))
 
-    blocks = sqlalchemy.orm.relationship('Block',
-                                         backref='version',
-                                         order_by='asc(Block.idx)',
-                                         passive_deletes=True,
-                                         cascade='all, delete-orphan')
+    @classmethod
+    def create(cls,
+               version_uid: VersionUid,
+               volume: str,
+               snapshot: str,
+               size: int,
+               storage_id: int,
+               block_size: int,
+               status: VersionStatus = VersionStatus.incomplete,
+               protected: bool = False) -> 'Version':
+        version = cls(
+            uid=version_uid,
+            volume=volume,
+            snapshot=snapshot,
+            size=size,
+            storage_id=storage_id,
+            block_size=block_size,
+            status=status,
+            protected=protected,
+            date=datetime.datetime.utcnow(),
+        )
+        try:
+            Session.add(version)
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+        return version
+
+    def remove(self) -> int:
+        try:
+            affected_blocks = Session.query(Block).filter(Block.version_id == self.id)
+            num_blocks = affected_blocks.count()
+            for affected_block in affected_blocks:
+                if affected_block.uid:
+                    deleted_block = DeletedBlock(
+                        storage_id=self.storage_id,
+                        uid=affected_block.uid,
+                        date=datetime.datetime.utcnow(),
+                    )
+                    Session.add(deleted_block)
+            # The following delete statement will cascade this delete to the blocks table
+            # and delete all blocks
+            Session.delete(self)
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+        return num_blocks
+
+    @classmethod
+    def _timed_commit(cls) -> None:
+        current_clock = time.monotonic()
+        if current_clock - cls._last_timed_commit > cls.TIMED_COMMIT_INTERVAL:
+            t1 = time.time()
+            Session.commit()
+            t2 = time.time()
+            caller = inspect.stack()[1].function
+            logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
+            cls._last_timed_commit = current_clock
+
+    @staticmethod
+    def commit() -> None:
+        Session.commit()
+
+    def create_blocks(self, *, blocks: List[Dict[str, Any]]) -> None:
+        try:
+            # Remove any fully sparse blocks
+            blocks = [
+                block for block in blocks if block['uid_left'] is not None or block['uid_right'] is not None or block['size'] != self.block_size
+            ]
+
+            for block in blocks:
+                block['version_id'] = self.id
+
+            Session.bulk_insert_mappings(Block, blocks)
+            self._timed_commit()
+        except:
+            Session.rollback()
+            raise
+
+    def set_block(self, *, idx: int, block_uid: Optional[BlockUid], checksum: Optional[str], size: int,
+                  valid: bool) -> None:
+        try:
+            block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
+
+            if not block and block_uid is None and size == self.block_size:
+                # Block is not present and it should be fully sparse now -> Nothing to do.
+                return
+            elif block and block_uid is None and size == self.block_size:
+                # Block is present but it should be fully sparse now -> Delete it.
+                Session.delete(block)
+            elif not block:
+                # Block is not present but should contain data now -> Create it.
+                block = Block(version_id=self.id, idx=idx, uid=block_uid, checksum=checksum, size=size, valid=valid)
+                Session.add(block)
+            else:
+                # Block is present and  should contains data -> Update it.
+                block.uid = block_uid
+                block.checksum = checksum
+                block.size = size
+                block.valid = valid
+
+            self._timed_commit()
+        except:
+            Session.rollback()
+            raise
+
+    def set_stats(self, *, bytes_read: int, bytes_written: int, bytes_deduplicated: int, bytes_sparse: int,
+                  duration: int) -> None:
+        try:
+            self.bytes_read = bytes_read
+            self.bytes_written = bytes_written
+            self.bytes_deduplicated = bytes_deduplicated
+            self.bytes_sparse = bytes_sparse
+            self.duration = duration
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+    def set(self, *, status: VersionStatus = None, protected: bool = None):
+        try:
+            if status is not None:
+                self.status = status
+            if protected is not None:
+                self.protected = protected
+            Session.commit()
+            if status is not None:
+                logger_func = logger.info if self.status.is_valid() else logger.error
+                logger_func('Set status of version {} to {}.'.format(self.uid, self.status.name))
+            if protected is not None:
+                logger.info('Marked version {} as {}.'.format(self.uid, 'protected' if protected else 'unprotected'))
+        except:
+            Session.rollback()
+            raise
+
+    @classmethod
+    def set_block_invalid(cls, block_uid: BlockUid) -> List[VersionUid]:
+        try:
+            affected_version_uids_query = Session.query(sqlalchemy.distinct(
+                Version.uid).label('uid')).join(Block).filter(Block.uid == block_uid)
+            affected_version_uids = [row.uid for row in affected_version_uids_query]
+            assert len(affected_version_uids) > 0
+
+            Session.query(Block).filter(Block.uid == block_uid).update({'valid': False}, synchronize_session=False)
+            Session.commit()
+
+            logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
+                block_uid, ', '.join(affected_version_uids)))
+
+            for version_uid in affected_version_uids:
+                version = Version.get_by_uid(version_uid)
+                version.set(status=VersionStatus.invalid)
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+        return affected_version_uids
+
+    def _create_sparse_block(self, idx: int) -> 'Block':
+        # This block isn't part if the database session and probably never will be.
+        return Block(version_id=self.id, idx=idx, uid=None, checksum=None, size=self.block_size, valid=True)
+
+    # Our own version of yield_per without using a cursor
+    # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
+    @property
+    def blocks(self) -> Iterator['Block']:
+        next_start_idx = 0
+        while True:
+            start_idx = next_start_idx
+            next_start_idx = min(start_idx + self.BLOCKS_PER_CALL, self.blocks_count)
+
+            blocks = object_session(self).query(Block).filter(Block.version_id == self.id, Block.idx >= start_idx,
+                                                              Block.idx < next_start_idx).order_by(Block.idx)
+
+            idx = start_idx
+            for block in blocks:
+                if idx < block.idx:
+                    logger.debug(f'Synthesizing sparse blocks {idx} to {block.idx - 1}.')
+                while idx < block.idx:
+                    yield self._create_sparse_block(idx)
+                    idx += 1
+                yield block
+                idx += 1
+
+            if idx < next_start_idx:
+                logger.debug(f'Synthesizing sparse blocks {idx} to {next_start_idx - 1} at end of slice.')
+            while idx < next_start_idx:
+                yield self._create_sparse_block(idx)
+                idx += 1
+
+            if next_start_idx == self.blocks_count:
+                break
 
     @property
     def blocks_count(self) -> int:
@@ -326,6 +537,78 @@ class Version(Base):
         non_sparse_blocks = set([row.idx for row in non_sparse_blocks_query])
 
         return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
+
+    @classmethod
+    def get_by_uid(cls, version_uid: VersionUid) -> 'Version':
+        version = Session.query(cls).filter(cls.uid == version_uid).one_or_none()
+
+        if version is None:
+            raise KeyError('Version {} not found.'.format(version_uid))
+
+        return version
+
+    def get_block_by_idx(self, idx: int) -> 'Block':
+        block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
+        if not block:
+            block = self._create_sparse_block(idx)
+
+        return block
+
+    def get_block_by_checksum(self, checksum):
+        return Session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
+                                                         Version.storage_id == self.storage_id).first()
+
+    @classmethod
+    def find(cls,
+             version_uid: VersionUid = None,
+             volume: str = None,
+             snapshot: str = None,
+             labels: List[Tuple[str, str]] = None) -> List['Version']:
+        query = Session.query(Version)
+        if version_uid:
+            query = query.filter(Version.uid == version_uid)
+        if volume:
+            query = query.filter(Version.volume == volume)
+        if snapshot:
+            query = query.filterby(Version.snapshot == snapshot)
+        if labels:
+            for label in labels:
+                label_query = Session.query(Label.version_uid).filter((Label.name == label[0]) & (Label.value == label[1]))
+                query = query.filter(Version.uid.in_(label_query))
+
+        return query.order_by(Version.volume, Version.date).all()
+
+    @classmethod
+    def find_with_filter(cls, filter_expression: str = None):
+        builder = _QueryBuilder()
+        return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
+
+    def add_label(self, name: str, value: str) -> None:
+        try:
+            label = Session.query(Label).join(Version).filter(Version.uid == self.uid, Label.name == name).one_or_none()
+            if label:
+                label.value = value
+            else:
+                version = Session.query(Version).filter(Version.uid == self.uid).one_or_none()
+                if version is None:
+                    raise KeyError('Version {} not found.'.format(self.uid))
+                label = Label(version_id=version.id, name=name, value=value)
+                Session.add(label)
+
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+    def rm_label(self, name: str) -> None:
+        try:
+            version = Session.query(Version).filter(Version.uid == self.uid).one_or_none()
+            Session.query(Label).filter(Label.version_id == version.id,
+                                        Label.name == name).delete(synchronize_session=False)
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Version):
@@ -343,7 +626,7 @@ class Version(Base):
         return self.id
 
 
-class Label(Base):
+class Label(Base, ReprMixIn):
     __tablename__ = 'labels'
 
     REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'name', 'value']
@@ -394,11 +677,11 @@ class DereferencedBlock(ReprMixIn):
         return self
 
 
-class Block(Base):
+class Block(Base, ReprMixIn):
     __tablename__ = 'blocks'
 
     MAXIMUM_CHECKSUM_LENGTH = 64
-    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'idx']
+    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'idx', 'uid_left', 'uid_right']
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
     # idx and uid_right are first because they are most likely to go to BigInteger in the future
@@ -435,7 +718,7 @@ class Block(Base):
         )
 
 
-class DeletedBlock(Base):
+class DeletedBlock(Base, ReprMixIn):
     __tablename__ = 'deleted_blocks'
 
     REPR_SQL_ATTR_SORT_FIRST = ['storage_id', 'uid']
@@ -452,11 +735,67 @@ class DeletedBlock(Base):
     uid = sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator)
     __table_args__ = (sqlalchemy.Index(None, 'uid_left', 'uid_right'),)
 
+    @classmethod
+    def get_unused_block_uids(cls, dt: int = 3600) -> Iterator[Dict[str, Set[BlockUid]]]:
+        rounds = 0
+        false_positives_count = 0
+        hit_list_count = 0
+        cut_off_date = datetime.datetime.utcnow() - datetime.timedelta(seconds=dt)
+        while True:
+            # http://stackoverflow.com/questions/7389759/memory-efficient-built-in-sqlalchemy-iterator-generator
+            delete_candidates = Session.query(DeletedBlock) \
+                .filter(DeletedBlock.date < cut_off_date) \
+                .limit(250) \
+                .all()
+            if not delete_candidates:
+                break
 
-class Lock(Base):
+            false_positives = set()
+            hit_list: Dict[str, Set[BlockUid]] = defaultdict(set)
+            for candidate in delete_candidates:
+                rounds += 1
+                if rounds % 1000 == 0:
+                    logger.info("Cleanup: {} false positives, {} data deletions.".format(
+                        false_positives_count,
+                        hit_list_count,
+                    ))
+
+                block = Session.query(Block) \
+                    .filter(Block.uid == candidate.uid) \
+                    .limit(1) \
+                    .scalar()
+                if block:
+                    false_positives.add(candidate.uid)
+                    false_positives_count += 1
+                else:
+                    hit_list[candidate.storage.name].add(candidate.uid)
+                    hit_list_count += 1
+
+            if false_positives:
+                logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(len(false_positives)))
+                Session.query(DeletedBlock) \
+                    .filter(DeletedBlock.uid.in_(false_positives)) \
+                    .delete(synchronize_session=False)
+
+            if hit_list:
+                for uids in hit_list.values():
+                    Session.query(DeletedBlock).filter(DeletedBlock.uid.in_(uids)).delete(synchronize_session=False)
+                yield hit_list
+                # We expect that the caller has handled all the blocks returned so far, so we can call commit after
+                # the yield to keep the transaction small.
+                Session.commit()
+
+        Session.commit()
+        logger.info("Cleanup finished: {} false positives, {} data deletions.".format(
+            false_positives_count,
+            hit_list_count,
+        ))
+
+
+class Lock(Base, ReprMixIn):
     __tablename__ = 'locks'
 
-    REPR_SQL_ATTR_SORT_FIRST = ['host', 'process_id', 'date']
+    REPR_SQL_ATTR_SORT_FIRST = ['lock_name', 'host', 'process_id', 'date']
 
     lock_name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, primary_key=True)
     host = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
@@ -465,7 +804,7 @@ class Lock(Base):
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
 
 
-class Storage(Base):
+class Storage(Base, ReprMixIn):
     __tablename__ = 'storages'
 
     REPR_SQL_ATTR_SORT_FIRST = ['name']
@@ -474,15 +813,49 @@ class Storage(Base):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, unique=True)
 
+    @classmethod
+    def get_by_name(cls, storage_name: str) -> 'Storage':
+        return Session.query(cls).filter(cls.name == storage_name).one_or_none()
 
-class DatabaseBackend(ReprMixIn):
+    @classmethod
+    def sync(cls, storage_name: str, storage_id: int = None) -> 'Storage':
+        try:
+            storage = Session.query(cls).filter(cls.name == storage_name).one_or_none()
+            if storage:
+                if storage_id is not None and storage.id != storage_id:
+                    raise ConfigurationError(
+                        'Storage ids of {} do not match between configuration and database ({} != {}).'.format(
+                            storage_name, storage_id, storage.id))
+                logger.debug('Found existing storage {} with id {}.'.format(storage.name, storage.id))
+            else:
+                storage = cls(name=storage_name, id=storage_id)
+                Session.add(storage)
+                Session.commit()
+                logger.debug('Created new storage {} with id {}.'.format(storage.name, storage.id))
+
+            return storage
+        except:
+            Session.rollback()
+            raise
+
+
+class _DatabaseSingleton(ReprMixIn):
     _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
-    _BLOCKS_COMMIT_INTERVAL = 20  # in seconds
 
-    _locking = None
+    _instance = None
 
-    def __init__(self, config: Config, in_memory: bool = False) -> None:
+    def __new__(cls) -> '_DatabaseSingleton':
+        if cls._instance is None:
+            self = cls._instance = super().__new__(cls)
+
+            # Initialize once
+            self._config = None
+            self._engine = None
+
+        return cls._instance
+
+    def configure(self, config: Config, in_memory: bool = False) -> None:
         if not in_memory:
             url = config.get('databaseEngine', types=str)
             connect_args = {}
@@ -492,7 +865,7 @@ class DatabaseBackend(ReprMixIn):
                 # Also see https://github.com/elemental-lf/benji/issues/11.
                 # Increase the timeout (5 seconds is the default). This will make "database is locked" errors
                 # due to concurrent database access less likely.
-                connect_args['timeout'] = 3 * self._BLOCKS_COMMIT_INTERVAL
+                connect_args['timeout'] = 3 * Version.TIMED_COMMIT_INTERVAL
             self._engine = sqlalchemy.create_engine(url, connect_args=connect_args)
         else:
             logger.info('Running with ephemeral in-memory database.')
@@ -500,7 +873,8 @@ class DatabaseBackend(ReprMixIn):
 
         self._config = config
 
-    def _alembic_config(self):
+    @staticmethod
+    def _alembic_config():
         return alembic_config_Config(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "sql_migrations", "alembic.ini"))
 
@@ -541,29 +915,16 @@ class DatabaseBackend(ReprMixIn):
             logger.info('Current database schema revision: {}.'.format(current_revision))
             logger.info('The database schema is up-to-date.')
 
-    def open(self) -> 'DatabaseBackend':
+    def open(self):
         alembic_config = self._alembic_config()
 
         migration_needed, current_revision, head_revision = self._migration_needed(alembic_config)
         if migration_needed:
             logger.info('Current database schema revision: {}.'.format(current_revision))
             logger.info('Expected database schema revision: {}.'.format(head_revision))
-            raise RuntimeError('The database schema requires migration.')
+            raise UsageError('The database schema requires migration.')
 
-        # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
-        # See: http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#foreign-key-support
-        @sqlalchemy.event.listens_for(sqlalchemy.engine.Engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            if isinstance(dbapi_connection, sqlite3.Connection):
-                cursor = dbapi_connection.cursor()
-                cursor.execute("PRAGMA foreign_keys=ON")
-                cursor.close()
-
-        Session = sqlalchemy.orm.sessionmaker(bind=self._engine)
-        self._session = Session()
-        self._locking = DatabaseBackendLocking(self._session)
-        self._last_blocks_commit = time.monotonic()
-        return self
+        Session.configure(bind=self._engine)
 
     def init(self, _destroy: bool = False) -> None:
         # This is dangerous and is only used by the test suite to get a clean slate
@@ -588,372 +949,10 @@ class DatabaseBackend(ReprMixIn):
             alembic_config.attributes['benji_config'] = self._config
             alembic_command.stamp(alembic_config, "head")
 
-    def commit(self) -> None:
-        self._session.commit()
-
-    def create_version(self,
-                       version_uid: VersionUid,
-                       volume: str,
-                       snapshot: str,
-                       size: int,
-                       storage_id: int,
-                       block_size: int,
-                       status: VersionStatus = VersionStatus.incomplete,
-                       protected: bool = False) -> Version:
-        version = Version(
-            uid=version_uid,
-            volume=volume,
-            snapshot=snapshot,
-            size=size,
-            storage_id=storage_id,
-            block_size=block_size,
-            status=status,
-            protected=protected,
-            date=datetime.datetime.utcnow(),
-        )
-        try:
-            self._session.add(version)
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-        return version
-
-    def set_version_stats(self, *, version_uid: VersionUid, bytes_read: int, bytes_written: int,
-                          bytes_deduplicated: int, bytes_sparse: int, duration: int) -> None:
-        try:
-            version = self.get_version(version_uid)
-            version.bytes_read = bytes_read
-            version.bytes_written = bytes_written
-            version.bytes_deduplicated = bytes_deduplicated
-            version.bytes_sparse = bytes_sparse
-            version.duration = duration
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-    def set_version(self, version_uid: VersionUid, *, status: VersionStatus = None, protected: bool = None):
-        try:
-            version = self.get_version(version_uid)
-            if status is not None:
-                version.status = status
-            if protected is not None:
-                version.protected = protected
-            self._session.commit()
-            if status is not None:
-                logger_func = logger.info if version.status.is_valid() else logger.error
-                logger_func('Set status of version {} to {}.'.format(version_uid, version.status.name))
-            if protected is not None:
-                logger.info('Marked version {} as {}.'.format(version_uid, 'protected' if protected else 'unprotected'))
-        except:
-            self._session.rollback()
-            raise
-
-    def get_version(self, version_uid: VersionUid) -> Version:
-        version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
-
-        if version is None:
-            raise KeyError('Version {} not found.'.format(version_uid))
-
-        return version
-
-    def get_versions(self,
-                     version_uid: VersionUid = None,
-                     volume: str = None,
-                     snapshot: str = None,
-                     labels: List[Tuple[str, str]] = None) -> List[Version]:
-        query = self._session.query(Version)
-        if version_uid:
-            query = query.filter(Version.uid == version_uid)
-        if volume:
-            query = query.filter(Version.volume == volume)
-        if snapshot:
-            query = query.filterby(Version.snapshot == snapshot)
-        if labels:
-            for label in labels:
-                label_query = self._session.query(Label.version_uid).filter((Label.name == label[0]) &
-                                                                            (Label.value == label[1]))
-                query = query.filter(Version.uid.in_(label_query))
-
-        return query.order_by(Version.volume, Version.date).all()
-
-    def get_versions_with_filter(self, filter_expression: str = None):
-        builder = _QueryBuilder(self._session)
-        return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
-
-    def add_label(self, version_uid: VersionUid, name: str, value: str) -> None:
-        try:
-            label = self._session.query(Label).join(Version).filter(Version.uid == version_uid,
-                                                                    Label.name == name).one_or_none()
-            if label:
-                label.value = value
-            else:
-                version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
-                if version is None:
-                    raise KeyError('Version {} not found.'.format(version_uid))
-                label = Label(version_id=version.id, name=name, value=value)
-                self._session.add(label)
-
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-    def rm_label(self, version_uid: VersionUid, name: str) -> None:
-        try:
-            version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
-            self._session.query(Label).filter(Label.version_id == version.id,
-                                              Label.name == name).delete(synchronize_session=False)
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-    def _conditional_blocks_commit(self):
-        caller = inspect.stack()[1].function
-        current_clock = time.monotonic()
-        if current_clock - self._last_blocks_commit > self._BLOCKS_COMMIT_INTERVAL:
-            t1 = time.time()
-            self._session.commit()
-            t2 = time.time()
-            logger.debug('Commited database transaction in {} in {:.2f}s'.format(caller, t2 - t1))
-            self._last_blocks_commit = current_clock
-
-    @staticmethod
-    def _create_sparse_block(version: Version, idx: int) -> Block:
-        # This block isn't part if the database session (yet).
-        return Block(version_id=version.id, idx=idx, uid=None, checksum=None, size=version.block_size, valid=True)
-
-    def set_block(self, *, idx: int, version: Version, block_uid: Optional[BlockUid], checksum: Optional[str],
-                  size: int, valid: bool) -> None:
-        try:
-            block = self._session.query(Block).filter(Block.version_id == version.id, Block.idx == idx).one_or_none()
-
-            if not block and block_uid is None and size == version.block_size:
-                # Block is not present and it should be fully sparse now -> Nothing to do.
-                return
-            elif block and block_uid is None and size == version.block_size:
-                # Block is present but it should be fully sparse now -> Delete it.
-                self._session.delete(block)
-            elif not block:
-                # Block is not present but should contain data now -> Create it.
-                block = Block(version_id=version.id, idx=idx, uid=block_uid, checksum=checksum, size=size, valid=valid)
-                self._session.add(block)
-            else:
-                # Block is present and  should contains data -> Update it.
-                block.uid = block_uid
-                block.checksum = checksum
-                block.size = size
-                block.valid = valid
-
-            self._conditional_blocks_commit()
-        except:
-            self._session.rollback()
-            raise
-
-    def create_blocks(self, *, version: Version, blocks: List[Dict[str, Any]]) -> None:
-        try:
-            assert version is not None
-
-            # Remove any fully sparse blocks
-            blocks = [
-                block for block in blocks
-                if block['uid_left'] is not None or block['uid_right'] is not None or block['size'] != version.block_size
-            ]
-
-            for block in blocks:
-                block['version_id'] = version.id
-
-            self._session.bulk_insert_mappings(Block, blocks)
-            self._conditional_blocks_commit()
-        except:
-            self._session.rollback()
-            raise
-
-    def set_block_invalid(self, block_uid: BlockUid) -> List[VersionUid]:
-        try:
-            affected_version_uids_query = self._session.query(sqlalchemy.distinct(
-                Version.uid).label('uid')).join(Block).filter(Block.uid == block_uid)
-            affected_version_uids = [row.uid for row in affected_version_uids_query]
-            assert len(affected_version_uids) > 0
-
-            self._session.query(Block).filter(Block.uid == block_uid).update({'valid': False},
-                                                                             synchronize_session=False)
-            self._session.commit()
-
-            logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join(affected_version_uids)))
-
-            for version_uid in affected_version_uids:
-                self.set_version(version_uid, status=VersionStatus.invalid)
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-        return affected_version_uids
-
-    def get_block(self, block_uid: BlockUid) -> Block:
-        assert block_uid is not None
-        return self._session.query(Block).filter(Block.uid == block_uid).first()
-
-    def get_block_by_idx(self, version: Version, idx: int) -> Block:
-        block = self._session.query(Block).filter(Block.version_id == version.id, Block.idx == idx).one_or_none()
-        if not block:
-            block = self._create_sparse_block(version, idx)
-
-        return block
-
-    def get_block_by_checksum(self, checksum, storage_id):
-        return self._session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
-                                                               Version.storage_id == storage_id).first()
-
-    # Our own version of yield_per without using a cursor
-    # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
-    def _yield_blocks(self, version: Version, yield_per: int):
-        next_start_idx = 0
-        while True:
-            start_idx = next_start_idx
-            next_start_idx = min(start_idx + yield_per, version.blocks_count)
-
-            blocks = self._session.query(Block).filter(Block.version_id == version.id, Block.idx >= start_idx,
-                                                       Block.idx < next_start_idx).order_by(Block.idx)
-
-            idx = start_idx
-            for block in blocks:
-                if idx < block.idx:
-                    logger.debug(f'Synthesizing sparse blocks {idx} to {block.idx - 1}.')
-                while idx < block.idx:
-                    yield self._create_sparse_block(version, idx)
-                    idx += 1
-                yield block
-                idx += 1
-
-            if idx < next_start_idx:
-                logger.debug(f'Synthesizing sparse blocks {idx} to {next_start_idx - 1} at end of slice.')
-            while idx < next_start_idx:
-                yield self._create_sparse_block(version, idx)
-                idx += 1
-
-            if next_start_idx == version.blocks_count:
-                break
-
-    def get_blocks_by_version(self, version: Version, yield_per: int = 10000) -> Iterator[Block]:
-        assert yield_per > 0
-        yield from self._yield_blocks(version, yield_per)
-
-    def rm_version(self, version_uid: VersionUid) -> int:
-        try:
-            version = self._session.query(Version).filter(Version.uid == version_uid).one_or_none()
-            affected_blocks = self._session.query(Block).filter(Block.version_id == version.id)
-            num_blocks = affected_blocks.count()
-            for affected_block in affected_blocks:
-                if affected_block.uid:
-                    deleted_block = DeletedBlock(
-                        storage_id=version.storage_id,
-                        uid=affected_block.uid,
-                        date=datetime.datetime.utcnow(),
-                    )
-                    self._session.add(deleted_block)
-            # The following delete statement will cascade this delete to the blocks table
-            # and delete all blocks
-            self._session.query(Version).filter(Version.id == version.id).delete()
-            self._session.commit()
-        except:
-            self._session.rollback()
-            raise
-
-        return num_blocks
-
-    def get_delete_candidates(self, dt: int = 3600) -> Iterator[Dict[str, Set[BlockUid]]]:
-        rounds = 0
-        false_positives_count = 0
-        hit_list_count = 0
-        cut_off_date = datetime.datetime.utcnow() - datetime.timedelta(seconds=dt)
-        while True:
-            # http://stackoverflow.com/questions/7389759/memory-efficient-built-in-sqlalchemy-iterator-generator
-            delete_candidates = self._session.query(DeletedBlock)\
-                .filter(DeletedBlock.date < cut_off_date)\
-                .limit(250)\
-                .all()
-            if not delete_candidates:
-                break
-
-            false_positives = set()
-            hit_list: Dict[str, Set[BlockUid]] = {}
-            for candidate in delete_candidates:
-                rounds += 1
-                if rounds % 1000 == 0:
-                    logger.info("Cleanup: {} false positives, {} data deletions.".format(
-                        false_positives_count,
-                        hit_list_count,
-                    ))
-
-                block = self._session.query(Block)\
-                    .filter(Block.uid == candidate.uid)\
-                    .limit(1)\
-                    .scalar()
-                if block:
-                    false_positives.add(candidate.uid)
-                    false_positives_count += 1
-                else:
-                    if candidate.storage.name not in hit_list:
-                        hit_list[candidate.storage.name] = set()
-                    hit_list[candidate.storage.name].add(candidate.uid)
-                    hit_list_count += 1
-
-            if false_positives:
-                logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(len(false_positives)))
-                self._session.query(DeletedBlock)\
-                    .filter(DeletedBlock.uid.in_(false_positives))\
-                    .delete(synchronize_session=False)
-
-            if hit_list:
-                for uids in hit_list.values():
-                    self._session.query(DeletedBlock).filter(DeletedBlock.uid.in_(uids)).delete(synchronize_session=False)
-                yield hit_list
-                # We expect that the caller has handled all the blocks returned so far, so we can call commit after
-                # the yield to keep the transaction small.
-                self._session.commit()
-
-        self._session.commit()
-        logger.info("Cleanup: Cleanup finished. {} false positives, {} data deletions.".format(
-            false_positives_count,
-            hit_list_count,
-        ))
-
-    def sync_storage(self, storage_name: str, storage_id: int = None) -> Storage:
-        try:
-            storage = self._session.query(Storage).filter(Storage.name == storage_name).one_or_none()
-            if storage:
-                if storage_id is not None and storage.id != storage_id:
-                    raise ConfigurationError(
-                        'Storage ids of {} do not match between configuration and database ({} != {}).'.format(
-                            storage_name, storage_id, storage.id))
-                logger.debug('Found existing storage {} with id {}.'.format(storage.name, storage.id))
-            else:
-                storage = Storage(name=storage_name, id=storage_id)
-                self._session.add(storage)
-                self._session.commit()
-                logger.debug('Created new storage {} with id {}.'.format(storage.name, storage.id))
-
-            return storage
-        except:
-            self._session.rollback()
-            raise
-
-    def get_storage_by_name(self, storage_name: str) -> Storage:
-        return self._session.query(Storage).filter(Storage.name == storage_name).one_or_none()
-
-    def get_storage_by_id(self, storage_id: int) -> Storage:
-        return self._session.query(Storage).get(storage_id)
-
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
-    def new_benji_encoder(ignore_fields: Optional[List], ignore_relationships: Optional[List]):
+    def _new_benji_encoder(ignore_fields: Optional[List], ignore_relationships: Optional[List]):
         ignore_fields = list(ignore_fields) if ignore_fields is not None else []
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
@@ -964,6 +963,38 @@ class DatabaseBackend(ReprMixIn):
         ignore_fields.append(((Block,), ('uid_left', 'uid_right')))
         # Ignore storage_id as we export the storage attribute
         ignore_fields.append(((Version), ('storage_id')))
+
+        # Source: https://stackoverflow.com/questions/21663800/python-make-a-list-generator-json-serializable/46841935#46841935
+        # Alternative: simplejson with iterable_as_array=True
+        class SerializableGenerator(list):
+            """Generator that is serializable by JSON
+
+            It is useful for serializing huge data by JSON
+            >>> json.dumps(SerializableGenerator(iter([1, 2])))
+            "[1, 2]"
+            >>> json.dumps(SerializableGenerator(iter([])))
+            "[]"
+
+            It can be used in a generator of json chunks used e.g. for a stream
+            >>> iter_json = ison.JSONEncoder().iterencode(SerializableGenerator(iter([])))
+            >>> tuple(iter_json)
+            ('[1', ']')
+            # >>> for chunk in iter_json:
+            # ...     stream.write(chunk)
+            # >>> SerializableGenerator((x for x in range(3)))
+            # [<generator object <genexpr> at 0x7f858b5180f8>]
+            """
+
+            def __init__(self, iterable):
+                tmp_body = iter(iterable)
+                try:
+                    self._head = iter([next(tmp_body)])
+                    self.append(tmp_body)
+                except StopIteration:
+                    self._head = iter([])
+
+            def __iter__(self):
+                return chain(self._head, *self[:1])
 
         class BenjiEncoder(json.JSONEncoder):
 
@@ -1021,10 +1052,20 @@ class DatabaseBackend(ReprMixIn):
                     if isinstance(obj, Version):
                         if 'labels' in fields:
                             fields.move_to_end('labels')
-                        if 'blocks' in fields:
-                            fields.move_to_end('blocks')
+
+                        ignore = False
+                        for types, names in ignore_relationships:  # type: ignore
+                            if isinstance(obj, types) and 'blocks' in names:
+                                ignore = True
+                                break
+
+                        if not ignore:
+                            fields['blocks'] = obj.blocks
 
                     return fields
+
+                if isinstance(obj, collections.abc.Iterable):
+                    return SerializableGenerator(obj)
 
                 return super().default(obj)
 
@@ -1038,7 +1079,7 @@ class DatabaseBackend(ReprMixIn):
                    compact: bool = False) -> None:
         # Metadata output is ordered in such a way as to make it possible to use an iterative JSON parser
         # on import for version metadata. This is also the reason for using an OrderedDict for database objects
-        # and moving the labels and blocks relationship to the end for versions.
+        # and for placing the labels and blocks at the end.
         root_dict = OrderedDict(root_dict.copy())
         root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
         root_dict.move_to_end(self._METADATA_VERSION_KEY, last=False)
@@ -1046,14 +1087,16 @@ class DatabaseBackend(ReprMixIn):
         json.dump(
             root_dict,
             f,
-            cls=self.new_benji_encoder(ignore_fields, ignore_relationships),
+            cls=self._new_benji_encoder(ignore_fields, ignore_relationships),
             check_circular=True,
             separators=(',', ':') if compact else (',', ': '),
             indent=None if compact else 2,
         )
 
     def export(self, version_uids: Sequence[VersionUid], f: TextIO):
-        self.export_any({'versions': [self.get_version(version_uid) for version_uid in version_uids]}, f, compact=True)
+        self.export_any({'versions': [Version.get_by_uid(version_uid) for version_uid in version_uids]},
+                        f,
+                        compact=True)
 
     def import_(self, f: TextIO) -> List[VersionUid]:
         try:
@@ -1080,9 +1123,9 @@ class DatabaseBackend(ReprMixIn):
 
         try:
             version_uids = import_method(metadata_version_obj, json_input)
-            self._session.commit()
+            Session.commit()
         except:
-            self._session.rollback()
+            Session.rollback()
             raise
 
         return version_uids
@@ -1150,7 +1193,7 @@ class DatabaseBackend(ReprMixIn):
 
             version_dict['date'] = version_dict['date'] + 'Z'
 
-            version_dict['storage'] = self._session.query(Storage).get(version_dict['storage_id']).name
+            version_dict['storage'] = Session.query(Storage).get(version_dict['storage_id']).name
             del version_dict['storage_id']
 
             version_dict['snapshot'] = version_dict['snapshot_name']
@@ -1159,6 +1202,7 @@ class DatabaseBackend(ReprMixIn):
         return self.import_v3(metadata_version, json_input)
 
     def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+        # The v3 format doesn't list sparse blocks anymore.
         return self.import_v3(metadata_version, json_input)
 
     def import_v3(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
@@ -1223,12 +1267,12 @@ class DatabaseBackend(ReprMixIn):
                         raise InputDataError('Missing attribute {} in block list in version {}.'.format(
                             attribute, version_uid))
 
-            storage = self._session.query(Storage).filter(Storage.name == version_dict['storage']).one_or_none()
+            storage = Session.query(Storage).filter(Storage.name == version_dict['storage']).one_or_none()
             if not storage:
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
             try:
-                self.get_version(VersionUid(version_dict['uid']))
+                Version.get_by_uid(VersionUid(version_dict['uid']))
             except KeyError:
                 pass  # does not exist
             else:
@@ -1250,8 +1294,8 @@ class DatabaseBackend(ReprMixIn):
                 bytes_sparse=version_dict['bytes_sparse'],
                 duration=version_dict['duration'],
             )
-            self._session.add(version)
-            self._session.flush()
+            Session.add(version)
+            Session.flush()
 
             assert isinstance(version_dict['blocks'], list)
             for block_dict in version_dict['blocks']:
@@ -1272,42 +1316,49 @@ class DatabaseBackend(ReprMixIn):
                 block_dict['uid_left'] = block_uid.left
                 block_dict['uid_right'] = block_uid.right
                 del block_dict['uid']
-            self._session.bulk_insert_mappings(Block, version_dict['blocks'])
+            Session.bulk_insert_mappings(Block, version_dict['blocks'])
 
             labels: List[Dict[str, Any]] = []
             assert isinstance(version_dict['labels'], dict)
             for name, value in version_dict['labels'].items():
                 labels.append({'version_id': version.id, 'name': name, 'value': value})
-            self._session.bulk_insert_mappings(Label, labels)
+            Session.bulk_insert_mappings(Label, labels)
 
             version_uids.append(version_uid)
 
         return version_uids
 
-    def locking(self):
-        return self._locking
-
     def close(self):
-        self._session.commit()
-        if self._locking is not None:
-            self._locking.unlock_all()
-        self._locking = None
-        self._session.close()
-        self._session = None
+        Session.commit()
+        Locking.unlock_all()
+        Session.remove()
         self._engine.dispose()
 
 
-class DatabaseBackendLocking:
+Database = _DatabaseSingleton()
 
-    def __init__(self, session) -> None:
-        self._session = session
-        self._host = platform.node()
-        self._uuid = uuid.uuid1().hex
 
-    def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False):
+class _LockingSingleton:
+
+    _instance = None
+
+    _host: str
+    _uuid: str
+
+    def __new__(cls) -> '_LockingSingleton':
+        if cls._instance is None:
+            self = cls._instance = super().__new__(cls)
+
+            # Initialize once
+            self._host = platform.node()
+            self._uuid = uuid.uuid1().hex
+
+        return cls._instance
+
+    def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False) -> None:
         try:
-            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).one_or_none()
+            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                              Lock.process_id == self._uuid).one_or_none()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
@@ -1319,60 +1370,60 @@ class DatabaseBackendLocking:
             )
             if override_lock:
                 logger.warn('Will override any existing lock.')
-                self._session.merge(lock, load=True)
+                Session.merge(lock, load=True)
             else:
-                self._session.add(lock)
-            self._session.commit()
+                Session.add(lock)
+            Session.commit()
         except sqlalchemy.exc.IntegrityError:
-            self._session.rollback()
+            Session.rollback()
             if locked_msg is not None:
                 raise AlreadyLocked(locked_msg) from None
             else:
                 raise AlreadyLocked('Lock {} is already taken.'.format(lock_name)) from None
         except:
-            self._session.rollback()
+            Session.rollback()
             raise
 
     def is_locked(self, *, lock_name: str) -> bool:
         try:
-            lock = self._session.query(Lock).filter(Lock.lock_name == lock_name).one_or_none()
+            lock = Session.query(Lock).filter(Lock.lock_name == lock_name).one_or_none()
         except:
-            self._session.rollback()
+            Session.rollback()
             raise
         else:
             return lock is not None
 
     def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
-            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).with_for_update().one_or_none()
+            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                              Lock.process_id == self._uuid).with_for_update().one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
-            self._session.commit()
+            Session.commit()
         except:
-            self._session.rollback()
+            Session.rollback()
             raise
 
     def unlock(self, *, lock_name: str) -> None:
         try:
-            lock = self._session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                                    Lock.process_id == self._uuid).one_or_none()
+            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                              Lock.process_id == self._uuid).one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
-            self._session.delete(lock)
-            self._session.commit()
+            Session.delete(lock)
+            Session.commit()
         except:
-            self._session.rollback()
+            Session.rollback()
             raise
 
     def unlock_all(self) -> None:
         try:
-            locks = self._session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid)
+            locks = Session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid)
             for lock in locks:
                 logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
-                self._session.delete(lock)
-            self._session.commit()
+                Session.delete(lock)
+            Session.commit()
         except:
             pass
 
@@ -1426,14 +1477,16 @@ class DatabaseBackendLocking:
                 self.unlock_version(version_uid)
 
 
+Locking = _LockingSingleton()
+
+
 class _QueryBuilder:
 
-    def __init__(self, session) -> None:
-        self._session = session
-        self._parser = self._define_parser(session)
+    def __init__(self) -> None:
+        self._parser = self._define_parser()
 
     @staticmethod
-    def _define_parser(session) -> Any:
+    def _define_parser() -> Any:
 
         pyparsing.ParserElement.enablePackrat()
 
@@ -1490,7 +1543,7 @@ class _QueryBuilder:
             def op(self, op, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 if isinstance(other, Token):
                     raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
-                label_query = session.query(Label.version_id).filter((Label.name == self.name) &
+                label_query = Session.query(Label.version_id).filter((Label.name == self.name) &
                                                                      op(Label.value, str(other)))
                 return Version.id.in_(label_query)
 
@@ -1502,7 +1555,7 @@ class _QueryBuilder:
 
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
-                label_query = session.query(Label.version_id).filter(Label.name == self.name)
+                label_query = Session.query(Label.version_id).filter(Label.name == self.name)
                 return Version.id.in_(label_query)
 
         attributes = []
@@ -1596,7 +1649,7 @@ class _QueryBuilder:
         ])
 
     def build(self, filter_expression: Optional[str]):
-        query = self._session.query(Version)
+        query = Session.query(Version)
         if filter_expression:
             try:
                 parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]

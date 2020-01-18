@@ -159,8 +159,8 @@ class Storage(ReadCacheStorageBase):
 
     def _list_objects(self, prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
-        for file_version_info, folder_name in self.bucket.ls(folder_to_list=prefix if prefix is not None else '',
-                                                             recursive=True):
+        for file_version_info, folder_name in self.bucket.find_versions(folder_to_list=prefix if prefix is not None else '',
+                                                                        recursive=True):
             if include_size:
                 yield file_version_info.file_name, file_version_info.size
             else:

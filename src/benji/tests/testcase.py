@@ -7,7 +7,7 @@ from binascii import hexlify
 
 from benji.benji import Benji
 from benji.config import Config
-from benji.database import DatabaseBackend
+from benji.database import Database
 from benji.factory import StorageFactory
 from benji.logging import init_logging
 
@@ -79,12 +79,12 @@ class DatabaseBackendTestCaseBase(TestCaseBase):
     def setUp(self):
         super().setUp()
 
-        database_backend = DatabaseBackend(self.config)
-        database_backend.init(_destroy=True)
-        self.database_backend = database_backend.open()
+        Database.configure(self.config)
+        Database.init(_destroy=True)
+        Database.open()
 
     def tearDown(self):
-        self.database_backend.close()
+        Database.close()
         super().tearDown()
 
 

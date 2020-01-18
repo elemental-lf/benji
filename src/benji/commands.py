@@ -138,8 +138,8 @@ class Commands:
             if self.machine_output:
                 benji_obj.export_any(
                     {
-                        'versions': benji_obj.ls(version_uid=version_uid_obj),
-                        'errors': benji_obj.ls(version_uid=version_uid_obj)
+                        'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                        'errors': benji_obj.find_versions(version_uid=version_uid_obj)
                     },
                     sys.stdout,
                     ignore_relationships=[((Version,), ('blocks',))])
@@ -147,7 +147,7 @@ class Commands:
         else:
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
+                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
                     'errors': []
                 },
                                      sys.stdout,
@@ -167,8 +167,8 @@ class Commands:
             if self.machine_output:
                 benji_obj.export_any(
                     {
-                        'versions': benji_obj.ls(version_uid=version_uid_obj),
-                        'errors': benji_obj.ls(version_uid=version_uid_obj)
+                        'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                        'errors': benji_obj.find_versions(version_uid=version_uid_obj)
                     },
                     sys.stdout,
                     ignore_relationships=[((Version,), ('blocks',))])
@@ -176,7 +176,7 @@ class Commands:
         else:
             if self.machine_output:
                 benji_obj.export_any({
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
+                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
                     'errors': []
                 },
                                      sys.stdout,
@@ -280,7 +280,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            versions = benji_obj.ls_with_filter(filter_expression)
+            versions = benji_obj.find_versions_with_filter(filter_expression)
 
             if self.machine_output:
                 benji_obj.export_any(
@@ -307,7 +307,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            version_uid_objs = [version.uid for version in benji_obj.ls_with_filter(filter_expression)]
+            version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             if output_file is None:
                 benji_obj.metadata_export(version_uid_objs, sys.stdout)
             else:
@@ -324,7 +324,7 @@ class Commands:
         benji_obj = None
         try:
             benji_obj = Benji(self.config)
-            version_uid_objs = [version.uid for version in benji_obj.ls_with_filter(filter_expression)]
+            version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
         finally:
             if benji_obj:

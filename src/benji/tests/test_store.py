@@ -38,10 +38,10 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.size = size
         self.image_filename = image_filename
 
-    def test_get_versions(self):
+    def test_find_versions(self):
         benji_obj = self.benjiOpen()
         store = BenjiStore(benji_obj)
-        versions = store.get_versions()
+        versions = store.find_versions()
         self.assertEqual(1, len(versions))
         self.assertEqual(self.version_uid, versions[0].uid)
         self.assertEqual(self.size, versions[0].size)
@@ -51,7 +51,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
     def test_read(self, block_size):
         benji_obj = self.benjiOpen()
         store = BenjiStore(benji_obj)
-        version = store.get_versions(version_uid=self.version_uid)[0]
+        version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
         image = bytearray()
         for pos in range(0, self.size, block_size):
@@ -65,12 +65,12 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         store.close(version)
         benji_obj.close()
 
-    def test_get_cow_version(self):
+    def test_create_cow_version(self):
         benji_obj = self.benjiOpen()
         store = BenjiStore(benji_obj)
-        version = store.get_versions(version_uid=self.version_uid)[0]
+        version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
-        cow_version = store.get_cow_version(version)
+        cow_version = store.create_cow_version(version)
         self.assertEqual(version.volume, cow_version.volume)
         self.assertEqual(version.size, cow_version.size)
         self.assertEqual(version.block_size, cow_version.block_size)
@@ -84,9 +84,9 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
     def test_write_read(self, run):
         benji_obj = self.benjiOpen()
         store = BenjiStore(benji_obj)
-        version = store.get_versions(version_uid=self.version_uid)[0]
+        version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
-        cow_version = store.get_cow_version(version)
+        cow_version = store.create_cow_version(version)
 
         image_2_filename = os.path.join(self.testpath.path, 'image')
         image_2 = bytearray(self.image)

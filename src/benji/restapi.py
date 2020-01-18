@@ -186,7 +186,7 @@ class RestAPI:
                 benji_obj.rm_label(version_uid_obj, name)
 
             result = StringIO()
-            benji_obj.export_any({'versions': [benji_obj.ls(version_uid=version_uid_obj)]},
+            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
@@ -233,14 +233,14 @@ class RestAPI:
             assert benji_obj is not None
             benji_obj.export_any(
                 {
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
-                    'errors': benji_obj.ls(version_uid=version_uid_obj)
+                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                    'errors': benji_obj.find_versions(version_uid=version_uid_obj)
                 },
                 result,
                 ignore_relationships=[((Version,), ('blocks',))])
         else:
             benji_obj.export_any({
-                'versions': benji_obj.ls(version_uid=version_uid_obj),
+                'versions': benji_obj.find_versions(version_uid=version_uid_obj),
                 'errors': []
             },
                                  result,
@@ -264,14 +264,14 @@ class RestAPI:
             assert benji_obj is not None
             benji_obj.export_any(
                 {
-                    'versions': benji_obj.ls(version_uid=version_uid_obj),
-                    'errors': benji_obj.ls(version_uid=version_uid_obj)
+                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                    'errors': benji_obj.find_versions(version_uid=version_uid_obj)
                 },
                 result,
                 ignore_relationships=[((Version,), ('blocks',))])
         else:
             benji_obj.export_any({
-                'versions': benji_obj.ls(version_uid=version_uid_obj),
+                'versions': benji_obj.find_versions(version_uid=version_uid_obj),
                 'errors': []
             },
                                  result,
@@ -319,7 +319,7 @@ class RestAPI:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
-            versions = benji_obj.ls_with_filter(filter_expression)
+            versions = benji_obj.find_versions_with_filter(filter_expression)
 
             result = StringIO()
             benji_obj.export_any(
@@ -348,7 +348,7 @@ class RestAPI:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
-            version_uid_objs = [version.uid for version in benji_obj.ls_with_filter(filter_expression)]
+            version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
         finally:
             if benji_obj:
