@@ -4,8 +4,8 @@ import json
 import os
 import random
 import uuid
-from io import StringIO
 from collections.abc import Iterable
+from io import StringIO
 from unittest import TestCase
 
 from benji.database import VersionUid, VersionStatus, Block, Label
@@ -66,7 +66,7 @@ class ImportExportTestCase():
             with open(os.path.join(testpath, 'hints'), 'w') as f:
                 f.write(json.dumps(hints))
 
-            benji_obj = self.benjiOpen(init_database=init_database)
+            benji_obj = self.benji_open(init_database=init_database)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
                 version = benji_obj.backup(version_uid=VersionUid(str(uuid.uuid4())),
@@ -85,10 +85,10 @@ class ImportExportTestCase():
         super().tearDown()
 
     def test_export(self):
-        benji_obj = self.benjiOpen(init_database=True)
+        benji_obj = self.benji_open(init_database=True)
         benji_obj.close()
         self.version_uids = self.generate_versions(self.testpath.path)
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         with StringIO() as f:
             benji_obj.metadata_export([version_uid[0] for version_uid in self.version_uids], f)
             f.seek(0)
@@ -106,10 +106,19 @@ class ImportExportTestCase():
         self.assertEqual(VersionStatus.valid.name, version['status'])
         self.assertFalse(version['protected'])
         self.assertEqual('file', version['storage'])
+
         self.assertIsInstance(version['blocks'], list)
+        for block in version['blocks']:
+            self.assertIsInstance(block['uid'], dict)
+            self.assertIsInstance(block['uid']['left'], (int, type(None)))
+            self.assertIsInstance(block['uid']['right'], (int, type(None)))
+            self.assertIsInstance(block['idx'], int)
+            self.assertIsInstance(block['size'], int)
+            self.assertIsInstance(block['valid'], bool)
+            self.assertIsInstance(block['checksum'], (str, type(None)))
 
     def test_import_1_0_0(self):
-        benji_obj = self.benjiOpen(init_database=True)
+        benji_obj = self.benji_open(init_database=True)
 
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
@@ -141,7 +150,7 @@ class ImportExportTestCase():
         benji_obj.close()
 
     def test_import_1_1_0(self):
-        benji_obj = self.benjiOpen(init_database=True)
+        benji_obj = self.benji_open(init_database=True)
 
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
@@ -184,16 +193,17 @@ class ImportExportTestCase():
 
         benji_obj.close()
 
-    def test_import_2_0_0(self):
-        benji_obj = self.benjiOpen(init_database=True)
+    def _test_import_2_and_3(self, import_source: str) -> None:
+        benji_obj = self.benji_open(init_database=True)
 
         version_uid = VersionUid('V0000000001')
-        benji_obj.metadata_import(StringIO(self.IMPORT_2_0_0))
+        benji_obj.metadata_import(StringIO(import_source))
         version = benji_obj.find_versions(version_uid=version_uid)[0]
         self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
+        self.assertEqual(4864597, version.size)
         self.assertEqual(4194304, version.block_size)
         self.assertEqual(version.status, VersionStatus.valid)
         self.assertFalse(version.protected)
@@ -218,15 +228,28 @@ class ImportExportTestCase():
         self.assertEqual(version.id, version.labels['label-1'].version_id)
         self.assertEqual(version.id, version.labels['label-2'].version_id)
 
-        self.assertTrue(len(list(version.blocks)) > 0)
+        self.assertEqual(2, len(list(version.blocks)))
         block = list(version.blocks)[0]
         self.assertIsInstance(block, Block)
         self.assertEqual(version.id, block.version_id)
         self.assertEqual(0, block.idx)
+        self.assertEqual(4194304, block.size)
+        self.assertTrue(block.valid)
+        block = list(version.blocks)[1]
+        self.assertIsInstance(block, Block)
+        self.assertEqual(version.id, block.version_id)
+        self.assertEqual(1, block.idx)
         self.assertEqual(670293, block.size)
         self.assertTrue(block.valid)
+        self.assertEqual(None, block.checksum)
 
         benji_obj.close()
+
+    def test_import_2_0_0(self) -> None:
+        self._test_import_2_and_3(self.IMPORT_2_0_0)
+
+    def test_import_3_0_0(self) -> None:
+        self._test_import_2_and_3(self.IMPORT_3_0_0)
 
     IMPORT_1_0_0 = """
             {
@@ -438,7 +461,7 @@ class ImportExportTestCase():
                   "date": "2018-12-19T20:28:18.123456Z",
                   "volume": "data-backup",
                   "snapshot": "snapshot-name",
-                  "size": 670293,
+                  "size": 4864597,
                   "block_size": 4194304,
                   "storage": "file",
                   "status": "valid",
@@ -459,9 +482,19 @@ class ImportExportTestCase():
                         "right": 1
                       },
                       "idx": 0,
-                      "size": 670293,
+                      "size": 4194304,
                       "valid": true,
                       "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    },
+                    {
+                      "uid": {
+                        "left": null,
+                        "right": null
+                      },
+                      "idx": 1,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": null
                     }
                   ]
                 },
@@ -534,6 +567,120 @@ class ImportExportTestCase():
             }
             """
 
+    IMPORT_3_0_0 = """
+            {
+              "versions": [
+                {
+                  "uid": "V0000000001",
+                  "date": "2018-12-19T20:28:18.123456Z",
+                  "volume": "data-backup",
+                  "snapshot": "snapshot-name",
+                  "size": 4864597,
+                  "block_size": 4194304,
+                  "storage": "file",
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_deduplicated": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,
+                  "labels": {
+                    "label-1": "bla",
+                    "label-2": "blub"
+                  },
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "idx": 0,
+                      "size": 4194304,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    },
+                    {
+                      "uid": {
+                        "left": null,
+                        "right": null
+                      },
+                      "idx": 1,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": null
+                    }
+                  ]
+                },
+                {
+                  "uid": "v000000002",
+                  "date": "2018-12-19T20:28:18.123456Z",
+                  "volume": "data-backup",
+                  "snapshot": "snapshot-name",
+                  "size": 670293,
+                  "block_size": 4194304,
+                  "storage": "file",
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_deduplicated": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,
+                   "labels": {
+                    "label-1": "bla",
+                    "label-2": "blub"
+                  },
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "idx": 0,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    }
+                  ]
+                },
+                {
+                  "uid": "v000000003",
+                  "date": "2018-12-19T20:28:18.123456Z",
+                  "volume": "data-backup",
+                  "snapshot": "snapshot-name",
+                  "size": 670293,
+                  "block_size": 4194304,
+                  "storage": "file",
+                  "status": "valid",
+                  "protected": false,
+                  "bytes_read": 1,
+                  "bytes_written": 2,
+                  "bytes_deduplicated": 3,
+                  "bytes_sparse": 4,
+                  "duration": 5,
+                  "labels": {
+                    "label-1": "bla",
+                    "label-2": "blub"
+                  },
+                  "blocks": [
+                    {
+                      "uid": {
+                        "left": 1,
+                        "right": 1
+                      },
+                      "idx": 0,
+                      "size": 670293,
+                      "valid": true,
+                      "checksum": "066dde4d22ebc3e72c485a6a38b9013ac8efa4e4951a9b1c301e3d6579e25564"
+                    }
+                  ]
+                }
+              ],
+              "metadata_version": "3.0.0"
+            }
+            """
+
 
 class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCaseBase, TestCase):
 
@@ -558,10 +705,7 @@ class ImportExportCaseSQLLite_File(ImportExportTestCase, BenjiTestCaseBase, Test
             """
 
 
-class ImportExportTestCasePostgreSQL_File(
-        ImportExportTestCase,
-        BenjiTestCaseBase,
-):
+class ImportExportTestCasePostgreSQL_File(ImportExportTestCase, BenjiTestCaseBase, TestCase):
 
     VERSIONS = 3
 

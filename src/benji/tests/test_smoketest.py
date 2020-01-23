@@ -9,9 +9,8 @@ from operator import and_
 from shutil import copyfile
 from unittest import TestCase
 
-from benji.database import VersionUid
-
 from benji.blockuidhistory import BlockUidHistory
+from benji.database import VersionUid, Version
 from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff
@@ -104,7 +103,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             with open(os.path.join(testpath, 'hints'), 'w') as f:
                 f.write(json.dumps(hints))
 
-            benji_obj = self.benjiOpen(init_database=init_database, block_size=block_size)
+            benji_obj = self.benji_open(init_database=init_database, block_size=block_size)
             init_database = False
             with open(os.path.join(testpath, 'hints')) as hints:
                 version = benji_obj.backup(version_uid=VersionUid(str(uuid.uuid4())),
@@ -120,23 +119,23 @@ class SmokeTestCase(BenjiTestCaseBase):
             version_uids.append(version_uid)
             logger.debug('Backup successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.add_label(version_uid, 'label-1', 'value-1')
             benji_obj.add_label(version_uid, 'label-2', 'value-2')
             benji_obj.close()
             logger.debug('Labeling of version successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.rm(version_uid, force=True, keep_metadata_backup=True)
             benji_obj.close()
             logger.debug('Removal of version successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.close()
-            logger.debug('Restore of version successful')
+            logger.debug('Metadata restore of version successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             version = Version.get_by_uid(version_uid)
             blocks = list(version.blocks)
             self.assertEqual(list(range(len(blocks))), sorted([block.idx for block in blocks]))
@@ -146,7 +145,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.close()
             logger.debug('Block list successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             versions = benji_obj.find_versions()
             self.assertEqual(set(), set([version.uid for version in versions]) ^ set(version_uids))
             self.assertTrue(reduce(and_, [version.volume == 'data-backup' for version in versions]))
@@ -156,37 +155,37 @@ class SmokeTestCase(BenjiTestCaseBase):
             benji_obj.close()
             logger.debug('Version list successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.scrub(version_uid)
             benji_obj.close()
             logger.debug('Scrub successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.deep_scrub(version_uid)
             benji_obj.close()
             logger.debug('Deep scrub successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.deep_scrub(version_uid, 'file:' + image_filename)
             benji_obj.close()
             logger.debug('Deep scrub with source successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.scrub(version_uid, history=scrub_history)
             benji_obj.close()
             logger.debug('Scrub with history successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.deep_scrub(version_uid, history=deep_scrub_history)
             benji_obj.close()
             logger.debug('Deep scrub with history successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.batch_scrub('uid == "{}"'.format(version_uid), 100, 100)
             benji_obj.close()
             logger.debug('Batch scrub with history successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.batch_deep_scrub('uid == "{}"'.format(version_uid), 100, 100)
             benji_obj.close()
             logger.debug('Batch deep scrub with history successful')
@@ -194,13 +193,13 @@ class SmokeTestCase(BenjiTestCaseBase):
             restore_filename = os.path.join(testpath, 'restore.{}'.format(i + 1))
             restore_filename_mdl = os.path.join(testpath, 'restore-mdl.{}'.format(i + 1))
             restore_filename_sparse = os.path.join(testpath, 'restore-sparse.{}'.format(i + 1))
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             benji_obj.restore(version_uid, 'file:' + restore_filename, sparse=False, force=False)
             benji_obj.close()
             self.assertTrue(self.same(image_filename, restore_filename))
             logger.debug('Restore successful')
 
-            benji_obj = self.benjiOpen(in_memory_database=True)
+            benji_obj = self.benji_open(in_memory_database=True)
             benji_obj.metadata_restore([version_uid], storage_name)
             benji_obj.restore(version_uid, 'file:' + restore_filename_mdl, sparse=False, force=False)
             benji_obj.close()
@@ -213,7 +212,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             self.assertTrue(self.same(image_filename, restore_filename_sparse))
             logger.debug('Sparse restore successful')
 
-            benji_obj = self.benjiOpen()
+            benji_obj = self.benji_open()
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
             benji_obj.close()
             self.assertGreater(objects_count, 0)
@@ -224,7 +223,7 @@ class SmokeTestCase(BenjiTestCaseBase):
 
             # delete old versions
             if len(version_uids) > 10:
-                benji_obj = self.benjiOpen()
+                benji_obj = self.benji_open()
                 dismissed_versions = benji_obj.enforce_retention_policy('volume == "data-backup"',
                                                                         'latest10,hours24,days30')
                 for dismissed_version in dismissed_versions:
@@ -232,7 +231,7 @@ class SmokeTestCase(BenjiTestCaseBase):
                 benji_obj.close()
 
             if (i % 7) == 0:
-                benji_obj = self.benjiOpen()
+                benji_obj = self.benji_open()
                 benji_obj.cleanup(dt=0)
                 benji_obj.close()
             if (i % 13) == 0:

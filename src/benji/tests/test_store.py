@@ -22,7 +22,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.image = self.random_bytes(size - 2 * 128123) + b'\0' * 128123 + self.random_bytes(128123)
         with open(image_filename, 'wb') as f:
             f.write(self.image)
-        benji_obj = self.benjiOpen(init_database=True)
+        benji_obj = self.benji_open(init_database=True)
         version = benji_obj.backup(version_uid=str(uuid.uuid4()),
                                    volume='data-backup',
                                    snapshot='snapshot-name',
@@ -39,7 +39,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.image_filename = image_filename
 
     def test_find_versions(self):
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         store = BenjiStore(benji_obj)
         versions = store.find_versions()
         self.assertEqual(1, len(versions))
@@ -49,7 +49,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
 
     @parameterized.expand([(512,), (1024,), (4096,), (65536,), (1861,)])
     def test_read(self, block_size):
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         store = BenjiStore(benji_obj)
         version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
@@ -66,7 +66,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         benji_obj.close()
 
     def test_create_cow_version(self):
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         store = BenjiStore(benji_obj)
         version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
@@ -82,7 +82,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
 
     @parameterized.expand([['{:03}'.format(run)] for run in range(51)])
     def test_write_read(self, run):
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         store = BenjiStore(benji_obj)
         version = store.find_versions(version_uid=self.version_uid)[0]
         store.open(version)
