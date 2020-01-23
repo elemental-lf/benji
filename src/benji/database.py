@@ -269,6 +269,8 @@ class BlockUid(sqlalchemy.ext.mutable.MutableComposite, StorageKeyMixIn['BlockUi
     # End: Implements StorageKeyMixIn
 
 
+SparseBlockUid = BlockUid(None, None)
+
 # Explicit naming helps Alembic to auto-generate versions
 metadata = sqlalchemy.MetaData(
     naming_convention={
@@ -411,15 +413,14 @@ class Version(Base, ReprMixIn):
             Session.rollback()
             raise
 
-    def set_block(self, *, idx: int, block_uid: Optional[BlockUid], checksum: Optional[str], size: int,
-                  valid: bool) -> None:
+    def set_block(self, *, idx: int, block_uid: BlockUid, checksum: Optional[str], size: int, valid: bool) -> None:
         try:
             block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
 
-            if not block and block_uid is None and size == self.block_size:
+            if not block and not block_uid and size == self.block_size:
                 # Block is not present and it should be fully sparse now -> Nothing to do.
                 return
-            elif block and block_uid is None and size == self.block_size:
+            elif block and not block_uid and size == self.block_size:
                 # Block is present but it should be fully sparse now -> Delete it.
                 Session.delete(block)
             elif not block:
@@ -493,7 +494,7 @@ class Version(Base, ReprMixIn):
 
     def _create_sparse_block(self, idx: int) -> 'Block':
         # This block isn't part if the database session and probably never will be.
-        return Block(version_id=self.id, idx=idx, uid=None, checksum=None, size=self.block_size, valid=True)
+        return Block(version_id=self.id, idx=idx, uid=SparseBlockUid, checksum=None, size=self.block_size, valid=True)
 
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
@@ -532,8 +533,8 @@ class Version(Base, ReprMixIn):
 
     @property
     def sparse_blocks_count(self) -> int:
-        non_sparse_blocks_query = object_session(self).query(Block.idx).filter(Block.version_id == self.id,
-                                                                               Block.uid is not None)
+        non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
+            Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
         non_sparse_blocks = set([row.idx for row in non_sparse_blocks_query])
 
         return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])

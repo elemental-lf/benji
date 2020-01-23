@@ -17,7 +17,7 @@ from diskcache import Cache
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import Database, VersionUid, Version, Block, \
-    BlockUid, DereferencedBlock, VersionStatus, Storage, Locking, DeletedBlock
+    BlockUid, DereferencedBlock, VersionStatus, Storage, Locking, DeletedBlock, SparseBlockUid
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError, ConfigurationError
 from benji.factory import IOFactory, StorageFactory
 from benji.logging import logger
@@ -863,8 +863,12 @@ class Benji(ReprMixIn):
                     # it *must* be read.
 
                     # Only update the database when the block wasn't sparse to begin with
-                    if block.uid is not None:
-                        version.set_block(idx=block.idx, block_uid=None, checksum=None, size=block.size, valid=True)
+                    if block.uid:
+                        version.set_block(idx=block.idx,
+                                          block_uid=SparseBlockUid,
+                                          checksum=None,
+                                          size=block.size,
+                                          valid=True)
                         logger.debug('Skipping block (had data, turned sparse) {}'.format(block.idx))
                     else:
                         assert block.checksum is None
@@ -900,7 +904,11 @@ class Benji(ReprMixIn):
                     # if the block is only \0, set it as a sparse block.
                     stats['bytes_sparse'] += block.size
                     logger.debug('Skipping block (detected sparse) {}'.format(block.idx))
-                    version.set_block(idx=block.idx, block_uid=None, checksum=None, size=block.size, valid=True)
+                    version.set_block(idx=block.idx,
+                                      block_uid=SparseBlockUid,
+                                      checksum=None,
+                                      size=block.size,
+                                      valid=True)
                 elif existing_block:
                     version.set_block(idx=block.idx,
                                       block_uid=existing_block.uid,
