@@ -39,7 +39,7 @@ class Commands:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         benji_obj = None
         try:
-            benji_obj = Benji(self.config, block_size=block_size)
+            benji_obj = Benji(self.config)
             hints = None
             if rbd_hints:
                 logger.debug(f'Loading RBD hints from file {rbd_hints}.')
@@ -51,7 +51,8 @@ class Commands:
                                               source=source,
                                               hints=hints,
                                               base_version_uid=base_version_uid_obj,
-                                              storage_name=storage)
+                                              storage_name=storage,
+                                              block_size=block_size)
 
             if labels:
                 for key, value in label_add:

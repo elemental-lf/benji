@@ -120,7 +120,7 @@ class RestAPI:
 
         benji_obj = None
         try:
-            benji_obj = Benji(self._config, block_size=block_size)
+            benji_obj = Benji(self._config)
             hints = None
             if rbd_hints:
                 with open(rbd_hints, 'r') as f:
@@ -131,7 +131,8 @@ class RestAPI:
                                               source=source,
                                               hints=hints,
                                               base_version_uid=base_version_uid_obj,
-                                              storage_name=storage_name)
+                                              storage_name=storage_name,
+                                              block_size=block_size)
 
             result = StringIO()
             benji_obj.export_any({'versions': [backup_version]},

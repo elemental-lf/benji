@@ -34,7 +34,6 @@ class Benji(ReprMixIn):
 
     def __init__(self,
                  config: Config,
-                 block_size: int = None,
                  init_database: bool = False,
                  migrate_database: bool = False,
                  in_memory_database: bool = False,
@@ -42,11 +41,7 @@ class Benji(ReprMixIn):
 
         self.config = config
 
-        if block_size is None:
-            self._block_size = config.get('blockSize', types=int)
-        else:
-            self._block_size = block_size
-
+        self._block_size = config.get('blockSize', types=int)
         self._block_hash = BlockHash(config.get('hashFunction', types=str))
         self._process_name = config.get('processName', types=str)
 
@@ -72,9 +67,11 @@ class Benji(ReprMixIn):
         notify(self._process_name)
 
     def create_version(self,
+                       *,
                        version_uid: VersionUid,
                        volume: str,
                        snapshot: str,
+                       block_size: int = None,
                        storage_name: str = None,
                        size: int = None,
                        base_version_uid: VersionUid = None,
@@ -91,7 +88,7 @@ class Benji(ReprMixIn):
             old_version = Version.get_by_uid(base_version_uid)  # raise if not exists
             if not old_version.status.is_valid():
                 raise UsageError('You can only base a new version on a valid old version.')
-            if old_version.block_size != self._block_size:
+            if block_size is not None and old_version.block_size != block_size:
                 raise UsageError('You cannot base a new version on an old version with a different block size.')
             if storage_id is not None and old_version.storage_id != storage_id:
                 raise UsageError('Base version and new version have to be in the same storage.')
@@ -104,11 +101,16 @@ class Benji(ReprMixIn):
                 new_size = size
             else:
                 new_size = old_version.size
+
+            new_version_block_size = old_version.block_size
         else:
             new_storage_id = storage_id if storage_id is not None else Storage.get_by_name(self._default_storage_name).id
             if size is None:
                 raise InternalError('Size needs to be specified if there is no base version.')
             new_size = size
+            if block_size is None:
+                raise InternalError('Block size needs to be specified if there is no base version.')
+            new_version_block_size = block_size
 
         version = None
         try:
@@ -120,15 +122,15 @@ class Benji(ReprMixIn):
                                      volume=volume,
                                      snapshot=snapshot,
                                      size=new_size,
-                                     block_size=self._block_size,
+                                     block_size=new_version_block_size,
                                      storage_id=new_storage_id,
                                      status=VersionStatus.incomplete)
             Locking.lock_version(version.uid, reason='Preparing version')
 
-            uid: Optional[BlockUid]
-            checksum: Optional[str]
-            block_size: int
-            valid: bool
+            new_block_uid: Optional[BlockUid]
+            new_block_checksum: Optional[str]
+            new_block_block_size: int
+            new_block_valid: bool
             blocks: List[Dict[str, Any]] = []
             old_version_exhausted = old_blocks_iter is None
             for idx in range(version.blocks_count):
@@ -137,39 +139,42 @@ class Benji(ReprMixIn):
                     old_block = next(old_blocks_iter, None)
                     if old_block is not None:
                         assert old_block.idx == idx
-                        uid = old_block.uid
-                        checksum = old_block.checksum
-                        block_size = old_block.size
-                        valid = old_block.valid
+                        new_block_uid = old_block.uid
+                        new_block_checksum = old_block.checksum
+                        new_block_block_size = old_block.size
+                        new_block_valid = old_block.valid
                     else:
                         old_version_exhausted = True
-                        uid = None
-                        checksum = None
-                        block_size = self._block_size
-                        valid = True
+                        new_block_uid = None
+                        new_block_checksum = None
+                        new_block_block_size = version.block_size
+                        new_block_valid = True
                 else:
-                    uid = None
-                    checksum = None
-                    block_size = self._block_size
-                    valid = True
+                    new_block_uid = None
+                    new_block_checksum = None
+                    new_block_block_size = version.block_size
+                    new_block_valid = True
 
-                # the last block can differ in size, so let's check
-                _offset = idx * self._block_size
-                new_block_size = min(self._block_size, new_size - _offset)
-                if new_block_size != block_size:
-                    # last block changed, so set back all info
-                    block_size = new_block_size
-                    uid = None
-                    checksum = None
-                    valid = False
+                # This catches blocks which changed their size between the base version and the new version.
+                # If the new version is bigger, this affects the last block of the old version and the last block of
+                # the new version.
+                # If the new version is smaller, this affects the last block of the new version.
+                offset = idx * version.block_size
+                new_block_block_size_tmp = min(version.block_size, new_size - offset)
+                if new_block_block_size != new_block_block_size_tmp:
+                    new_block_block_size = new_block_block_size_tmp
+                    new_block_uid = None
+                    new_block_checksum = None
+                    # Forces reread.
+                    new_block_valid = False
 
                 blocks.append({
                     'idx': idx,
-                    'uid_left': uid.left if uid is not None else None,
-                    'uid_right': uid.right if uid is not None else None,
-                    'checksum': checksum,
-                    'size': block_size,
-                    'valid': valid
+                    'uid_left': new_block_uid.left if new_block_uid is not None else None,
+                    'uid_right': new_block_uid.right if new_block_uid is not None else None,
+                    'checksum': new_block_checksum,
+                    'size': new_block_block_size,
+                    'valid': new_block_valid
                 })
 
                 notify(self._process_name,
@@ -760,7 +765,8 @@ class Benji(ReprMixIn):
                source: str,
                hints: List[Tuple[int, int, bool]] = None,
                base_version_uid: VersionUid = None,
-               storage_name: str = None) -> Version:
+               storage_name: str = None,
+               block_size: int = None) -> Version:
         """ Create a backup from source.
         If hints are given, they must be tuples of (offset, length, exists) where offset and length are integers and
         exists is a boolean. In this case only data within hints will be backed up.
@@ -780,7 +786,9 @@ class Benji(ReprMixIn):
             'bytes_sparse': 0,
             'start_time': time.time(),
         }
-        io = IOFactory.get(source, self._block_size)
+
+        new_version_block_size = block_size if block_size else self._block_size
+        io = IOFactory.get(source, block_size=new_version_block_size)
         io.open_r()
         source_size = io.size()
 
@@ -788,6 +796,7 @@ class Benji(ReprMixIn):
                                       volume=volume,
                                       snapshot=snapshot,
                                       size=source_size,
+                                      block_size=new_version_block_size,
                                       base_version_uid=base_version_uid,
                                       storage_name=storage_name)
         Locking.update_version_lock(version.uid, reason='Backing up')
@@ -799,7 +808,7 @@ class Benji(ReprMixIn):
                 if max_offset > source_size:
                     raise InputDataError('Hints have higher offsets than source file.')
 
-                sparse_blocks, read_blocks = self._blocks_from_hints(hints, self._block_size)
+                sparse_blocks, read_blocks = self._blocks_from_hints(hints, version.block_size)
             else:
                 # Two snapshots can be completely identical between one backup and next
                 logger.warning('Hints are empty, assuming nothing has changed.')
@@ -844,7 +853,7 @@ class Benji(ReprMixIn):
                     logger.error("Source and backup don't match in regions outside of the ones indicated by the hints.")
                     logger.error("Looks like the hints don't match or the source is different.")
                     logger.error("Found wrong source data at block {}: offset {}, length {}".format(
-                        source_block.idx, source_block.idx * self._block_size, self._block_size))
+                        source_block.idx, source_block.idx * version.block_size, version.block_size))
                     # remove version
                     version.remove()
                     Locking.unlock_version(version.uid)
@@ -883,7 +892,7 @@ class Benji(ReprMixIn):
                         version.uid, source, (block.idx + 1) / version.blocks_count * 100))
 
             # precompute checksum of a sparse block
-            sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * self._block_size)
+            sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * version.block_size)
 
             done_read_jobs = 0
             write_jobs = 0
@@ -900,7 +909,7 @@ class Benji(ReprMixIn):
                 # dedup
                 data_checksum = self._block_hash.data_hexdigest(data)
                 existing_block = version.get_block_by_checksum(data_checksum)
-                if data_checksum == sparse_block_checksum and block.size == self._block_size:
+                if data_checksum == sparse_block_checksum and block.size == version.block_size:
                     # if the block is only \0, set it as a sparse block.
                     stats['bytes_sparse'] += block.size
                     logger.debug('Skipping block (detected sparse) {}'.format(block.idx))
