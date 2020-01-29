@@ -840,21 +840,13 @@ class Storage(Base, ReprMixIn):
             raise
 
 
-class _DatabaseSingleton(ReprMixIn):
+class _Database(ReprMixIn):
     _METADATA_VERSION_KEY = 'metadata_version'
     _METADATA_VERSION_REGEX = r'\d+\.\d+\.\d+'
 
-    _instance = None
-
-    def __new__(cls) -> '_DatabaseSingleton':
-        if cls._instance is None:
-            self = cls._instance = super().__new__(cls)
-
-            # Initialize once
-            self._config = None
-            self._engine = None
-
-        return cls._instance
+    def __init__(self) -> None:
+        self._config = None
+        self._engine = None
 
     def configure(self, config: Config, in_memory: bool = False) -> None:
         if not in_memory:
@@ -1336,25 +1328,14 @@ class _DatabaseSingleton(ReprMixIn):
         self._engine.dispose()
 
 
-Database = _DatabaseSingleton()
+Database = _Database()
 
 
-class _LockingSingleton:
+class _Locking:
 
-    _instance = None
-
-    _host: str
-    _uuid: str
-
-    def __new__(cls) -> '_LockingSingleton':
-        if cls._instance is None:
-            self = cls._instance = super().__new__(cls)
-
-            # Initialize once
-            self._host = platform.node()
-            self._uuid = uuid.uuid1().hex
-
-        return cls._instance
+    def __init__(self) -> None:
+        self._host = platform.node()
+        self._uuid = uuid.uuid1().hex
 
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False) -> None:
         try:
@@ -1478,7 +1459,7 @@ class _LockingSingleton:
                 self.unlock_version(version_uid)
 
 
-Locking = _LockingSingleton()
+Locking = _Locking()
 
 
 class _QueryBuilder:
