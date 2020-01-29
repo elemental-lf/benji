@@ -292,8 +292,6 @@ class Benji(ReprMixIn):
                     affected_version_uids.extend(Version.set_block_invalid(block.uid))
                     valid = False
                     continue
-                except:
-                    raise
 
                 if history:
                     history.add(version.storage_id, block.uid)
@@ -381,8 +379,6 @@ class Benji(ReprMixIn):
                     Version.set_block_invalid(block.uid)
                     valid = False
                     continue
-                except:
-                    raise
 
                 data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
@@ -630,8 +626,6 @@ class Benji(ReprMixIn):
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
                     Version.set_block_invalid(block.uid)
                     continue
-                except:
-                    raise
 
                 data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
