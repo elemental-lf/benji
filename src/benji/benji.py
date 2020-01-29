@@ -906,11 +906,9 @@ class Benji(ReprMixIn):
 
                 stats['bytes_read'] += len(data)
 
-                # dedup
                 data_checksum = self._block_hash.data_hexdigest(data)
-                existing_block = version.get_block_by_checksum(data_checksum)
                 if data_checksum == sparse_block_checksum and block.size == version.block_size:
-                    # if the block is only \0, set it as a sparse block.
+                    # It's a sparse block.
                     stats['bytes_sparse'] += block.size
                     logger.debug('Skipping block (detected sparse) {}'.format(block.idx))
                     version.set_block(idx=block.idx,
@@ -918,20 +916,25 @@ class Benji(ReprMixIn):
                                       checksum=None,
                                       size=block.size,
                                       valid=True)
-                elif existing_block:
-                    version.set_block(idx=block.idx,
-                                      block_uid=existing_block.uid,
-                                      checksum=existing_block.checksum,
-                                      size=existing_block.size,
-                                      valid=True)
-                    stats['bytes_deduplicated'] += len(data)
-                    logger.debug('Found existing block for id {} with UID {}'.format(block.idx, existing_block.uid))
                 else:
-                    block.uid = BlockUid(version.id, block.idx + 1)
-                    block.checksum = data_checksum
-                    storage.write_block_async(block, data)
-                    write_jobs += 1
-                    logger.debug('Queued block {} for write (checksum {}...)'.format(block.idx, data_checksum[:16]))
+                    existing_block = version.get_block_by_checksum(data_checksum)
+                    if existing_block and existing_block.size == block.size:
+                        # It's a known block.
+                        version.set_block(idx=block.idx,
+                                          block_uid=existing_block.uid,
+                                          checksum=existing_block.checksum,
+                                          size=existing_block.size,
+                                          valid=True)
+                        stats['bytes_deduplicated'] += len(data)
+                        logger.debug('Found existing block for id {} with UID {}'.format(block.idx, existing_block.uid))
+                    else:
+                        # It's a new block.
+                        # Generate a unique block id by combining the version id and the block index.
+                        block.uid = BlockUid(version.id, block.idx + 1)
+                        block.checksum = data_checksum
+                        storage.write_block_async(block, data)
+                        write_jobs += 1
+                        logger.debug('Queued block {} for write (checksum {}...)'.format(block.idx, data_checksum[:16]))
 
                 done_read_jobs += 1
 
