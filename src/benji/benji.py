@@ -521,18 +521,38 @@ class Benji(ReprMixIn):
             raise
 
         try:
+            t1 = time.time()
             storage = StorageFactory.get_by_name(version.storage.name)
 
             sparse_blocks_count = version.sparse_blocks_count
             read_blocks_count = version.blocks_count - sparse_blocks_count
 
-            t1 = time.time()
             read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
             written = 0
             log_every_jobs = (sparse_blocks_count if not sparse else read_blocks_count) // 200 + 1  # about every half percent
             sparse_data_block = b'\0' * version.block_size
+
+            def handle_sparse_write_completed(timeout: int = None):
+                nonlocal done_write_jobs, written, sparse_blocks_count, log_every_jobs, version_uid, target
+                try:
+                    for written_block in io.write_get_completed(timeout=timeout):
+                        if isinstance(written_block, Exception):
+                            raise written_block
+                        assert isinstance(written_block, DereferencedBlock)
+                        done_write_jobs += 1
+                        written += written_block.size
+
+                        notify(
+                            self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
+                                version_uid, target, done_write_jobs / sparse_blocks_count * 100))
+                        if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
+                            logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
+                                done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
+                except (TimeoutError, CancelledError):
+                    pass
+
             for block in version.blocks:
                 if block.uid:
                     storage.read_block_async(block)
@@ -553,40 +573,9 @@ class Benji(ReprMixIn):
                             self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
                                 version_uid, target, read_jobs / read_blocks_count * 100))
                 else:
-                    try:
-                        for written_block in io.write_get_completed(timeout=0):
-                            if isinstance(written_block, Exception):
-                                raise written_block
-                            assert isinstance(written_block, DereferencedBlock)
-                            done_write_jobs += 1
-                            written += written_block.size
+                    handle_sparse_write_completed(timeout=0)
 
-                            notify(
-                                self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                                    version_uid, target, done_write_jobs / sparse_blocks_count * 100))
-                            if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
-                                logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
-                                    done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
-                    except (TimeoutError, CancelledError):
-                        pass
-
-            try:
-                for written_block in io.write_get_completed():
-                    if isinstance(written_block, Exception):
-                        raise written_block
-                    assert isinstance(written_block, DereferencedBlock)
-                    done_write_jobs += 1
-                    written += written_block.size
-
-                    assert sparse_blocks_count > 0
-                    notify(
-                        self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                            version_uid, target, done_write_jobs / sparse_blocks_count * 100))
-                    if done_write_jobs % log_every_jobs == 0 or done_write_jobs == sparse_blocks_count:
-                        logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
-                            done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
-            except CancelledError:
-                pass
+            handle_sparse_write_completed()
 
             if write_jobs != done_write_jobs:
                 raise InternalError(
@@ -597,6 +586,27 @@ class Benji(ReprMixIn):
             write_jobs = 0
             done_write_jobs = 0
             log_every_jobs = read_jobs // 200 + 1  # about every half percent
+
+            def handle_write_completed(timeout: int = None):
+                nonlocal done_write_jobs, written, read_jobs, log_every_jobs, version_uid, target
+                try:
+                    for written_block in io.write_get_completed(timeout=timeout):
+                        if isinstance(written_block, Exception):
+                            raise written_block
+                        assert isinstance(written_block, DereferencedBlock)
+                        done_write_jobs += 1
+                        written += written_block.size
+
+                        notify(
+                            self._process_name,
+                            'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
+                                                                          done_write_jobs / read_jobs * 100))
+                        if done_write_jobs % log_every_jobs == 0 or done_write_jobs == read_jobs:
+                            logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
+                                                                                 done_write_jobs / read_jobs * 100))
+                except (TimeoutError, CancelledError):
+                    pass
+
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
                 if isinstance(entry, Exception):
@@ -633,42 +643,9 @@ class Benji(ReprMixIn):
                 else:
                     logger.debug('Restored block {} successfully ({} bytes).'.format(block.idx, block.size))
 
-                try:
-                    for written_block in io.write_get_completed(timeout=0):
-                        if isinstance(written_block, Exception):
-                            raise written_block
-                        assert isinstance(written_block, DereferencedBlock)
-                        done_write_jobs += 1
-                        written += written_block.size
+                handle_write_completed(timeout=0)
 
-                        notify(
-                            self._process_name,
-                            'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
-                                                                          done_write_jobs / read_jobs * 100))
-                        if done_write_jobs % log_every_jobs == 0 or done_write_jobs == read_jobs:
-                            logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
-                                                                                 done_write_jobs / read_jobs * 100))
-                except (TimeoutError, CancelledError):
-                    pass
-
-            try:
-                for written_block in io.write_get_completed():
-                    if isinstance(written_block, Exception):
-                        raise written_block
-                    assert isinstance(written_block, DereferencedBlock)
-                    done_write_jobs += 1
-                    written += written_block.size
-
-                    notify(
-                        self._process_name,
-                        'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
-                                                                      done_write_jobs / read_jobs * 100))
-                    if done_write_jobs % log_every_jobs == 0 or done_write_jobs == read_jobs:
-                        logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
-                                                                             done_write_jobs / read_jobs * 100))
-            except CancelledError:
-                pass
-
+            handle_write_completed()
         except:
             raise
         finally:
@@ -891,13 +868,34 @@ class Benji(ReprMixIn):
                     self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
                         version.uid, source, (block.idx + 1) / version.blocks_count * 100))
 
-            # precompute checksum of a sparse block
+            # Precompute checksum of a sparse block.
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * version.block_size)
 
             done_read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
             log_every_jobs = read_jobs // 200 + 1  # about every half percent
+
+            def handle_write_completed(timeout: int = None):
+                nonlocal done_write_jobs, stats, version
+                try:
+                    for written_block in storage.write_get_completed(timeout=timeout):
+                        if isinstance(written_block, Exception):
+                            raise written_block
+
+                        written_block = cast(DereferencedBlock, written_block)
+
+                        assert written_block.version_id == version.id
+                        version.set_block(idx=written_block.idx,
+                                          block_uid=written_block.uid,
+                                          checksum=written_block.checksum,
+                                          size=written_block.size,
+                                          valid=True)
+                        done_write_jobs += 1
+                        stats['bytes_written'] += written_block.size
+                except (TimeoutError, CancelledError):
+                    pass
+
             for entry in io.read_get_completed():
                 if isinstance(entry, Exception):
                     raise entry
@@ -938,23 +936,7 @@ class Benji(ReprMixIn):
 
                 done_read_jobs += 1
 
-                try:
-                    for written_block in storage.write_get_completed(timeout=0):
-                        if isinstance(written_block, Exception):
-                            raise written_block
-
-                        written_block = cast(DereferencedBlock, written_block)
-
-                        assert written_block.version_id == version.id
-                        version.set_block(idx=written_block.idx,
-                                          block_uid=written_block.uid,
-                                          checksum=written_block.checksum,
-                                          size=written_block.size,
-                                          valid=True)
-                        done_write_jobs += 1
-                        stats['bytes_written'] += written_block.size
-                except (TimeoutError, CancelledError):
-                    pass
+                handle_write_completed(timeout=0)
 
                 notify(
                     self._process_name,
@@ -964,24 +946,7 @@ class Benji(ReprMixIn):
                     logger.info('Backed up {}/{} blocks ({:.1f}%)'.format(done_read_jobs, read_jobs,
                                                                           done_read_jobs / read_jobs * 100))
 
-            try:
-                for written_block in storage.write_get_completed():
-                    if isinstance(written_block, Exception):
-                        raise written_block
-
-                    written_block = cast(DereferencedBlock, written_block)
-
-                    assert written_block.version_id == version.id
-                    version.set_block(idx=written_block.idx,
-                                      block_uid=written_block.uid,
-                                      checksum=written_block.checksum,
-                                      size=written_block.size,
-                                      valid=True)
-                    done_write_jobs += 1
-                    stats['bytes_written'] += written_block.size
-            except CancelledError:
-                pass
-
+            handle_write_completed()
         except:
             Locking.unlock_version(version.uid)
             raise
