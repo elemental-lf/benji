@@ -109,10 +109,12 @@ class RestAPI:
         return json.dumps(result)
 
     @route('/api/v1/versions', method='POST')
-    def _backup(self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
-                snapshot: fields.Str(required=True), source: fields.Str(required=True),
-                rbd_hints: fields.Str(missing=None), base_version_uid: fields.Str(missing=None),
-                block_size: fields.Int(missing=None), storage_name: fields.Str(missing=None)) -> str:
+    def _backup(
+        self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
+        snapshot: fields.Str(required=True), source: fields.Str(required=True), rbd_hints: fields.Str(missing=None),
+        base_version_uid: fields.Str(missing=None), block_size: fields.Int(missing=None),
+        storage_name: fields.Str(missing=None)
+    ) -> str:
         if version_uid is None:
             version_uid = '{}-{}'.format(volume[:248], random_string(6))
         version_uid_obj = VersionUid(version_uid)
@@ -145,8 +147,10 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>/restore', method='POST')
-    def _restore(self, version_uid: str, destination: fields.Str(required=True), sparse: fields.Bool(missing=False),
-                 force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)) -> StringIO:
+    def _restore(
+        self, version_uid: str, destination: fields.Str(required=True), sparse: fields.Bool(missing=False),
+        force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)
+    ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         benji_obj = None
         try:
@@ -166,8 +170,10 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>', method='PATCH')
-    def _protect(self, version_uid: str, protected: fields.Bool(missing=None),
-                 labels: fields.DelimitedList(fields.Str(), missing=None)) -> StringIO:
+    def _protect(
+        self, version_uid: str, protected: fields.Bool(missing=None), labels: fields.DelimitedList(fields.Str(),
+                                                                                                   missing=None)
+    ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         if labels is not None:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
@@ -197,8 +203,10 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>', method='DELETE')
-    def _rm(self, version_uid: str, force: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
-            override_lock: fields.Bool(missing=False)) -> StringIO:
+    def _rm(
+        self, version_uid: str, force: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
+        override_lock: fields.Bool(missing=False)
+    ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         disallow_rm_when_younger_than_days = self._config.get('disallowRemoveWhenYounger', types=int)
         benji_obj = None
@@ -253,8 +261,9 @@ class RestAPI:
         return result
 
     @route('/api/v1/versions/<version_uid>/deep-scrub', method='POST')
-    def deep_scrub(self, version_uid: str, source: fields.Str(missing=None),
-                   block_percentage: fields.Int(missing=100)) -> StringIO:
+    def deep_scrub(
+            self, version_uid: str, source: fields.Str(missing=None),
+            block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
         benji_obj = None
@@ -305,13 +314,17 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/scrub', method='POST')
-    def batch_scrub(self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
-                    block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)) -> StringIO:
+    def batch_scrub(
+        self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
+        block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
+    ) -> StringIO:
         return self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @route('/api/v1/versions/deep-scrub', method='POST')
-    def batch_deep_scrub(self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
-                         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)) -> StringIO:
+    def batch_deep_scrub(
+        self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
+        block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
+    ) -> StringIO:
         return self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage,
                                  group_label)
 
@@ -366,8 +379,9 @@ class RestAPI:
                 benji_obj.close()
 
     @route('/api/v1/versions/metadata/restore', method='POST')
-    def _metadata_restore(self, version_uids: fields.DelimitedList(fields.Str, required=True),
-                          storage_name: fields.Str(missing=None)) -> None:
+    def _metadata_restore(
+        self, version_uids: fields.DelimitedList(fields.Str, required=True), storage_name: fields.Str(missing=None)
+    ) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         benji_obj = None
         try:
@@ -398,10 +412,11 @@ class RestAPI:
         benji_obj.close()
 
     @route('/api/v1/versions', method='DELETE')
-    def _enforce_retention_policy(self, rules_spec: fields.Str(required=True),
-                                  filter_expression: fields.Str(missing=None), dry_run: fields.Bool(missing=False),
-                                  keep_metadata_backup: fields.Bool(missing=False),
-                                  group_label: fields.Str(missing=None)) -> StringIO:
+    def _enforce_retention_policy(
+        self, rules_spec: fields.Str(required=True), filter_expression: fields.Str(missing=None),
+        dry_run: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
+        group_label: fields.Str(missing=None)
+    ) -> StringIO:
         benji_obj = None
         try:
             benji_obj = Benji(self._config)
