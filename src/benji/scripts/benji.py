@@ -273,6 +273,7 @@ def main():
         p.set_defaults(func='rest_api')
         p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
         p.add_argument('-p', '--bind-port', default=8080, type=int, help='Bind to the specified port')
+        p.add_argument('--threads', default=1, type=int, help='Number of worker threads')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

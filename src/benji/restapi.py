@@ -1,7 +1,8 @@
 import functools
 import json
+from contextlib import closing
 from io import StringIO
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 from bottle import Bottle, response, HTTPError, request
 from webargs import fields
@@ -80,18 +81,20 @@ class RestAPI:
             if hasattr(attr, 'bottle_error'):
                 self._app.error(attr.bottle_error)(attr)
 
-    def run(self, bind_address: str, bind_port: int, debug: bool = False):
+    def run(self, bind_address: str, bind_port: int, threads: int, debug: bool = False):
         self._app.run(
             server='gunicorn',
-            workers=1,
             host=bind_address,
             port=bind_port,
             reuse_port=True,
-            worker_class='sync',
+            worker_class='gthread',
+            threads=threads,
+            worker_connections=threads * 10,
             debug=debug,
         )
 
-    def _default_error_handler(self, error: HTTPError):
+    @staticmethod
+    def _default_error_handler(error: HTTPError):
 
         result = {
             'url': repr(request.url),
@@ -109,20 +112,18 @@ class RestAPI:
         return json.dumps(result)
 
     @route('/api/v1/versions', method='POST')
-    def _backup(
+    def _api_v1_versions_create(
         self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
         snapshot: fields.Str(required=True), source: fields.Str(required=True), rbd_hints: fields.Str(missing=None),
         base_version_uid: fields.Str(missing=None), block_size: fields.Int(missing=None),
         storage_name: fields.Str(missing=None)
-    ) -> str:
+    ) -> StringIO:
         if version_uid is None:
             version_uid = '{}-{}'.format(volume[:248], random_string(6))
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+        with closing(Benji(self._config)) as benji_obj:
             hints = None
             if rbd_hints:
                 with open(rbd_hints, 'r') as f:
@@ -142,19 +143,14 @@ class RestAPI:
                                  ignore_relationships=[((Version,), ('blocks',))])
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>/restore', method='POST')
-    def _restore(
+    def _api_v1_versions_restore_create(
         self, version_uid: str, destination: fields.Str(required=True), sparse: fields.Bool(missing=False),
         force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config, in_memory_database=database_backend_less)
+        with closing(Benji(self._config, in_memory_database=database_backend_less)) as benji_obj:
             if database_backend_less:
                 benji_obj.metadata_restore([version_uid_obj])
             benji_obj.restore(version_uid_obj, destination, sparse, force)
@@ -165,12 +161,9 @@ class RestAPI:
                                  ignore_relationships=[((Version,), ('blocks',))])
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>', method='PATCH')
-    def _protect(
+    def _api_v1_versions_patch(
         self, version_uid: str, protected: fields.Bool(missing=None), labels: fields.DelimitedList(fields.Str(),
                                                                                                    missing=None)
     ) -> StringIO:
@@ -179,9 +172,7 @@ class RestAPI:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         else:
             label_add, label_remove = [], []
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+        with closing(Benji(self._config)) as benji_obj:
             if protected is True:
                 benji_obj.protect(version_uid_obj)
             elif protected is False:
@@ -198,21 +189,15 @@ class RestAPI:
                                  ignore_relationships=[((Version,), ('blocks',))])
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>', method='DELETE')
-    def _rm(
+    def _api_v1_versions_delete(
         self, version_uid: str, force: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
         override_lock: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         disallow_rm_when_younger_than_days = self._config.get('disallowRemoveWhenYounger', types=int)
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
-
+        with closing(Benji(self._config)) as benji_obj:
             result = StringIO()
             # Do this before deleting the version
             benji_obj.export_any({'versions': [version_uid_obj]},
@@ -226,12 +211,9 @@ class RestAPI:
                          override_lock=override_lock)
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/<version_uid>/scrub', method='POST')
-    def scrub(self, version_uid: str, block_percentage: fields.Int(missing=100)) -> StringIO:
+    def _api_v1_versions_scrub_create(self, version_uid: str, block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
         benji_obj = None
@@ -261,7 +243,7 @@ class RestAPI:
         return result
 
     @route('/api/v1/versions/<version_uid>/deep-scrub', method='POST')
-    def deep_scrub(
+    def _api_v1_versions_deep_scrub_create(
             self, version_uid: str, source: fields.Str(missing=None),
             block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
@@ -294,9 +276,7 @@ class RestAPI:
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                      block_percentage: int, group_label: Optional[str]) -> StringIO:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+        with closing(Benji(self._config)) as benji_obj:
             versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage,
                                                           group_label)
 
@@ -309,19 +289,16 @@ class RestAPI:
                                  ignore_relationships=[((Version,), ('blocks',))])
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/scrub', method='POST')
-    def batch_scrub(
+    def _api_v1_versions_batch_scrub_create(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
     ) -> StringIO:
         return self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
     @route('/api/v1/versions/deep-scrub', method='POST')
-    def batch_deep_scrub(
+    def _api_v1_versions_batch_deep_scrub_create(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
     ) -> StringIO:
@@ -329,10 +306,9 @@ class RestAPI:
                                  group_label)
 
     @route('/api/v1/versions', method='GET')
-    def _ls(self, filter_expression: fields.Str(missing=None), include_blocks: fields.Bool(missing=False)) -> StringIO:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    def _api_v1_versions_list(
+            self, filter_expression: fields.Str(missing=None), include_blocks: fields.Bool(missing=False)) -> StringIO:
+        with closing(Benji(self._config)) as benji_obj:
             versions = benji_obj.find_versions_with_filter(filter_expression)
 
             result = StringIO()
@@ -343,83 +319,52 @@ class RestAPI:
             )
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/blocks', method='DELETE')
-    def _cleanup(self, override_lock: fields.Bool(missing=False)) -> None:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    def _api_v1_blocks_delete_collection(self, override_lock: fields.Bool(missing=False)) -> None:
+        with closing(Benji(self._config)) as benji_obj:
             benji_obj.cleanup(override_lock=override_lock)
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/metadata/backup', method='POST')
-    def _metadata_backup(self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    def _api_v1_versions_metadata_backup_create(
+            self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
+        with closing(Benji(self._config)) as benji_obj:
             version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/metadata/import', method='POST')
-    def _metadata_import(self) -> None:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    def _api_v1_versions_metadata_import_create(self) -> None:
+        with closing(Benji(self._config)) as benji_obj:
             benji_obj.metadata_import(request.body.read())
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/versions/metadata/restore', method='POST')
-    def _metadata_restore(
+    def _api_v1_versions_metadata_restore_create(
         self, version_uids: fields.DelimitedList(fields.Str, required=True), storage_name: fields.Str(missing=None)
     ) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+        with closing(Benji(self._config)) as benji_obj:
             benji_obj.metadata_restore(version_uid_objs, storage_name)
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/storages', method='GET')
-    def _list_storages(self) -> List[str]:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    def _api_v1_storages_list(self) -> List[str]:
+        with closing(Benji(self._config)) as benji_obj:
             return benji_obj.list_storages()
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/database', method='POST')
-    def _database_init(self) -> None:
-        benji_obj = Benji(self._config, init_database=True)
-        benji_obj.close()
+    def _api_v1_database_init_create(self) -> None:
+        Benji(self._config, init_database=True).close()
 
     @route('/api/v1/database', method='PATCH')
-    def _database_migrate(self) -> None:
-        benji_obj = Benji(self._config, migrate_database=True)
-        benji_obj.close()
+    def _api_v1_database_migrate_create(self) -> None:
+        Benji(self._config, migrate_database=True).close()
 
     @route('/api/v1/versions', method='DELETE')
-    def _enforce_retention_policy(
+    def _api_v1_versions_delete_collection(
         self, rules_spec: fields.Str(required=True), filter_expression: fields.Str(missing=None),
         dry_run: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
         group_label: fields.Str(missing=None)
     ) -> StringIO:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+        with closing(Benji(self._config)) as benji_obj:
             dismissed_versions = benji_obj.enforce_retention_policy(filter_expression=filter_expression,
                                                                     rules_spec=rules_spec,
                                                                     dry_run=dry_run,
@@ -434,12 +379,9 @@ class RestAPI:
             )
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
 
     @route('/api/v1/version-info', method='GET')
-    def _version_info(self) -> Dict:
+    def _api_v1_version_info_read(self) -> Dict[str, Any]:
         result = {
             'version': __version__,
             'configuration_version': {
@@ -458,11 +400,9 @@ class RestAPI:
 
         return result
 
-    @route('/api/v1/storages/<storage_name>/stats', method='GET')
-    def _storage_stats(self, storage_name: str) -> Dict:
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
+    @route('/api/v1/storages/<storage_name>', method='GET')
+    def _api_v1_storages_read(self, storage_name: str) -> Dict[str, int]:
+        with closing(Benji(self._config)) as benji_obj:
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
 
             result = {
@@ -471,6 +411,3 @@ class RestAPI:
             }
 
             return result
-        finally:
-            if benji_obj:
-                benji_obj.close()
