@@ -29,14 +29,14 @@ class TestCaseBase:
     class TestPath():
 
         def __init__(self):
-            self.path = 'benji-test_' + TestCaseBase.random_string(16)
+            self.path = '../../../tests-scratch/benji-test_' + TestCaseBase.random_string(16)
             for dir in [
                     self.path,
                     self.path + '/data',
                     self.path + '/data-2',
                     self.path + '/lock',
             ]:
-                os.mkdir(dir)
+                os.makedirs(dir, exist_ok=True)
 
         def close(self):
             pass
