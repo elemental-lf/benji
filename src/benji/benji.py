@@ -45,8 +45,6 @@ class Benji(ReprMixIn):
         self._block_hash = BlockHash(config.get('hashFunction', types=str))
         self._process_name = config.get('processName', types=str)
 
-        IOFactory.initialize(config)
-
         Database.configure(config, in_memory=in_memory_database)
         if init_database or in_memory_database:
             Database.init(_destroy=_destroy_database)
@@ -54,7 +52,6 @@ class Benji(ReprMixIn):
             Database.migrate()
         Database.open()
 
-        StorageFactory.initialize(self.config)
         # Ensure that all defined storages are present
         storage_modules = StorageFactory.get_modules()
         for name, module in storage_modules.items():
@@ -1015,8 +1012,6 @@ class Benji(ReprMixIn):
         version.rm_label(key)
 
     def close(self) -> None:
-        StorageFactory.close()
-        IOFactory.close()
         # Close database backend after storage so that any open locks are held until all storage jobs have
         # finished
         Database.close()

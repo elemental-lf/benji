@@ -8,7 +8,7 @@ from binascii import hexlify
 from benji.benji import Benji
 from benji.config import Config
 from benji.database import Database
-from benji.factory import StorageFactory
+from benji.factory import StorageFactory, IOFactory
 from benji.logging import init_logging
 
 
@@ -48,8 +48,12 @@ class TestCaseBase:
                      logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
                      console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
+        IOFactory.initialize(self.config)
+        StorageFactory.initialize(self.config)
 
     def tearDown(self):
+        StorageFactory.close()
+        IOFactory.close()
         self.testpath.close()
 
 
@@ -94,7 +98,6 @@ class BenjiTestCaseBase(TestCaseBase):
         super().setUp()
 
     def tearDown(self):
-        StorageFactory.close()
         super().tearDown()
 
     def benji_open(self, init_database=False, in_memory_database=False):

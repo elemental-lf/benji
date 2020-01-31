@@ -11,6 +11,7 @@ from typing import NamedTuple, Type, Optional
 import argcomplete
 
 from benji.exception import InternalError
+from benji.factory import IOFactory, StorageFactory
 
 
 class _ExceptionMapping(NamedTuple):
@@ -301,6 +302,9 @@ def main():
     init_logging(config.get('logFile', types=(str, type(None))),
                  console_level=args.log_level,
                  console_formatter='console-plain' if args.no_color else 'console-colored')
+
+    IOFactory.initialize(config)
+    StorageFactory.initialize(config)
 
     import benji.commands
     commands = benji.commands.Commands(args.machine_output, config)
