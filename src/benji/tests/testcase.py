@@ -49,12 +49,8 @@ class TestCaseBase:
                      logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
                      console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
-        IOFactory.initialize(self.config)
-        StorageFactory.initialize(self.config)
 
     def tearDown(self):
-        StorageFactory.close()
-        IOFactory.close()
         self.testpath.close()
 
 
@@ -63,9 +59,9 @@ class StorageTestCaseBase(TestCaseBase):
     def setUp(self):
         super().setUp()
 
-        default_storage_name = self.config.get('defaultStorage', types=str)
         StorageFactory.initialize(self.config)
 
+        default_storage_name = self.config.get('defaultStorage', types=str)
         self.storage = StorageFactory.get_by_name(default_storage_name)
         for block_uid in self.storage.list_blocks():
             self.storage.rm_block(block_uid)
@@ -97,8 +93,11 @@ class BenjiTestCaseBase(TestCaseBase):
 
     def setUp(self):
         super().setUp()
+        IOFactory.initialize(self.config)
+        StorageFactory.initialize(self.config)
 
     def tearDown(self):
+        StorageFactory.close()
         super().tearDown()
 
     def benji_open(self, init_database=False, in_memory_database=False):

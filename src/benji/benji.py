@@ -1013,8 +1013,9 @@ class Benji(ReprMixIn):
         version.rm_label(key)
 
     def close(self) -> None:
+        StorageFactory.close()
         # Close database backend after storage so that any open locks are held until all storage jobs have
-        # finished
+        # finished.
         Database.close()
 
     def metadata_export(self, version_uids: Sequence[VersionUid], f: TextIO) -> None:
