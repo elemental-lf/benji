@@ -102,7 +102,7 @@ class Benji(ReprMixIn):
 
             new_version_block_size = old_version.block_size
         else:
-            new_storage_id = storage_id if storage_id is not None else Storage.get_by_name(self._default_storage_name).id
+            new_storage_id = storage_id or Storage.get_by_name(self._default_storage_name).id
             if size is None:
                 raise InternalError('Size needs to be specified if there is no base version.')
             new_size = size
@@ -757,8 +757,10 @@ class Benji(ReprMixIn):
         }
 
         new_version_block_size = block_size if block_size else self._block_size
+
         io = IOFactory.get(source, block_size=new_version_block_size)
         io.open_r()
+
         source_size = io.size()
 
         version = self.create_version(version_uid=version_uid,
@@ -1064,10 +1066,7 @@ class Benji(ReprMixIn):
         logger.info('Imported metadata of version(s): {}.'.format(', '.join(version_uids)))
 
     def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
-        if storage_name is not None:
-            storage = StorageFactory.get_by_name(storage_name)
-        else:
-            storage = StorageFactory.get_by_name(self._default_storage_name)
+        storage = StorageFactory.get_by_name(storage_name or self._default_storage_name)
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -1084,10 +1083,7 @@ class Benji(ReprMixIn):
                 Locking.unlock_version(version_uid)
 
     def metadata_ls(self, storage_name: str = None) -> List[VersionUid]:
-        if storage_name is not None:
-            storage = StorageFactory.get_by_name(storage_name)
-        else:
-            storage = StorageFactory.get_by_name(self._default_storage_name)
+        storage = StorageFactory.get_by_name(storage_name or self._default_storage_name)
         return storage.list_versions()
 
     def enforce_retention_policy(self,
@@ -1146,10 +1142,7 @@ class Benji(ReprMixIn):
         return sorted(dismissed_versions)
 
     def storage_stats(self, storage_name: str = None) -> Tuple[int, int]:
-        if storage_name is not None:
-            storage = StorageFactory.get_by_name(storage_name)
-        else:
-            storage = StorageFactory.get_by_name(self._default_storage_name)
+        storage = StorageFactory.get_by_name(storage_name or self._default_storage_name)
         return storage.storage_stats()
 
     @staticmethod
