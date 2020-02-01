@@ -8,6 +8,7 @@ import random
 import time
 from collections import defaultdict
 from concurrent.futures import CancelledError, TimeoutError
+from contextlib import AbstractContextManager
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator
@@ -28,7 +29,7 @@ from benji.storage.factory import StorageFactory
 from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
 
 
-class Benji(ReprMixIn):
+class Benji(ReprMixIn, AbstractContextManager):
 
     # This is in number of blocks (i.e. database rows in the blocks table)
     _BLOCKS_CREATE_WORK_PACKAGE = 10000
@@ -63,6 +64,9 @@ class Benji(ReprMixIn):
         self._default_storage_name = default_storage_name
 
         notify(self._process_name)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def create_version(self,
                        *,

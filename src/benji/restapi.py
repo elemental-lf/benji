@@ -1,6 +1,5 @@
 import functools
 import json
-from contextlib import closing
 from io import StringIO
 from typing import List, Optional, Dict, Any
 
@@ -123,7 +122,7 @@ class RestAPI:
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             hints = None
             if rbd_hints:
                 with open(rbd_hints, 'r') as f:
@@ -150,7 +149,7 @@ class RestAPI:
         force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
-        with closing(Benji(self._config, in_memory_database=database_backend_less)) as benji_obj:
+        with Benji(self._config, in_memory_database=database_backend_less) as benji_obj:
             if database_backend_less:
                 benji_obj.metadata_restore([version_uid_obj])
             benji_obj.restore(version_uid_obj, destination, sparse, force)
@@ -172,7 +171,7 @@ class RestAPI:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         else:
             label_add, label_remove = [], []
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             if protected is True:
                 benji_obj.protect(version_uid_obj)
             elif protected is False:
@@ -197,7 +196,7 @@ class RestAPI:
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         disallow_rm_when_younger_than_days = self._config.get('disallowRemoveWhenYounger', types=int)
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             result = StringIO()
             # Do this before deleting the version
             benji_obj.export_any({'versions': [version_uid_obj]},
@@ -276,7 +275,7 @@ class RestAPI:
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                      block_percentage: int, group_label: Optional[str]) -> StringIO:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage,
                                                           group_label)
 
@@ -308,7 +307,7 @@ class RestAPI:
     @route('/api/v1/versions', method='GET')
     def _api_v1_versions_list(
             self, filter_expression: fields.Str(missing=None), include_blocks: fields.Bool(missing=False)) -> StringIO:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             versions = benji_obj.find_versions_with_filter(filter_expression)
 
             result = StringIO()
@@ -322,19 +321,19 @@ class RestAPI:
 
     @route('/api/v1/blocks', method='DELETE')
     def _api_v1_blocks_delete_collection(self, override_lock: fields.Bool(missing=False)) -> None:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             benji_obj.cleanup(override_lock=override_lock)
 
     @route('/api/v1/versions/metadata/backup', method='POST')
     def _api_v1_versions_metadata_backup_create(
             self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
 
     @route('/api/v1/versions/metadata/import', method='POST')
     def _api_v1_versions_metadata_import_create(self) -> None:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             benji_obj.metadata_import(request.body.read())
 
     @route('/api/v1/versions/metadata/restore', method='POST')
@@ -342,12 +341,12 @@ class RestAPI:
         self, version_uids: fields.DelimitedList(fields.Str, required=True), storage_name: fields.Str(missing=None)
     ) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             benji_obj.metadata_restore(version_uid_objs, storage_name)
 
     @route('/api/v1/storages', method='GET')
     def _api_v1_storages_list(self) -> List[str]:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             return benji_obj.list_storages()
 
     @route('/api/v1/database', method='POST')
@@ -364,7 +363,7 @@ class RestAPI:
         dry_run: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
         group_label: fields.Str(missing=None)
     ) -> StringIO:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             dismissed_versions = benji_obj.enforce_retention_policy(filter_expression=filter_expression,
                                                                     rules_spec=rules_spec,
                                                                     dry_run=dry_run,
@@ -402,7 +401,7 @@ class RestAPI:
 
     @route('/api/v1/storages/<storage_name>', method='GET')
     def _api_v1_storages_read(self, storage_name: str) -> Dict[str, int]:
-        with closing(Benji(self._config)) as benji_obj:
+        with Benji(self._config) as benji_obj:
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
 
             result = {
