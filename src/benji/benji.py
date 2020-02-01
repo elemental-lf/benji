@@ -19,11 +19,12 @@ from benji.config import Config
 from benji.database import Database, VersionUid, Version, Block, \
     BlockUid, DereferencedBlock, VersionStatus, Storage, Locking, DeletedBlock, SparseBlockUid
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError, ConfigurationError
-from benji.factory import IOFactory, StorageFactory
+from benji.io.factory import IOFactory
 from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
+from benji.storage.factory import StorageFactory
 from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
 
 

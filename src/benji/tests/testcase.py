@@ -8,8 +8,9 @@ from binascii import hexlify
 from benji.benji import Benji
 from benji.config import Config
 from benji.database import Database
-from benji.factory import StorageFactory, IOFactory
+from benji.io.factory import IOFactory
 from benji.logging import init_logging
+from benji.storage.factory import StorageFactory
 
 
 class TestCaseBase:

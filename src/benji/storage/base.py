@@ -15,12 +15,12 @@ from diskcache import FanoutCache
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.exception import ConfigurationError, BenjiException
-from benji.factory import TransformFactory
 from benji.jobexecutor import JobExecutor
 from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
+from benji.transform.factory import TransformFactory
 from benji.utils import TokenBucket, derive_key
 from benji.versions import VERSIONS
 

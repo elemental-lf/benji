@@ -11,7 +11,8 @@ from typing import NamedTuple, Type, Optional
 import argcomplete
 
 from benji.exception import InternalError
-from benji.factory import IOFactory, StorageFactory
+from benji.io.factory import IOFactory
+from benji.storage.factory import StorageFactory
 
 
 class _ExceptionMapping(NamedTuple):
