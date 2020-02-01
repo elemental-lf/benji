@@ -161,6 +161,16 @@ class RestAPI:
 
             return result
 
+    @route('/api/v1/versions/<version_uid>', method='GET')
+    def _api_v1_versions_read(self, version_uid: str) -> StringIO:
+        version_uid_obj = VersionUid(version_uid)
+        with Benji(self._config) as benji_obj:
+            result = StringIO()
+            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
+                                 result,
+                                 ignore_relationships=[((Version,), ('blocks',))])
+            return result
+
     @route('/api/v1/versions/<version_uid>', method='PATCH')
     def _api_v1_versions_patch(
         self, version_uid: str, protected: fields.Bool(missing=None), labels: fields.DelimitedList(fields.Str(),
