@@ -11,6 +11,7 @@ import os
 import platform
 import re
 import sqlite3
+import threading
 import time
 import uuid
 from abc import abstractmethod
@@ -1337,16 +1338,19 @@ class _Locking:
         self._host = platform.node()
         self._uuid = uuid.uuid1().hex
 
+    def _process_id(self):
+        return '{}-{}'.format(self._uuid, threading.get_ident())
+
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False) -> None:
         try:
             lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._uuid).one_or_none()
+                                              Lock.process_id == self._process_id()).one_or_none()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
                 lock_name=lock_name,
                 host=self._host,
-                process_id=self._uuid,
+                process_id=self._process_id(),
                 reason=reason,
                 date=datetime.datetime.utcnow(),
             )
@@ -1378,7 +1382,7 @@ class _Locking:
     def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
             lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._uuid).with_for_update().one_or_none()
+                                              Lock.process_id == self._process_id()).with_for_update().one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
@@ -1390,7 +1394,7 @@ class _Locking:
     def unlock(self, *, lock_name: str) -> None:
         try:
             lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._uuid).one_or_none()
+                                              Lock.process_id == self._process_id()).one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             Session.delete(lock)
@@ -1401,7 +1405,7 @@ class _Locking:
 
     def unlock_all(self) -> None:
         try:
-            locks = Session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._uuid)
+            locks = Session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._process_id())
             for lock in locks:
                 logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
                 Session.delete(lock)
