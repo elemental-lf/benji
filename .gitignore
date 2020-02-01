@@ -32,15 +32,10 @@ build
 tags
 .cache
 .pybuild
-debian/benji.postinst.debhelper
-debian/benji.prerm.debhelper
-debian/benji.substvars
-debian/benji/
-debian/files
-debian/debhelper-build-stamp
 dist
 .github-access-token
-debian/.debhelper
 *~
 .b2-application-key.txt
 .b2-account-id.txt
+tests-scratch
+.mypy_cache
