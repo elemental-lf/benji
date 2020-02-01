@@ -12,12 +12,12 @@ class Transform(TransformBase):
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
 
-        self.level: str = Config.get_from_dict(
-            module_configuration,
-            'level',
-            types=int,
-            check_func=lambda v: v >= 1 and v <= zstandard.MAX_COMPRESSION_LEVEL,
-            check_message='Option level must be between 1 and {} (inclusive)'.format(zstandard.MAX_COMPRESSION_LEVEL))
+        self.level: str = Config.get_from_dict(module_configuration,
+                                               'level',
+                                               types=int,
+                                               check_func=lambda v: v >= 1 and v <= zstandard.MAX_COMPRESSION_LEVEL,
+                                               check_message='Option level must be between 1 and {} (inclusive)'.format(
+                                                   zstandard.MAX_COMPRESSION_LEVEL))
 
         dict_data_file: str = Config.get_from_dict(module_configuration, 'dictDataFile', None, types=str)
         if dict_data_file:
@@ -28,44 +28,35 @@ class Transform(TransformBase):
         else:
             self._dict_data = None
 
-        self._compressors: zstandard.ZstdCompressor = {}
-        self._decompressors: zstandard.ZstdDecompressor = {}
-        self._identifier = name
+        self._local = threading.local()
 
     def _get_compressor(self) -> zstandard.ZstdCompressor:
-        thread_id = threading.get_ident()
+        try:
+            return self._local.compressor
+        except AttributeError:
+            # zstandard.ZstdCompressor doesn't like to be called with dict_data=None.
+            if self._dict_data is None:
+                compressor = self._local.compressor = zstandard.ZstdCompressor(
+                    level=self.level,
+                    write_checksum=False,  # We have our own checksum
+                    write_content_size=False)  # We know the uncompressed size
+            else:
+                compressor = self._local.compressor = zstandard.ZstdCompressor(
+                    level=self.level,
+                    dict_data=self._dict_data,
+                    write_checksum=False,  # We have our own checksum
+                    write_content_size=False)  # We know the uncompressed size
+            return compressor
 
-        if thread_id in self._compressors:
-            return self._compressors[thread_id]
-
-        if self._dict_data:
-            cctx = zstandard.ZstdCompressor(
-                level=self.level,
-                dict_data=self._dict_data,
-                write_checksum=False,  # We have our own checksum
-                write_content_size=False)  # We know the uncompressed size
-        else:
-            cctx = zstandard.ZstdCompressor(
-                level=self.level,
-                write_checksum=False,  # We have our own checksum
-                write_content_size=False)  # We know the uncompressed size
-
-        self._compressors[thread_id] = cctx
-        return cctx
-
-    def _get_decompressor(self, dict_id: int = 0) -> zstandard.ZstdDecompressor:
-        thread_id = threading.get_ident()
-
-        if thread_id in self._decompressors:
-            return self._decompressors[thread_id]
-
-        if self._dict_data:
-            dctx = zstandard.ZstdDecompressor(dict_data=self._dict_data)
-        else:
-            dctx = zstandard.ZstdDecompressor()
-
-        self._decompressors[thread_id] = dctx
-        return dctx
+    def _get_decompressor(self) -> zstandard.ZstdDecompressor:
+        try:
+            return self._local.decompressor
+        except AttributeError:
+            if self._dict_data is None:
+                decompressor = self._local.decompressor = zstandard.ZstdDecompressor()
+            else:
+                decompressor = self._local.decompressor = zstandard.ZstdDecompressor(dict_data=self._dict_data)
+            return decompressor
 
     def encapsulate(self, *, data: bytes) -> Tuple[Optional[bytes], Optional[Dict]]:
         data_encapsulated = self._get_compressor().compress(data)
