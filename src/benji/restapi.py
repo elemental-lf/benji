@@ -47,6 +47,15 @@ def route(path: str, **decorator_kwargs):
         @functools.wraps(func)
         def wrapped_func(*args, **kwargs):
             body = func(*args, **kwargs)
+
+            # Only try to guess status code if func hasn't already set it.
+            if response.status_code == 200:
+                method = decorator_kwargs.get('method', None)
+                if body is None:
+                    response.status = 204
+                elif method is not None and method == 'POST':
+                    response.status = 201
+
             if isinstance(body, StringIO):
                 response.content_type = 'application/json; charset=utf-8'
                 return body.getvalue()
@@ -141,6 +150,7 @@ class RestAPI:
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
+            response.set_header('Location', f'{request.path}/{backup_version.uid}')
             return result
 
     @route('/api/v1/versions/<version_uid>/restore', method='POST')
@@ -205,19 +215,20 @@ class RestAPI:
         override_lock: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
-        disallow_rm_when_younger_than_days = self._config.get('disallowRemoveWhenYounger', types=int)
         with Benji(self._config) as benji_obj:
             result = StringIO()
             # Do this before deleting the version
-            benji_obj.export_any({'versions': [version_uid_obj]},
+            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
-            benji_obj.rm(version_uid_obj,
-                         force=force,
-                         disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
-                         keep_metadata_backup=keep_metadata_backup,
-                         override_lock=override_lock)
+            try:
+                benji_obj.rm(version_uid_obj,
+                             force=force,
+                             keep_metadata_backup=keep_metadata_backup,
+                             override_lock=override_lock)
+            except KeyError:
+                response.status = 410
 
             return result
 
