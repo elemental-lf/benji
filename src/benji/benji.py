@@ -483,6 +483,8 @@ class Benji(ReprMixIn, AbstractContextManager):
             except ScrubbingError as exception:
                 logger.error(exception)
                 errors.append(version)
+            except AlreadyLocked:
+                logger.warning(f'Skipping version {version.uid}, it is locked. ')
             except:
                 raise
 
