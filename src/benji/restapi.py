@@ -54,8 +54,6 @@ def route(path: str, **decorator_kwargs):
                 method = decorator_kwargs.get('method', None)
                 if body is None:
                     response.status = 204
-                elif method is not None and method == 'POST':
-                    response.status = 201
 
             if isinstance(body, StringIO):
                 response.content_type = 'application/json; charset=utf-8'
@@ -154,6 +152,7 @@ class RestAPI:
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
+            response.status = 201
             response.set_header('Location', f'{request.path}/{backup_version.uid}')
             return result
 
