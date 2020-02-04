@@ -202,7 +202,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         return Version.get_by_uid(version_uid)
 
     @staticmethod
-    def find_versions_with_filter(self, filter_expression: str = None) -> List[Version]:
+    def find_versions_with_filter(filter_expression: str = None) -> List[Version]:
         return Version.find_with_filter(filter_expression)
 
     def _scrub_prepare(self,
