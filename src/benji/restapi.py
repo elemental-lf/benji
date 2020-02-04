@@ -176,7 +176,7 @@ class RestAPI:
         version_uid_obj = VersionUid(version_uid)
         with Benji(self._config) as benji_obj:
             result = StringIO()
-            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
+            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
             return result
@@ -203,7 +203,7 @@ class RestAPI:
                 benji_obj.rm_label(version_uid_obj, name)
 
             result = StringIO()
-            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
+            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
@@ -218,7 +218,7 @@ class RestAPI:
         with Benji(self._config) as benji_obj:
             result = StringIO()
             # Do this before deleting the version
-            benji_obj.export_any({'versions': [benji_obj.find_versions(version_uid=version_uid_obj)]},
+            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
@@ -244,14 +244,14 @@ class RestAPI:
             assert benji_obj is not None
             benji_obj.export_any(
                 {
-                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                    'errors': benji_obj.find_versions(version_uid=version_uid_obj)
+                    'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                    'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
                 },
                 result,
                 ignore_relationships=[((Version,), ('blocks',))])
         else:
             benji_obj.export_any({
-                'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
                 'errors': []
             },
                                  result,
@@ -276,14 +276,14 @@ class RestAPI:
             assert benji_obj is not None
             benji_obj.export_any(
                 {
-                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                    'errors': benji_obj.find_versions(version_uid=version_uid_obj)
+                    'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                    'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
                 },
                 result,
                 ignore_relationships=[((Version,), ('blocks',))])
         else:
             benji_obj.export_any({
-                'versions': benji_obj.find_versions(version_uid=version_uid_obj),
+                'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
                 'errors': []
             },
                                  result,

@@ -79,18 +79,18 @@ class NbdTestCase:
         self.nbd_server.serve_forever()
         self.nbd_client_thread.join()
 
-        self.assertEqual({self.version_uid[0], VersionUid(2)}, set([version.uid for version in benji_obj.find_versions()]))
+        self.assertEqual({self.version_uid[0], VersionUid(2)},
+                         set([version.uid for version in benji_obj.find_versions_with_filter()]))
 
         benji_obj.close()
 
     def subprocess_run(self, args, success_regexp=None, check=True):
-        completed = subprocess.run(
-            args=args,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding='utf-8',
-            errors='ignore')
+        completed = subprocess.run(args=args,
+                                   stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   encoding='utf-8',
+                                   errors='ignore')
 
         if check and completed.returncode != 0:
             self.fail('command {} failed: {}'.format(' '.join(args), completed.stdout.replace('\n', '|')))
@@ -100,17 +100,14 @@ class NbdTestCase:
                 self.fail('command {} failed: {}'.format(' '.join(args), completed.stdout.replace('\n', '|')))
 
     def nbd_client(self, version_uid):
-        self.subprocess_run(
-            args=['sudo', 'nbd-client', '127.0.0.1', '-p',
-                  str(self.SERVER_PORT), '-l'],
-            success_regexp='^Negotiation: ..\n{}\n$'.format(version_uid[0]))
+        self.subprocess_run(args=['sudo', 'nbd-client', '127.0.0.1', '-p',
+                                  str(self.SERVER_PORT), '-l'],
+                            success_regexp='^Negotiation: ..\n{}\n$'.format(version_uid[0]))
 
         version_uid, size = version_uid
         self.subprocess_run(
-            args=[
-                'sudo', 'nbd-client', '-N', version_uid, '127.0.0.1', '-p',
-                str(self.SERVER_PORT), self.NBD_DEVICE
-            ],
+            args=['sudo', 'nbd-client', '-N', version_uid, '127.0.0.1', '-p',
+                  str(self.SERVER_PORT), self.NBD_DEVICE],
             success_regexp='^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$|^Negotiation: ..size = \d+MB|Connected /dev/nbd\d+$')
 
         count = 0
@@ -143,8 +140,8 @@ class NbdTestCase:
             self.assertEqual(data, read_data)
         os.close(f)
 
-        self.subprocess_run(
-            args=['sudo', 'nbd-client', '-d', self.NBD_DEVICE], success_regexp='^disconnect, sock, done\n$')
+        self.subprocess_run(args=['sudo', 'nbd-client', '-d', self.NBD_DEVICE],
+                            success_regexp='^disconnect, sock, done\n$')
 
         # Signal NBD server to stop
         self.nbd_server.stop()

@@ -139,20 +139,21 @@ class Commands:
             if self.machine_output:
                 benji_obj.export_any(
                     {
-                        'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                        'errors': benji_obj.find_versions(version_uid=version_uid_obj)
+                        'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                        'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
                     },
                     sys.stdout,
                     ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
-                benji_obj.export_any({
-                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                    'errors': []
-                },
-                                     sys.stdout,
-                                     ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any(
+                    {
+                        'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                        'errors': []
+                    },
+                    sys.stdout,
+                    ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -168,20 +169,21 @@ class Commands:
             if self.machine_output:
                 benji_obj.export_any(
                     {
-                        'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                        'errors': benji_obj.find_versions(version_uid=version_uid_obj)
+                        'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                        'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
                     },
                     sys.stdout,
                     ignore_relationships=[((Version,), ('blocks',))])
             raise
         else:
             if self.machine_output:
-                benji_obj.export_any({
-                    'versions': benji_obj.find_versions(version_uid=version_uid_obj),
-                    'errors': []
-                },
-                                     sys.stdout,
-                                     ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any(
+                    {
+                        'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                        'errors': []
+                    },
+                    sys.stdout,
+                    ignore_relationships=[((Version,), ('blocks',))])
         finally:
             if benji_obj:
                 benji_obj.close()

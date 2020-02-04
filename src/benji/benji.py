@@ -198,11 +198,8 @@ class Benji(ReprMixIn, AbstractContextManager):
         return version
 
     @staticmethod
-    def find_versions(version_uid: VersionUid = None,
-                      volume: str = None,
-                      snapshot: str = None,
-                      labels: List[Tuple[str, str]] = None) -> List[Version]:
-        return Version.find(version_uid=version_uid, volume=volume, snapshot=snapshot, labels=labels)
+    def get_version_by_uid(version_uid: VersionUid) -> Version:
+        return Version.get_by_uid(version_uid)
 
     @staticmethod
     def find_versions_with_filter(self, filter_expression: str = None) -> List[Version]:
