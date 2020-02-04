@@ -662,13 +662,10 @@ class Benji(ReprMixIn, AbstractContextManager):
         logger.info('Successfully restored version {} in {} with {}/s.'.format(
             version.uid, PrettyPrint.duration(max(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
 
-    def protect(self, version_uid: VersionUid) -> None:
+    @staticmethod
+    def protect(version_uid: VersionUid, protected: bool) -> None:
         version = Version.get_by_uid(version_uid)
-        version.set(protected=True)
-
-    def unprotect(self, version_uid: VersionUid) -> None:
-        version = Version.get_by_uid(version_uid)
-        version.set(protected=False)
+        version.set(protected=protected)
 
     def rm(self,
            version_uid: VersionUid,

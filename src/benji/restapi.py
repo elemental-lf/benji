@@ -192,10 +192,8 @@ class RestAPI:
         else:
             label_add, label_remove = [], []
         with Benji(self._config) as benji_obj:
-            if protected is True:
-                benji_obj.protect(version_uid_obj)
-            elif protected is False:
-                benji_obj.unprotect(version_uid_obj)
+            if protected is not None:
+                benji_obj.protect(version_uid_obj, protected=protected)
 
             for name, value in label_add:
                 benji_obj.add_label(version_uid_obj, name, value)

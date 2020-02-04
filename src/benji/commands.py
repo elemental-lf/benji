@@ -96,7 +96,7 @@ class Commands:
         try:
             benji_obj = Benji(self.config)
             for version_uid in version_uid_objs:
-                benji_obj.protect(version_uid)
+                benji_obj.protect(version_uid, protected=True)
         finally:
             if benji_obj:
                 benji_obj.close()
@@ -107,7 +107,7 @@ class Commands:
         try:
             benji_obj = Benji(self.config)
             for version_uid in version_uid_objs:
-                benji_obj.unprotect(version_uid)
+                benji_obj.protect(version_uid, protected=False)
         finally:
             if benji_obj:
                 benji_obj.close()
