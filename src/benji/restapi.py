@@ -10,6 +10,7 @@ from webargs.bottleparser import use_kwargs
 import benji.exception
 from benji import __version__
 from benji.benji import Benji
+from benji.config import Config
 from benji.database import Version, VersionUid
 from benji.utils import hints_from_rbd_diff, InputValidation, random_string
 from benji.versions import VERSIONS
@@ -71,7 +72,10 @@ def route(path: str, **decorator_kwargs):
 class RestAPI:
     """Proxy between REST calls and actual backup code."""
 
-    def __init__(self, config):
+    CORE_API_VERSION_V1 = 'v1'
+    CORE_API_GROUP = 'core'
+
+    def __init__(self, config: Config):
         self._app = Bottle()
 
         def default_error_handler(error: HTTPError):
@@ -119,7 +123,7 @@ class RestAPI:
         response.content_type = 'application/json; charset=utf-8'
         return json.dumps(result)
 
-    @route('/api/v1/versions', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions', method='POST')
     def _api_v1_versions_create(
         self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
         snapshot: fields.Str(required=True), source: fields.Str(required=True), rbd_hints: fields.Str(missing=None),
@@ -153,7 +157,7 @@ class RestAPI:
             response.set_header('Location', f'{request.path}/{backup_version.uid}')
             return result
 
-    @route('/api/v1/versions/<version_uid>/restore', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>/restore', method='POST')
     def _api_v1_versions_restore_create(
         self, version_uid: str, destination: fields.Str(required=True), sparse: fields.Bool(missing=False),
         force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)
@@ -171,7 +175,7 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/versions/<version_uid>', method='GET')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='GET')
     def _api_v1_versions_read(self, version_uid: str) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         with Benji(self._config) as benji_obj:
@@ -181,7 +185,7 @@ class RestAPI:
                                  ignore_relationships=[((Version,), ('blocks',))])
             return result
 
-    @route('/api/v1/versions/<version_uid>', method='PATCH')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='PATCH')
     def _api_v1_versions_patch(
         self, version_uid: str, protected: fields.Bool(missing=None), labels: fields.DelimitedList(fields.Str(),
                                                                                                    missing=None)
@@ -207,7 +211,7 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/versions/<version_uid>', method='DELETE')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='DELETE')
     def _api_v1_versions_delete(
         self, version_uid: str, force: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
         override_lock: fields.Bool(missing=False)
@@ -230,7 +234,7 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/versions/<version_uid>/scrub', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>/scrub', method='POST')
     def _api_v1_versions_scrub_create(self, version_uid: str, block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
@@ -260,7 +264,7 @@ class RestAPI:
 
         return result
 
-    @route('/api/v1/versions/<version_uid>/deep-scrub', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>/deep-scrub', method='POST')
     def _api_v1_versions_deep_scrub_create(
             self, version_uid: str, source: fields.Str(missing=None),
             block_percentage: fields.Int(missing=100)) -> StringIO:
@@ -308,14 +312,14 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/versions/scrub', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/scrub', method='POST')
     def _api_v1_versions_batch_scrub_create(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
     ) -> StringIO:
         return self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    @route('/api/v1/versions/deep-scrub', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/deep-scrub', method='POST')
     def _api_v1_versions_batch_deep_scrub_create(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
@@ -323,7 +327,7 @@ class RestAPI:
         return self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage,
                                  group_label)
 
-    @route('/api/v1/versions', method='GET')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions', method='GET')
     def _api_v1_versions_list(
             self, filter_expression: fields.Str(missing=None), include_blocks: fields.Bool(missing=False)) -> StringIO:
         with Benji(self._config) as benji_obj:
@@ -338,24 +342,24 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/blocks', method='DELETE')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/blocks', method='DELETE')
     def _api_v1_blocks_delete_collection(self, override_lock: fields.Bool(missing=False)) -> None:
         with Benji(self._config) as benji_obj:
             benji_obj.cleanup(override_lock=override_lock)
 
-    @route('/api/v1/versions/metadata/backup', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/metadata/backup', method='POST')
     def _api_v1_versions_metadata_backup_create(
             self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
         with Benji(self._config) as benji_obj:
             version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
 
-    @route('/api/v1/versions/metadata/import', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/metadata/import', method='POST')
     def _api_v1_versions_metadata_import_create(self) -> None:
         with Benji(self._config) as benji_obj:
             benji_obj.metadata_import(request.body.read())
 
-    @route('/api/v1/versions/metadata/restore', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/metadata/restore', method='POST')
     def _api_v1_versions_metadata_restore_create(
         self, version_uids: fields.DelimitedList(fields.Str, required=True), storage_name: fields.Str(missing=None)
     ) -> None:
@@ -363,20 +367,20 @@ class RestAPI:
         with Benji(self._config) as benji_obj:
             benji_obj.metadata_restore(version_uid_objs, storage_name)
 
-    @route('/api/v1/storages', method='GET')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/storages', method='GET')
     def _api_v1_storages_list(self) -> List[str]:
         with Benji(self._config) as benji_obj:
             return benji_obj.list_storages()
 
-    @route('/api/v1/database', method='POST')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/database', method='POST')
     def _api_v1_database_init_create(self) -> None:
         Benji(self._config, init_database=True).close()
 
-    @route('/api/v1/database', method='PATCH')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/database', method='PATCH')
     def _api_v1_database_migrate_create(self) -> None:
         Benji(self._config, migrate_database=True).close()
 
-    @route('/api/v1/versions', method='DELETE')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions', method='DELETE')
     def _api_v1_versions_delete_collection(
         self, rules_spec: fields.Str(required=True), filter_expression: fields.Str(missing=None),
         dry_run: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
@@ -398,7 +402,7 @@ class RestAPI:
 
             return result
 
-    @route('/api/v1/version-info', method='GET')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/version-info', method='GET')
     def _api_v1_version_info_read(self) -> Dict[str, Any]:
         result = {
             'version': __version__,
@@ -418,7 +422,7 @@ class RestAPI:
 
         return result
 
-    @route('/api/v1/storages/<storage_name>', method='GET')
+    @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/storages/<storage_name>', method='GET')
     def _api_v1_storages_read(self, storage_name: str) -> Dict[str, int]:
         with Benji(self._config) as benji_obj:
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
