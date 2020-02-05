@@ -300,8 +300,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                                             read_jobs=read_jobs,
                                             done_read_jobs=done_read_jobs,
                                             deep_scrub=False)
-        except:
-            raise
         finally:
             Locking.unlock_version(version_uid)
             notify(self._process_name)
@@ -482,8 +480,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                 errors.append(version)
             except AlreadyLocked:
                 logger.warning(f'Skipping version {version.uid}, it is locked. ')
-            except:
-                raise
 
         return sorted(versions), sorted(errors)
 
@@ -641,8 +637,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                 handle_write_completed(timeout=0)
 
             handle_write_completed()
-        except:
-            raise
         finally:
             io.close()
             t2 = time.time()

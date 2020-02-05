@@ -31,8 +31,6 @@ class JobExecutor:
             def execute_with_release():
                 try:
                     return function()
-                except Exception:
-                    raise
                 finally:
                     self._semaphore.release()
 
