@@ -94,7 +94,7 @@ class BlockHash:
 
         hash_kwargs: Dict[str, Any] = {}
         if hash_args is not None:
-            hash_kwargs = dict((k, literal_eval(v)) for k, v in (pair.split('=') for pair in hash_args.split(',')))
+            hash_kwargs = {k: literal_eval(v) for k, v in (pair.split('=') for pair in hash_args.split(','))}
 
         try:
             hash = hash_module.new(**hash_kwargs)
