@@ -47,7 +47,7 @@ class NbdTestCase:
             offset = random.randint(0, size - 1 - patch_size)
             self.patch(image_filename, offset, data)
 
-        benji_obj = self.benjiOpen(init_database=True)
+        benji_obj = self.benji_open(init_database=True)
         version = benji_obj.backup(version_uid=str(uuid.uuid4()),
                                    volume='data-backup',
                                    snapshot='snapshot-name',
@@ -65,7 +65,7 @@ class NbdTestCase:
         super().tearDown()
 
     def test(self):
-        benji_obj = self.benjiOpen()
+        benji_obj = self.benji_open()
         store = BenjiStore(benji_obj)
         addr = ('127.0.0.1', self.SERVER_PORT)
         read_only = False
