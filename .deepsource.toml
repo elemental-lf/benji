@@ -1,5 +1,10 @@
 version = 1
 
+test_patterns = [
+  "src/benji/tests/**",
+  "tests/**"
+]
+
 [[analyzers]]
 name = "python"
 enabled = true
