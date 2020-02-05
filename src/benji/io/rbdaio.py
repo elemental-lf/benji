@@ -60,10 +60,10 @@ class IO(IOBase):
         self._outstanding_aio_reads = 0
         self._outstanding_aio_writes = 0
         self._submitted_aio_writes = threading.BoundedSemaphore(self._simultaneous_writes)
-        self._read_completion_queue: queue.Queue[
-            Tuple[rbd.Completion, float, float, DereferencedBlock, bytes]] = queue.Queue()
-        self._write_completion_queue: queue.Queue[
-            Tuple[rbd.Completion, float, float, DereferencedBlock]] = queue.Queue()
+        self._read_completion_queue: queue.Queue[Tuple[rbd.Completion, float, float, DereferencedBlock,
+                                                       bytes]] = queue.Queue()
+        self._write_completion_queue: queue.Queue[Tuple[rbd.Completion, float, float,
+                                                        DereferencedBlock]] = queue.Queue()
 
     def open_r(self) -> None:
         re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
@@ -167,7 +167,8 @@ class IO(IOBase):
     def _reads_finished(self) -> bool:
         return len(self._read_queue) == 0 and self._outstanding_aio_reads == 0
 
-    def read_get_completed(self, timeout: Optional[int] = None
+    def read_get_completed(self,
+                           timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         try:
             while not self._reads_finished():
@@ -175,8 +176,9 @@ class IO(IOBase):
                     len(self._read_queue), self._outstanding_aio_reads, self._read_completion_queue.qsize()))
                 self._submit_aio_reads()
 
-                completion, t1, t2, block, data = self._read_completion_queue.get(
-                    block=True if timeout is None or timeout != 0 else False, timeout=timeout)
+                completion, t1, t2, block, data = self._read_completion_queue.get(block=(timeout is None or
+                                                                                         timeout != 0),
+                                                                                  timeout=timeout)
                 assert self._outstanding_aio_reads > 0
                 self._outstanding_aio_reads -= 1
 
@@ -251,8 +253,8 @@ class IO(IOBase):
                     len(self._write_queue), self._outstanding_aio_writes, self._write_completion_queue.qsize()))
                 self._submit_aio_writes()
 
-                completion, t1, t2, block = self._write_completion_queue.get(
-                    block=True if timeout is None or timeout != 0 else False, timeout=timeout)
+                completion, t1, t2, block = self._write_completion_queue.get(block=(timeout is None or timeout != 0),
+                                                                             timeout=timeout)
                 assert self._outstanding_aio_writes > 0
                 self._outstanding_aio_writes -= 1
 

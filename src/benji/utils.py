@@ -28,7 +28,7 @@ def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
     """ Return the required offset:length tuples from a rbd json diff
     """
     data = json.loads(rbd_diff)
-    return [(l['offset'], l['length'], False if l['exists'] == 'false' or not l['exists'] else True) for l in data]
+    return [(l['offset'], l['length'], not (l['exists'] == 'false' or not l['exists'])) for l in data]
 
 
 # old_msg is used as a stateful storage between calls
