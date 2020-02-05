@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 try:
-    from setuptools import setup, Extension, find_packages
+    from setuptools import setup, find_packages
 except ImportError:
-    from distutils.core import setup, Extentsion, find_packages
+    from distutils.core import setup, find_packages
 
 with open('README.rst', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
@@ -34,7 +34,7 @@ Operating System :: POSIX
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Topic :: System :: Archiving :: Backup
-""" [:-1].split('\n'),
+"""[:-1].split('\n'),
     keywords='backup',
     author='Lars Fenneberg <lf@elemental.net>, Daniel Kraft <daniel.kraft@d9t.de>',
     author_email='lf@elemental.net, daniel.kraft@d9t.de',
