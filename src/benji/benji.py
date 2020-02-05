@@ -992,7 +992,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     for entry in storage.rm_get_completed():
                         if isinstance(entry, BlockNotFoundError):
                             no_del_uids.append(entry.uid)
-                        elif isinstance(uid, Exception):
+                        elif isinstance(entry, Exception):
                             raise entry
 
                     if no_del_uids:
