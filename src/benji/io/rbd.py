@@ -6,6 +6,7 @@ import time
 from typing import Tuple, Optional, Union, Iterator
 
 import rados
+# noinspection PyUnresolvedReferences
 import rbd
 
 from benji.config import ConfigDict, Config

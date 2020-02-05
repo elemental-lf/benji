@@ -1199,7 +1199,8 @@ class _Database(ReprMixIn):
         # The v3 format doesn't list sparse blocks anymore.
         return self.import_v3(metadata_version, json_input)
 
-    def import_v3(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+    @staticmethod
+    def import_v3(metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
         version_uids: List[VersionUid] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
@@ -1370,7 +1371,8 @@ class _Locking:
             Session.rollback()
             raise
 
-    def is_locked(self, *, lock_name: str) -> bool:
+    @staticmethod
+    def is_locked(*, lock_name: str) -> bool:
         try:
             lock = Session.query(Lock).filter(Lock.lock_name == lock_name).one_or_none()
         except:

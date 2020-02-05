@@ -667,8 +667,8 @@ class Benji(ReprMixIn, AbstractContextManager):
         version = Version.get_by_uid(version_uid)
         version.set(protected=protected)
 
-    def rm(self,
-           version_uid: VersionUid,
+    @staticmethod
+    def rm(version_uid: VersionUid,
            force: bool = True,
            disallow_rm_when_younger_than_days: int = 0,
            keep_metadata_backup: bool = False,
@@ -1006,21 +1006,25 @@ class Benji(ReprMixIn, AbstractContextManager):
                             storage_name, ', '.join([str(uid) for uid in no_del_uids])))
             notify(self._process_name)
 
-    def add_label(self, version_uid: VersionUid, key: str, value: str) -> None:
+    @staticmethod
+    def add_label(version_uid: VersionUid, key: str, value: str) -> None:
         version = Version.get_by_uid(version_uid)
         version.add_label(key, value)
 
-    def rm_label(self, version_uid: VersionUid, key: str) -> None:
+    @staticmethod
+    def rm_label(version_uid: VersionUid, key: str) -> None:
         version = Version.get_by_uid(version_uid)
         version.rm_label(key)
 
-    def close(self) -> None:
+    @staticmethod
+    def close() -> None:
         StorageFactory.close()
         # Close database backend after storage so that any open locks are held until all storage jobs have
         # finished.
         Database.close()
 
-    def metadata_export(self, version_uids: Sequence[VersionUid], f: TextIO) -> None:
+    @staticmethod
+    def metadata_export(version_uids: Sequence[VersionUid], f: TextIO) -> None:
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -1033,10 +1037,8 @@ class Benji(ReprMixIn, AbstractContextManager):
             for version_uid in locked_version_uids:
                 Locking.unlock_version(version_uid)
 
-    def metadata_backup(self,
-                        version_uids: Sequence[VersionUid],
-                        overwrite: bool = False,
-                        locking: bool = True) -> None:
+    @staticmethod
+    def metadata_backup(version_uids: Sequence[VersionUid], overwrite: bool = False, locking: bool = True) -> None:
         versions = [Version.get_by_uid(version_uid) for version_uid in version_uids]
         try:
             locked_version_uids = []
@@ -1060,7 +1062,8 @@ class Benji(ReprMixIn, AbstractContextManager):
     def export_any(*args, **kwargs) -> None:
         Database.export_any(*args, **kwargs)
 
-    def metadata_import(self, f: TextIO) -> None:
+    @staticmethod
+    def metadata_import(f: TextIO) -> None:
         # TODO: Find a good way to lock here
         version_uids = Database.import_(f)
         logger.info('Imported metadata of version(s): {}.'.format(', '.join(version_uids)))
@@ -1233,16 +1236,20 @@ class BenjiStore(ReprMixIn):
         os.makedirs(cow_store_directory, exist_ok=True)
         self._cow_store = _BlockStore(cow_store_directory)
 
-    def open(self, version) -> None:
+    @staticmethod
+    def open(version) -> None:
         Locking.lock_version(version.uid, reason='NBD')
 
-    def close(self, version) -> None:
+    @staticmethod
+    def close(version) -> None:
         Locking.unlock_version(version.uid)
 
-    def find_versions(self, version_uid: VersionUid = None) -> List[Version]:
+    @staticmethod
+    def find_versions(version_uid: VersionUid = None) -> List[Version]:
         return Version.find(version_uid=version_uid)
 
-    def _block_list(self, version: Version, offset: int, length: int) -> List[Tuple[Optional[Block], int, int]]:
+    @staticmethod
+    def _block_list(version: Version, offset: int, length: int) -> List[Tuple[Optional[Block], int, int]]:
         block_idx = offset // version.block_size
         block_offset = offset % version.block_size
 

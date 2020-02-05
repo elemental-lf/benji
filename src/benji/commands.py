@@ -356,7 +356,8 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def _metadata_ls_table_output(self, version_uids: List[VersionUid]):
+    @staticmethod
+    def _metadata_ls_table_output(version_uids: List[VersionUid]):
         tbl = PrettyTable()
         tbl.field_names = ['uid']
         tbl.align['uid'] = 'l'

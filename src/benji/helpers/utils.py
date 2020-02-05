@@ -23,7 +23,9 @@ def _one_line_stderr(stderr: str):
     return stderr
 
 
-def subprocess_run(args: List[str], input: str = None, timeout: int = None,
+def subprocess_run(args: List[str],
+                   input: str = None,
+                   timeout: int = None,
                    decode_json: bool = False) -> Union[Dict, List, str]:
     logger.debug('Running process: {}'.format(' '.join(args)))
     try:

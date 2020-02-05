@@ -4,6 +4,7 @@ import threading
 import time
 from typing import Tuple, Optional, Callable, Any, List, Union, Iterator
 
+# noinspection PyUnresolvedReferences
 import libiscsi.libiscsi as libiscsi
 
 from benji.config import ConfigDict, Config

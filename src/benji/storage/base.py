@@ -453,7 +453,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         else:
             return data, []
 
-    def _decapsulate(self, data: bytes, transforms_metadata: Sequence[Dict]) -> bytes:
+    @staticmethod
+    def _decapsulate(data: bytes, transforms_metadata: Sequence[Dict]) -> bytes:
         for element in reversed(transforms_metadata):
             name = element['name']
             module = element['module']
@@ -496,7 +497,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def _list_objects(self, prefix: str = None,
+    def _list_objects(self,
+                      prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
         raise NotImplementedError
 

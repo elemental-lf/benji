@@ -8,6 +8,7 @@ from collections import deque
 from typing import Tuple, Optional, Union, Iterator, Deque
 
 import rados
+# noinspection PyUnresolvedReferences
 import rbd
 
 from benji.config import ConfigDict, Config
