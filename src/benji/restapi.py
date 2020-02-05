@@ -49,11 +49,8 @@ def route(path: str, **decorator_kwargs):
         def wrapped_func(*args, **kwargs):
             body = func(*args, **kwargs)
 
-            # Only try to guess status code if func hasn't already set it.
-            if response.status_code == 200:
-                method = decorator_kwargs.get('method', None)
-                if body is None:
-                    response.status = 204
+            if response.status_code == 200 and body is None:
+                response.status = 204
 
             if isinstance(body, StringIO):
                 response.content_type = 'application/json; charset=utf-8'
