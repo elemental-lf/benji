@@ -72,7 +72,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                 self._active_transforms.append(TransformFactory.get_by_name(transform))
             logger.info('Active transforms for storage {}: {}.'.format(
                 name,
-                ', '.join(['{} ({})'.format(transform.name, transform.module) for transform in self._active_transforms])))
+                ', '.join('{} ({})'.format(transform.name, transform.module) for transform in self._active_transforms)))
 
         simultaneous_writes = Config.get_from_dict(module_configuration, 'simultaneousWrites', types=int)
         simultaneous_reads = Config.get_from_dict(module_configuration, 'simultaneousReads', types=int)

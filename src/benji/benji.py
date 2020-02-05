@@ -769,7 +769,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         if hints is not None:
             if len(hints) > 0:
                 # Sanity check: check hints for validity, i.e. too high offsets, ...
-                max_offset = max([h[0] + h[1] for h in hints])
+                max_offset = max(h[0] + h[1] for h in hints)
                 if max_offset > source_size:
                     raise InputDataError('Hints have higher offsets than source file.')
 
@@ -983,7 +983,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 for storage_name, uids in hit_list.items():
                     storage = StorageFactory.get_by_name(storage_name)
                     logger.debug('Deleting UIDs from storage {}: {}'.format(storage_name,
-                                                                            ', '.join([str(uid) for uid in uids])))
+                                                                            ', '.join(str(uid) for uid in uids)))
 
                     for uid in uids:
                         storage.rm_block_async(uid)
@@ -997,7 +997,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                     if no_del_uids:
                         logger.info('Unable to delete these UIDs from storage {}: {}'.format(
-                            storage_name, ', '.join([str(uid) for uid in no_del_uids])))
+                            storage_name, ', '.join(str(uid) for uid in no_del_uids)))
             notify(self._process_name)
 
     @staticmethod

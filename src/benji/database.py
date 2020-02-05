@@ -536,7 +536,7 @@ class Version(Base, ReprMixIn):
     def sparse_blocks_count(self) -> int:
         non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
             Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
-        non_sparse_blocks = set([row.idx for row in non_sparse_blocks_query])
+        non_sparse_blocks = {row.idx for row in non_sparse_blocks_query}
 
         return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
 

@@ -8,7 +8,7 @@ from unittest import TestCase
 
 from dateutil import tz
 
-from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Database, Locking
+from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking
 from benji.exception import InternalError, UsageError, AlreadyLocked
 from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
@@ -267,7 +267,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         versions = Version.find_with_filter('snapshot == "snapshot-name.1" or labels["label-key-2"] == 2')
         self.assertEqual(2, len(versions))
-        self.assertSetEqual(set([VersionUid('v2'), VersionUid('v3')]), set([version.uid for version in versions]))
+        self.assertSetEqual({VersionUid('v2'), VersionUid('v3')}, {version.uid for version in versions})
 
         versions = Version.find_with_filter('volume == "backup-name" and snapshot == "snapshot-name.1"')
         self.assertEqual(1, len(versions))
@@ -275,11 +275,11 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         versions = Version.find_with_filter('volume == "backup-name" and (snapshot == "snapshot-name.1" or snapshot == "snapshot-name.2")')
         self.assertEqual(2, len(versions))
-        self.assertSetEqual(set([VersionUid('v2'), VersionUid('v3')]), set([version.uid for version in versions]))
+        self.assertSetEqual({VersionUid('v2'), VersionUid('v3')}, {version.uid for version in versions})
 
         versions = Version.find_with_filter('uid == "v1" or uid == "v12"')
         self.assertEqual(2, len(versions))
-        self.assertSetEqual(set([VersionUid('v1'), VersionUid('v12')]), set([version.uid for version in versions]))
+        self.assertSetEqual({VersionUid('v1'), VersionUid('v12')}, {version.uid for version in versions})
 
         versions = Version.find_with_filter('uid == "v1" and uid == "v12"')
         self.assertEqual(0, len(versions))

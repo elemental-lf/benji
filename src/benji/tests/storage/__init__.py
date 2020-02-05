@@ -28,7 +28,7 @@ class StorageTestCase(StorageTestCaseBase):
         saved_uids = list(self.storage.list_blocks())
         self.assertEqual(NUM_BLOBS, len(saved_uids))
 
-        uids_set = set([block.uid for block in blocks])
+        uids_set = {block.uid for block in blocks}
         saved_uids_set = set(saved_uids)
         self.assertEqual(NUM_BLOBS, len(uids_set))
         self.assertEqual(NUM_BLOBS, len(saved_uids_set))
@@ -68,7 +68,7 @@ class StorageTestCase(StorageTestCaseBase):
         saved_uids = list(self.storage.list_blocks())
         self.assertEqual(NUM_BLOBS, len(saved_uids))
 
-        uids_set = set([block.uid for block in blocks])
+        uids_set = {block.uid for block in blocks}
         saved_uids_set = set(saved_uids)
         self.assertEqual(NUM_BLOBS, len(uids_set))
         self.assertEqual(NUM_BLOBS, len(saved_uids_set))

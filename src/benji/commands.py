@@ -61,7 +61,7 @@ class Commands:
                     benji_obj.rm_label(backup_version.uid, key)
                 if label_add:
                     logger.info('Added label(s) to version {}: {}.'.format(
-                        backup_version.uid, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                        backup_version.uid, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
                 if label_remove:
                     logger.info('Removed label(s) from version {}: {}.'.format(backup_version.uid,
                                                                                ', '.join(label_remove)))
@@ -204,7 +204,7 @@ class Commands:
                                          sys.stdout,
                                          ignore_relationships=[((Version,), ('blocks',))])
                 raise benji.exception.ScrubbingError('One or more version had scrubbing errors: {}.'.format(', '.join(
-                    [version.uid for version in errors])))
+                    version.uid for version in errors)))
             else:
                 if self.machine_output:
                     benji_obj.export_any({
@@ -394,7 +394,7 @@ class Commands:
                 benji_obj.rm_label(version_uid_obj, name)
             if label_add:
                 logger.info('Added label(s) to version {}: {}.'.format(
-                    version_uid_obj, ', '.join(['{}={}'.format(name, value) for name, value in label_add])))
+                    version_uid_obj, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
             if label_remove:
                 logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj, ', '.join(label_remove)))
         finally:
