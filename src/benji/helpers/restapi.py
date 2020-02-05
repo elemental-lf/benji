@@ -1,5 +1,4 @@
 from typing import Any, Dict, Tuple, List
-from urllib.error import HTTPError
 
 import requests
 
@@ -29,7 +28,7 @@ class BenjiRESTClient:
         response.raise_for_status()
 
         if response.status_code not in (200, 201, 204):
-            raise HTTPError(f'API call failed with status code {response.status_code}.', response=response)
+            raise requests.HTTPError(f'API call failed with status code {response.status_code}.', response=response)
 
         return response.json()
 
