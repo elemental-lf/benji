@@ -42,7 +42,7 @@ class DictHMAC(ReprMixIn):
 
     def add_digest(self, dict_data: dict) -> None:
         if not isinstance(dict_data, dict):
-            raise InternalError('dict_data must be of type dict, but is of type {}.', type(dict_data))
+            raise InternalError(f'dict_data must be of type dict, but is of type {type(dict_data)}')
 
         dict_data[self._hmac_key] = {
             self._ALGORITHM_KEY: self._HASH_NAME,
@@ -51,24 +51,24 @@ class DictHMAC(ReprMixIn):
 
     def verify_digest(self, dict_data) -> None:
         if not isinstance(dict_data, dict):
-            raise InternalError('dict_data must be of type dict, but is of type {}.', type(dict_data))
+            raise InternalError(f'dict_data must be of type dict, but is of type {type(dict_data)}.')
         if self._hmac_key not in dict_data:
-            raise ValueError('Dictionary is missing required HMAC key {}.'.format(self._hmac_key))
+            raise ValueError(f'Dictionary is missing required HMAC key {self._hmac_key}.')
 
         hmac_dict = dict_data[self._hmac_key]
 
         if not isinstance(hmac_dict, dict):
-            raise ValueError('HMAC key {} has an invalid type of {}.'.format(self._hmac_key, type(hmac_dict)))
+            raise ValueError(f'HMAC key {self._hmac_key} has an invalid type of {type(hmac_dict)}.')
 
         for required_key in [self._ALGORITHM_KEY, self._DIGEST_KEY]:
             if required_key not in hmac_dict:
-                raise ValueError('Required key {} is missing in HMAC dictionary.'.format(required_key))
+                raise ValueError(f'Required key {required_key} is missing in HMAC dictionary.')
 
         if hmac_dict[self._ALGORITHM_KEY] != self._HASH_NAME:
-            raise ValueError('Unsupported hash algorithm {}.'.format(hmac_dict[self._ALGORITHM_KEY]))
+            raise ValueError(f'Unsupported hash algorithm {self._ALGORITHM_KEY}.')
 
         digest_expected = hmac_dict[self._DIGEST_KEY]
         del dict_data[self._hmac_key]
         digest = self._calculate_digest(dict_data)
         if digest != digest_expected:
-            raise ValueError('Dictionary HMAC is invalid (expected {}, actual {}).'.format(digest_expected, digest))
+            raise ValueError(f'Dictionary HMAC is invalid (expected {digest_expected}, actual {digest}).')
