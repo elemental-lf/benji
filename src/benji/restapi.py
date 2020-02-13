@@ -130,6 +130,7 @@ class RestAPI:
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
+        result = StringIO()
         with Benji(self._config) as benji_obj:
             hints = None
             if rbd_hints:
@@ -144,14 +145,13 @@ class RestAPI:
                                               storage_name=storage_name,
                                               block_size=block_size)
 
-            result = StringIO()
             benji_obj.export_any({'versions': [backup_version]},
                                  result,
                                  ignore_relationships=[((Version,), ('blocks',))])
 
             response.status = 201
             response.set_header('Location', f'{request.path}/{backup_version.uid}')
-            return result
+        return result
 
     @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>/restore', method='POST')
     def _api_v1_versions_restore_create(
@@ -159,27 +159,34 @@ class RestAPI:
         force: fields.Bool(missing=False), database_backend_less: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
+        result = StringIO()
         with Benji(self._config, in_memory_database=database_backend_less) as benji_obj:
-            if database_backend_less:
-                benji_obj.metadata_restore([version_uid_obj])
-            benji_obj.restore(version_uid_obj, destination, sparse, force)
+            try:
+                if database_backend_less:
+                    benji_obj.metadata_restore([version_uid_obj])
+                benji_obj.restore(version_uid_obj, destination, sparse, force)
 
-            result = StringIO()
-            benji_obj.export_any({'versions': [version_uid_obj]},
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({'versions': [version_uid_obj]},
+                                     result,
+                                     ignore_relationships=[((Version,), ('blocks',))])
+            except KeyError:
+                response.status = f'410 Version {version_uid} not found.'
 
-            return result
+        return result
 
     @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='GET')
     def _api_v1_versions_read(self, version_uid: str) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
+        result = StringIO()
         with Benji(self._config) as benji_obj:
-            result = StringIO()
-            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
-            return result
+            try:
+                benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
+                                     result,
+                                     ignore_relationships=[((Version,), ('blocks',))])
+            except KeyError:
+                response.status = f'410 Version {version_uid} not found.'
+
+        return result
 
     @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='PATCH')
     def _api_v1_versions_patch(
@@ -191,21 +198,24 @@ class RestAPI:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         else:
             label_add, label_remove = [], []
+        result = StringIO()
         with Benji(self._config) as benji_obj:
-            if protected is not None:
-                benji_obj.protect(version_uid_obj, protected=protected)
+            try:
+                if protected is not None:
+                    benji_obj.protect(version_uid_obj, protected=protected)
 
-            for name, value in label_add:
-                benji_obj.add_label(version_uid_obj, name, value)
-            for name in label_remove:
-                benji_obj.rm_label(version_uid_obj, name)
+                for name, value in label_add:
+                    benji_obj.add_label(version_uid_obj, name, value)
+                for name in label_remove:
+                    benji_obj.rm_label(version_uid_obj, name)
 
-            result = StringIO()
-            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
+                benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
+                                     result,
+                                     ignore_relationships=[((Version,), ('blocks',))])
+            except KeyError:
+                response.status = f'410 Version {version_uid} not found.'
 
-            return result
+        return result
 
     @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>', method='DELETE')
     def _api_v1_versions_delete(
@@ -213,50 +223,49 @@ class RestAPI:
         override_lock: fields.Bool(missing=False)
     ) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
+        result = StringIO()
         with Benji(self._config) as benji_obj:
-            result = StringIO()
-            # Do this before deleting the version
-            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
-
             try:
+                # Do this before deleting the version
+                benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
+                                     result,
+                                     ignore_relationships=[((Version,), ('blocks',))])
+
                 benji_obj.rm(version_uid_obj,
                              force=force,
                              keep_metadata_backup=keep_metadata_backup,
                              override_lock=override_lock)
             except KeyError:
-                response.status = 410
+                response.status = f'410 Version {version_uid} not found.'
 
-            return result
+        return result
 
     @route(f'/apis/{CORE_API_GROUP}/{CORE_API_VERSION_V1}/versions/<version_uid>/scrub', method='POST')
     def _api_v1_versions_scrub_create(self, version_uid: str, block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
-            benji_obj.scrub(version_uid_obj, block_percentage=block_percentage)
-        except benji.exception.ScrubbingError:
-            assert benji_obj is not None
-            benji_obj.export_any(
-                {
-                    'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                    'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
-                },
-                result,
-                ignore_relationships=[((Version,), ('blocks',))])
-        else:
-            benji_obj.export_any({
-                'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                'errors': []
-            },
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
-        finally:
-            if benji_obj:
-                benji_obj.close()
+        with Benji(self._config) as benji_obj:
+            try:
+                try:
+                    benji_obj.scrub(version_uid_obj, block_percentage=block_percentage)
+                except benji.exception.ScrubbingError:
+                    benji_obj.export_any(
+                        {
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
+                        },
+                        result,
+                        ignore_relationships=[((Version,), ('blocks',))])
+                else:
+                    benji_obj.export_any(
+                        {
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                            'errors': []
+                        },
+                        result,
+                        ignore_relationships=[((Version,), ('blocks',))])
+            except KeyError:
+                response.status = f'410 Version {version_uid} not found.'
 
         return result
 
@@ -266,29 +275,30 @@ class RestAPI:
             block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
-        benji_obj = None
-        try:
-            benji_obj = Benji(self._config)
-            benji_obj.deep_scrub(version_uid_obj, source=source, block_percentage=block_percentage)
-        except benji.exception.ScrubbingError:
-            assert benji_obj is not None
-            benji_obj.export_any(
-                {
-                    'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                    'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
-                },
-                result,
-                ignore_relationships=[((Version,), ('blocks',))])
-        else:
-            benji_obj.export_any({
-                'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                'errors': []
-            },
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
-        finally:
-            if benji_obj:
-                benji_obj.close()
+        with Benji(self._config) as benji_obj:
+            try:
+                try:
+                    benji_obj = Benji(self._config)
+                    benji_obj.deep_scrub(version_uid_obj, source=source, block_percentage=block_percentage)
+                except benji.exception.ScrubbingError:
+                    assert benji_obj is not None
+                    benji_obj.export_any(
+                        {
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
+                        },
+                        result,
+                        ignore_relationships=[((Version,), ('blocks',))])
+                else:
+                    benji_obj.export_any(
+                        {
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                            'errors': []
+                        },
+                        result,
+                        ignore_relationships=[((Version,), ('blocks',))])
+            except KeyError:
+                response.status = f'410 Version {version_uid} not found.'
 
         return result
 

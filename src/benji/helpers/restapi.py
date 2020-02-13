@@ -1,6 +1,11 @@
-from typing import Any, Dict, Tuple, List
+import sys
+from typing import Any, Dict, Tuple, List, Optional
+from urllib.error import HTTPError
 
 import requests
+
+# Use a session so that this client will work seamlessly with cookies.
+requests_session = requests.Session()
 
 
 class BenjiRESTClient:
@@ -18,19 +23,24 @@ class BenjiRESTClient:
                      params: Dict[str, Any] = None,
                      timeout: Tuple[int, int] = (2, 30),
                      api_version: str = CORE_API_VERSION_V1,
-                     api_group=CORE_API_GROUP) -> Dict[str, Any]:
-        response = requests.request(method,
-                                    f'{self._api_endpoint}/apis/{api_group}/{api_version}/{path}',
-                                    headers={'Content-Type': 'application/json; charset=utf-8'},
-                                    params=params,
-                                    json=body,
-                                    timeout=timeout)
+                     api_group=CORE_API_GROUP) -> Optional[Dict[str, Any]]:
+        response = requests_session.request(method,
+                                            f'{self._api_endpoint}/apis/{api_group}/{api_version}/{path}',
+                                            headers={'Content-Type': 'application/json; charset=utf-8'},
+                                            params=params,
+                                            json=body,
+                                            timeout=timeout)
+
+        if response.status_code in (404, 410):
+            raise KeyError(response.reason)
+
+        # Raise for anything != 2xx
         response.raise_for_status()
 
-        if response.status_code not in (200, 201, 204):
-            raise requests.HTTPError(f'API call failed with status code {response.status_code}.', response=response)
-
-        return response.json()
+        if response.status_code != 204:
+            return response.json()
+        else:
+            return None
 
     def get_version_by_uid(self, version_uid: str = None) -> Dict[str, Any]:
         return self._api_request(f'versions/{version_uid}')['versions'][0]
