@@ -671,15 +671,15 @@ class Benji(ReprMixIn, AbstractContextManager):
             version = Version.get_by_uid(version_uid)
 
             if version.protected:
-                raise RuntimeError('Version {} is protected, will not delete it.'.format(version_uid))
+                raise PermissionError('Version {} is protected, will not delete it.'.format(version_uid))
 
             if not force:
                 # check if disallow_rm_when_younger_than_days allows deletion
                 age_days = (datetime.datetime.now() - version.date).days
                 if disallow_rm_when_younger_than_days > age_days:
-                    raise RuntimeError('Version {} is too young. Will not delete.'.format(version_uid))
+                    raise PermissionError('Version {} is too young. Will not delete.'.format(version_uid))
                 if not version.status.is_removable():
-                    raise RuntimeError('Version {} cannot be removed without force, it has status {}.'.format(
+                    raise PermissionError('Version {} cannot be removed without force, it has status {}.'.format(
                         version_uid, version.status.name))
 
             num_blocks = version.remove()
@@ -691,7 +691,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     logger.info('Removed version {} metadata backup from storage.'.format(version_uid))
                 except FileNotFoundError:
                     logger.warning(
-                        'Unable to remove version {} metadata backup from storage, the object wasn\'t found.'.format(version_uid))
+                        'Unable to remove version {} metadata backup from storage, the object was not found.'.format(version_uid))
                     pass
 
             logger.info('Removed backup version {} with {} blocks.'.format(version_uid, num_blocks))
@@ -1125,15 +1125,21 @@ class Benji(ReprMixIn, AbstractContextManager):
             logger.info('All versions are conforming to the retention policy.')
 
         if dry_run:
-            logger.info('Dry run, won\'t remove anything.')
+            logger.info('Dry run, will not remove anything.')
             return []
 
         # Iterate through copy of dismissed_versions
         for version in list(dismissed_versions):
             try:
                 self.rm(version.uid, force=True, keep_metadata_backup=keep_metadata_backup)
+            except KeyError:
+                logger.warning(f'Version {version.uid} was removed in the meantime.')
+                dismissed_versions.remove(version)
+            except PermissionError as exception:
+                logger.warning(str(exception))
+                dismissed_versions.remove(version)
             except AlreadyLocked:
-                logger.warning('Version {} couldn\'t be deleted, it\'s currently locked.')
+                logger.warning(f'Version {version.uid} could not be deleted, it is currently locked.')
                 dismissed_versions.remove(version)
 
         return sorted(dismissed_versions)
