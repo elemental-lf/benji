@@ -9,7 +9,7 @@ from benji.k8s_operator.utils import check_version_access
 
 
 @kopf.on.field(CRD_VERSION.api_group, CRD_VERSION.api_version, CRD_VERSION.plural, field='status.protected')
-def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **kwargs) -> Optional[Dict[str, Any]]:
+def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
     benji = BenjiRESTClient(api_endpoint)
     check_version_access(benji, name, body)
     protected = status.get('protected', False)
@@ -17,7 +17,7 @@ def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **kwa
 
 
 @kopf.on.delete(CRD_VERSION.api_group, CRD_VERSION.api_version, CRD_VERSION.plural)
-def benji_remove(name: str, body: Dict[str, Any], **kwargs) -> Optional[Dict[str, Any]]:
+def benji_remove(name: str, body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
     benji = BenjiRESTClient(api_endpoint)
     try:
         benji.get_version_by_uid(name)
