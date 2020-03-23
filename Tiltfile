@@ -1,7 +1,7 @@
 analytics_settings(enable=False)
 version_settings(check_updates=False)
 disable_snapshots()
-docker_prune_settings(disable=False, num_builds=1, max_age_mins=5)
+docker_prune_settings(disable=False, num_builds=1, max_age_mins=1)
 
 config.define_string_list('vcs-ref')
 config.define_string_list('build-date')
@@ -73,10 +73,12 @@ k8s_kind('BenjiOperatorConfig',
 
 # See https://github.com/windmilleng/tilt/issues/2805.
 #
-# helm('charts/benji-k8s',
-#      namespace='ceph',
-#      name='benji',
-#      values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml']))
+#helm_template = helm('charts/benji-k8s',
+#     namespace='rook-ceph',
+#     name='benji',
+#     values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml'])
+
+k8s_yaml(listdir('charts/benji-k8s/crds'))
 
 helm_template = str(
     helm('charts/benji-k8s',

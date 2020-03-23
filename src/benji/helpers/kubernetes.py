@@ -17,14 +17,11 @@ from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, LAB
     LABEL_K8S_STORAGE_CLASS_NAME, LABEL_K8S_PV_TYPE, LABEL_RBD_CLUSTER_FSID, \
     LABEL_RBD_IMAGE_SPEC, VERSION_DATE, VERSION_VOLUME, VERSION_SNAPSHOT, VERSION_SIZE, VERSION_STORAGE, \
     VERSION_BYTES_READ, VERSION_BYTES_WRITTEN, VERSION_BYTES_DEDUPLICATED, VERSION_BYTES_SPARSE, VERSION_DURATION, \
-    K8S_VERSION_SPEC_VOLUME_INFO_STORAGE_CLASS_NAME, \
-    K8S_VERSION_SPEC_VOLUME_INFO_PERSISTENT_VOLUME_CLAIM_NAME, K8S_VERSION_SPEC_DATE, K8S_VERSION_SPEC_VOLUME, \
+    K8S_VERSION_SPEC_DATE, K8S_VERSION_SPEC_VOLUME, \
     K8S_VERSION_SPEC_SNAPSHOT, K8S_VERSION_SPEC_SIZE, K8S_VERSION_SPEC_STORAGE, K8S_VERSION_SPEC_BYTES_READ, \
     K8S_VERSION_SPEC_BYTES_WRITTEN, K8S_VERSION_SPEC_BYTES_DEDUPLICATED, K8S_VERSION_SPEC_BYTES_SPARSE, \
-    K8S_VERSION_SPEC_DURATION, \
-    K8S_VERSION_SPEC_VOLUME_INFO, K8S_VERSION_STATUS_PROTECTED, K8S_VERSION_STATUS_STATUS, VERSION_PROTECTED, \
-    VERSION_STATUS, \
-    VERSION_LABELS, PV_TYPE_RBD
+    K8S_VERSION_SPEC_DURATION, K8S_VERSION_STATUS_PROTECTED, K8S_VERSION_STATUS_STATUS, VERSION_PROTECTED, \
+    VERSION_STATUS, VERSION_LABELS, PV_TYPE_RBD, K8S_VERSION_SPEC_PERSISTENT_VOLUME_CLAIM_NAME
 from benji.helpers.settings import running_pod_name, benji_instance
 from benji.helpers.utils import attrs_exist
 
@@ -255,10 +252,7 @@ def update_version_resource(*, version: Dict[str, Any]) -> Dict[str, Any]:
             K8S_VERSION_SPEC_BYTES_DEDUPLICATED: str(version[VERSION_BYTES_DEDUPLICATED]),
             K8S_VERSION_SPEC_BYTES_SPARSE: str(version[VERSION_BYTES_SPARSE]),
             K8S_VERSION_SPEC_DURATION: version[VERSION_DURATION],
-            K8S_VERSION_SPEC_VOLUME_INFO: {
-                K8S_VERSION_SPEC_VOLUME_INFO_PERSISTENT_VOLUME_CLAIM_NAME: labels[LABEL_K8S_PVC_NAME],
-                K8S_VERSION_SPEC_VOLUME_INFO_STORAGE_CLASS_NAME: labels[LABEL_K8S_STORAGE_CLASS_NAME],
-            },
+            K8S_VERSION_SPEC_PERSISTENT_VOLUME_CLAIM_NAME: labels[LABEL_K8S_PVC_NAME],
         },
         'status': {
             K8S_VERSION_STATUS_PROTECTED: version[VERSION_PROTECTED],
@@ -359,13 +353,7 @@ def get_version_resource(name: str, namespace: str) -> Any:
                                                            name=name)
 
 
-def build_version_labels_rbd(*,
-                             pvc,
-                             pv,
-                             pool: str,
-                             image: str,
-                             cluster_name: str = 'ceph',
-                             cluster_fsid: str) -> Dict[str, str]:
+def build_version_labels_rbd(*, pvc, pv, pool: str, image: str, cluster_fsid: str) -> Dict[str, str]:
     version_labels = {
         LABEL_INSTANCE: settings.benji_instance,
         LABEL_K8S_PVC_NAMESPACE: pvc.metadata.namespace,

@@ -30,7 +30,7 @@ RESOURCE_STATUS_CHILD_CHANGED = 'childChanged'
 # Name of our status section tracking job status'
 RESOURCE_STATUS_JOB_STATUS = 'jobStatus'
 
-# Possible job
+# Possible job status values
 RESOURCE_JOB_STATUS_PENDING = 'Pending'
 RESOURCE_JOB_STATUS_RUNNING = 'Running'
 RESOURCE_JOB_STATUS_SUCCEEDED = 'Succeeded'
@@ -40,6 +40,9 @@ K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME = 'persistentVolumeClaimName'
 K8S_RESTORE_SPEC_VERSION_NAME = 'versionName'
 K8S_RESTORE_SPEC_OVERWRITE = 'overwrite'
 K8S_RESTORE_SPEC_STORAGE_CLASS_NAME = 'storageClassName'
+
+SCHED_VERSION_RECONCILIATION_JOB = 'version-reconciliation'
+SCHED_CLEANUP_JOB = 'cleanup'
 
 
 class CRD(NamedTuple):

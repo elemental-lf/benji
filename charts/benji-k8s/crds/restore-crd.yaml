@@ -24,10 +24,11 @@ spec:
               required:
                 - versionName
                 - persistentVolumeClaimName
+                - storageClassName
               properties:
                 versionName:
                   type: string
-                persistentVolumeClaim:
+                persistentVolumeClaimName:
                   type: string
                 overwrite:
                   type: boolean

@@ -1,13 +1,50 @@
+from functools import partial
 from typing import Dict, Any, Optional
 
 import kopf
+import kubernetes
+from apscheduler.jobstores.base import JobLookupError
+from apscheduler.triggers.cron import CronTrigger
 
+import benji.k8s_operator
+from benji.helpers.kubernetes import list_namespaces
 from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILD_CHANGED
-from benji.k8s_operator.resources import get_cron_jobs, delete_cron_job, create_cron_job
-from benji.k8s_operator.status import build_resource_status_children, track_job_status, \
-    track_cron_job_status
-from benji.k8s_operator.utils import get_caller_name
+from benji.k8s_operator.resources import create_job
+from benji.k8s_operator.status import track_job_status
+from benji.k8s_operator.utils import crd_to_job_name
+
+
+def backup_job(*,
+               namespace_label_selector: str = None,
+               namespace: str = None,
+               label_selector: str,
+               parent_body,
+               logger):
+    if namespace_label_selector is not None:
+        namespaces = [namespace.metadata.name for namespace in list_namespaces(label_selector=namespace_label_selector)]
+    else:
+        namespaces = [namespace]
+
+    core_v1_api = kubernetes.client.CoreV1Api()
+    pvcs = []
+    for ns in namespaces:
+        pvcs.extend(
+            core_v1_api.list_namespaced_persistent_volume_claim(namespace=ns, label_selector=label_selector).items)
+
+    if len(pvcs) == 0:
+        logger.warning(f'No PersistentVolumeClaims matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
+        return
+
+    for pvc in pvcs:
+        if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+            continue
+
+        command = ['benji-backup-pvc', namespace, pvc.metadata.name]
+        job_name = f'benji-backup-pvc:{namespace}/{pvc.metadata.name}'
+        benji.k8s_operator.scheduler.add_job(lambda: create_job(command, parent_body=parent_body, logger=logger),
+                                             name=job_name,
+                                             id=job_name)
 
 
 @kopf.on.resume(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
@@ -27,78 +64,47 @@ from benji.k8s_operator.utils import get_caller_name
                CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                CRD_CLUSTER_BACKUP_SCHEDULE.plural,
                field=f'status.{RESOURCE_STATUS_CHILD_CHANGED}')
-def benji_backup_schedule(reason: str, name: str, namespace: str, spec: Dict[str, Any], status: Dict[str, Any],
-                          body: Dict[str, Any], patch: Dict[str, Any], logger, **kwargs) -> Optional[Dict[str, Any]]:
-    # We recreate all CronJobs on resume because we don't know if the resource or the CronJob template has been changed
-    # in the meantime.
-    cron_jobs = get_cron_jobs(body)
-    if cron_jobs:
-        for cron_job in cron_jobs:
-            delete_cron_job(cron_job.metadata.name, cron_job.metadata.namespace, logger=logger)
-    elif reason != 'create':
-        if namespace:
-            logger.warning(f'{body["kind"]} {namespace}/{name} had no corresponding CronJob on {reason}.')
-        else:
-            logger.warning(f'{body["kind"]} {name} had no corresponding CronJob on {reason}.')
-
+def benji_backup_schedule(namespace: str, spec: Dict[str, Any], body: Dict[str, Any], logger,
+                          **_) -> Optional[Dict[str, Any]]:
     schedule = spec['schedule']
-
-    command = ['benji-backup-pvc']
-
     label_selector = spec['persistentVolumeClaimSelector'].get('matchLabels', None)
-    if label_selector is not None:
-        command.extend(['--selector', label_selector])
-
+    namespace_label_selector = None
     if body['kind'] == CRD_BACKUP_SCHEDULE.name:
         namespace_label_selector = spec['persistentVolumeClaimSelector'].get('matchNamespaceLabels', None)
-        if namespace_label_selector is not None:
-            command.extend(['--namespace-selector', namespace_label_selector])
-    else:
-        command.extend(['--namespace'], namespace)
 
-    cron_job = create_cron_job(command, schedule, parent_body=body, logger=logger)
-    patch['status'] = build_resource_status_children(status, cron_job, get_caller_name())
+    job_name = crd_to_job_name(body)
+    benji.k8s_operator.scheduler.add_job(partial(backup_job,
+                                                 namespace_label_selector=namespace_label_selector,
+                                                 namespace=namespace,
+                                                 label_selector=label_selector,
+                                                 parent_body=body,
+                                                 logger=logger),
+                                         CronTrigger.from_crontab(schedule),
+                                         name=job_name,
+                                         id=job_name)
 
 
 @kopf.on.delete(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
 @kopf.on.delete(CRD_CLUSTER_BACKUP_SCHEDULE.api_group, CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                 CRD_CLUSTER_BACKUP_SCHEDULE.plural)
-def benji_backup_schedule_delete(reason: str, name: str, namespace: str, body: Dict[str, Any], logger,
-                                 **kwargs) -> Optional[Dict[str, Any]]:
-    cron_jobs = get_cron_jobs(body)
-    if cron_jobs:
-        for cron_job in cron_jobs:
-            delete_cron_job(cron_job.metadata.name, cron_job.metadata.namespace, logger=logger)
-    else:
-        if namespace:
-            logger.warning(f'{body["kind"]} {namespace}/{name} had no corresponding CronJob on {reason}.')
-        else:
-            logger.warning(f'{body["kind"]} {name} had no corresponding CronJob on {reason}.')
+def benji_backup_schedule_delete(body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
+    try:
+        benji.k8s_operator.scheduler.remove_job(job_id=crd_to_job_name(body))
+    except JobLookupError:
+        pass
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
 @kopf.on.resume('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
 @kopf.on.delete('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
 @kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
-def benji_track_job_status_backup_schedule(**kwargs) -> Optional[Dict[str, Any]]:
-    return track_job_status(crd=CRD_BACKUP_SCHEDULE, **kwargs)
-
-
-@kopf.on.update('batch', 'v1beta1', 'cronjobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
-@kopf.on.delete('batch', 'v1beta1', 'cronjobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
-def benji_track_cronjob_status_backup_schedule(**kwargs) -> Optional[Dict[str, Any]]:
-    return track_cron_job_status(crd=CRD_BACKUP_SCHEDULE, **kwargs)
+def benji_track_job_status_backup_schedule(**_) -> Optional[Dict[str, Any]]:
+    return track_job_status(crd=CRD_BACKUP_SCHEDULE, **_)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
 @kopf.on.resume('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
 @kopf.on.delete('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
 @kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
-def benji_track_job_status_cluster_backup_schedule(**kwargs) -> Optional[Dict[str, Any]]:
-    return track_job_status(crd=CRD_CLUSTER_BACKUP_SCHEDULE, **kwargs)
-
-
-@kopf.on.update('batch', 'v1beta1', 'cronjobs', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
-@kopf.on.delete('batch', 'v1beta1', 'cronjobs', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
-def benji_track_cronjob_status_cluster_backup_schedule(**kwargs) -> Optional[Dict[str, Any]]:
-    return track_cron_job_status(crd=CRD_CLUSTER_BACKUP_SCHEDULE, **kwargs)
+def benji_track_job_status_cluster_backup_schedule(**_) -> Optional[Dict[str, Any]]:
+    return track_job_status(crd=CRD_CLUSTER_BACKUP_SCHEDULE, **_)

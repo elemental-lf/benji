@@ -251,71 +251,44 @@ def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, vers
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
-parser.add_argument('-l', '--selector', action='append', default=[], help='Filter PVCs by label')
-
-namespace_group = parser.add_mutually_exclusive_group()
-namespace_group.add_argument('-n', '--namespace', default=None, help='Filter PVCs by namespace')
-namespace_group.add_argument('--namespace-selector',
-                             action='append',
-                             default=[],
-                             help='Filter PVCs by label of containing namespace')
+parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
+parser.add_argument(metavar='pvc', dest='pvc', help='PVC name')
 
 args = parser.parse_args()
 
 benji.helpers.kubernetes.load_config()
 core_v1_api = kubernetes.client.CoreV1Api()
 
-pvc_selector = ','.join(args.selector) if args.selector else ''
-namespace_selector = ','.join(args.namespace_selector) if args.namespace_selector else ''
+pvc = core_v1_api.read_namespaced_persistent_volume_claim(name=args.pvc, namespace=args.pvc_namespace)
 
-if args.namespace is not None:
-    namespaces = [args.namespace]
-else:
-    namespaces = [
-        namespace.metadata.name for namespace in benji.helpers.kubernetes.list_namespaces(label_selector=namespace_selector)
-    ]
+if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+    raise RuntimeError(f'PersistentVolumeClaim {args.pvc_namespace}/{args.pvc} has no associated PersitentVolume.')
 
-pvcs = []
-for namespace in namespaces:
-    pvcs.extend(
-        core_v1_api.list_namespaced_persistent_volume_claim(namespace=namespace, label_selector=pvc_selector).items)
+pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+pool, image = benji.helpers.kubernetes.determine_rbd_image_location(pv)
 
-if len(pvcs) == 0:
-    logger.info('No matching PVCs found.')
-    sys.exit(0)
+if pool is None or image is None:
+    raise RuntimeError(f'PersistentVolumeClaim {pvc.metadata.name} is backed by an unknown PV type.')
 
-for pvc in pvcs:
-    if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
-        continue
+volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
+# Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
+version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
 
-    pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    pool, image = benji.helpers.kubernetes.determine_rbd_image_location(pv)
+version_labels = benji.helpers.kubernetes.build_version_labels_rbd(pvc=pvc,
+                                                                   pv=pv,
+                                                                   pool=pool,
+                                                                   image=image,
+                                                                   cluster_fsid=ceph.cluster_fsid())
 
-    if pool is None or image is None:
-        logger.debug(f'PersistentVolumeClaim {pvc.metadata.name} matched selector, but we do not know how to handle it.')
-        continue
+context = {'pvc': pvc}
+version = ceph.backup(volume=volume,
+                      pool=pool,
+                      image=image,
+                      version_uid=version_uid,
+                      version_labels=version_labels,
+                      context=context)
 
-    volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
-    # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
-    version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
-
-    cluster_name = 'ceph'
-    version_labels = benji.helpers.kubernetes.build_version_labels_rbd(pvc=pvc,
-                                                                       pv=pv,
-                                                                       pool=pool,
-                                                                       image=image,
-                                                                       cluster_name=cluster_name,
-                                                                       cluster_fsid=ceph.cluster_fsid(cluster_name))
-
-    context = {'pvc': pvc}
-    version = ceph.backup(volume=volume,
-                          pool=pool,
-                          image=image,
-                          version_uid=version_uid,
-                          version_labels=version_labels,
-                          context=context)
-
-    benji.helpers.kubernetes.update_version_resource(version=version)
+benji.helpers.kubernetes.update_version_resource(version=version)
 
 prometheus.push(prometheus.backup_registry)
 sys.exit(0)

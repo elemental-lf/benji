@@ -33,7 +33,7 @@ spec:
                 - snapshot
                 - storage
                 - volume
-                - volumeInfo
+                - persistentVolumeClaimName
               properties:
                 bytesDeduplicated:
                   type: string
@@ -55,16 +55,8 @@ spec:
                   type: string
                 volume:
                   type: string
-                volumeInfo:
-                  type: object
-                  required:
-                    - persistentVolumeClaimName
-                    - storageClassName
-                  properties:
-                    persistentVolumeClaimName:
-                      type: string
-                    storageClassName:
-                      type: string
+                persistentVolumeClaimName:
+                  type: string
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
