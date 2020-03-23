@@ -35,6 +35,6 @@ backup_runtime_seconds = Gauge('benji_backup_runtime_seconds', labelnames=['volu
 backup_status_succeeded = Gauge('benji_backup_status_succeeded', labelnames=['volume'], documentation='Benji backup command succeeded', registry=backup_registry)
 backup_status_failed = Gauge('benji_backup_status_failed', labelnames=['volume'], documentation='Benji backup command failed', registry=backup_registry)
 
-invalid_versions = Gauge('benji_invalid_versions', documentation='Number of invalid backup versions', registry=version_status_registry)
-older_incomplete_versions = Gauge('benji_older_incomplete_versions', documentation='Number of older incomplete versions', registry=version_status_registry)
+version_status_invalid = Gauge('benji_version_status_invalud', documentation='Number of invalid backup versions', registry=version_status_registry)
+version_status_older_incomplete = Gauge('benji_version_status_older_incomplete', documentation='Number of older incomplete versions', registry=version_status_registry)
 # yapf: enable

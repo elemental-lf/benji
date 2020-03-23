@@ -1,6 +1,8 @@
 import json
 import logging
+import random
 import re
+import string
 import subprocess
 from json import JSONDecodeError
 from typing import Dict, List, Union, Any, Tuple, Sequence
@@ -100,3 +102,7 @@ def attrs_exist(obj: Any, attrs: Sequence[str]) -> bool:
                 return False
 
     return True
+
+
+def random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
+    return ''.join(random.choice(characters) for _ in range(length))

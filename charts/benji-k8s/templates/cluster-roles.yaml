@@ -1,5 +1,5 @@
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ tuple . "" | include "benji.fullname" }}
@@ -68,7 +68,7 @@ rules:
   - get
 {{- end}}
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ tuple . "operator" | include "benji.fullname" }}
@@ -105,6 +105,14 @@ rules:
       - watch
       - patch
   - apiGroups:
+      - "benji-backup.me"
+    resources:
+      - benjiversions
+    verbs:
+      - create
+      - update
+      - delete
+  - apiGroups:
       - ""
     resources:
       - events
@@ -122,3 +130,18 @@ rules:
       - watch
       - patch
       - delete
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - create
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - list
+      - get

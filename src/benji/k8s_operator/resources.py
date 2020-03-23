@@ -61,6 +61,7 @@ def create_job(command: List[str], *, parent_body: Dict[str, Any], logger) -> ku
     setup_manifest(manifest=job_manifest, namespace=service_account_namespace(), parent_body=parent_body)
 
     job_manifest['spec']['template']['spec']['containers'][0]['command'] = command
+    job_manifest['spec']['template']['spec']['containers'][0]['args'] = []
 
     # Actually create the job via the Kubernetes API.
     logger.debug(f'Creating Job: {job_manifest}')
@@ -85,6 +86,7 @@ def create_cron_job(command: List[str],
 
     cron_job_manifest['spec']['schedule'] = schedule
     cron_job_manifest['spec']['jobTemplate']['spec']['template']['spec']['containers'][0]['command'] = command
+    cron_job_manifest['spec']['jobTemplate']['spec']['template']['spec']['containers'][0]['args'] = []
 
     # Actually create the cron job via the Kubernetes API.
     logger.debug(f'Creating CronJob: {cron_job_manifest}')

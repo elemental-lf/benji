@@ -7,7 +7,6 @@ import time
 import kubernetes
 from kubernetes.client.rest import ApiException
 
-from benji.helpers.constants import LABEL_K8S_STORAGE_CLASS_NAME, VERSION_LABELS
 from benji.helpers.kubernetes import load_config, parse_quantity, create_pvc, determine_rbd_image_location
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
@@ -26,15 +25,11 @@ parser.add_argument('-f',
                     action='store_true',
                     default=False,
                     help='Overwrite content of existing persistent volume')
-parser.add_argument('-s',
-                    '--storage-class',
-                    metavar='storage_class',
-                    dest='storage_class',
-                    default=None,
-                    help='Override storage class for new PVC')
+
 parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
 parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
+parser.add_argument(metavar='storage_class', dest='storage_class', help='Storage class for the new PVC')
 
 args = parser.parse_args()
 
@@ -63,17 +58,12 @@ except ApiException as exception:
     if exception.status != 404:
         raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
-if args.storage_class:
-    storage_class_name = args.storage_class
-else:
-    storage_class_name = version[VERSION_LABELS][LABEL_K8S_STORAGE_CLASS_NAME]
-
 if pvc is None:
-    logger.info(f'Trying to create PVC {args.pvc_namespace}/{args.pvc_name} (storage class {storage_class_name}).')
+    logger.info(f'Trying to create PVC {args.pvc_namespace}/{args.pvc_name} (storage class {args.storage_class}).')
     pvc = create_pvc(pvc_name=args.pvc_name,
                      pvc_namespace=args.pvc_namespace,
                      pvc_size=version_size,
-                     storage_class_name=storage_class_name)
+                     storage_class_name=args.storage_class)
 
     for _ in range(PVC_CREATION_TRIES):
         # Probably should use a watch instead of polling

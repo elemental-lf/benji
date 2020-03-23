@@ -44,6 +44,8 @@ spec:
                   fieldPath: metadata.namespace
             - name: BENJI_INSTANCE
               value: {{ .Values.benji.instance | quote }}
+            - name: PROM_PUSH_GATEWAY
+              value: "{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
             - name: BENJI_API_ENDPOINT
               value: "http://{{ tuple . "api" | include "benji.fullname" }}:{{ .Values.benji.api.port }}"
 {{- with .Values.operator.resources }}
