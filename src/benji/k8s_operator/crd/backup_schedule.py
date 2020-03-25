@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import kopf
 import kubernetes
@@ -10,17 +10,16 @@ import benji.k8s_operator
 from benji.helpers.kubernetes import list_namespaces
 from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILD_CHANGED
-from benji.k8s_operator.resources import create_job
-from benji.k8s_operator.status import track_job_status
-from benji.k8s_operator.utils import crd_to_job_name
+from benji.k8s_operator.resources import create_job, track_job_status, delete_dependant_jobs
+from benji.k8s_operator.utils import cr_to_job_name
 
 
-def backup_job(*,
-               namespace_label_selector: str = None,
-               namespace: str = None,
-               label_selector: str,
-               parent_body,
-               logger):
+def backup_scheduler_job(*,
+                         namespace_label_selector: str = None,
+                         namespace: str = None,
+                         label_selector: str,
+                         parent_body,
+                         logger):
     if namespace_label_selector is not None:
         namespaces = [namespace.metadata.name for namespace in list_namespaces(label_selector=namespace_label_selector)]
     else:
@@ -87,11 +86,13 @@ def benji_backup_schedule(namespace: str, spec: Dict[str, Any], body: Dict[str, 
 @kopf.on.delete(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
 @kopf.on.delete(CRD_CLUSTER_BACKUP_SCHEDULE.api_group, CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                 CRD_CLUSTER_BACKUP_SCHEDULE.plural)
-def benji_backup_schedule_delete(body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
+def benji_backup_schedule_delete(name: str, namespace: str, body: Dict[str, Any], logger,
+                                 **_) -> Optional[Dict[str, Any]]:
     try:
-        benji.k8s_operator.scheduler.remove_job(job_id=crd_to_job_name(body))
+        benji.k8s_operator.scheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
+    delete_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
