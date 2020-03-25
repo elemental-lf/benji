@@ -25,7 +25,6 @@ spec:
               required:
                 - reconciliationSchedule
                 - jobTemplate
-                - cronJobTemplate
               properties:
                 reconciliationSchedule:
                   type: string
@@ -33,8 +32,6 @@ spec:
                   type: string
                 jobTemplate:
                   $ref: 'python://k8s_crd_resolver/schemata/k8s-1.15.3.json#/definitions/io.k8s.api.batch.v1.Job'
-                cronJobTemplate:
-                  $ref: 'python://k8s_crd_resolver/schemata/k8s-1.15.3.json#/definitions/io.k8s.api.batch.v1beta1.CronJob'
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
