@@ -14,6 +14,9 @@ def setup_manifest(*,
                    namespace: str,
                    parent_body: Dict[str, Any],
                    name_override: str = None) -> None:
+    if manifest['kind'] != 'Job':
+        raise RuntimeError(f'Unhandled kind: {manifest["kind"]}.')
+
     manifest['metadata']['namespace'] = namespace
 
     # Generate unique name with parent's metadata.name as prefix
@@ -36,21 +39,9 @@ def setup_manifest(*,
     manifest['metadata']['labels'] = manifest['metadata'].get('labels', {})
     manifest['metadata']['labels'].update(labels)
 
-    if manifest['kind'] == 'Job':
-        manifest['spec']['template']['metadata'] = manifest['spec']['template'].get('metadata', {})
-        manifest['spec']['template']['metadata']['labels'] = manifest['spec']['template']['metadata'].get('labels', {})
-        manifest['spec']['template']['metadata']['labels'].update(labels)
-    elif manifest['kind'] == 'CronJob':
-        manifest['spec']['jobTemplate']['metadata'] = manifest['spec']['jobTemplate'].get('metadata', {})
-        manifest['spec']['jobTemplate']['metadata']['labels'] = manifest['spec']['jobTemplate']['metadata'].get(
-            'labels', {})
-        manifest['spec']['jobTemplate']['metadata']['labels'].update(labels)
-
-        manifest['spec']['jobTemplate']['spec']['template']['metadata'] = manifest['spec']['jobTemplate']['spec']['template'].get(
-            'metadata', {})
-        manifest['spec']['jobTemplate']['spec']['template']['metadata']['labels'] = manifest['spec']['jobTemplate'][
-            'spec']['template']['metadata'].get('labels', {})
-        manifest['spec']['jobTemplate']['spec']['template']['metadata']['labels'].update(labels)
+    manifest['spec']['template']['metadata'] = manifest['spec']['template'].get('metadata', {})
+    manifest['spec']['template']['metadata']['labels'] = manifest['spec']['template']['metadata'].get('labels', {})
+    manifest['spec']['template']['metadata']['labels'].update(labels)
 
 
 def create_job(command: List[str], *, parent_body: Dict[str, Any], logger) -> kubernetes.client.models.v1_job.V1Job:

@@ -65,11 +65,7 @@ docker_build('elementalnet/benji-k8s-operator',
 k8s_resource('benji-operator', resource_deps=['benji-api'])
 k8s_resource('benji', extra_pod_selectors=[{'app.kubernetes.io/managed-by': 'benji-operator'}])
 
-k8s_kind('BenjiOperatorConfig',
-         image_json_path=[
-             '{.spec.jobTemplate.spec.template.spec.containers[0].image}',
-             '{.spec.cronJobTemplate.spec.jobTemplate.spec.template.spec.containers[0].image}'
-         ])
+k8s_kind('BenjiOperatorConfig', image_json_path=['{.spec.jobTemplate.spec.template.spec.containers[0].image}'])
 
 # See https://github.com/windmilleng/tilt/issues/2805.
 #
