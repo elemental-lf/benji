@@ -32,18 +32,23 @@ def backup_scheduler_job(*,
             core_v1_api.list_namespaced_persistent_volume_claim(namespace=ns, label_selector=label_selector).items)
 
     if len(pvcs) == 0:
-        logger.warning(f'No PersistentVolumeClaims matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
+        logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
         return
 
+    pvc_backups: List[str] = []
     for pvc in pvcs:
         if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
             continue
+        pvc_backups.append(pvc.metadata.name, namespace=namespace)
 
-        command = ['benji-backup-pvc', namespace, pvc.metadata.name]
-        job_name = f'benji-backup-pvc:{namespace}/{pvc.metadata.name}'
-        benji.k8s_operator.scheduler.add_job(lambda: create_job(command, parent_body=parent_body, logger=logger),
-                                             name=job_name,
-                                             id=job_name)
+    def backup_executor_job():
+        nonlocal pvc_backups, parent_body, logger, namespace
+        for pvc_name in pvc_backups:
+            command = ['benji-backup-pvc', namespace, pvc_name]
+            create_job(command, parent_body=parent_body, logger=logger)
+
+    job_name = cr_to_job_name(parent_body, 'executor')
+    benji.k8s_operator.scheduler.scheduled_job(backup_executor_job, name=job_name, id=job_name)
 
 
 @kopf.on.resume(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
@@ -71,16 +76,16 @@ def benji_backup_schedule(namespace: str, spec: Dict[str, Any], body: Dict[str, 
     if body['kind'] == CRD_BACKUP_SCHEDULE.name:
         namespace_label_selector = spec['persistentVolumeClaimSelector'].get('matchNamespaceLabels', None)
 
-    job_name = crd_to_job_name(body)
-    benji.k8s_operator.scheduler.add_job(partial(backup_job,
-                                                 namespace_label_selector=namespace_label_selector,
-                                                 namespace=namespace,
-                                                 label_selector=label_selector,
-                                                 parent_body=body,
-                                                 logger=logger),
-                                         CronTrigger.from_crontab(schedule),
-                                         name=job_name,
-                                         id=job_name)
+    job_name = cr_to_job_name(body, 'scheduler')
+    benji.k8s_operator.scheduler.scheduled_job(partial(backup_scheduler_job,
+                                                       namespace_label_selector=namespace_label_selector,
+                                                       namespace=namespace,
+                                                       label_selector=label_selector,
+                                                       parent_body=body,
+                                                       logger=logger),
+                                               CronTrigger.from_crontab(schedule),
+                                               name=job_name,
+                                               id=job_name)
 
 
 @kopf.on.delete(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)

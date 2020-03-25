@@ -28,8 +28,8 @@ def check_version_access(benji: BenjiRESTClient, version_uid: str, crd: Dict[Any
         raise kopf.PermanentError('Version namespace label does not match resource namespace, permission denied')
 
 
-def crd_to_job_name(body):
+def cr_to_job_name(body, suffix: str):
     if 'namespace' in body['metadata']:
-        return f'crd:{body["kind"]}/{body["metadata"]["namespace"]}/{body["metadata"]["name"]}'
+        return f'crd:{body["kind"]}/{body["metadata"]["namespace"]}/{body["metadata"]["name"]}-{suffix}'
     else:
-        return f'crd:{body["kind"]}/{body["metadata"]["name"]}'
+        return f'crd:{body["kind"]}/{body["metadata"]["name"]}-{suffix}'
