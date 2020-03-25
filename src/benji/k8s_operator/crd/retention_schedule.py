@@ -9,17 +9,19 @@ import benji.k8s_operator
 from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator.constants import CRD_RETENTION_SCHEDULE, CRD_CLUSTER_RETENTION_SCHEDULE, LABEL_PARENT_KIND
-from benji.k8s_operator.resources import create_job
-from benji.k8s_operator.status import track_job_status
-from benji.k8s_operator.utils import crd_to_job_name
+from benji.k8s_operator.resources import create_job, track_job_status, delete_dependant_jobs
+from benji.k8s_operator.utils import cr_to_job_name
 
 
-def enforce_job(*, retention_rule: str, match_versions: str, parent_body, logger):
-    command = ['benji-command', 'enforce', retention_rule, match_versions]
-    job_name = f'benji-command-enforce:{retention_rule}-{match_versions}'
-    benji.k8s_operator.scheduler.add_job(lambda: create_job(command, parent_body=parent_body, logger=logger),
-                                         name=job_name,
-                                         id=job_name)
+def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body, logger):
+
+    def enforce_executor_job():
+        nonlocal parent_body, logger, retention_rule, match_versions
+        command = ['benji-command', 'enforce', retention_rule, match_versions]
+        create_job(command, parent_body=parent_body, logger=logger)
+
+    job_name = cr_to_job_name(parent_body, 'executor')
+    benji.k8s_operator.scheduler.scheduled_job(enforce_executor_job, name=job_name, id=job_name)
 
 
 @kopf.on.resume(CRD_RETENTION_SCHEDULE.api_group, CRD_RETENTION_SCHEDULE.api_version, CRD_RETENTION_SCHEDULE.plural)
@@ -46,25 +48,27 @@ def benji_retention_schedule(namespace: str, spec: Dict[str, Any], body: Dict[st
     if body['kind'] == CRD_RETENTION_SCHEDULE.name:
         match_versions = f'{match_versions} and labels["{LABEL_K8S_PVC_NAMESPACE}"] == "{namespace}"'
 
-    job_name = crd_to_job_name(body)
-    benji.k8s_operator.scheduler.add_job(partial(enforce_job,
-                                                 retention_rule=retention_rule,
-                                                 match_versions=match_versions,
-                                                 parent_body=body,
-                                                 logger=logger),
-                                         CronTrigger.from_crontab(schedule),
-                                         name=job_name,
-                                         id=job_name)
+    job_name = cr_to_job_name(body, 'scheduler')
+    benji.k8s_operator.scheduler.scheduled_job(partial(enforce_scheduler_job,
+                                                       retention_rule=retention_rule,
+                                                       match_versions=match_versions,
+                                                       parent_body=body,
+                                                       logger=logger),
+                                               CronTrigger.from_crontab(schedule),
+                                               name=job_name,
+                                               id=job_name)
 
 
 @kopf.on.delete(CRD_RETENTION_SCHEDULE.api_group, CRD_RETENTION_SCHEDULE.api_version, CRD_RETENTION_SCHEDULE.plural)
 @kopf.on.delete(CRD_CLUSTER_RETENTION_SCHEDULE.api_group, CRD_CLUSTER_RETENTION_SCHEDULE.api_version,
                 CRD_CLUSTER_RETENTION_SCHEDULE.plural)
-def benji_retention_schedule_delete(body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
+def benji_retention_schedule_delete(name: str, namespace: str, body: Dict[str, Any], logger,
+                                    **_) -> Optional[Dict[str, Any]]:
     try:
-        benji.k8s_operator.scheduler.remove_job(job_id=crd_to_job_name(body))
+        benji.k8s_operator.scheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
+    delete_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RETENTION_SCHEDULE.name})

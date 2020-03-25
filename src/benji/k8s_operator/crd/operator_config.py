@@ -18,8 +18,7 @@ from benji.helpers.utils import random_string
 from benji.k8s_operator import api_endpoint
 from benji.k8s_operator.constants import CRD_OPERATOR_CONFIG, LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
     SCHED_CLEANUP_JOB
-from benji.k8s_operator.resources import create_job
-from benji.k8s_operator.status import track_job_status
+from benji.k8s_operator.resources import create_job, track_job_status
 
 
 def set_operator_config() -> None:
@@ -112,7 +111,7 @@ def startup(logger, **_) -> None:
         raise RuntimeError('Operator configuration has not been loaded.')
 
     # See https://apscheduler.readthedocs.io/en/stable/userguide.html#missed-job-executions
-    job_defaults = {'coalesce': True, 'max_instances': 1, 'misfire_grace_time': 60, 'replace_existing': True}
+    job_defaults = {'coalesce': True, 'max_instances': 1, 'misfire_grace_time': 60}
     benji.k8s_operator.scheduler = scheduler = BackgroundScheduler(job_defaults=job_defaults, timezone='UTC')
     scheduler.start()
 
