@@ -13,8 +13,8 @@ from benji.k8s_operator.utils import check_version_access
 
 @kopf.on.resume(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
 @kopf.on.create(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
-def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], body: Dict[str, Any],
-                  patch: Dict[str, Any], logger, **_) -> Optional[Dict[str, Any]]:
+def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], body: Dict[str, Any], logger,
+                  **_) -> Optional[Dict[str, Any]]:
     if RESOURCE_STATUS_CHILDREN in status:
         # We've already seen this resource
         return
