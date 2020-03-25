@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: operator
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  reconciliationSchedule: "*/15 * * * *"
+  reconciliationSchedule: "*/5 * * * *"
   cleanupSchedule: "0 1 * * *"
   jobTemplate:
     apiVersion: batch/v1
