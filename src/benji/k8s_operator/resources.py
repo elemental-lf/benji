@@ -104,21 +104,29 @@ def get_parent(*, parent_name: str, parent_namespace: str, logger, crd: CRD) -> 
 def patch_parent(*, parent_name: str, parent_namespace: Optional[str], logger, crd: CRD,
                  parent_patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     custom_objects_api = kubernetes.client.CustomObjectsApi()
-    if parent_namespace is not None:
-        logger.debug(f'Patching resource {parent_namespace}/{parent_name} with: {parent_patch}')
-        custom_objects_api.patch_namespaced_custom_object(group=crd.api_group,
-                                                          version=crd.api_version,
-                                                          plural=crd.plural,
-                                                          name=parent_name,
-                                                          namespace=parent_namespace,
-                                                          body=parent_patch)
-    else:
-        logger.debug(f'Patching resource {parent_name} with: {parent_patch}')
-        custom_objects_api.patch_cluster_custom_object(group=crd.api_group,
-                                                       version=crd.api_version,
-                                                       plural=crd.plural,
-                                                       name=parent_name,
-                                                       body=parent_patch)
+    try:
+        if parent_namespace is not None:
+            logger.debug(f'Patching resource {parent_namespace}/{parent_name} with: {parent_patch}')
+            custom_objects_api.patch_namespaced_custom_object(group=crd.api_group,
+                                                              version=crd.api_version,
+                                                              plural=crd.plural,
+                                                              name=parent_name,
+                                                              namespace=parent_namespace,
+                                                              body=parent_patch)
+        else:
+            logger.debug(f'Patching resource {parent_name} with: {parent_patch}')
+            custom_objects_api.patch_cluster_custom_object(group=crd.api_group,
+                                                           version=crd.api_version,
+                                                           plural=crd.plural,
+                                                           name=parent_name,
+                                                           body=parent_patch)
+    except ApiException as exception:
+        if exception.status == 404:
+            logger.warning(f'{crd.kind}/{parent_namespace}/{parent_name} has gone away before it could be patched.')
+        elif exception.status == 422:
+            logger.warning(f'{crd.kind}/{parent_namespace}/{parent_name} could not be patched because it is being deleted.')
+        else:
+            raise exception
 
 
 def update_status_list(lst: List, resource: Any, extra_data: Dict[str, Any]) -> List[Dict[str, any]]:
