@@ -69,15 +69,15 @@ k8s_kind('BenjiOperatorConfig', image_json_path=['{.spec.jobTemplate.spec.templa
 
 # See https://github.com/windmilleng/tilt/issues/2805.
 #
-#helm_template = helm('charts/benji-k8s',
+#helm_template = helm('charts/benji',
 #     namespace='rook-ceph',
 #     name='benji',
 #     values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml'])
 
-k8s_yaml(listdir('charts/benji-k8s/crds'))
+k8s_yaml(listdir('charts/benji/crds'))
 
 helm_template = str(
-    helm('charts/benji-k8s',
+    helm('charts/benji',
          namespace='rook-ceph',
          name='benji',
          values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml']))
