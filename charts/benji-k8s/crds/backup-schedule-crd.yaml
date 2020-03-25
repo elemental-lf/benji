@@ -35,6 +35,9 @@ spec:
                   properties:
                     matchLabels:
                       type: string
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
   names:
     kind: BenjiBackupSchedule
     plural: benjibackupschedules
