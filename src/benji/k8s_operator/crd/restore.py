@@ -7,8 +7,7 @@ from benji.k8s_operator import api_endpoint
 from benji.k8s_operator.constants import CRD_RESTORE, LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILDREN, K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME, K8S_RESTORE_SPEC_VERSION_NAME, \
     K8S_RESTORE_SPEC_OVERWRITE, K8S_RESTORE_SPEC_STORAGE_CLASS_NAME
-from benji.k8s_operator.resources import create_job
-from benji.k8s_operator.status import track_job_status
+from benji.k8s_operator.resources import create_job, track_job_status, delete_dependant_jobs
 from benji.k8s_operator.utils import check_version_access
 
 
@@ -40,6 +39,12 @@ def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], 
         command.append('--force')
 
     create_job(command, parent_body=body, logger=logger)
+
+
+@kopf.on.delete(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
+def benji_backup_schedule_delete(name: str, namespace: str, body: Dict[str, Any], logger,
+                                 **_) -> Optional[Dict[str, Any]]:
+    delete_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RESTORE.name})
