@@ -116,7 +116,7 @@ def startup(logger, **_) -> None:
     scheduler.start()
 
     remove_maintenance_jobs()
-    install_maintenance_jobs(parent_body=benji.k8s_operator.operator_config.as_dict(), logger=logger)
+    install_maintenance_jobs(parent_body=benji.k8s_operator.operator_config, logger=logger)
 
 
 @kopf.on.cleanup()
@@ -135,7 +135,7 @@ def reload_operator_config(name: str, namespace: str, logger, **_) -> Optional[D
 
     set_operator_config()
     remove_maintenance_jobs()
-    install_maintenance_jobs(parent_body=benji.k8s_operator.operator_config.as_dict(), logger=logger)
+    install_maintenance_jobs(parent_body=benji.k8s_operator.operator_config, logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_OPERATOR_CONFIG.name})
