@@ -8,7 +8,9 @@ ENV VENV_DIR /benji
 COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
 RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
-RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
+# The ulimit is a workaround for a yum/rpm issue, see https://github.com/PowerDNS/pdns-builder/pull/39
+RUN ulimit -n 1024 && \
+    rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y git gcc make \
@@ -47,7 +49,9 @@ LABEL org.label-schema.schema-version="1.0" \
 COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
 RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
-RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
+# The ulimit is a workaround for a yum/rpm issue, see https://github.com/PowerDNS/pdns-builder/pull/39
+RUN ulimit -n 1024 && \
+    rpm --import 'https://download.ceph.com/keys/release.asc' && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y python36 && \
