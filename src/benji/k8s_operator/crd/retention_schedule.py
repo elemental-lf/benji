@@ -14,14 +14,8 @@ from benji.k8s_operator.utils import cr_to_job_name
 
 
 def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body, logger):
-
-    def enforce_executor_job():
-        nonlocal parent_body, logger, retention_rule, match_versions
-        command = ['benji-command', 'enforce', retention_rule, match_versions]
-        create_job(command, parent_body=parent_body, logger=logger)
-
-    job_name = cr_to_job_name(parent_body, 'executor')
-    benji.k8s_operator.scheduler.scheduled_job(enforce_executor_job, name=job_name, id=job_name)
+    command = ['benji-command', 'enforce', retention_rule, match_versions]
+    create_job(command, parent_body=parent_body, logger=logger)
 
 
 @kopf.on.resume(CRD_RETENTION_SCHEDULE.api_group, CRD_RETENTION_SCHEDULE.api_version, CRD_RETENTION_SCHEDULE.plural)
@@ -49,14 +43,15 @@ def benji_retention_schedule(namespace: str, spec: Dict[str, Any], body: Dict[st
         match_versions = f'{match_versions} and labels["{LABEL_K8S_PVC_NAMESPACE}"] == "{namespace}"'
 
     job_name = cr_to_job_name(body, 'scheduler')
-    benji.k8s_operator.scheduler.scheduled_job(partial(enforce_scheduler_job,
-                                                       retention_rule=retention_rule,
-                                                       match_versions=match_versions,
-                                                       parent_body=body,
-                                                       logger=logger),
-                                               CronTrigger.from_crontab(schedule),
-                                               name=job_name,
-                                               id=job_name)
+    benji.k8s_operator.scheduler.add_job(partial(enforce_scheduler_job,
+                                                 retention_rule=retention_rule,
+                                                 match_versions=match_versions,
+                                                 parent_body=body,
+                                                 logger=logger),
+                                         CronTrigger.from_crontab(schedule),
+                                         name=job_name,
+                                         id=job_name,
+                                         replace_existing=True)
 
 
 @kopf.on.delete(CRD_RETENTION_SCHEDULE.api_group, CRD_RETENTION_SCHEDULE.api_version, CRD_RETENTION_SCHEDULE.plural)
