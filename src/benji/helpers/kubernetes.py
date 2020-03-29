@@ -1,11 +1,10 @@
 import datetime
 import json
 import logging
-import re
-import time
 import uuid
+from collections import MutableMapping
 from subprocess import TimeoutExpired, CalledProcessError
-from typing import List, Union, Tuple, Dict, Any, Optional, Generator
+from typing import List, Tuple, Dict, Any, Generator
 
 import kubernetes
 from kubernetes.client.rest import ApiException
@@ -215,108 +214,163 @@ def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,
     return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
 
 
-def update_version_resource(*, version: Dict[str, Any]) -> Dict[str, Any]:
-    labels = version[VERSION_LABELS]
+class BenjiVersionResource(MutableMapping):
 
-    required_label_names = [
-        LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE,
-        LABEL_K8S_STORAGE_CLASS_NAME
-    ]
+    def __init__(self, *, name: str, namespace: str, logger=None):
+        self.name = name
+        self.namespace = namespace
+        self.logger = logger if logger else logging.getLogger()
+        self._k8s_resource: Dict[str, Any] = {}
 
-    for label_name in required_label_names:
-        if label_name not in labels:
-            raise KeyError(f'Version {version["uid"]} is missing label {label_name}, skipping update.')
+    def populate(self) -> 'BenjiVersionResource':
+        custom_objects_api = kubernetes.client.CustomObjectsApi()
+        self._k8s_resource = custom_objects_api.get_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                             version=BENJI_VERSIONS_API_VERSION,
+                                                                             plural=BENJI_VERSIONS_API_PLURAL,
+                                                                             namespace=self.namespace,
+                                                                             name=self.name)
+        return self
 
-    namespace = labels[LABEL_K8S_PVC_NAMESPACE]
-    logger.debug(f'Updating version resource {namespace}/{version["uid"]}.')
+    @classmethod
+    def create_or_replace(cls, *, version: Dict[str, Any], logger=None) -> 'BenjiVersionResource':
+        labels = version[VERSION_LABELS]
 
-    body: Dict[str, Any] = {
-        'apiVersion': 'benji-backup.me/v1alpha1',
-        'kind': 'BenjiVersion',
-        'metadata': {
-            'name': version['uid'],
-            'namespace': namespace,
-            'annotations': {},
-            'labels': {
-                LABEL_INSTANCE: labels[LABEL_INSTANCE],
+        required_label_names = [
+            LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE,
+            LABEL_K8S_STORAGE_CLASS_NAME
+        ]
+
+        for label_name in required_label_names:
+            if label_name not in labels:
+                raise KeyError(f'Version {version["uid"]} is missing label {label_name}, skipping update.')
+
+        namespace = labels[LABEL_K8S_PVC_NAMESPACE]
+
+        body: Dict[str, Any] = {
+            'apiVersion': 'benji-backup.me/v1alpha1',
+            'kind': 'BenjiVersion',
+            'metadata': {
+                'name': version['uid'],
+                'namespace': namespace,
+                'annotations': {},
+                'labels': {
+                    LABEL_INSTANCE: labels[LABEL_INSTANCE],
+                },
             },
-        },
-        'spec': {
-            K8S_VERSION_SPEC_DATE: version[VERSION_DATE],
-            K8S_VERSION_SPEC_VOLUME: version[VERSION_VOLUME],
-            K8S_VERSION_SPEC_SNAPSHOT: version[VERSION_SNAPSHOT],
-            K8S_VERSION_SPEC_SIZE: str(version[VERSION_SIZE]),
-            K8S_VERSION_SPEC_STORAGE: version[VERSION_STORAGE],
-            K8S_VERSION_SPEC_BYTES_READ: str(version[VERSION_BYTES_READ]),
-            K8S_VERSION_SPEC_BYTES_WRITTEN: str(version[VERSION_BYTES_WRITTEN]),
-            K8S_VERSION_SPEC_BYTES_DEDUPLICATED: str(version[VERSION_BYTES_DEDUPLICATED]),
-            K8S_VERSION_SPEC_BYTES_SPARSE: str(version[VERSION_BYTES_SPARSE]),
-            K8S_VERSION_SPEC_DURATION: version[VERSION_DURATION],
-            K8S_VERSION_SPEC_PERSISTENT_VOLUME_CLAIM_NAME: labels[LABEL_K8S_PVC_NAME],
-        },
-        'status': {
-            K8S_VERSION_STATUS_PROTECTED: version[VERSION_PROTECTED],
-            K8S_VERSION_STATUS_STATUS: version[VERSION_STATUS].capitalize(),
+            'spec': {
+                K8S_VERSION_SPEC_DATE: version[VERSION_DATE],
+                K8S_VERSION_SPEC_VOLUME: version[VERSION_VOLUME],
+                K8S_VERSION_SPEC_SNAPSHOT: version[VERSION_SNAPSHOT],
+                K8S_VERSION_SPEC_SIZE: str(version[VERSION_SIZE]),
+                K8S_VERSION_SPEC_STORAGE: version[VERSION_STORAGE],
+                K8S_VERSION_SPEC_BYTES_READ: str(version[VERSION_BYTES_READ]),
+                K8S_VERSION_SPEC_BYTES_WRITTEN: str(version[VERSION_BYTES_WRITTEN]),
+                K8S_VERSION_SPEC_BYTES_DEDUPLICATED: str(version[VERSION_BYTES_DEDUPLICATED]),
+                K8S_VERSION_SPEC_BYTES_SPARSE: str(version[VERSION_BYTES_SPARSE]),
+                K8S_VERSION_SPEC_DURATION: version[VERSION_DURATION],
+                K8S_VERSION_SPEC_PERSISTENT_VOLUME_CLAIM_NAME: labels[LABEL_K8S_PVC_NAME],
+            },
+            'status': {
+                K8S_VERSION_STATUS_PROTECTED: version[VERSION_PROTECTED],
+                K8S_VERSION_STATUS_STATUS: version[VERSION_STATUS].capitalize(),
+            }
         }
-    }
 
-    version_resource: Optional[Dict[str, Any]] = None
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-    try:
-        version_resource = get_version_resource(version['uid'], namespace)
+        self = cls(name=version['uid'], namespace=namespace, logger=logger)
+        self.logger.debug(f'Creating or replacing version resource {namespace}/{version["uid"]}.')
+        custom_objects_api = kubernetes.client.CustomObjectsApi()
+        try:
+            self.populate()
 
-        body['metadata']['resourceVersion'] = version_resource['metadata']['resourceVersion']
+            body['metadata']['resourceVersion'] = self['metadata']['resourceVersion']
 
-        # Keep other labels and annotations but overwrite our own
-        version_resource['metadata']['labels'] = version_resource['metadata'].get('labels', {})
-        version_resource['metadata']['labels'].update(body['metadata']['labels'])
-        body['metadata']['labels'] = version_resource['metadata']['labels']
+            # Keep other labels and annotations but overwrite our own
+            self['metadata']['labels'] = self['metadata'].get('labels', {})
+            self['metadata']['labels'].update(body['metadata']['labels'])
+            body['metadata']['labels'] = self['metadata']['labels']
 
-        version_resource['metadata']['annotations'] = version_resource['metadata'].get('annotations', {})
-        version_resource['metadata']['annotations'].update(body['metadata']['annotations'])
-        body['metadata']['annotations'] = version_resource['metadata']['annotations']
+            self['metadata']['annotations'] = self['metadata'].get('annotations', {})
+            self['metadata']['annotations'].update(body['metadata']['annotations'])
+            body['metadata']['annotations'] = self['metadata']['annotations']
 
-        # Keep other status field but overwrite protected and status
-        version_resource['status'] = version_resource.get('status', {})
-        version_resource['status'].update(body['status'])
-        body['status'] = version_resource['status']
+            # Keep other status field but overwrite protected and status
+            self['status'] = self.get('status', {})
+            self['status'].update(body['status'])
+            body['status'] = self['status']
 
-        version_resource = custom_objects_api.replace_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
-                                                                               version=BENJI_VERSIONS_API_VERSION,
-                                                                               plural=BENJI_VERSIONS_API_PLURAL,
-                                                                               name=version['uid'],
-                                                                               namespace=namespace,
-                                                                               body=body)
-    except ApiException as exception:
-        if exception.status == 404:
-            version_resource = custom_objects_api.create_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
-                                                                                  version=BENJI_VERSIONS_API_VERSION,
-                                                                                  plural=BENJI_VERSIONS_API_PLURAL,
-                                                                                  namespace=namespace,
-                                                                                  body=body)
-        else:
-            raise exception
+            self = custom_objects_api.replace_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                       version=BENJI_VERSIONS_API_VERSION,
+                                                                       plural=BENJI_VERSIONS_API_PLURAL,
+                                                                       name=version['uid'],
+                                                                       namespace=namespace,
+                                                                       body=body)
+        except ApiException as exception:
+            if exception.status == 404:
+                self._k8s_resource = custom_objects_api.create_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                                        version=BENJI_VERSIONS_API_VERSION,
+                                                                                        plural=BENJI_VERSIONS_API_PLURAL,
+                                                                                        namespace=namespace,
+                                                                                        body=body)
+            else:
+                raise exception
 
-    assert isinstance(version_resource, dict)
-    return version_resource
+        return self
 
+    def delete(self) -> None:
+        custom_objects_api = kubernetes.client.CustomObjectsApi()
+        try:
+            self.logger.debug(f'Deleting version resource {self.namespace}/{self.name}.')
+            custom_objects_api.delete_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                               version=BENJI_VERSIONS_API_VERSION,
+                                                               plural=BENJI_VERSIONS_API_PLURAL,
+                                                               name=self.name,
+                                                               namespace=self.namespace,
+                                                               body=kubernetes.client.V1DeleteOptions())
+        except ApiException as exception:
+            if exception.status == 404:
+                self.logger.warning(f'Tried to delete non-existing version resource {self.name} in namespace {self.namespace}.')
+            else:
+                raise exception
 
-def delete_version_resource(name: str, namespace: str) -> None:
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
+    @classmethod
+    def list(cls,
+             *,
+             namespace_label_selector: str = '',
+             label_selector: str = '',
+             logger=None) -> Generator['BenjiVersionResource', None, None]:
+        custom_objects_api = kubernetes.client.CustomObjectsApi()
 
-    try:
-        logger.debug(f'Deleting version resource {namespace}/{name}.')
-        custom_objects_api.delete_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
-                                                           version=BENJI_VERSIONS_API_VERSION,
-                                                           plural=BENJI_VERSIONS_API_PLURAL,
-                                                           name=name,
-                                                           namespace=namespace,
-                                                           body=kubernetes.client.V1DeleteOptions())
-    except ApiException as exception:
-        if exception.status == 404:
-            logger.warning(f'Tried to delete non-existing version resource {name} in namespace {namespace}.')
-        else:
-            raise exception
+        for namespace in list_namespaces(label_selector=namespace_label_selector):
+            list_result = custom_objects_api.list_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
+                                                                           version=BENJI_VERSIONS_API_VERSION,
+                                                                           plural=BENJI_VERSIONS_API_PLURAL,
+                                                                           namespace=namespace.metadata.name,
+                                                                           label_selector=label_selector)
+
+            for k8s_resource in list_result['items']:
+                self = cls(name=k8s_resource['metadata']['name'],
+                           namespace=k8s_resource['metadata']['namespace'],
+                           logger=logger)
+                self._k8s_resource = k8s_resource
+                yield self
+
+    def __getitem__(self, item):
+        return self._k8s_resource[item]
+
+    def __setitem__(self, key, value):
+        self._k8s_resource[key] = value
+
+    def __delitem__(self, key):
+        del self._k8s_resource[key]
+
+    def __len__(self):
+        return len(self._k8s_resource)
+
+    def __iter__(self):
+        return iter(self._k8s_resource)
+
+    def __hash__(self):
+        return hash((self.name, self.namespace))
 
 
 def list_namespaces(
@@ -326,31 +380,6 @@ def list_namespaces(
     list_namespace_result = core_v1_api.list_namespace(label_selector=label_selector)
     for namespace in list_namespace_result.items:
         yield namespace
-
-
-def list_version_resources(*,
-                           namespace_label_selector: str = '',
-                           label_selector: str = '') -> Generator[Any, None, None]:
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-
-    for namespace in list_namespaces(label_selector=namespace_label_selector):
-        list_version_result = custom_objects_api.list_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
-                                                                               version=BENJI_VERSIONS_API_VERSION,
-                                                                               plural=BENJI_VERSIONS_API_PLURAL,
-                                                                               namespace=namespace.metadata.name,
-                                                                               label_selector=label_selector)
-
-        for version_resource in list_version_result['items']:
-            yield version_resource
-
-
-def get_version_resource(name: str, namespace: str) -> Any:
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-    return custom_objects_api.get_namespaced_custom_object(group=BENJI_VERSIONS_API_GROUP,
-                                                           version=BENJI_VERSIONS_API_VERSION,
-                                                           plural=BENJI_VERSIONS_API_PLURAL,
-                                                           namespace=namespace,
-                                                           name=name)
 
 
 def build_version_labels_rbd(*, pvc, pv, pool: str, image: str, cluster_fsid: str) -> Dict[str, str]:

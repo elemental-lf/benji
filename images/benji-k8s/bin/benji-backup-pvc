@@ -288,7 +288,7 @@ version = ceph.backup(volume=volume,
                       version_labels=version_labels,
                       context=context)
 
-benji.helpers.kubernetes.update_version_resource(version=version)
+benji.helpers.kubernetes.BenjiVersionResource.create_or_replace(version=version)
 
 prometheus.push(prometheus.backup_registry)
 sys.exit(0)
