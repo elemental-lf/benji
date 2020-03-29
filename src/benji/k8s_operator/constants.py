@@ -43,6 +43,7 @@ K8S_RESTORE_SPEC_STORAGE_CLASS_NAME = 'storageClassName'
 
 SCHED_VERSION_RECONCILIATION_JOB = 'version-reconciliation'
 SCHED_CLEANUP_JOB = 'cleanup'
+SCHED_VERSION_STATUS_JOB = 'version-status'
 
 
 class CRD(NamedTuple):
