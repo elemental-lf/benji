@@ -58,7 +58,7 @@ def cleanup_job(*, parent_body: Dict[str, Any], logger):
     JobResource(command, parent_body=parent_body, logger=logger)
 
 
-def versions_status_job():
+def version_status_job():
     benji = BenjiRESTClient(api_endpoint)
 
     incomplete_versions_count = len(
@@ -86,13 +86,20 @@ def install_maintenance_jobs(*, parent_body: Dict[str, Any], logger) -> None:
                                              name=SCHED_CLEANUP_JOB,
                                              id=SCHED_CLEANUP_JOB)
 
+        # FIXME: Add extra schedule config for this job
+        benji.k8s_operator.scheduler.add_job(lambda: version_status_job(),
+                                             CronTrigger().from_crontab(cleanup_schedule),
+                                             name=SCHED_VERSION_STATUS_JOB,
+                                             id=SCHED_VERSION_STATUS_JOB)
+
 
 def remove_maintenance_jobs() -> None:
-    try:
+    with suppress(JobLookupError):
         benji.k8s_operator.scheduler.remove_job(SCHED_VERSION_RECONCILIATION_JOB)
+    with suppress(JobLookupError):
         benji.k8s_operator.scheduler.remove_job(SCHED_CLEANUP_JOB)
-    except JobLookupError:
-        pass
+    with suppress(JobLookupError):
+        benji.k8s_operator.scheduler.remove_job(SCHED_VERSION_STATUS_JOB)
 
 
 @kopf.on.startup()
