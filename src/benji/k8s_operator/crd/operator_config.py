@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Optional, Dict, Any
 
 import kopf
@@ -8,17 +9,15 @@ from apscheduler.triggers.cron import CronTrigger
 
 import benji.k8s_operator
 from benji.helpers.constants import LABEL_INSTANCE
-from benji.helpers.kubernetes import service_account_namespace
-from benji.helpers.kubernetes import update_version_resource, list_version_resources, delete_version_resource
+from benji.helpers.kubernetes import service_account_namespace, BenjiVersionResource
 from benji.helpers.prometheus import version_status_older_incomplete, version_status_invalid, push, \
     version_status_registry
 from benji.helpers.restapi import BenjiRESTClient
 from benji.helpers.settings import benji_instance
-from benji.helpers.utils import random_string
 from benji.k8s_operator import api_endpoint
 from benji.k8s_operator.constants import CRD_OPERATOR_CONFIG, LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
-    SCHED_CLEANUP_JOB
-from benji.k8s_operator.resources import create_job, track_job_status
+    SCHED_CLEANUP_JOB, SCHED_VERSION_STATUS_JOB
+from benji.k8s_operator.resources import track_job_status, JobResource
 
 
 def set_operator_config() -> None:
@@ -40,22 +39,18 @@ def reconciliate_versions_job(*, logger):
     versions_seen = set()
     for version in versions:
         try:
-            version_resource = update_version_resource(version=version)
+            version_resource = BenjiVersionResource.create_or_replace(version=version, logger=logger)
         except KeyError as exception:
             logger.warning(str(exception))
             continue
 
-        version_resource_name = version_resource['metadata']['name']
-        version_resource_namespace = version_resource['metadata']['namespace']
-        versions_seen.add(f'{version_resource_namespace}/{version_resource_name}')
+        versions_seen.add(version_resource)
 
     logger.debug(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
-    for version_resource in list_version_resources(label_selector=f'{LABEL_INSTANCE}={benji_instance}'):
-        version_resource_name = version_resource['metadata']['name']
-        version_resource_namespace = version_resource['metadata']['namespace']
-
-        if f'{version_resource_namespace}/{version_resource_name}' not in versions_seen:
-            delete_version_resource(version_resource_name, namespace=version_resource_namespace)
+    for version_resource in BenjiVersionResource.list(label_selector=f'{LABEL_INSTANCE}={benji_instance}',
+                                                      logger=logger):
+        if version_resource not in versions_seen:
+            version_resource.delete()
 
 
 def cleanup_job(*, parent_body: Dict[str, Any], logger):
