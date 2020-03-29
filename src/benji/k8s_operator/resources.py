@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Mapping
 
 import kubernetes
 from kubernetes.client.rest import ApiException
@@ -12,55 +12,70 @@ from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPA
     RESOURCE_JOB_STATUS_RUNNING, RESOURCE_JOB_STATUS_PENDING, RESOURCE_STATUS_DEPENDANT_JOBS
 
 
-def setup_manifest(*,
-                   manifest: Dict[str, Any],
-                   namespace: str,
-                   parent_body: Dict[str, Any],
-                   name_override: str = None) -> None:
-    if manifest['kind'] != 'Job':
-        raise RuntimeError(f'Unhandled kind: {manifest["kind"]}.')
+class JobResource(Mapping):
 
-    manifest['metadata']['namespace'] = namespace
+    @staticmethod
+    def _setup_manifest(*,
+                        manifest: Dict[str, Any],
+                        namespace: str,
+                        parent_body: Dict[str, Any],
+                        name_override: str = None) -> None:
+        if manifest['kind'] != 'Job':
+            raise RuntimeError(f'Unhandled kind: {manifest["kind"]}.')
 
-    # Generate unique name with parent's metadata.name as prefix
-    if 'name' in manifest['metadata']:
-        del manifest['metadata']['name']
-    if name_override is None:
-        manifest['metadata']['generateName'] = '{}-'.format(parent_body['metadata']['name'])
-    else:
-        manifest['metadata']['generateName'] = '{}-'.format(name_override)
+        manifest['metadata']['namespace'] = namespace
 
-    # Label it so we can filter incoming events correctly
-    labels = {
-        LABEL_PARENT_KIND: parent_body['kind'],
-        LABEL_PARENT_NAME: parent_body['metadata']['name'],
-    }
+        # Generate unique name with parent's metadata.name as prefix
+        if 'name' in manifest['metadata']:
+            del manifest['metadata']['name']
+        if name_override is None:
+            manifest['metadata']['generateName'] = '{}-'.format(parent_body['metadata']['name'])
+        else:
+            manifest['metadata']['generateName'] = '{}-'.format(name_override)
 
-    if 'namespace' in parent_body['metadata']:
-        labels[LABEL_PARENT_NAMESPACE] = parent_body['metadata']['namespace']
+        # Label it so we can filter incoming events correctly
+        labels = {
+            LABEL_PARENT_KIND: parent_body['kind'],
+            LABEL_PARENT_NAME: parent_body['metadata']['name'],
+        }
 
-    manifest['metadata']['labels'] = manifest['metadata'].get('labels', {})
-    manifest['metadata']['labels'].update(labels)
+        if 'namespace' in parent_body['metadata']:
+            labels[LABEL_PARENT_NAMESPACE] = parent_body['metadata']['namespace']
 
-    manifest['spec']['template']['metadata'] = manifest['spec']['template'].get('metadata', {})
-    manifest['spec']['template']['metadata']['labels'] = manifest['spec']['template']['metadata'].get('labels', {})
-    manifest['spec']['template']['metadata']['labels'].update(labels)
+        manifest['metadata']['labels'] = manifest['metadata'].get('labels', {})
+        manifest['metadata']['labels'].update(labels)
 
+        manifest['spec']['template']['metadata'] = manifest['spec']['template'].get('metadata', {})
+        manifest['spec']['template']['metadata']['labels'] = manifest['spec']['template']['metadata'].get('labels', {})
+        manifest['spec']['template']['metadata']['labels'].update(labels)
 
-def create_job(command: List[str], *, parent_body: Dict[str, Any], logger) -> kubernetes.client.models.v1_job.V1Job:
-    if benji.k8s_operator.operator_config is None:
-        raise RuntimeError('Operator configuration has not been loaded.')
+    def __init__(self, command: List[str], *, parent_body: Dict[str, Any], logger) -> None:
+        if benji.k8s_operator.operator_config is None:
+            raise RuntimeError('Operator configuration has not been loaded.')
 
-    job_manifest = copy.deepcopy(benji.k8s_operator.operator_config['spec']['jobTemplate'])
-    setup_manifest(manifest=job_manifest, namespace=service_account_namespace(), parent_body=parent_body)
+        job_manifest = copy.deepcopy(benji.k8s_operator.operator_config['spec']['jobTemplate'])
+        self._setup_manifest(manifest=job_manifest, namespace=service_account_namespace(), parent_body=parent_body)
 
-    job_manifest['spec']['template']['spec']['containers'][0]['command'] = command
-    job_manifest['spec']['template']['spec']['containers'][0]['args'] = []
+        job_manifest['spec']['template']['spec']['containers'][0]['command'] = command
+        job_manifest['spec']['template']['spec']['containers'][0]['args'] = []
 
-    # Actually create the job via the Kubernetes API.
-    logger.debug(f'Creating Job: {job_manifest}')
-    batch_v1_api = kubernetes.client.BatchV1Api()
-    return batch_v1_api.create_namespaced_job(namespace=service_account_namespace(), body=job_manifest)
+        # Actually create the job via the Kubernetes API.
+        logger.debug(f'Creating Job: {job_manifest}')
+        batch_v1_api = kubernetes.client.BatchV1Api()
+        self._k8s_resource = batch_v1_api.create_namespaced_job(namespace=service_account_namespace(),
+                                                                body=job_manifest)
+
+    def __getitem__(self, item):
+        return self._k8s_resource[item]
+
+    def __len__(self):
+        return len(self._k8s_resource)
+
+    def __iter__(self):
+        return iter(self._k8s_resource)
+
+    def __hash__(self):
+        return hash((self._k8s_resource['metadata']['name'], self._k8s_resource['metadata']['namespace']))
 
 
 def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -> Dict[str, Any]:

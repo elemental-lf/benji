@@ -10,7 +10,7 @@ import benji.k8s_operator
 from benji.helpers.kubernetes import list_namespaces
 from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILD_CHANGED
-from benji.k8s_operator.resources import create_job, track_job_status, delete_dependant_jobs
+from benji.k8s_operator.resources import track_job_status, delete_dependant_jobs, JobResource
 from benji.k8s_operator.utils import cr_to_job_name
 
 
@@ -40,7 +40,7 @@ def backup_scheduler_job(*,
             continue
 
         command = ['benji-backup-pvc', namespace, pvc.metadata.name]
-        create_job(command, parent_body=parent_body, logger=logger)
+        JobResource(command, parent_body=parent_body, logger=logger)
 
 
 @kopf.on.resume(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
