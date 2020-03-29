@@ -76,7 +76,7 @@ Topic :: System :: Archiving :: Backup
         #'rbd': ['rados', 'rbd'],
         'dev': ['parameterized', 'wheel', 'yapf', 'mypy'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
-        'helpers': ['blinker>=1.4,<2', 'prometheus_client>=0.7.0,<1', 'kubernetes>=10.0.0,<11'],
+        'helpers': ['blinker>=1.4,<2', 'prometheus_client>=0.7.0,<1', 'kubernetes>=11.0.0,<12'],
         'k8s-operator': ['kopf==0.26', 'kubernetes>=10.0.1,<11', 'apscheduler>=3.6.3,<4'],
         'rest-api': ['bottle>=0.12.16,<0.13.0', 'gunicorn>=19.9.0,<20', 'webargs>=5.3.1,<6', 'requests>=2.22.0,<3'],
     },

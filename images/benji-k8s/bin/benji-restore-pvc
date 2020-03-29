@@ -6,8 +6,9 @@ import time
 
 import kubernetes
 from kubernetes.client.rest import ApiException
+from kubernetes.utils import parse_quantity
 
-from benji.helpers.kubernetes import load_config, parse_quantity, create_pvc, determine_rbd_image_location
+from benji.helpers.kubernetes import load_config, create_pvc, determine_rbd_image_location
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
 
