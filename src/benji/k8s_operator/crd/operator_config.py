@@ -55,10 +55,7 @@ def reconciliate_versions_job(*, logger):
 
 def cleanup_job(*, parent_body: Dict[str, Any], logger):
     command = ['benji-command', 'cleanup']
-    job_name = f'{SCHED_CLEANUP_JOB}:{random_string(8)}'
-    benji.k8s_operator.scheduler.add_job(lambda: create_job(command, parent_body=parent_body, logger=logger),
-                                         name=job_name,
-                                         id=job_name)
+    JobResource(command, parent_body=parent_body, logger=logger)
 
 
 def versions_status_job():

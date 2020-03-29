@@ -9,13 +9,13 @@ import benji.k8s_operator
 from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator.constants import CRD_RETENTION_SCHEDULE, CRD_CLUSTER_RETENTION_SCHEDULE, LABEL_PARENT_KIND
-from benji.k8s_operator.resources import create_job, track_job_status, delete_dependant_jobs
+from benji.k8s_operator.resources import track_job_status, delete_dependant_jobs, JobResource
 from benji.k8s_operator.utils import cr_to_job_name
 
 
 def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body, logger):
     command = ['benji-command', 'enforce', retention_rule, match_versions]
-    create_job(command, parent_body=parent_body, logger=logger)
+    JobResource(command, parent_body=parent_body, logger=logger)
 
 
 @kopf.on.resume(CRD_RETENTION_SCHEDULE.api_group, CRD_RETENTION_SCHEDULE.api_version, CRD_RETENTION_SCHEDULE.plural)
