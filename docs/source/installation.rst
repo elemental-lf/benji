@@ -46,7 +46,7 @@ can be installed via private repository::
     apt-get install --no-install-recommends software-properties-common python-software-properties
     add-apt-repository ppa:deadsnakes/ppa
     apt-get update
-    apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
+    apt-get install --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 
 .. NOTE:: For more information about this Personal Package Archive (PPA)
     please see https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa.
