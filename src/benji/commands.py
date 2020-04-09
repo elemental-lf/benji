@@ -503,9 +503,8 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def rest_api(self, bind_address: str, bind_port: int, threads: int) -> None:
-        from benji.restapi import RestAPI
-        api = RestAPI(self.config)
-        logger.info(f'Starting REST API via gunicorn on {bind_address}:{bind_port}.')
-        debug = bool(logger.isEnabledFor(logging.DEBUG))
-        api.run(bind_address=bind_address, bind_port=bind_port, threads=threads, debug=debug)
+    def api_server(self, queue: str, threads: int) -> None:
+        from benji.api import APIServer
+        api = APIServer(self.config, queue)
+        logger.info(f'Starting API server for queue {queue}.')
+        api.serve()
