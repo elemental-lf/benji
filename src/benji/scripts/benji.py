@@ -269,12 +269,11 @@ def main():
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
 
-    # REST-API
+    # API-SERVER
     if enable_experimental:
-        p = subparsers_root.add_parser('rest-api', help='Start REST API server')
-        p.set_defaults(func='rest_api')
-        p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
-        p.add_argument('-p', '--bind-port', default=7746, type=int, help='Bind to the specified port')
+        p = subparsers_root.add_parser('api-server', help='Start REST API server')
+        p.set_defaults(func='api_server')
+        p.add_argument('-q', '--queue', default='benji-rpc', help='Queue to listen on for messages')
         p.add_argument('--threads', default=4, type=int, help='Number of worker threads')
 
     # DU
