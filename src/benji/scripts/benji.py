@@ -275,6 +275,11 @@ def main():
         p.set_defaults(func='api_server')
         p.add_argument('-q', '--queue', default='benji-rpc', help='Queue to listen on for messages')
         p.add_argument('--threads', default=4, type=int, help='Number of worker threads')
+        p.add_argument('-t',
+                       '--inactivity-timeout',
+                       default=0,
+                       type=int,
+                       help='Inactivity timeout for incoming requests (0 to disable)')
 
     # DU
     p = subparsers_root.add_parser('storage-usage', help='Provide storage usage statistics')

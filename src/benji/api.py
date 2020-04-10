@@ -15,8 +15,6 @@ from benji.amqprpc import AMQPRPCServer, AMQPRPCClient
 from benji.utils import hints_from_rbd_diff, InputValidation, random_string
 from benji.versions import VERSIONS
 
-AMPQ_DEFAULT_SERVER_QUEUE = 'benji-rpc'
-
 
 def register_as_task():
 
@@ -35,8 +33,8 @@ def register_as_task():
 
 class APIServer:
 
-    def __init__(self, config: Config, queue: str = AMPQ_DEFAULT_SERVER_QUEUE) -> None:
-        self._rpc_server = AMQPRPCServer(queue=queue)
+    def __init__(self, *, config: Config, queue: str, threads: int, inactivity_timeout: int) -> None:
+        self._rpc_server = AMQPRPCServer(queue=queue, threads=threads, inactivity_timeout=inactivity_timeout)
         self._config = config
         self._install_tasks()
 
@@ -356,13 +354,13 @@ class APIServer:
 
     @register_as_task()
     def terminate(self) -> bool:
-        self._rpc_server.close()
+        self._rpc_server.terminate()
         return True
 
 
 class APIClient:
 
-    def __init__(self, queue: str = AMPQ_DEFAULT_SERVER_QUEUE) -> None:
+    def __init__(self, queue: str) -> None:
         self._rpc_client = AMQPRPCClient(queue=queue)
         self._create_tasks()
 
@@ -379,6 +377,7 @@ class APIClient:
         method_name = re.sub(r'[^\d\w_]', '_', name)
 
         func_source = f'def {method_name}(self{parameters}):\n  return self._rpc_client.call(\'{name}\'{arguments})'
+        print(func_source)
         module_code = compile(func_source, '<unknown>', 'exec')
         func_code = [c for c in module_code.co_consts if isinstance(c, types.CodeType)][0]
 
@@ -388,3 +387,6 @@ class APIClient:
         for attr in [t[1] for t in inspect.getmembers(APIServer)]:
             if hasattr(attr, 'rpc_task'):
                 self._create_task(attr.rpc_task['task'], attr.rpc_task['webargs_argmap'])
+
+    def close(self) -> None:
+        self._rpc_client.close()
