@@ -10,7 +10,7 @@ import benji.k8s_operator
 from benji.helpers.kubernetes import list_namespaces
 from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILD_CHANGED
-from benji.k8s_operator.resources import track_job_status, delete_dependant_jobs, JobResource
+from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, JobResource
 from benji.k8s_operator.utils import cr_to_job_name
 
 
@@ -90,7 +90,7 @@ def benji_backup_schedule_delete(name: str, namespace: str, body: Dict[str, Any]
         benji.k8s_operator.scheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
-    delete_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
+    delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_BACKUP_SCHEDULE.name})
@@ -107,3 +107,17 @@ def benji_track_job_status_backup_schedule(**_) -> Optional[Dict[str, Any]]:
 @kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: CRD_CLUSTER_BACKUP_SCHEDULE.name})
 def benji_track_job_status_cluster_backup_schedule(**_) -> Optional[Dict[str, Any]]:
     return track_job_status(crd=CRD_CLUSTER_BACKUP_SCHEDULE, **_)
+
+
+@kopf.timer(CRD_BACKUP_SCHEDULE.api_group,
+            CRD_BACKUP_SCHEDULE.api_version,
+            CRD_BACKUP_SCHEDULE.plural,
+            initial_delay=60,
+            interval=60)
+@kopf.timer(CRD_CLUSTER_BACKUP_SCHEDULE.api_group,
+            CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
+            CRD_CLUSTER_BACKUP_SCHEDULE.plural,
+            initial_delay=60,
+            interval=60)
+def benji_backup_schedule_job_gc(name: str, namespace: str):
+    pass

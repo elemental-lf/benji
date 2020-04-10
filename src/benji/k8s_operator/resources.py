@@ -1,7 +1,8 @@
 import copy
-from typing import Dict, Any, List, Optional, Mapping
+from typing import Dict, Any, List, Optional, Mapping, Sequence, NamedTuple
 
 import kubernetes
+import pykube
 from kubernetes.client.rest import ApiException
 
 import benji.k8s_operator
@@ -78,6 +79,32 @@ class JobResource(Mapping):
         return hash((self._k8s_resource['metadata']['name'], self._k8s_resource['metadata']['namespace']))
 
 
+def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,
+               storage_class_name: str) -> pykube.PersistentVolumeClaim:
+    manifest = {
+        'kind': 'PersistentVolumeClaim',
+        'apiVersion': 'v1',
+        'metadata': {
+            'namespace': pvc_namespace,
+            'name': pvc_name,
+        },
+        'spec': {
+            'storageClassName': storage_class_name,
+            'accessModes': ['ReadWriteOnce'],
+            'resources': {
+                'requests': {
+                    'storage': pvc_size
+                }
+            }
+        }
+    }
+
+    api = pykube.HTTPClient(pykube.KubeConfig.from_file())
+    pvc = pykube.PersistentVolumeClaim(api, manifest)
+    pvc.create()
+    return pvc
+
+
 def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -> Dict[str, Any]:
     reference = {
         'name': resource_dict['metadata']['name'],
@@ -86,13 +113,7 @@ def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -
     }
 
     if include_gvk:
-        reference.update({
-            # There is a difference between the dicts provided by Kopf and the official Kubernetes client.
-            'apiVersion':
-                resource_dict['apiVersion'] if 'apiVersion' in resource_dict else resource_dict['api_version'],
-            'kind':
-                resource_dict['kind'],
-        })
+        reference.update({'apiVersion': resource_dict['apiVersion'], 'kind': resource_dict['kind']})
 
     return reference
 
@@ -176,20 +197,39 @@ def delete_from_status_list(lst: List, resource: Any) -> List[Dict[str, any]]:
     ]
 
 
-def build_dependant_job_status(job_status: Dict[str, Any]) -> Dict[str, Any]:
-    dependant_job_status = {
-        key: job_status[key] for key in (JOB_STATUS_START_TIME, JOB_STATUS_COMPLETION_TIME) if key in job_status
-    }
+class _DependantJobStatus(NamedTuple):
+    start_time: str
+    completion_time: str
+    status: str
 
+
+def derive_job_status(job_status: Dict[str, Any]) -> _DependantJobStatus:
     if JOB_STATUS_COMPLETION_TIME in job_status:
-        dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = RESOURCE_JOB_STATUS_SUCCEEDED
+        status = RESOURCE_JOB_STATUS_SUCCEEDED
     elif JOB_STATUS_START_TIME in job_status:
         if JOB_STATUS_FAILED in job_status and job_status[JOB_STATUS_FAILED] > 0:
-            dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = RESOURCE_JOB_STATUS_FAILED
+            status = RESOURCE_JOB_STATUS_FAILED
         else:
-            dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = RESOURCE_JOB_STATUS_RUNNING
+            status = RESOURCE_JOB_STATUS_RUNNING
     else:
-        dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = RESOURCE_JOB_STATUS_PENDING
+        status = RESOURCE_JOB_STATUS_PENDING
+
+    start_time = job_status.get(JOB_STATUS_START_TIME, None)
+    completion_time = job_status.get(JOB_STATUS_COMPLETION_TIME, None)
+
+    return _DependantJobStatus(start_time=start_time, completion_time=completion_time, status=status)
+
+
+def build_dependant_job_status(job_status: Dict[str, Any]) -> Dict[str, Any]:
+    derived_status = derive_job_status(job_status)
+
+    dependant_job_status = {}
+    if derived_status.start_time is not None:
+        dependant_job_status[JOB_STATUS_START_TIME] = derived_status.start_time
+    if derived_status.completion_time is not None:
+        dependant_job_status[JOB_STATUS_COMPLETION_TIME] = derived_status.completion_time
+
+    dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = derived_status.status
 
     return dependant_job_status
 
@@ -201,7 +241,7 @@ def build_resource_status_dependant_jobs(status: Dict[str, Any],
         dependant_jobs = delete_from_status_list(status.get(RESOURCE_STATUS_DEPENDANT_JOBS, []), job)
     else:
         dependant_jobs = update_status_list(status.get(RESOURCE_STATUS_DEPENDANT_JOBS, []), job,
-                                            build_dependant_job_status(job['status']))
+                                            build_dependant_job_status(job))
 
     return {RESOURCE_STATUS_DEPENDANT_JOBS: dependant_jobs}
 
@@ -247,12 +287,9 @@ def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any
             raise exception
 
 
-def delete_dependant_jobs(*, name: str, namespace: str, logger, kind: str) -> None:
+def _delete_dependant_jobs(*, jobs: Sequence[kubernetes.client.V1Job], logger) -> None:
     batch_v1_api = kubernetes.client.BatchV1Api()
-    jobs = batch_v1_api.list_namespaced_job(
-        namespace=service_account_namespace(),
-        label_selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
-    for job in jobs.items:
+    for job in jobs:
         try:
             logger.info(f'Deleting dependant job {job.metadata.namespace}/{job.metadata.name}.')
             batch_v1_api.delete_namespaced_job(namespace=job.metadata.namespace, name=job.metadata.name)
@@ -261,3 +298,19 @@ def delete_dependant_jobs(*, name: str, namespace: str, logger, kind: str) -> No
                 logger.warning(f'Job {job.metadata.namespace}/{job.metadata.name} has gone away before it could be deleted.')
             else:
                 raise exception
+
+
+def delete_all_dependant_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
+    batch_v1_api = kubernetes.client.BatchV1Api()
+    jobs = batch_v1_api.list_namespaced_job(
+        namespace=service_account_namespace(),
+        label_selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}').items
+    _delete_dependant_jobs(jobs=jobs, logger=logger)
+
+
+# def delete_old_dependant_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
+#     batch_v1_api = kubernetes.client.BatchV1Api()
+#     jobs = batch_v1_api.list_namespaced_job(
+#             namespace=service_account_namespace(),
+#             label_selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}').items
+#     failed_jobs = [job for job in jobs if build_dependant_job_status(job['status'])[]]

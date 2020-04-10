@@ -67,19 +67,11 @@ k8s_resource('benji', extra_pod_selectors=[{'app.kubernetes.io/managed-by': 'ben
 
 k8s_kind('BenjiOperatorConfig', image_json_path=['{.spec.jobTemplate.spec.template.spec.containers[0].image}'])
 
-# See https://github.com/windmilleng/tilt/issues/2805.
-#
-#helm_template = helm('charts/benji',
-#     namespace='rook-ceph',
-#     name='benji',
-#     values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml'])
+helm_template = helm(
+    'charts/benji',
+    namespace='rook-ceph',
+    name='benji',
+    values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml'])
+k8s_yaml(helm_template)
 
 k8s_yaml(listdir('charts/benji/crds'))
-
-helm_template = str(
-    helm('charts/benji',
-         namespace='rook-ceph',
-         name='benji',
-         values=['../../dual/dual/addons/values/global/benji.yaml', '../../dual/dual/addons/values/dev/benji.yaml']))
-helm_template = helm_template[helm_template.index('---'):]
-k8s_yaml(blob(helm_template))

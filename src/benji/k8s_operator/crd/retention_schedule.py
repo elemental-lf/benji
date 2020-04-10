@@ -9,7 +9,7 @@ import benji.k8s_operator
 from benji.helpers.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator.constants import CRD_RETENTION_SCHEDULE, CRD_CLUSTER_RETENTION_SCHEDULE, LABEL_PARENT_KIND
-from benji.k8s_operator.resources import track_job_status, delete_dependant_jobs, JobResource
+from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, JobResource
 from benji.k8s_operator.utils import cr_to_job_name
 
 
@@ -63,7 +63,7 @@ def benji_retention_schedule_delete(name: str, namespace: str, body: Dict[str, A
         benji.k8s_operator.scheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
-    delete_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
+    delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RETENTION_SCHEDULE.name})
