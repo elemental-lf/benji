@@ -503,8 +503,8 @@ class Commands:
             if benji_obj:
                 benji_obj.close()
 
-    def api_server(self, queue: str, threads: int) -> None:
+    def api_server(self, queue: str, threads: int, inactivity_timeout: int) -> None:
         from benji.api import APIServer
-        api = APIServer(self.config, queue)
-        logger.info(f'Starting API server for queue {queue}.')
+        api = APIServer(config=self.config, queue=queue, threads=threads, inactivity_timeout=inactivity_timeout)
+        logger.info(f'Starting API server, press CTRL-C to terminate it.')
         api.serve()
