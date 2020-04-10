@@ -7,7 +7,6 @@ from apscheduler.schedulers.background import BaseScheduler
 from .constants import API_ENDPOINT_ENV_NAME, DEFAULT_API_ENDPOINT, OPERATOR_CONFIG_ENV_NAME, \
     DEFAULT_OPERATOR_CONFIG_NAME
 
-api_endpoint = os.getenv(API_ENDPOINT_ENV_NAME, DEFAULT_API_ENDPOINT)
 operator_config_name = os.getenv(OPERATOR_CONFIG_ENV_NAME, DEFAULT_OPERATOR_CONFIG_NAME)
 
 operator_config: Optional[Dict[str, Any]] = None

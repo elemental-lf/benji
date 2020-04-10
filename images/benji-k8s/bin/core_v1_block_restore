@@ -8,7 +8,7 @@ import kubernetes
 from kubernetes.client.rest import ApiException
 from kubernetes.utils import parse_quantity
 
-from benji.helpers.kubernetes import load_config, create_pvc, determine_rbd_image_location
+from benji.helpers.kubernetes import create_pvc, determine_rbd_image_location
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
 
@@ -33,10 +33,6 @@ parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
 parser.add_argument(metavar='storage_class', dest='storage_class', help='Storage class for the new PVC')
 
 args = parser.parse_args()
-
-load_config()
-core_v1_api = kubernetes.client.CoreV1Api()
-custom_objects_api = kubernetes.client.CustomObjectsApi()
 
 benji_ls = subprocess_run(
     ['benji', '--machine-output', '--log-level', benji_log_level, 'ls', f'uid == "{args.version_uid}"'],
