@@ -12,9 +12,8 @@ from benji.helpers.constants import LABEL_INSTANCE
 from benji.helpers.kubernetes import service_account_namespace, BenjiVersionResource
 from benji.helpers.prometheus import version_status_older_incomplete, version_status_invalid, push, \
     version_status_registry
-from benji.helpers.restapi import BenjiRESTClient
+from benji.api import APIClient
 from benji.helpers.settings import benji_instance
-from benji.k8s_operator import api_endpoint
 from benji.k8s_operator.constants import CRD_OPERATOR_CONFIG, LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
     SCHED_CLEANUP_JOB, SCHED_VERSION_STATUS_JOB
 from benji.k8s_operator.resources import track_job_status, JobResource
@@ -31,9 +30,9 @@ def set_operator_config() -> None:
 
 
 def reconciliate_versions_job(*, logger):
-    benji = BenjiRESTClient(api_endpoint)
+    benji = APIClient()
     logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
-    versions = benji.find_versions_with_filter(filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')
+    versions = benji.core_v1_ls(filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')
     logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()
@@ -59,12 +58,12 @@ def cleanup_job(*, parent_body: Dict[str, Any], logger):
 
 
 def version_status_job():
-    benji = BenjiRESTClient(api_endpoint)
+    benji = APIClient()
 
     incomplete_versions_count = len(
-        benji.find_versions_with_filter(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "incomplete" and date < "1 day ago"'))
+        benji.core_v1_ls(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "incomplete" and date < "1 day ago"'))
     invalid_versions_count = len(
-        benji.find_versions_with_filter(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "invalid"'))
+        benji.core_v1_ls(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "invalid"'))
 
     version_status_older_incomplete.set(incomplete_versions_count)
     version_status_invalid.set(invalid_versions_count)

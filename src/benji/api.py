@@ -1,3 +1,6 @@
+import inspect
+import re
+import types
 from io import StringIO
 from typing import List, Optional, Dict, Any
 
@@ -8,19 +11,21 @@ from benji import __version__
 from benji.benji import Benji
 from benji.config import Config
 from benji.database import Version, VersionUid
-from benji.amqprpc import AMQPRPCServer
+from benji.amqprpc import AMQPRPCServer, AMQPRPCClient
 from benji.utils import hints_from_rbd_diff, InputValidation, random_string
 from benji.versions import VERSIONS
 
+AMPQ_DEFAULT_SERVER_QUEUE = 'benji-rpc'
 
-def register_task(task: str):
+
+def register_as_task():
 
     def decorator(func):
-        func.rpc_task = {'task': task}
+        func.rpc_task = {'task': func.__name__}
 
-        annotations = getattr(func, "__annotations__", {})
+        parameters = inspect.Signature.from_callable(func, follow_wrapped=False).parameters
         func.rpc_task['webargs_argmap'] = {
-            name: value for name, value in annotations.items() if isinstance(value, fields.Field) and name != "return"
+            name: value.annotation for name, value in parameters.items() if isinstance(value.annotation, fields.Field)
         }
 
         return func
@@ -29,25 +34,23 @@ def register_task(task: str):
 
 
 class APIServer:
-    CORE_API_VERSION_V1 = 'v1'
-    CORE_API_GROUP = 'core'
 
-    def __init__(self, config: Config, queue: str):
+    def __init__(self, config: Config, queue: str = AMPQ_DEFAULT_SERVER_QUEUE) -> None:
         self._rpc_server = AMQPRPCServer(queue=queue)
         self._config = config
         self._install_tasks()
 
-    def _install_tasks(self):
+    def _install_tasks(self) -> None:
         for kw in dir(self):
             attr = getattr(self, kw)
             if hasattr(attr, 'rpc_task'):
                 self._rpc_server.register_task(attr.rpc_task['task'], attr.rpc_task['webargs_argmap'])(attr)
 
-    def serve(self):
+    def serve(self) -> None:
         self._rpc_server.serve()
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.backup')
-    def _api_v1_backup(
+    @register_as_task()
+    def core_v1_backup(
         self, version_uid: fields.Str(missing=None), volume: fields.Str(required=True),
         snapshot: fields.Str(required=True), source: fields.Str(required=True), rbd_hints: fields.Str(missing=None),
         base_version_uid: fields.Str(missing=None), block_size: fields.Int(missing=None),
@@ -79,8 +82,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.restore')
-    def _api_v1_restore(
+    @register_as_task()
+    def core_v1_restore(
         self, version_uid: fields.Str(required=True), destination: fields.Str(required=True),
         sparse: fields.Bool(missing=False), force: fields.Bool(missing=False),
         database_backend_less: fields.Bool(missing=False)
@@ -98,8 +101,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.get')
-    def _api_v1_get(self, version_uid: fields.Str(required=True)) -> StringIO:
+    @register_as_task()
+    def core_v1_get(self, version_uid: fields.Str(required=True)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
         with Benji(self._config) as benji_obj:
@@ -109,8 +112,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.update')
-    def _api_v1_update(
+    @register_as_task()
+    def core_v1_update(
         self, version_uid: fields.Str(required=True), protected: fields.Bool(missing=None),
         labels: fields.DelimitedList(fields.Str(), missing=None)
     ) -> StringIO:
@@ -135,8 +138,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.rm')
-    def _api_v1_rm(
+    @register_as_task()
+    def core_v1_rm(
         self, version_uid: fields.Str(required=True), force: fields.Bool(missing=False),
         keep_metadata_backup: fields.Bool(missing=False), override_lock: fields.Bool(missing=False)
     ) -> StringIO:
@@ -155,8 +158,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.scrub')
-    def _api_v1_versions_scrub_create(
+    @register_as_task()
+    def core_v1_scrub(
             self, version_uid: fields.Str(required=True), block_percentage: fields.Int(missing=100)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         result = StringIO()
@@ -182,8 +185,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.deep-scrub')
-    def _api_v1_versions_deep_scrub_create(
+    @register_as_task()
+    def core_v1_deep_scrub(
         self, version_uid: fields.Str(required=True), source: fields.Str(missing=None),
         block_percentage: fields.Int(missing=100)
     ) -> StringIO:
@@ -229,23 +232,23 @@ class APIServer:
 
             return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.batch-scrub')
-    def _api_v1_versions_batch_scrub_create(
+    @register_as_task()
+    def core_v1_batch_scrub(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
     ) -> StringIO:
         return self._batch_scrub('batch_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.batch-deep-scrub')
-    def _api_v1_versions_batch_deep_scrub_create(
+    @register_as_task()
+    def core_v1_batch_deep_scrub(
         self, filter_expression: fields.Str(missing=None), version_percentage: fields.Int(missing=100),
         block_percentage: fields.Int(missing=100), group_label: fields.Str(missing=None)
     ) -> StringIO:
         return self._batch_scrub('batch_deep_scrub', filter_expression, version_percentage, block_percentage,
                                  group_label)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.ls')
-    def _api_v1_ls(
+    @register_as_task()
+    def core_v1_ls(
             self, filter_expression: fields.Str(missing=None), include_blocks: fields.Bool(missing=False)) -> StringIO:
         with Benji(self._config) as benji_obj:
             versions = benji_obj.find_versions_with_filter(filter_expression)
@@ -259,46 +262,46 @@ class APIServer:
 
             return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.cleanup')
-    def _api_v1_cleanup(self, override_lock: fields.Bool(missing=False)) -> None:
+    @register_as_task()
+    def core_v1_cleanup(self, override_lock: fields.Bool(missing=False)) -> None:
         with Benji(self._config) as benji_obj:
             benji_obj.cleanup(override_lock=override_lock)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.metadata-backup')
-    def _api_v1_versions_metadata_backup(
+    @register_as_task()
+    def core_v1_metadata_backup(
             self, filter_expression: fields.Str(missing=None), force: fields.Bool(missing=False)) -> None:
         with Benji(self._config) as benji_obj:
             version_uid_objs = [version.uid for version in benji_obj.find_versions_with_filter(filter_expression)]
             benji_obj.metadata_backup(version_uid_objs, overwrite=force)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.metadata-import')
-    def _api_v1_versions_metadata_import(self, data: fields.Str(required=True)) -> None:
+    @register_as_task()
+    def core_v1_metadata_import(self, data: fields.Str(required=True)) -> None:
         with Benji(self._config) as benji_obj:
             benji_obj.metadata_import(data)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.metadata-restore')
-    def _api_v1_versions_metadata_restore(
+    @register_as_task()
+    def core_v1_metadata_restore(
         self, version_uids: fields.DelimitedList(fields.Str, required=True), storage_name: fields.Str(missing=None)
     ) -> None:
         version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         with Benji(self._config) as benji_obj:
             benji_obj.metadata_restore(version_uid_objs, storage_name)
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.storages')
-    def _api_v1_storages(self) -> List[str]:
+    @register_as_task()
+    def core_v1_storages(self) -> List[str]:
         with Benji(self._config) as benji_obj:
             return benji_obj.list_storages()
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.database-init')
-    def _api_v1_database_init_create(self) -> None:
+    @register_as_task()
+    def core_v1_database_init(self) -> None:
         Benji(self._config, init_database=True).close()
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.database-migrate')
-    def _api_v1_database_migrate_create(self) -> None:
+    @register_as_task()
+    def core_v1_database_migrate(self) -> None:
         Benji(self._config, migrate_database=True).close()
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.enforce')
-    def _api_v1_versions_delete_collection(
+    @register_as_task()
+    def core_v1_enforce(
         self, rules_spec: fields.Str(required=True), filter_expression: fields.Str(missing=None),
         dry_run: fields.Bool(missing=False), keep_metadata_backup: fields.Bool(missing=False),
         group_label: fields.Str(missing=None)
@@ -319,8 +322,8 @@ class APIServer:
 
             return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.version-info')
-    def _api_v1_version_info_read(self) -> Dict[str, Any]:
+    @register_as_task()
+    def core_v1_version_info(self) -> Dict[str, Any]:
         result = {
             'version': __version__,
             'configuration_version': {
@@ -339,8 +342,8 @@ class APIServer:
 
         return result
 
-    @register_task(f'{CORE_API_GROUP}.{CORE_API_VERSION_V1}.storage-stats')
-    def _api_v1_storages_read(self, storage_name: str) -> Dict[str, int]:
+    @register_as_task()
+    def core_v1_storage_stats(self, storage_name: str) -> Dict[str, int]:
         with Benji(self._config) as benji_obj:
             objects_count, objects_size = benji_obj.storage_stats(storage_name)
 
@@ -350,3 +353,38 @@ class APIServer:
             }
 
             return result
+
+    @register_as_task()
+    def terminate(self) -> bool:
+        self._rpc_server.close()
+        return True
+
+
+class APIClient:
+
+    def __init__(self, queue: str = AMPQ_DEFAULT_SERVER_QUEUE) -> None:
+        self._rpc_client = AMQPRPCClient(queue=queue)
+        self._create_tasks()
+
+    def _create_task(self, name: str, argmap: Dict[str, fields.Field]) -> None:
+        parameters = arguments = ''
+        if argmap:
+            parameters = ', *'
+            for arg_name, arg_type in argmap.items():
+                default = ''
+                if isinstance(arg_type, fields.Field) and arg_type.required == False:
+                    default = f' = {arg_type.missing}'
+                parameters += f', {arg_name}{default}'
+            arguments = ', ' + ', '.join([f'{name}={name}' for name in argmap.keys()])
+        method_name = re.sub(r'[^\d\w_]', '_', name)
+
+        func_source = f'def {method_name}(self{parameters}):\n  return self._rpc_client.call(\'{name}\'{arguments})'
+        module_code = compile(func_source, '<unknown>', 'exec')
+        func_code = [c for c in module_code.co_consts if isinstance(c, types.CodeType)][0]
+
+        setattr(self, method_name, types.MethodType(types.FunctionType(func_code, globals(), method_name), self))
+
+    def _create_tasks(self) -> None:
+        for attr in [t[1] for t in inspect.getmembers(APIServer)]:
+            if hasattr(attr, 'rpc_task'):
+                self._create_task(attr.rpc_task['task'], attr.rpc_task['webargs_argmap'])
