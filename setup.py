@@ -78,11 +78,11 @@ Topic :: System :: Archiving :: Backup
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
         'helpers': ['blinker>=1.4,<2', 'prometheus_client>=0.7.0,<1', 'kubernetes>=11.0.0,<12'],
         'k8s-operator': ['kopf>=0.27rc3,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4'],
-        'rest-api': ['bottle>=0.12.16,<0.13.0', 'gunicorn>=19.9.0,<20', 'webargs>=5.3.1,<6', 'requests>=2.22.0,<3'],
+        'api': ['webargs>=5.3.1,<6', 'u-msgpack-python>=2.5.2,<3', 'pika>=1.1.0,<2'],
     },
     python_requires='~=3.6',
     entry_points="""
         [console_scripts]
-            benji = benji.scripts.benji:main
+            benji = benji.scripts.cli:main
     """,
 )

@@ -22,7 +22,7 @@ ADD . /benji-source/
 RUN python3.6 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
-	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
+	pip install '/benji-source/[compression,s3,b2,helpers,api]'
 
 FROM centos:7 AS runtime
 
