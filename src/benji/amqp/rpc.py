@@ -175,12 +175,10 @@ class AMQPRPCServer:
     def register_task(self, task: str, func: Callable, *webargs_args, **webargs_kwargs):
         logger.info(f'Installing task {task}.')
 
-        # Drop the first argument, it's the original message dict.
+        # Drop the first argument, it's the original arguments dict.
         @functools.wraps(func)
         def call_task(*task_args, **task_kwargs):
             return func(*task_args[1:], **task_kwargs)
-
-        call_task.__wrapped__ == func
 
         func_webargs = self._arguments_parser.use_kwargs(*webargs_args, **webargs_kwargs)(call_task)
         self._tasks[task] = func_webargs

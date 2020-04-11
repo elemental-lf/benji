@@ -120,20 +120,27 @@ class APIServer:
         return result
 
     @register_as_task
-    def core_v1_update(
-        self, version_uid: fields.Str(required=True), protected: fields.Bool(missing=None),
-        labels: fields.DelimitedList(fields.Str(), missing=None)
-    ) -> StringIO:
+    def core_v1_protect(
+            self, version_uid: fields.Str(required=True), protected: fields.Bool(required=True)) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
-        if labels is not None:
-            label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
-        else:
-            label_add, label_remove = [], []
         result = StringIO()
         with Benji(self._config) as benji_obj:
             if protected is not None:
                 benji_obj.protect(version_uid_obj, protected=protected)
 
+            benji_obj.export_any({'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]},
+                                 result,
+                                 ignore_relationships=[((Version,), ('blocks',))])
+
+        return result
+
+    @register_as_task
+    def core_v1_label(
+            self, version_uid: fields.Str(required=True), labels: fields.List(fields.Str(), required=True)) -> StringIO:
+        version_uid_obj = VersionUid(version_uid)
+        label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
+        result = StringIO()
+        with Benji(self._config) as benji_obj:
             for name, value in label_add:
                 benji_obj.add_label(version_uid_obj, name, value)
             for name in label_remove:
@@ -375,7 +382,6 @@ class APIClient:
 
     def _create_task(self, name: str, argmap: Dict[str, fields.Field]) -> None:
         method_name = re.sub(r'[^\d\w_]', '_', name)
-
         parameters = arguments = ''
         kwdefaults = {}
         if argmap:
@@ -391,9 +397,10 @@ class APIClient:
         func_code = [c for c in module_code.co_consts if isinstance(c, types.CodeType)][0]
         func = types.FunctionType(func_code, globals(), method_name)
         func.__kwdefaults__ = kwdefaults
-        bound_method = types.MethodType(func, self)
+        bound_func = types.MethodType(func, self)
+        # End of ugly as hell
 
-        setattr(self, method_name, bound_method)
+        setattr(self, method_name, bound_func)
 
     def _create_tasks(self) -> None:
         for attr in [t[1] for t in inspect.getmembers(APIServer)]:
