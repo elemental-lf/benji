@@ -82,6 +82,6 @@ Topic :: System :: Archiving :: Backup
     python_requires='~=3.6',
     entry_points="""
         [console_scripts]
-            benji = benji.scripts.benji:main
+            benji = benji.scripts.cli:main
     """,
 )

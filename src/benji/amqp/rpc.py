@@ -1,12 +1,14 @@
+import functools
 import threading
 import time
 import uuid
 from concurrent.futures.thread import ThreadPoolExecutor
 from typing import Any, Dict, Callable
-from io import StringIO
-import json
 
 import pika
+from benji.amqp.message import AMQPMessage, AMQPRPCCall, AMQPRPCResult, AMQPRPCError
+
+from benji.amqp.exception import AMQPMessageDecodeError
 
 from rabbit_clients.clients.config import RABBIT_CONFIG
 from webargs.core import Parser, missing
@@ -45,7 +47,7 @@ def _create_connection() -> pika.BlockingConnection:
     return connection
 
 
-class RabbitRPCParser(Parser):
+class _ArgumentsParser(Parser):
 
     def load_json(self, req, schema) -> Any:
         return req
@@ -73,12 +75,12 @@ class AMQPRPCServer:
                  inactivity_timeout: int = 0) -> None:
         self._queue = queue
         self.inactivity_timeout = inactivity_timeout
-        self._webargs_parser = RabbitRPCParser()
+        self._arguments_parser = _ArgumentsParser()
         self._tasks = {}
         self._connection = self._channel = None
         self._closing = False
         self._last_activity = time.monotonic()
-        self._executor = ThreadPoolExecutor(max_workers=threads)
+        self._executor = ThreadPoolExecutor(max_workers=threads, thread_name_prefix='RPC-Thread')
 
     @property
     def queue(self) -> str:
@@ -113,7 +115,7 @@ class AMQPRPCServer:
             # Reschedule our self
             self._connection.call_later(SERVER_INACTIVITY_TIMER_CHECK_INTERVAL, self._inactivity_timeout_check)
 
-    def _publish_response(self, *, body: Any, method, properties) -> None:
+    def _publish_response(self, *, body: str, method, properties) -> None:
         self._channel.basic_publish(exchange='',
                                     routing_key=properties.reply_to,
                                     properties=pika.BasicProperties(correlation_id=properties.correlation_id,
@@ -121,65 +123,67 @@ class AMQPRPCServer:
                                     body=body)
         self._channel.basic_ack(delivery_tag=method.delivery_tag)
 
-    # Run as a future
-    def _handle_request(self, *, request: Dict[str, Any], method, properties) -> None:
-        task = request['task']
-        logger.info(f'Calling task {task}({request["args"]}).')
-        response = self._tasks[task](request['args'])
+    # Runs as a future
+    def _handle_rpc_call(self, *, message: AMQPRPCCall, method, properties) -> None:
+        thread_name = threading.current_thread().name
+        try:
+            logger.info(f'Thread {thread_name} - Calling task {message.task}({message.arguments}).')
+            try:
+                result = self._tasks[message.task](message.arguments)
+            except Exception as exception:
+                logger.info(f'Thread {thread_name} - Task threw {type(exception).__name__} exception: {str(exception)}')
+                body = AMQPRPCError(correlation_id=properties.correlation_id,
+                                    reason=type(exception).__name__,
+                                    message=str(exception)).marshal()
+            else:
+                logger.info(f'Thread {thread_name} - Task finished successfully.')
+                body = AMQPRPCResult(correlation_id=properties.correlation_id, result=result).marshal()
 
-        if isinstance(response, StringIO):
-            body = response.getvalue()
-        else:
-            body = json.dumps(response, check_circular=True, separators=(',',
-                                                                         ': '), indent=2) if response is not None else 'null'
+            def publish_response():
+                nonlocal body, method, properties
+                self._publish_response(body=body, method=method, properties=properties)
 
-        def publish_response():
-            nonlocal body, method, properties
-            self._publish_response(body=body, method=method, properties=properties)
-
-        self._connection.add_callback_threadsafe(publish_response)
+            self._connection.add_callback_threadsafe(publish_response)
+        except Exception as exception:
+            logger.info(f'Thread {thread_name} - Unexpected exception {type(exception).__name__} while handling RPC call: {str(exception)}')
 
     def _message_handler(self, channel, method, properties, body) -> None:
         self._last_activity = time.monotonic()
         try:
-            request = json.loads(body.decode('utf-8'))
-            if not isinstance(request, dict):
-                raise TypeError(f'Request body has the wrong type {type(request)}.')
-            if 'task' not in request:
-                raise IndexError('Request is missing task key.')
-            if 'args' not in request:
-                raise IndexError('Request is missing args key.')
-            if not isinstance(request['task'], str):
-                raise TypeError(f'Request key task has the wrong type: {type(request["task"])}.')
-            if not isinstance(request['args'], dict):
-                raise TypeError(f'Request key args has the wrong type: {type(request["args"])}.')
-            if request['task'] not in self._tasks:
-                raise FileNotFoundError(f'Request to unknown task: {task}.')
-        except Exception:
-            # Ignore malformed messages
+            message = AMQPMessage.unmarshall(body)
+        except AMQPMessageDecodeError:
+            logger.error(f'Ignoring malformed message: {body}.')
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        if not isinstance(message, AMQPRPCCall):
+            logger.error(f'Ignoring message of type {message.type}.')
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        if message.task not in self._tasks:
+            logger.error(f'RPC call for unknown task: {message.task}.')
             channel.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         def handle_request():
-            nonlocal request, method, properties
-            self._handle_request(request=request, method=method, properties=properties)
+            nonlocal message, method, properties
+            self._handle_rpc_call(message=message, method=method, properties=properties)
 
-        self._executor.submit(handle_request())
+        self._executor.submit(handle_request)
 
-    def register_task(self, task, *webargs_args, **webargs_kwargs) -> Callable:
+    def register_task(self, task: str, func: Callable, *webargs_args, **webargs_kwargs):
+        logger.info(f'Installing task {task}.')
 
-        def wrapper(func):
-            logger.info(f'Installing task {task}.')
+        # Drop the first argument, it's the original message dict.
+        @functools.wraps(func)
+        def call_task(*task_args, **task_kwargs):
+            return func(*task_args[1:], **task_kwargs)
 
-            # Drop the first argument, it's the original message dict.
-            def call_task(*args, **kwargs):
-                return func(*args[1:], **kwargs)
+        call_task.__wrapped__ == func
 
-            func_webargs = self._webargs_parser.use_kwargs(*webargs_args, **webargs_kwargs)(call_task)
-            self._tasks[task] = func_webargs
-            return func
-
-        return wrapper
+        func_webargs = self._arguments_parser.use_kwargs(*webargs_args, **webargs_kwargs)(call_task)
+        self._tasks[task] = func_webargs
 
     def serve(self) -> None:
         while True:
@@ -203,6 +207,7 @@ class AMQPRPCServer:
                 logger.warning(f'Connection to broker was closed because of an error, retrying in {RECONNECT_SLEEP_TIME} seconds.')
                 time.sleep(RECONNECT_SLEEP_TIME)
                 continue
+        # shutdown() will wait for outstanding tasks to finish.
         self._executor.shutdown()
         self._connection.close()
 
@@ -292,9 +297,17 @@ class AMQPRPCClient:
 
     # Run only in AMQP thread context
     def _message_handler(self, channel, method, properties, body) -> None:
-        response = json.loads(body.decode('utf-8'))
+        try:
+            message = AMQPMessage.unmarshall(body)
+        except AMQPMessageDecodeError:
+            logger.error(f'Ignoring malformed message: {body}.')
+            return
+
+        if not isinstance(message, (AMQPRPCResult, AMQPRPCError)):
+            logger.error(f'Ignoring message of type {message.type}.')
+
         with self._responses_cond:
-            self._responses[properties.correlation_id] = response
+            self._responses[properties.correlation_id] = message
             self._responses_cond.notify_all()
 
     # Run only in AMQP thread context
@@ -313,8 +326,8 @@ class AMQPRPCClient:
         return self._queue
 
     def call_async(self, task: str, **kwargs) -> str:
-        body = json.dumps({'task': task, 'args': kwargs})
         correlation_id = str(uuid.uuid4())
+        body = AMQPRPCCall(correlation_id=correlation_id, task=task, arguments=kwargs).marshal()
 
         if self._connection_ready.wait(timeout=self._ready_timeout):
             # There is still a race here if the connection breaks down between getting ready above and using
@@ -333,23 +346,27 @@ class AMQPRPCClient:
         with self._responses_cond:
             return correlation_id in self._responses
 
-    def get_response(self, correlation_id: str) -> Any:
+    def get_result(self, correlation_id: str) -> Any:
         with self._responses_cond:
-            response = self._responses[correlation_id]
+            message = self._responses[correlation_id]
             del self._responses[correlation_id]
-        return response
+
+        if isinstance(message, AMQPRPCError):
+            raise RuntimeError(f'RPC call for task with correlation id {correlation_id} failed: {message.reason} - {message.message}')
+
+        return message.result
 
     def wait_for_response(self, correlation_id: str) -> None:
         with self._responses_cond:
             self._responses_cond.wait_for(lambda: self.response_ready(correlation_id), timeout=self._timeout)
 
         if not self.response_ready(correlation_id):
-            raise TimeoutError(f'Timeout while waiting for response for correlation id {correlation_id}.')
+            raise TimeoutError(f'Timeout while waiting for response for task with correlation id {correlation_id}.')
 
     def call(self, task: str, **kwargs) -> Any:
         correlation_id = self.call_async(task, **kwargs)
         self.wait_for_response(correlation_id)
-        return self.get_response(correlation_id)
+        return self.get_result(correlation_id)
 
     def close(self) -> None:
         logger.info('Requesting termination of connection to broker.')
