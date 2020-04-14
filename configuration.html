@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.8.0 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.8.0.dev69+g095fc91 documentation</title>
   
 
   
@@ -157,6 +157,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#known-issues-with-nbd-client">Known Issues with nbd-client</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
@@ -988,15 +989,34 @@ retry reads this number of times.</p>
 </div>
 <div class="section" id="nbd">
 <h2>NBD<a class="headerlink" href="#nbd" title="Permalink to this headline">¶</a></h2>
-<p>Configuration options pertaining to Benji’s NBD server are located under
-the top-level key <strong>nbd</strong>:</p>
-<p>The only configuration option currently present in the <strong>nbd</strong> dictionary
-is:</p>
+<p>Configuration options pertaining to Benji’s NBD server are located under the top-level key <strong>nbd</strong>.
+While the defaults are suitable for testing they are not suitable for a production use of the NBD server
+functionality as <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> generally is RAM disk today.</p>
+<p>The block cache is bounded by the maximum size setting. The copy-on-write store is only used if data
+is written to an NBD device and a copy-on-write <em>version</em> is created. It holds all the blocks that have
+changed and will be cleaned up when the NBD device is detached and all the changed blocks have been
+written into the COW <em>version</em>. This means that it can grow up to the size of all <em>versions</em> that
+are attached to an NBD device in read-write mode at a time.</p>
+<p>Benji’s NBD server is not protected by any form of authentication and the traffic between the NBD server
+and client is not encrypted. That is why the NBD server only listens on <code class="docutils literal notranslate"><span class="pre">localhost</span></code> by default.</p>
 <ul class="simple">
-<li><p>name: <strong>directory</strong></p></li>
+<li><p>name: <strong>blockCache.directory</strong></p></li>
 <li><p>type: string</p></li>
-<li><p>default: <code class="docutils literal notranslate"><span class="pre">/tmp</span></code></p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">/tmp/benji/nbd/block-cache</span></code></p></li>
 </ul>
+<p>Sets the base directory for the block cache</p>
+<ul class="simple">
+<li><p>name: <strong>blockCache.maximumSize</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">2126512128</span></code></p></li>
+</ul>
+<p>Sets the approximate maximum size of the block cache. The default is 2GB.</p>
+<ul class="simple">
+<li><p>name: <strong>cowStore.directory</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">/tmp/benji/nbd/cow-store</span></code></p></li>
+</ul>
+<p>Sets the base directory for the copy-on-wrote storage area.</p>
 </div>
 <div class="section" id="multiple-instance-installations">
 <h2>Multiple Instance Installations<a class="headerlink" href="#multiple-instance-installations" title="Permalink to this headline">¶</a></h2>

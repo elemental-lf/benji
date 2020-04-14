@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Restore &mdash; Benji Backup 0.8.0 documentation</title>
+  <title>Restore &mdash; Benji Backup 0.8.0.dev69+g095fc91 documentation</title>
   
 
   
@@ -157,6 +157,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#nbd-server">NBD Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#known-issues-with-nbd-client">Known Issues with nbd-client</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#read-write-mount">Read-Write Mount</a></li>
 </ul>
@@ -390,6 +391,14 @@ mounted on any Linux host. The requirements on the Linux host are:</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> contacts Benji’s NBD server and connects an exported <em>version</em> to am NBD block device (<code class="docutils literal notranslate"><span class="pre">/dev/nbd*</span></code>)
 on the Linux host. If the image contains a filesystem it can be mounted normally. You can then search for the relevant
 files and restore them.</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>The NBD server can take some time when it accesses a large <em>version</em> (in the order of multiple Terabytes)
+for the first time. This holds especially true if the <em>version</em> is exported read-write. As a consequence a timeout
+specified on the <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> command line might need to be increased otherwise the connection will time out.</p>
+</div>
+<div class="section" id="known-issues-with-nbd-client">
+<h3>Known Issues with nbd-client<a class="headerlink" href="#known-issues-with-nbd-client" title="Permalink to this headline">¶</a></h3>
 <p>There are some known issues with <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code>:</p>
 <ul class="simple">
 <li><p>There have been numerous problems with different versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> when used together with Benji. Recent
@@ -405,6 +414,7 @@ table. Please use the <code class="docutils literal notranslate"><span class="pr
 will be 512. Newer versions of <code class="docutils literal notranslate"><span class="pre">nbd-client</span></code> already changed the default block size from 1024 to 512 because of
 this. See <a class="reference external" href="https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64">https://github.com/NetworkBlockDevice/nbd/commit/128fd556286ff5d53c5f2b16c4ae5746b5268a64</a>.</p></li>
 </ul>
+</div>
 <div class="section" id="read-only-mount">
 <h3>Read-Only Mount<a class="headerlink" href="#read-only-mount" title="Permalink to this headline">¶</a></h3>
 <p>This command will run the NBD server in read-only mode and wait for incoming connections:</p>
@@ -434,11 +444,9 @@ mount -o ro /dev/nbd0p1 /mnt
 the <code class="docutils literal notranslate"><span class="pre">/dev/nbd0</span></code> device can be mounted directly. Some filesystem will require additional mount options as they try
 to write to the device even when <code class="docutils literal notranslate"><span class="pre">ro</span></code> is specified.</p>
 <p>The NBD server will signal an incoming connection:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span> INFO: Incoming connection from <span class="m">127</span>.0.0.1:33714
-DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">7</span>, <span class="nv">len</span><span class="o">=</span><span class="m">17</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;\x00\x00\x00\x0bV0000000001\x00\x00&#39;</span>
-DEBUG: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span>: <span class="nv">opt</span><span class="o">=</span><span class="m">1</span>, <span class="nv">len</span><span class="o">=</span><span class="m">11</span>, <span class="nv">data</span><span class="o">=</span>b<span class="s1">&#39;V0000000001&#39;</span>
- INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span> Negotiated export: V0000000001
- INFO: nbd is <span class="nb">read</span> only.
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: Incoming connection from <span class="m">127</span>.0.0.1:33714
+INFO: <span class="o">[</span><span class="m">127</span>.0.0.1:33714<span class="o">]</span> Negotiated export: V0000000001
+INFO: nbd is <span class="nb">read</span> only.
 </pre></div>
 </div>
 <p>After you’re done using the filesystem you need to unmount it and disconnect the NBD device:</p>
@@ -452,6 +460,10 @@ serve multiple <em>versions</em> at once.</p>
 reachable from the outside bind it to 0.0.0.0 or the specific address of another interface:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji nbd -a <span class="m">0</span>.0.0.0 -r
 </pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Exposing the NBD server on an external interface has security implications.</p>
 </div>
 </div>
 <div class="section" id="read-write-mount">

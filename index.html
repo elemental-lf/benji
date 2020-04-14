@@ -10,7 +10,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.8.0 documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.8.0.dev69+g095fc91 documentation</title>
   
 
   
@@ -158,6 +158,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#known-issues-with-nbd-client">Known Issues with nbd-client</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
@@ -316,6 +317,9 @@ look at the CHANGES file for any upgrade notes.</p>
 <p>Benji requires <strong>Python 3.6.5 or newer</strong> because older Python versions
 have some shortcomings in the <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> implementation which lead to an
 excessive memory usage.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">master</span></code> branch contains the development version of Benji and may be broken at
+times and may even destroy your backups.  Please use the latest pre-releases to get
+some resemblance of stability and a migration path from one pre-release to the next.</p>
 <p>The Kubernetes integration is currently in the process of being completely rewritten
 to use an operator based approach. In the meantime the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> container
 image together with the Helm chart already provides a solid way of backing up

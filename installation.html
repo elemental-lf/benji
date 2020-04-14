@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.8.0 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.8.0.dev69+g095fc91 documentation</title>
   
 
   
@@ -157,6 +157,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="restore.html#nbd-server">NBD Server</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="restore.html#known-issues-with-nbd-client">Known Issues with nbd-client</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-only-mount">Read-Only Mount</a></li>
 <li class="toctree-l3"><a class="reference internal" href="restore.html#read-write-mount">Read-Write Mount</a></li>
 </ul>
@@ -317,7 +318,7 @@ can be installed via private repository:</p>
 apt-get install --no-install-recommends software-properties-common python-software-properties
 add-apt-repository ppa:deadsnakes/ppa
 apt-get update
-apt-get --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
+apt-get install --no-install-recommends python3.6 python3.6-venv python3.6-dev git gcc
 </pre></div>
 </div>
 <div class="admonition note">
@@ -333,8 +334,8 @@ please see <a class="reference external" href="https://launchpad.net/~deadsnakes
 python3.6 -m venv /usr/local/benji
 <span class="c1"># Activate it (your shell prompt should change)</span>
 . /usr/local/benji/bin/activate
-<span class="c1"># Alternative A: Install a specific released version from PyPI (0.7.0)</span>
-pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.7.0
+<span class="c1"># Alternative A: Install a specific released version from PyPI (0.8.0)</span>
+pip install <span class="nv">benji</span><span class="o">==</span><span class="m">0</span>.8.0
 <span class="c1"># Alternative B: Install the latest released version from PyPI</span>
 pip install benji
 <span class="c1"># Alternative C: Install the latest version from the master branch of the Git repository</span>
@@ -349,7 +350,7 @@ pip install git+https://github.com/elemental-lf/benji
 <li><p><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</p></li>
 </ul>
 <p>Specify any extra extra features as a comma delimited list in square brackets after the package URL:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install <span class="s1">&#39;benji==0.7.0[compression,s3,readcache,b2]&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install benji<span class="o">[</span>compression,s3,readcache,b2<span class="o">]==</span><span class="m">0</span>.8.0
 </pre></div>
 </div>
 <p>To upgrade an existing installation use the same command line but add the <code class="docutils literal notranslate"><span class="pre">--upgrade</span></code> option.</p>

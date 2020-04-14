@@ -96,6 +96,13 @@ The ``nbd-client`` contacts Benji's NBD server and connects an exported *version
 on the Linux host. If the image contains a filesystem it can be mounted normally. You can then search for the relevant
 files and restore them.
 
+.. ATTENTION:: The NBD server can take some time when it accesses a large *version* (in the order of multiple Terabytes)
+    for the first time. This holds especially true if the *version* is exported read-write. As a consequence a timeout
+    specified on the ``nbd-client`` command line might need to be increased otherwise the connection will time out.
+
+Known Issues with nbd-client
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 There are some known issues with ``nbd-client``:
 
 * There have been numerous problems with different versions of ``nbd-client`` when used together with Benji. Recent
@@ -147,8 +154,6 @@ to write to the device even when ``ro`` is specified.
 The NBD server will signal an incoming connection::
 
      INFO: Incoming connection from 127.0.0.1:33714
-    DEBUG: [127.0.0.1:33714]: opt=7, len=17, data=b'\x00\x00\x00\x0bV0000000001\x00\x00'
-    DEBUG: [127.0.0.1:33714]: opt=1, len=11, data=b'V0000000001'
      INFO: [127.0.0.1:33714] Negotiated export: V0000000001
      INFO: nbd is read only.
 
@@ -165,6 +170,8 @@ reachable from the outside bind it to 0.0.0.0 or the specific address of another
 
     benji nbd -a 0.0.0.0 -r
 
+
+.. CAUTION:: Exposing the NBD server on an external interface has security implications.
 
 Read-Write Mount
 ~~~~~~~~~~~~~~~~
