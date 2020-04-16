@@ -91,10 +91,11 @@ fsfreeze:
   affinity: {}
 
 postgresql:
-  enabled: false
+  enabled: true
   postgresqlUsername: benji
   postgresqlDatabase: benji
-  postgresqlPassword: secret
+  postgresqlPassword: benji-pass
+  persistence: false
 
 pushgateway:
   image:
@@ -103,3 +104,14 @@ pushgateway:
     tag: v0.8.0
     pullPolicy: IfNotPresent
   nameOverride: pushgateway
+
+rabbitmq:
+  nameOverride: rabbitmq
+  persistence:
+    enabled: false
+  rabbitmq:
+    username: benji
+    password: benji-pass
+  networkPolicy:
+    enabled: true
+    allowExternal: False

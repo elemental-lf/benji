@@ -1,20 +1,32 @@
 import functools
+import inspect
+import json
+import os
 import threading
 import time
 import uuid
+from io import StringIO
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import Any, Dict, Callable
+from datetime import datetime
+from typing import Any, Dict, ByteString
 
 import pika
+from webargs import fields
+
 from benji.amqp.message import AMQPMessage, AMQPRPCCall, AMQPRPCResult, AMQPRPCError
 
 from benji.amqp.exception import AMQPMessageDecodeError
 
-from rabbit_clients.clients.config import RABBIT_CONFIG
 from webargs.core import Parser, missing
 from webargs.multidictproxy import MultiDictProxy
 
 from benji.logging import logger
+
+AMQP_USERNAME = os.getenv('AMQP_USERNAME', 'guest')
+AMQP_PASSWORD = os.getenv('AMQP_PASSWORD', 'guest')
+AMQP_HOST = os.getenv('AMQP_HOST', 'localhost')
+AMQP_VIRTUAL_HOST = os.getenv('AMQP_VIRTUAL_HOST', '/')
+AMQP_PORT = os.getenv('AMQP_PORT', '5672')
 
 # Constants used by server and client
 AMQP_AUTO_DELETE_QUEUE_TIMEOUT = 60 * 60 * 1000  # in milliseconds
@@ -37,14 +49,28 @@ CLIENT_DEFAULT_READY_TIMEOUT = 10  # in seconds
 
 
 def _create_connection() -> pika.BlockingConnection:
-    credentials = pika.PlainCredentials(RABBIT_CONFIG.RABBITMQ_USER, RABBIT_CONFIG.RABBITMQ_PASSWORD)
+    credentials = pika.PlainCredentials(AMQP_USERNAME, AMQP_PASSWORD)
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(RABBIT_CONFIG.RABBITMQ_HOST,
-                                  virtual_host=RABBIT_CONFIG.RABBITMQ_VIRTUAL_HOST,
+        pika.ConnectionParameters(AMQP_HOST,
+                                  AMQP_PORT,
+                                  virtual_host=AMQP_VIRTUAL_HOST,
                                   credentials=credentials,
                                   heartbeat=AMQP_HEARTBEAT_INTERVAL,
                                   blocked_connection_timeout=AMQP_BLOCKED_CONNECTION_TIMEOUT))
     return connection
+
+
+def _setup_common_queues(channel, queue: str):
+    arguments = {'x-message-ttl': AMQP_MESSAGE_TTL}
+    auto_delete = False
+    if queue == '':
+        arguments['x-expires'] = AMQP_AUTO_DELETE_QUEUE_TIMEOUT
+        auto_delete = True
+    queue_declare_result = channel.queue_declare(queue=queue,
+                                                 durable=True,
+                                                 auto_delete=auto_delete,
+                                                 arguments=arguments)
+    return queue_declare_result.method.queue
 
 
 class _ArgumentsParser(Parser):
@@ -82,6 +108,8 @@ class AMQPRPCServer:
         self._last_activity = time.monotonic()
         self._executor = ThreadPoolExecutor(max_workers=threads, thread_name_prefix='RPC-Thread')
 
+        logger.info(f'AMQP inactitivty timeout set to {self.inactivity_timeout}.')
+
     @property
     def queue(self) -> str:
         return self._queue
@@ -89,17 +117,10 @@ class AMQPRPCServer:
     def _setup_connection(self) -> None:
         self._connection = _create_connection()
         self._channel = self._connection.channel()
-        queue_declare_result = self._channel.queue_declare(queue=self._queue, passive=True)
-        if type(queue_declare_result.method) != pika.spec.Queue.DeclareOk:
-            arguments = {'x-message-ttl': AMQP_MESSAGE_TTL}
-            if self._queue == '':
-                arguments['x-expires'] = AMQP_AUTO_DELETE_QUEUE_TIMEOUT
-            queue_declare_result = self._channel.queue_declare(queue=self._queue,
-                                                               durable=True,
-                                                               auto_delete=(self._queue == ''),
-                                                               arguments=arguments)
-        self._queue = queue_declare_result.method.queue
+        self._queue = _setup_common_queues(self._channel, self._queue)
+
         if self.inactivity_timeout > 0:
+            logger.debug(f'Scheduling inactivity timeout check every {SERVER_INACTIVITY_TIMER_CHECK_INTERVAL} seconds.')
             self._connection.call_later(SERVER_INACTIVITY_TIMER_CHECK_INTERVAL, self._inactivity_timeout_check)
         self._channel.basic_qos(prefetch_count=1)
         self._channel.basic_consume(queue=self._queue,
@@ -107,6 +128,7 @@ class AMQPRPCServer:
                                     consumer_tag=SERVER_AMQP_QUEUE_CONSUMER_TAG)
 
     def _inactivity_timeout_check(self) -> None:
+        logger.debug('Inactivity timeout check started.')
         if self.inactivity_timeout > 0:
             if time.monotonic() - self._last_activity > self.inactivity_timeout:
                 logger.info('Requesting termination of the connection due to inactivity.')
@@ -127,17 +149,25 @@ class AMQPRPCServer:
     def _handle_rpc_call(self, *, message: AMQPRPCCall, method, properties) -> None:
         thread_name = threading.current_thread().name
         try:
+            start_time = datetime.utcnow().isoformat(timespec='microseconds') + 'Z'
             logger.info(f'Thread {thread_name} - Calling task {message.task}({message.arguments}).')
             try:
                 result = self._tasks[message.task](message.arguments)
             except Exception as exception:
                 logger.info(f'Thread {thread_name} - Task threw {type(exception).__name__} exception: {str(exception)}')
+                completion_time = datetime.utcnow().isoformat(timespec='microseconds') + 'Z'
                 body = AMQPRPCError(correlation_id=properties.correlation_id,
                                     reason=type(exception).__name__,
-                                    message=str(exception)).marshal()
+                                    message=str(exception),
+                                    start_time=start_time,
+                                    completion_time=completion_time).marshal()
             else:
                 logger.info(f'Thread {thread_name} - Task finished successfully.')
-                body = AMQPRPCResult(correlation_id=properties.correlation_id, result=result).marshal()
+                completion_time = datetime.utcnow().isoformat(timespec='microseconds') + 'Z'
+                body = AMQPRPCResult(correlation_id=properties.correlation_id,
+                                     result=result,
+                                     start_time=start_time,
+                                     completion_time=completion_time).marshal()
 
             def publish_response():
                 nonlocal body, method, properties
@@ -172,16 +202,57 @@ class AMQPRPCServer:
 
         self._executor.submit(handle_request)
 
-    def register_task(self, task: str, func: Callable, *webargs_args, **webargs_kwargs):
-        logger.info(f'Installing task {task}.')
+    @staticmethod
+    def _encode_result_as_json(result: Any) -> bytes:
+        # This assumes that a result of type StringIO already contains JSON formatted data and only
+        # needs to be encoded.
+        if isinstance(result, StringIO):
+            encoded_result = result.getvalue().encode('utf-8')
+        elif isinstance(result, ByteString):
+            encoded_result = result
+        else:
+            encoded_result = json.dumps(result, check_circular=True, separators=(',', ': '), indent=2).encode('utf-8')
+        return encoded_result
 
-        # Drop the first argument, it's the original arguments dict.
-        @functools.wraps(func)
-        def call_task(*task_args, **task_kwargs):
-            return func(*task_args[1:], **task_kwargs)
+    def register_as_task(self,
+                         *webargs_args,
+                         rpc_task_name: str = None,
+                         rpc_encode_as_json: bool = True,
+                         **webargs_kwargs):
 
-        func_webargs = self._arguments_parser.use_kwargs(*webargs_args, **webargs_kwargs)(call_task)
-        self._tasks[task] = func_webargs
+        def decorator(func):
+            task = rpc_task_name or func.__name__
+            if task in self._tasks:
+                raise FileExistsError(f'Task {task} has already been registered.')
+
+            if len(webargs_args) == 0:
+                signature = inspect.Signature.from_callable(func, follow_wrapped=False)
+                logger.info(f'Deriving parameters for task {task} from function definition.')
+                argmap = {
+                    name: value.annotation
+                    for name, value in signature.parameters.items()
+                    if isinstance(value.annotation, fields.Field)
+                }
+            elif len(webargs_args) == 1:
+                argmap = webargs_args[0]
+            else:
+                raise TypeError('Only one positional argument (the webargs argmap) allowed.')
+
+            logger.info(f'Installing task {task}.')
+
+            @functools.wraps(func)
+            def call_task(*task_args, **task_kwargs):
+                nonlocal func, self
+                # Drop the first argument, it's the original arguments dict.
+                result = func(*task_args[1:], **task_kwargs)
+                return self._encode_result_as_json(result) if rpc_encode_as_json else result
+
+            func_webargs = self._arguments_parser.use_kwargs(argmap, **webargs_kwargs)(call_task)
+            self._tasks[task] = func_webargs
+
+            return func
+
+        return decorator
 
     def serve(self) -> None:
         while True:
@@ -208,9 +279,10 @@ class AMQPRPCServer:
         # shutdown() will wait for outstanding tasks to finish.
         self._executor.shutdown()
         self._connection.close()
+        logger.info('Broker connection closed.')
 
-    def terminate(self) -> None:
-        logger.info('Requesting termination of connection to broker.')
+    def close(self) -> None:
+        logger.info('Closing broker connection.')
         self._channel.basic_cancel(consumer_tag=SERVER_AMQP_QUEUE_CONSUMER_TAG)
         self._closing = True
 
@@ -274,16 +346,8 @@ class AMQPRPCClient:
     def _setup_connection(self) -> None:
         self._connection = _create_connection()
         self._channel = self._connection.channel()
-        queue_declare_result = self._channel.queue_declare(queue=self._queue, passive=True)
-        if type(queue_declare_result.method) != pika.spec.Queue.DeclareOk:
-            arguments = {'x-message-ttl': AMQP_MESSAGE_TTL}
-            if self._queue == '':
-                arguments['x-expires'] = AMQP_AUTO_DELETE_QUEUE_TIMEOUT
-            queue_declare_result = self._channel.queue_declare(queue=self._queue,
-                                                               durable=True,
-                                                               auto_delete=(self._queue == ''),
-                                                               arguments=arguments)
-        self._queue = queue_declare_result.method.queue
+        self._queue = _setup_common_queues(self._channel, self._queue)
+
         queue_declare_result = self._channel.queue_declare(queue='', exclusive=True)
         self._callback_queue = queue_declare_result.method.queue
 
@@ -367,6 +431,6 @@ class AMQPRPCClient:
         return self.get_result(correlation_id)
 
     def close(self) -> None:
-        logger.info('Requesting termination of connection to broker.')
+        logger.info('Requesting termination of broker connection.')
         self._connection_closing.set()
         self._amqp_thread.join()

@@ -48,6 +48,18 @@ spec:
               value: {{ .Values.benji.instance | quote }}
             - name: PROM_PUSH_GATEWAY
               value: "{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
+            - name: BENJI_EXPERIMENTAL
+              value: "1"
+            - name: AMQP_USERNAME
+              value: "{{ .Values.rabbitmq.rabbitmq.username }}"
+            - name: AMQP_PASSWORD
+              value: "{{ .Values.rabbitmq.rabbitmq.password }}"
+            - name: AMQP_HOST
+              value: "{{ printf "%s-%s" .Release.Name .Values.rabbitmq.nameOverride | trunc 63 | trimSuffix "-" }}"
+            - name: AMQP_PORT
+              value: "{{ .Values.rabbitmq.service.port }}"
+            - name: AMQP_VIRTUAL_HOST
+              value: "/"
           volumeMounts:
             - name: benji-config
               mountPath: /benji/etc
