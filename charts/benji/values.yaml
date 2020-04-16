@@ -175,3 +175,14 @@ postgresql:
 
 pushgateway:
   nameOverride: pushgateway
+
+rabbitmq:
+  nameOverride: rabbitmq
+  persistence:
+    enabled: false
+  rabbitmq:
+    username: benji
+    password: benji-pass
+  networkPolicy:
+    enabled: true
+    allowExternal: False

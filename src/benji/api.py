@@ -19,11 +19,11 @@ from benji.versions import VERSIONS
 
 
 def register_as_task(func):
-    func.rpc_task = {'task': func.__name__}
-
     parameters = inspect.Signature.from_callable(func, follow_wrapped=False).parameters
-    func.rpc_task['webargs_argmap'] = {
-        name: value.annotation for name, value in parameters.items() if isinstance(value.annotation, fields.Field)
+    func.rpc_task = {
+        'webargs_argmap': {
+            name: value.annotation for name, value in parameters.items() if isinstance(value.annotation, fields.Field)
+        }
     }
 
     return func
@@ -40,18 +40,7 @@ class APIServer:
         for kw in dir(self):
             attr = getattr(self, kw)
             if hasattr(attr, 'rpc_task'):
-
-                @functools.wraps(attr)
-                def encode_result(*args, local_attr=attr, **kwargs):
-                    result = local_attr(*args, **kwargs)
-                    if isinstance(result, StringIO):
-                        encoded_result = result.getvalue().encode('utf-8')
-                    else:
-                        encoded_result = json.dumps(result, check_circular=True, separators=(',', ': '),
-                                                    indent=2).encode('utf-8')
-                    return encoded_result
-
-                self._rpc_server.register_task(attr.rpc_task['task'], encode_result, attr.rpc_task['webargs_argmap'])
+                self._rpc_server.register_as_task(attr.rpc_task['webargs_argmap'])(attr)
 
     def serve(self) -> None:
         self._rpc_server.serve()
@@ -369,9 +358,8 @@ class APIServer:
             return result
 
     @register_as_task
-    def terminate(self) -> bool:
-        self._rpc_server.terminate()
-        return True
+    def terminate(self):
+        self._rpc_server.close()
 
 
 class APIClient:
@@ -405,7 +393,7 @@ class APIClient:
     def _create_tasks(self) -> None:
         for attr in [t[1] for t in inspect.getmembers(APIServer)]:
             if hasattr(attr, 'rpc_task'):
-                self._create_task(attr.rpc_task['task'], attr.rpc_task['webargs_argmap'])
+                self._create_task(attr.__name__, attr.rpc_task['webargs_argmap'])
 
     def close(self) -> None:
         self._rpc_client.close()

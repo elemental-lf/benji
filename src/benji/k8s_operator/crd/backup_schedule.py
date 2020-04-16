@@ -1,17 +1,20 @@
 from functools import partial
+from operator import attrgetter
 from typing import Dict, Any, Optional
 
 import kopf
 import kubernetes
+import pykube
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
 import benji.k8s_operator
-from benji.helpers.kubernetes import list_namespaces
-from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND, \
-    RESOURCE_STATUS_CHILD_CHANGED
+from benji.amqp import AMQPRPCClient
+from benji.k8s_operator.constants import CRD_BACKUP_SCHEDULE, CRD_CLUSTER_BACKUP_SCHEDULE, LABEL_PARENT_KIND
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, JobResource
-from benji.k8s_operator.utils import cr_to_job_name
+from benji.k8s_operator.utils import cr_to_job_name, build_version_labels_rbd, determine_rbd_image_location, \
+    random_string
+from benji.k8s_operator import kubernetes_client
 
 
 def backup_scheduler_job(*,
@@ -21,45 +24,56 @@ def backup_scheduler_job(*,
                          parent_body,
                          logger):
     if namespace_label_selector is not None:
-        namespaces = [namespace.metadata.name for namespace in list_namespaces(label_selector=namespace_label_selector)]
+        namespaces = [
+            namespace.metadata.name for namespace in pykube.Namespace.objects(kubernetes_client).filter(label_selector=namespace_label_selector)
+        ]
     else:
         namespaces = [namespace]
 
-    core_v1_api = kubernetes.client.CoreV1Api()
     pvcs = []
     for ns in namespaces:
-        pvcs.extend(
-            core_v1_api.list_namespaced_persistent_volume_claim(namespace=ns, label_selector=label_selector).items)
+        pvcs.extend([
+            o.obj
+            for o in pykube.PersistentVolumeClaim().objects(kubernetes_client).filter(namespace=ns,
+                                                                                      label_selector=label_selector)
+        ])
 
     if len(pvcs) == 0:
         logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
         return
 
+    rpc_client = AMQPRPCClient(queue='')
     for pvc in pvcs:
-        if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+        if 'volumeName' not in pvc['spec'] or pvc['spec']['volumeName'] in (None, ''):
             continue
 
-        command = ['benji-backup-pvc', namespace, pvc.metadata.name]
-        JobResource(command, parent_body=parent_body, logger=logger)
+        version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], random_string(6))
+        volume = '{}/{}'.format(pvc['metadata']['namespace'], pvc['metadata']['name'])
+        pv = pykube.PersistentVolume().objects(kubernetes_client).get_by_name(pvc['spec']['volumeName'])
+        pool, image = determine_rbd_image_location(pv)
+        version_labels = build_version_labels_rbd(pvc, pv, pool, image)
+
+        rpc_client.call_async('ceph_v1_backup',
+                              version_uid=version_uid,
+                              volume=volume,
+                              pool=pool,
+                              image=image,
+                              version_labels=version_labels)
+    rpc_client.call_async('terminate')
+
+    command = ['benji-api-server', '--queue', rpc_client.queue]
+    JobResource(command, parent_body=parent_body, logger=logger)
 
 
 @kopf.on.resume(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
 @kopf.on.create(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
 @kopf.on.update(CRD_BACKUP_SCHEDULE.api_group, CRD_BACKUP_SCHEDULE.api_version, CRD_BACKUP_SCHEDULE.plural)
-@kopf.on.field(CRD_BACKUP_SCHEDULE.api_group,
-               CRD_BACKUP_SCHEDULE.api_version,
-               CRD_BACKUP_SCHEDULE.plural,
-               field=f'status.{RESOURCE_STATUS_CHILD_CHANGED}')
 @kopf.on.resume(CRD_CLUSTER_BACKUP_SCHEDULE.api_group, CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                 CRD_CLUSTER_BACKUP_SCHEDULE.plural)
 @kopf.on.create(CRD_CLUSTER_BACKUP_SCHEDULE.api_group, CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                 CRD_CLUSTER_BACKUP_SCHEDULE.plural)
 @kopf.on.update(CRD_CLUSTER_BACKUP_SCHEDULE.api_group, CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
                 CRD_CLUSTER_BACKUP_SCHEDULE.plural)
-@kopf.on.field(CRD_CLUSTER_BACKUP_SCHEDULE.api_group,
-               CRD_CLUSTER_BACKUP_SCHEDULE.api_version,
-               CRD_CLUSTER_BACKUP_SCHEDULE.plural,
-               field=f'status.{RESOURCE_STATUS_CHILD_CHANGED}')
 def benji_backup_schedule(namespace: str, spec: Dict[str, Any], body: Dict[str, Any], logger,
                           **_) -> Optional[Dict[str, Any]]:
     schedule = spec['schedule']

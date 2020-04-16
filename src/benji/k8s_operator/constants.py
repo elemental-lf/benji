@@ -1,10 +1,9 @@
 from typing import NamedTuple
 
+from pykube.objects import NamespacedAPIObject
+
 OPERATOR_CONFIG_ENV_NAME = 'BENJI_K8S_OPERATOR_CONFIG_NAME'
 DEFAULT_OPERATOR_CONFIG_NAME = 'benji'
-
-API_ENDPOINT_ENV_NAME = 'BENJI_API_ENDPOINT'
-DEFAULT_API_ENDPOINT = 'http://benji-api:7746/'
 
 # Labels used by the operator to establish a parent/child relationship between CRs and other resources.
 LABEL_PARENT_KIND = 'operator.benji-backup.me/parent-kind'
@@ -24,8 +23,6 @@ RESOURCE_STATUS_CHILDREN_HANDLER_NAME = 'handlerName'
 
 RESOURCE_STATUS_DEPENDANT_JOBS = 'dependantJobs'
 RESOURCE_STATUS_DEPENDANT_JOBS_STATUS = 'status'
-
-RESOURCE_STATUS_CHILD_CHANGED = 'childChanged'
 
 # Name of our status section tracking job status'
 RESOURCE_STATUS_JOB_STATUS = 'jobStatus'
@@ -70,3 +67,10 @@ CRD_CLUSTER_RETENTION_SCHEDULE = CRD(api_group=API_GROUP, api_version=API_VERSIO
 
 CRD_OPERATOR_CONFIG = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiOperatorConfig', plural='benjioperatorconfigs', namespaced=False)
 # yapf: enable
+
+
+class BenjiOperatorConfig:
+
+    version = f'{CRD_OPERATOR_CONFIG.api_group}/{CRD_OPERATOR_CONFIG.api_version}'
+    endpoint = CRD_OPERATOR_CONFIG.plural
+    kind = CRD_OPERATOR_CONFIG.name

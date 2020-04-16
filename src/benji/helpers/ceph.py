@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime
+from functools import reduce
+from operator import or_
 from tempfile import NamedTemporaryFile
 from typing import Dict, Any, Optional
 
@@ -87,7 +89,6 @@ def backup_initial(*,
     stdout = subprocess_run(['rbd', 'diff', '--whole-object', '--format=json', snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
-        assert isinstance(stdout, str)
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
@@ -100,7 +101,6 @@ def backup_initial(*,
             benji_args.extend(['--label', f'{label_name}={label_value}'])
         benji_args.extend([f'{pool}:{snapshot_path}', volume])
         result = subprocess_run(benji_args, decode_json=True)
-        assert isinstance(result, dict)
 
     if source_compare:
         # We won't evaluate the returned result but any failure will raise an exception.
@@ -136,7 +136,6 @@ def backup_differential(*,
     subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
-        assert isinstance(stdout, str)
         rbd_hints.write(stdout)
         rbd_hints.flush()
         benji_args = [
@@ -149,7 +148,6 @@ def backup_differential(*,
             benji_args.extend(['--label', f'{label_name}={label_value}'])
         benji_args.extend([f'{pool}:{snapshot_path}', volume])
         result = subprocess_run(benji_args, decode_json=True)
-        assert isinstance(result, dict)
 
     if source_compare:
         # We won't evaluate the returned result but any failure will raise an exception.
@@ -194,7 +192,7 @@ def backup(*,
                            image=image,
                            version_labels=version_labels,
                            context=context)
-    version = None
+    result = None
     try:
         image_path = _rbd_image_path(pool=pool, namespace=namespace, image=image)
         rbd_snap_ls = subprocess_run(['rbd', 'snap', 'ls', '--format=json', image_path], decode_json=True)
@@ -229,13 +227,8 @@ def backup(*,
                 f'volume == "{volume}" and snapshot == "{last_snapshot}" and status == "valid"'
             ],
                                       decode_json=True)
-            assert isinstance(benji_ls, dict)
-            assert 'versions' in benji_ls
-            assert isinstance(benji_ls['versions'], list)
             if len(benji_ls['versions']) > 0:
-                assert 'uid' in benji_ls['versions'][0]
                 last_version_uid = benji_ls['versions'][0]['uid']
-                assert isinstance(last_version_uid, str)
                 result = backup_differential(volume=volume,
                                              pool=pool,
                                              namespace=namespace,
@@ -257,8 +250,7 @@ def backup(*,
                                         version_labels=version_labels,
                                         source_compare=source_compare,
                                         context=context)
-        assert 'versions' in result and isinstance(result['versions'], list)
-        version = result['versions'][0]
+        return result
     except Exception as exception:
         signal_backup_post_error.send(SIGNAL_SENDER,
                                       volume=volume,
@@ -277,6 +269,30 @@ def backup(*,
                                         image=image,
                                         version_labels=version_labels,
                                         context=context,
-                                        version=version)
+                                        result=result)
 
-    return version
+
+def restore(version_uid: str, pool: str, image: str, context: Any = None):
+    signal_snapshot_create_pre.send(SIGNAL_SENDER, version_uid=version_uid, pool=pool, image=image, context=context)
+    result = None
+    try:
+        result = subprocess_run([
+            'benji', '--machine-output', '--log-level', benji_log_level, 'restore', '--sparse', '--force', version_uid,
+            f'{pool}:{pool}/{image}'
+        ])
+    except Exception as exception:
+        raise_exception = reduce(
+            or_,
+            map(
+                lambda r: bool(r[1]),
+                signal_restore_post_error.send(SIGNAL_SENDER,
+                                               version_uid=version_uid,
+                                               pool=pool,
+                                               image=image,
+                                               context=context,
+                                               result=result,
+                                               exception=exception)))
+        if raise_exception:
+            raise
+    else:
+        signal_restore_post_success.send(SIGNAL_SENDER, pool=pool, image=image, context=context, result=result)

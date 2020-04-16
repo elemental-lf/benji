@@ -1,6 +1,6 @@
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ tuple . "api" | include "benji.fullname" }}
   annotations:
@@ -11,9 +11,10 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: benji
     app.kubernetes.io/managed-by: {{ .Release.Service }}
+    # This label is matched by the RabbitMQ NetworkPolicy.
+    "{{ printf "%s-%s" .Release.Name .Values.rabbitmq.nameOverride | trunc 63 | trimSuffix "-" }}-client": "true"
 spec:
   replicas: {{ .Values.benji.api.replicas }}
-  serviceName: {{ tuple . "api" | include "benji.fullname" }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "benji.name" . }}
@@ -36,13 +37,7 @@ spec:
             privileged: true
           command:
             - benji
-            - rest-api
-            - --threads={{ .Values.benji.api.threadsPerReplica }}
-            - --bind-address=0.0.0.0
-            - --bind-port={{ .Values.benji.api.port }}
-          ports:
-            - name: api
-              containerPort: {{ .Values.benji.api.port }}
+            - api-server
           env:
             - name: POD_NAME
               valueFrom:
@@ -58,6 +53,16 @@ spec:
               value: "{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
             - name: BENJI_EXPERIMENTAL
               value: "1"
+            - name: AMQP_USERNAME
+              value: "{{ .Values.rabbitmq.rabbitmq.username }}"
+            - name: AMQP_PASSWORD
+              value: "{{ .Values.rabbitmq.rabbitmq.password }}"
+            - name: AMQP_HOST
+              value: "{{ printf "%s-%s" .Release.Name .Values.rabbitmq.nameOverride | trunc 63 | trimSuffix "-" }}"
+            - name: AMQP_PORT
+              value: "{{ .Values.rabbitmq.service.port }}"
+            - name: AMQP_VIRTUAL_HOST
+              value: "/"
           volumeMounts:
             - name: benji-config
               mountPath: /benji/etc

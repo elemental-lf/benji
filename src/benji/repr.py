@@ -7,7 +7,7 @@
 import io
 from inspect import getmro
 from reprlib import Repr as _Repr
-from typing import List, Set, Any
+from typing import Set, Any, Sequence
 
 import sqlalchemy
 
@@ -34,8 +34,7 @@ class Repr(_Repr):
 
     def _repr_attrs(self, obj, level: int) -> str:
         represented_attrs = []
-        for attr in self._iter_attrs(obj,
-                                     obj.REPR_SQL_ATTR_SORT_FIRST if hasattr(obj, 'REPR_SQL_ATTR_SORT_FIRST') else []):
+        for attr in self._iter_attrs(obj, getattr(obj, 'REPR_SQL_ATTR_SORT_FIRST', [])):
             represented_attr = self._repr_attr(attr, level)
             represented_attrs.append(represented_attr)
         return ', '.join(represented_attrs)
@@ -56,7 +55,7 @@ class Repr(_Repr):
                                               if not attr.startswith('__')))
 
     @staticmethod
-    def _iter_attrs(obj, sort_first: List[str] = []):
+    def _iter_attrs(obj, sort_first: Sequence[str] = []):
         attr_names = sorted(sqlalchemy.inspect(obj.__class__).columns.keys())
         for attr_name in reversed(sort_first):
             if attr_name in attr_names:
