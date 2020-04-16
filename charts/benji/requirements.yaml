@@ -7,3 +7,6 @@ dependencies:
         alias: pushgateway
         version: 1.2.6
         repository: "@stable"
+      - name: rabbitmq
+        version: 6.25.2
+        repositorsy: "@bitnami"

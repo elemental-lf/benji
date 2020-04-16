@@ -2,31 +2,25 @@ from contextlib import suppress
 from typing import Optional, Dict, Any
 
 import kopf
-import kubernetes
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 import benji.k8s_operator
 from benji.helpers.constants import LABEL_INSTANCE
-from benji.helpers.kubernetes import service_account_namespace, BenjiVersionResource
-from benji.helpers.prometheus import version_status_older_incomplete, version_status_invalid, push, \
-    version_status_registry
+from benji.k8s_operator.utils import service_account_namespace
+
 from benji.api import APIClient
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator.constants import CRD_OPERATOR_CONFIG, LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
-    SCHED_CLEANUP_JOB, SCHED_VERSION_STATUS_JOB
-from benji.k8s_operator.resources import track_job_status, JobResource
+    SCHED_CLEANUP_JOB, SCHED_VERSION_STATUS_JOB, BenjiOperatorConfig
+from benji.k8s_operator.resources import track_job_status, JobResource, BenjiVersionResource
+from benji.k8s_operator import kubernetes_client
 
 
 def set_operator_config() -> None:
-    custom_objects_api = kubernetes.client.CustomObjectsApi()
-    benji.k8s_operator.operator_config = custom_objects_api.get_namespaced_custom_object(
-        group=CRD_OPERATOR_CONFIG.api_group,
-        version=CRD_OPERATOR_CONFIG.api_version,
-        plural=CRD_OPERATOR_CONFIG.plural,
-        name=benji.k8s_operator.operator_config_name,
-        namespace=service_account_namespace())
+    benji.k8s_operator.operator_config = BenjiOperatorConfig(kubernetes_client).objects().filter(
+        namespace=service_account_namespace()).get_by_name(benji.k8s_operator.operator_config_name)
 
 
 def reconciliate_versions_job(*, logger):
@@ -55,19 +49,6 @@ def reconciliate_versions_job(*, logger):
 def cleanup_job(*, parent_body: Dict[str, Any], logger):
     command = ['benji-command', 'cleanup']
     JobResource(command, parent_body=parent_body, logger=logger)
-
-
-def version_status_job():
-    benji = APIClient()
-
-    incomplete_versions_count = len(
-        benji.core_v1_ls(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "incomplete" and date < "1 day ago"'))
-    invalid_versions_count = len(
-        benji.core_v1_ls(f'labels["{LABEL_INSTANCE}"] == "{benji_instance}" and status == "invalid"'))
-
-    version_status_older_incomplete.set(incomplete_versions_count)
-    version_status_invalid.set(invalid_versions_count)
-    push(version_status_registry)
 
 
 def install_maintenance_jobs(*, parent_body: Dict[str, Any], logger) -> None:

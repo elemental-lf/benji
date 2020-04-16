@@ -1,8 +1,9 @@
+import datetime
 import uuid
-from io import StringIO
 from typing import Any, Dict, ByteString, Union
 
 import umsgpack
+from benji.repr import ReprMixIn
 
 from benji.amqp.exception import AMQPMessageDecodeError, AMQPMessageEncodeError
 
@@ -32,11 +33,15 @@ MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS = 'arguments'
 # rpc-result
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_CORRELATION_ID = 'correlation_id'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_RESULT = 'result'
+MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_START_TIME = 'start_time'
+MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_COMPLETION_TIME = 'completion_time'
 
 # rpc-error
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_CORRELATION_ID = 'correlation_id'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_REASON = 'reason'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_MESSAGE = 'message'
+MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_START_TIME = 'start_time'
+MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_COMPLETION_TIME = 'completion_time'
 
 # event-version-add
 MESSAGE_FIELD_MESSAGE_PAYLOAD_EVENT_VERSION_ADD_VERSION = 'version'
@@ -45,7 +50,15 @@ MESSAGE_FIELD_MESSAGE_PAYLOAD_EVENT_VERSION_ADD_VERSION = 'version'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_EVENT_VERSION_REMOVE_VERSION = 'version'
 
 
-class AMQPMessage():
+def _is_iso_8601(time: str) -> bool:
+    try:
+        datetime.datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ')
+        return True
+    except ValueError:
+        return False
+
+
+class AMQPMessage(ReprMixIn):
 
     def __init__(self, *, message_version: str, message_id: str, message_type: str, message_payload: Dict[str,
                                                                                                           Any]) -> None:
@@ -206,7 +219,13 @@ class AMQPRPCCall(AMQPMessage):
 
 class AMQPRPCResult(AMQPMessage):
 
-    def __init__(self, *, message_id: str = None, correlation_id: str, result: Union[str, ByteString]) -> None:
+    def __init__(self,
+                 *,
+                 message_id: str = None,
+                 correlation_id: str,
+                 result: Union[str, ByteString],
+                 start_time: str,
+                 completion_time: str) -> None:
         if not isinstance(correlation_id, str):
             raise AMQPMessageEncodeError(f'Correlation id has wrong type {correlation_id}.')
         if correlation_id == '':
@@ -215,10 +234,18 @@ class AMQPRPCResult(AMQPMessage):
         if not isinstance(result, ByteString):
             raise AMQPMessageEncodeError('Result has wrong type {type(result)}.')
 
+        if not isinstance(start_time, str) or not _is_iso_8601(start_time):
+            raise AMQPMessageEncodeError(f'Start time is invalid: {start_time}.')
+
+        if not isinstance(completion_time, str) or not _is_iso_8601(completion_time):
+            raise AMQPMessageEncodeError(f'Completion time is invalid: {completion_time}.')
+
         calculated_message_id = message_id or str(uuid.uuid4())
         message_payload = {
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_CORRELATION_ID: correlation_id,
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_RESULT: result,
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_START_TIME: start_time,
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_COMPLETION_TIME: completion_time,
         }
         super().__init__(message_version=MESSAGE_VERSION,
                          message_id=calculated_message_id,
@@ -237,8 +264,14 @@ class AMQPRPCResult(AMQPMessage):
 
         correlation_id = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_CORRELATION_ID]
         result = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_RESULT]
+        start_time = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_START_TIME]
+        completion_time = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_COMPLETION_TIME]
 
-        return cls(message_id=message_id, correlation_id=correlation_id, result=result)
+        return cls(message_id=message_id,
+                   correlation_id=correlation_id,
+                   result=result,
+                   start_time=start_time,
+                   completion_time=completion_time)
 
     @property
     def correlation_id(self) -> str:
@@ -251,7 +284,14 @@ class AMQPRPCResult(AMQPMessage):
 
 class AMQPRPCError(AMQPMessage):
 
-    def __init__(self, *, message_id: str = None, correlation_id: str, reason: str, message: str) -> None:
+    def __init__(self,
+                 *,
+                 message_id: str = None,
+                 correlation_id: str,
+                 reason: str,
+                 message: str,
+                 start_time: str,
+                 completion_time: str) -> None:
         if not isinstance(correlation_id, str):
             raise AMQPMessageEncodeError(f'Correlation id has wrong type {correlation_id}.')
         if correlation_id == '':
@@ -267,11 +307,19 @@ class AMQPRPCError(AMQPMessage):
         if message == '':
             raise AMQPMessageEncodeError(f'Message is empty.')
 
+        if not isinstance(start_time, str) or not _is_iso_8601(start_time):
+            raise AMQPMessageEncodeError(f'Start time is invalid: {start_time}.')
+
+        if not isinstance(completion_time, str) or not _is_iso_8601(completion_time):
+            raise AMQPMessageEncodeError(f'Completion time is invalid: {completion_time}.')
+
         calculated_message_id = message_id or str(uuid.uuid4())
         message_payload = {
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_CORRELATION_ID: correlation_id,
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_REASON: reason,
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_MESSAGE: message,
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_START_TIME: start_time,
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_COMPLETION_TIME: completion_time,
         }
         super().__init__(message_version=MESSAGE_VERSION,
                          message_id=calculated_message_id,
@@ -292,8 +340,15 @@ class AMQPRPCError(AMQPMessage):
         correlation_id = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_CORRELATION_ID]
         reason = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_REASON]
         message = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_ERROR_MESSAGE]
+        start_time = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_START_TIME]
+        completion_time = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_COMPLETION_TIME]
 
-        return cls(message_id=message_id, correlation_id=correlation_id, reason=reason, message=message)
+        return cls(message_id=message_id,
+                   correlation_id=correlation_id,
+                   reason=reason,
+                   message=message,
+                   start_time=start_time,
+                   completion_time=completion_time)
 
     @property
     def correlation_id(self) -> str:

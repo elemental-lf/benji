@@ -90,19 +90,17 @@ def api_request(api_endpoint: str,
     return response.json()
 
 
-def attrs_exist(obj: Any, attrs: Sequence[str]) -> bool:
-    split_attrs = [attr.split('.') for attr in attrs]
+def keys_exist(obj: Any, keys: Sequence[str]) -> bool:
+    split_keys = [attr.split('.') for attr in keys]
 
-    for split_attr in split_attrs:
+    for split_key in split_keys:
         position = obj
-        for component in split_attr:
-            if hasattr(position, component):
-                position = getattr(position, component)
-            else:
+        for component in split_key:
+            try:
+                position = position.get(component, None)
+            except AttributeError:
+                return False
+            if position is None:
                 return False
 
     return True
-
-
-def random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
-    return ''.join(random.choice(characters) for _ in range(length))
