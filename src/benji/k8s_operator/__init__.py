@@ -11,7 +11,7 @@ operator_config_name = os.getenv(OPERATOR_CONFIG_ENV_NAME, DEFAULT_OPERATOR_CONF
 
 operator_config: Optional[Dict[str, Any]] = None
 
-scheduler: Optional[BaseScheduler] = None
+apscheduler: Optional[BaseScheduler] = None
 
 kubernetes_client = pykube.HTTPClient(pykube.KubeConfig.from_env())
 

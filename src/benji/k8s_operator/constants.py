@@ -1,7 +1,3 @@
-from typing import NamedTuple
-
-from pykube.objects import NamespacedAPIObject
-
 OPERATOR_CONFIG_ENV_NAME = 'BENJI_K8S_OPERATOR_CONFIG_NAME'
 DEFAULT_OPERATOR_CONFIG_NAME = 'benji'
 
@@ -9,6 +5,20 @@ DEFAULT_OPERATOR_CONFIG_NAME = 'benji'
 LABEL_PARENT_KIND = 'operator.benji-backup.me/parent-kind'
 LABEL_PARENT_NAMESPACE = 'operator.benji-backup.me/parent-namespace'
 LABEL_PARENT_NAME = 'operator.benji-backup.me/parent-name'
+
+# Version labels (in Benji)
+LABEL_INSTANCE = 'benji-backup.me/instance'
+LABEL_K8S_PVC_NAMESPACE = 'benji-backup.me/k8s-pvc-namespace'
+LABEL_K8S_PVC_NAME = 'benji-backup.me/k8s-pvc-name'
+LABEL_K8S_PV_NAME = 'benji-backup.me/k8s-pv-name'
+LABEL_K8S_STORAGE_CLASS_NAME = 'benji-backup.me/k8s-storage-class-name'
+LABEL_K8S_PV_TYPE = 'benji-backup.me/k8s-pv-type'
+
+# RBD specific
+LABEL_RBD_IMAGE_SPEC = 'benji-backup.me/rbd-image-spec'
+
+# Valuefor LABEL_K8S_PV_TYPE
+PV_TYPE_RBD = 'rbd'
 
 # Constants for field names in the status section of a Job
 JOB_STATUS_COMPLETION_TIME = 'completionTime'
@@ -33,44 +43,8 @@ RESOURCE_JOB_STATUS_RUNNING = 'Running'
 RESOURCE_JOB_STATUS_SUCCEEDED = 'Succeeded'
 RESOURCE_JOB_STATUS_FAILED = 'Failed'
 
-K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME = 'persistentVolumeClaimName'
-K8S_RESTORE_SPEC_VERSION_NAME = 'versionName'
-K8S_RESTORE_SPEC_OVERWRITE = 'overwrite'
-K8S_RESTORE_SPEC_STORAGE_CLASS_NAME = 'storageClassName'
-
 SCHED_VERSION_RECONCILIATION_JOB = 'version-reconciliation'
 SCHED_CLEANUP_JOB = 'cleanup'
-SCHED_VERSION_STATUS_JOB = 'version-status'
-
-
-class CRD(NamedTuple):
-    api_group: str
-    api_version: str
-    name: str
-    plural: str
-    namespaced: bool
-
 
 API_GROUP = 'benji-backup.me'
 API_VERSION = 'v1alpha1'
-
-# yapf: disable
-CRD_VERSION = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiVersion', plural='benjiversions', namespaced=True)
-
-CRD_RESTORE = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiRestore', plural='benjirestores', namespaced=True)
-
-CRD_BACKUP_SCHEDULE = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiBackupSchedule', plural='benjibackupschedules', namespaced=True)
-CRD_CLUSTER_BACKUP_SCHEDULE = CRD(api_group=API_GROUP, api_version=API_VERSION, name='ClusterBenjiBackupSchedule', plural='clusterbenjibackupschedules', namespaced=False)
-
-CRD_RETENTION_SCHEDULE = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiRetentionSchedule', plural='benjiretentionschedules', namespaced=True)
-CRD_CLUSTER_RETENTION_SCHEDULE = CRD(api_group=API_GROUP, api_version=API_VERSION, name='ClusterBenjiRetentionSchedule', plural='clusterbenjiretentionschedules', namespaced=False)
-
-CRD_OPERATOR_CONFIG = CRD(api_group=API_GROUP, api_version=API_VERSION, name='BenjiOperatorConfig', plural='benjioperatorconfigs', namespaced=False)
-# yapf: enable
-
-
-class BenjiOperatorConfig:
-
-    version = f'{CRD_OPERATOR_CONFIG.api_group}/{CRD_OPERATOR_CONFIG.api_version}'
-    endpoint = CRD_OPERATOR_CONFIG.plural
-    kind = CRD_OPERATOR_CONFIG.name
