@@ -3,15 +3,27 @@ from typing import Dict, Any, Optional
 import kopf
 
 from benji.api import APIClient
-from benji.k8s_operator.constants import CRD_RESTORE, LABEL_PARENT_KIND, \
-    RESOURCE_STATUS_CHILDREN, K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME, K8S_RESTORE_SPEC_VERSION_NAME, \
-    K8S_RESTORE_SPEC_OVERWRITE, K8S_RESTORE_SPEC_STORAGE_CLASS_NAME
-from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, JobResource
-from benji.k8s_operator.utils import check_version_access
+from benji.k8s_operator import kubernetes_client
+from benji.k8s_operator.constants import LABEL_PARENT_KIND, \
+    RESOURCE_STATUS_CHILDREN, API_GROUP, API_VERSION
+from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
+from benji.k8s_operator.crd.version import check_version_access
+
+K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME = 'persistentVolumeClaimName'
+K8S_RESTORE_SPEC_VERSION_NAME = 'versionName'
+K8S_RESTORE_SPEC_OVERWRITE = 'overwrite'
+K8S_RESTORE_SPEC_STORAGE_CLASS_NAME = 'storageClassName'
 
 
-@kopf.on.resume(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
-@kopf.on.create(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
+class BenjiRestore(NamespacedAPIObject):
+
+    version = f'{API_GROUP}/{API_VERSION}'
+    endpoint = 'benjirestores'
+    kind = 'BenjiRestore'
+
+
+@kopf.on.resume(*BenjiRestore.group_version_plural())
+@kopf.on.create(*BenjiRestore.group_version_plural())
 def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], body: Dict[str, Any], logger,
                   **_) -> Optional[Dict[str, Any]]:
     if RESOURCE_STATUS_CHILDREN in status:
@@ -37,18 +49,19 @@ def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], 
     if overwrite:
         command.append('--force')
 
-    JobResource(command, parent_body=body, logger=logger)
+    job = BenjiJob(kubernetes_client, command, parent_body=body)
+    job.create()
 
 
-@kopf.on.delete(CRD_RESTORE.api_group, CRD_RESTORE.api_version, CRD_RESTORE.plural)
+@kopf.on.delete(*BenjiRestore.group_version_plural())
 def benji_backup_schedule_delete(name: str, namespace: str, body: Dict[str, Any], logger,
                                  **_) -> Optional[Dict[str, Any]]:
     delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
-@kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RESTORE.name})
-@kopf.on.resume('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RESTORE.name})
-@kopf.on.delete('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: CRD_RESTORE.name})
-@kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: CRD_RESTORE.name})
-def benji_track_job_status_restore(**_) -> Optional[Dict[str, Any]]:
-    return track_job_status(crd=CRD_RESTORE, **_)
+@kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiRestore.kind})
+@kopf.on.resume('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiRestore.kind})
+@kopf.on.delete('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiRestore.kind})
+@kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: BenjiRestore.kind})
+def benji_track_job_status_restore(**kwargs) -> Optional[Dict[str, Any]]:
+    return track_job_status(crd=BenjiRestore, **kwargs)

@@ -1,14 +1,9 @@
 import json
 import logging
-import random
 import re
-import string
 import subprocess
 from json import JSONDecodeError
-from typing import Dict, List, Union, Any, Tuple, Sequence
-from urllib.error import HTTPError
-
-import requests
+from typing import Dict, List, Union
 
 from benji.helpers.settings import benji_log_level
 
@@ -68,39 +63,3 @@ def subprocess_run(args: List[str],
             return result.stdout
     else:
         raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode} and output: {_one_line_stderr(result.stderr)}')
-
-
-def api_request(api_endpoint: str,
-                path: str,
-                method: str = 'GET',
-                body: Any = None,
-                params: Dict[str, Any] = None,
-                timeout: Tuple[int, int] = (2, 30)) -> Dict[str, Any]:
-    response = requests.request(method,
-                                f'{api_endpoint}{path}',
-                                headers={'Content-Type': 'application/json; charset=utf-8'},
-                                params=params,
-                                json=body,
-                                timeout=timeout)
-    response.raise_for_status()
-
-    if response.status_code not in (200, 201):
-        raise HTTPError(f'API call failed with status code {response.status_code}.', response=response)
-
-    return response.json()
-
-
-def keys_exist(obj: Any, keys: Sequence[str]) -> bool:
-    split_keys = [attr.split('.') for attr in keys]
-
-    for split_key in split_keys:
-        position = obj
-        for component in split_key:
-            try:
-                position = position.get(component, None)
-            except AttributeError:
-                return False
-            if position is None:
-                return False
-
-    return True

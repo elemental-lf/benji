@@ -1,4 +1,4 @@
-from benji.helpers.utils import keys_exist
+from benji.k8s_operator.utils import keys_exist
 
 
 def test_keys_exist() -> None:

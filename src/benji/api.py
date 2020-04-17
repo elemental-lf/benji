@@ -1,21 +1,22 @@
-import functools
 import inspect
 import json
 import re
 import types
 from io import StringIO
-from typing import List, Optional, Dict, Any, ByteString
+from typing import Optional, Dict, Any
 
 from webargs import fields
 
 import benji.exception
 from benji import __version__
+from benji.amqp import AMQPRPCServer, AMQPRPCClient
 from benji.benji import Benji
 from benji.config import Config
 from benji.database import Version, VersionUid
-from benji.amqp import AMQPRPCServer, AMQPRPCClient
 from benji.utils import hints_from_rbd_diff, InputValidation, random_string
 from benji.versions import VERSIONS
+
+DEFAULT_RPC_QUEUE = 'benji-rpc'
 
 
 def register_as_task(func):
@@ -364,7 +365,7 @@ class APIServer:
 
 class APIClient:
 
-    def __init__(self, queue: str) -> None:
+    def __init__(self, queue: str = DEFAULT_RPC_QUEUE) -> None:
         self._rpc_client = AMQPRPCClient(queue=queue)
         self._create_tasks()
 

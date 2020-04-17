@@ -3,9 +3,9 @@ import uuid
 from typing import Any, Dict, ByteString, Union
 
 import umsgpack
-from benji.repr import ReprMixIn
 
 from benji.amqp.exception import AMQPMessageDecodeError, AMQPMessageEncodeError
+from benji.repr import ReprMixIn
 
 MESSAGE_FIELD_VERSION = 'version'
 MESSAGE_VERSION = '1.0'
