@@ -5,21 +5,18 @@ import os
 import threading
 import time
 import uuid
-from io import StringIO
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
+from io import StringIO
 from typing import Any, Dict, ByteString
 
 import pika
 from webargs import fields
-
-from benji.amqp.message import AMQPMessage, AMQPRPCCall, AMQPRPCResult, AMQPRPCError
-
-from benji.amqp.exception import AMQPMessageDecodeError
-
 from webargs.core import Parser, missing
 from webargs.multidictproxy import MultiDictProxy
 
+from benji.amqp.exception import AMQPMessageDecodeError
+from benji.amqp.message import AMQPMessage, AMQPRPCCall, AMQPRPCResult, AMQPRPCError
 from benji.logging import logger
 
 AMQP_USERNAME = os.getenv('AMQP_USERNAME', 'guest')

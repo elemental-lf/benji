@@ -9,7 +9,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.utils import parse_quantity
 
 from benji.helpers.kubernetes import create_pvc
-from benji.k8s_operator.utils import determine_rbd_image_location
+from benji.k8s_operator.crd.backup_schedule import determine_rbd_image_location
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
 
