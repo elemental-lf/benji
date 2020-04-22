@@ -4,7 +4,7 @@ import kopf
 from requests import HTTPError
 
 from benji.api import APIClient
-from benji.k8s_operator import kubernetes_client
+from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
     LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_STORAGE_CLASS_NAME, LABEL_K8S_PV_TYPE
 from benji.k8s_operator.resources import NamespacedAPIObject
@@ -95,8 +95,8 @@ class BenjiVersion(NamespacedAPIObject):
 
         logger.debug(f'Creating or updating version resource {namespace}/{version["uid"]}.')
         try:
-            version_obj: NamespacedAPIObject = cls(kubernetes_client).filter(namespace=namespace).get_by_name(
-                version["uid"])
+            version_obj: NamespacedAPIObject = cls(
+                OperatorContext.kubernetes_client).filter(namespace=namespace).get_by_name(version["uid"])
             actual = version_obj.obj
 
             # Keep other labels and annotations but overwrite our own
@@ -117,7 +117,7 @@ class BenjiVersion(NamespacedAPIObject):
             version_obj.update(is_strategic=False)
         except HTTPError as exception:
             if exception.response.status_code == 404:
-                version_obj = cls(kubernetes_client, target)
+                version_obj = cls(OperatorContext.kubernetes_client, target)
                 version_obj.create()
             else:
                 raise

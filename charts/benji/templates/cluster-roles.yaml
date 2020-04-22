@@ -8,65 +8,7 @@ metadata:
     helm.sh/chart: {{ include "benji.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - persistentvolumeclaims
-  verbs:
-  - create
-  - get
-  - list
-- apiGroups:
-    - ""
-  resources:
-    - events
-  verbs:
-    - create
-- apiGroups:
-    - ""
-  resources:
-    - namespaces
-    - persistentvolumes
-    - pods
-  verbs:
-    - list
-    - get
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-- apiGroups:
-    - "benji-backup.me"
-  resources:
-    - benjirestores
-    - benjiversions
-    - benjibackups
-  verbs:
-    - create
-    - update
-    - get
-    - list
-    - patch
-- apiGroups:
-    - benji-backup.me
-  resources:
-    - benjiversions
-  verbs:
-    - delete
-{{- if .Values.fsfreeze.enabled }}
-- apiGroups:
-  - ""
-  resources:
-  - pods/exec
-  verbs:
-  - create
-  # Also needs GET where kubectl doesn't, see https://github.com/kubernetes-client/python/issues/690#issuecomment-459010364
-  - get
-{{- end}}
+rules: []
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -142,6 +84,17 @@ rules:
       - ""
     resources:
       - namespaces
+      - persistentvolumes
     verbs:
       - list
       - get
+  {{- if .Values.fsfreeze.enabled }}
+  - apiGroups:
+      - ""
+    resources:
+      - pods/exec
+    verbs:
+      - create
+      # Also needs GET where kubectl doesn't, see https://github.com/kubernetes-client/python/issues/690#issuecomment-459010364
+      - get
+  {{- end}}

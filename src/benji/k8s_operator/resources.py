@@ -10,7 +10,7 @@ from requests import HTTPError
 
 import benji.k8s_operator
 from benji.helpers.settings import benji_instance, running_pod_name
-from benji.k8s_operator import kubernetes_client
+from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPACE, LABEL_PARENT_NAME, \
     RESOURCE_STATUS_LIST_OBJECT_REFERENCE, JOB_STATUS_START_TIME, JOB_STATUS_COMPLETION_TIME, \
     RESOURCE_STATUS_DEPENDANT_JOBS_STATUS, RESOURCE_JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, RESOURCE_JOB_STATUS_FAILED, \
@@ -56,10 +56,10 @@ class BenjiJob(pykube.Job):
         manifest['spec']['template']['metadata']['labels'].update(labels)
 
     def __init__(self, api: HTTPClient, *, command: List[str], parent_body: Dict[str, Any]) -> None:
-        if benji.k8s_operator.operator_config is None:
+        if OperatorContext.operator_config is None:
             raise RuntimeError('Operator configuration has not been loaded.')
 
-        job_manifest = copy.deepcopy(benji.k8s_operator.operator_config['spec']['jobTemplate'])
+        job_manifest = copy.deepcopy(OperatorContext.operator_config.obj['spec']['jobTemplate'])
         self._setup_manifest(manifest=job_manifest, namespace=service_account_namespace(), parent_body=parent_body)
 
         job_manifest['spec']['template']['spec']['containers'][0]['command'] = command
@@ -88,7 +88,7 @@ def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,
         }
     }
 
-    pvc = pykube.PersistentVolumeClaim(kubernetes_client, manifest)
+    pvc = pykube.PersistentVolumeClaim(OperatorContext.kubernetes_client, manifest)
     pvc.create()
     return pvc
 
@@ -215,7 +215,7 @@ def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any
     if reason != 'delete' and 'labels' not in meta or LABEL_PARENT_NAME not in meta['labels']:
         # Stray jobs will be deleted
         logger.warning(f'Job {name} is one of ours but has no or incomplete parent labels, deleting it.')
-        pykube.Job(kubernetes_client, body).delete()
+        pykube.Job(OperatorContext.kubernetes_client, body).delete()
         return
 
     if LABEL_PARENT_NAMESPACE in meta['labels']:
@@ -239,11 +239,11 @@ def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any
 def _delete_dependant_jobs(*, jobs: Sequence[Dict[str, Any]], logger) -> None:
     for job in jobs:
         logger.info(f'Deleting dependant job {job["metadata"]["namespace"]}/{job["metadata"]["name"]}.')
-        pykube.Job(kubernetes_client, job).delete()
+        pykube.Job(OperatorContext.kubernetes_client, job).delete()
 
 
 def delete_all_dependant_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
-    jobs = pykube.Job.objects(kubernetes_client).filter(
+    jobs = pykube.Job.objects(OperatorContext.kubernetes_client).filter(
         namespace=service_account_namespace(),
         selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
     _delete_dependant_jobs(jobs=jobs, logger=logger)
@@ -298,7 +298,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
         }
     }
 
-    pykube.Event(kubernetes_client, manifest).create()
+    pykube.Event(OperatorContext.kubernetes_client, manifest).create()
 
 
 class APIObject(pykube_APIObject):

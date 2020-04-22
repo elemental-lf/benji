@@ -6,7 +6,7 @@ from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
 from benji.helpers.settings import benji_instance
-from benji.k8s_operator import kubernetes_client, apscheduler
+from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_GROUP, API_VERSION, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
@@ -33,7 +33,7 @@ class ClusterBenjiRetentionSchedule(NamespacedAPIObject):
 
 def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body, logger):
     command = ['benji-command', 'enforce', retention_rule, match_versions]
-    job = BenjiJob(kubernetes_client, command=command, parent_body=parent_body)
+    job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
     job.create()
 
 
@@ -59,15 +59,15 @@ def benji_retention_schedule(namespace: str, spec: Dict[str, Any], body: Dict[st
         match_versions = f'{match_versions} and labels["{LABEL_K8S_PVC_NAMESPACE}"] == "{namespace}"'
 
     job_name = cr_to_job_name(body, 'scheduler')
-    apscheduler.add_job(partial(enforce_scheduler_job,
-                                retention_rule=retention_rule,
-                                match_versions=match_versions,
-                                parent_body=body,
-                                logger=logger),
-                        CronTrigger.from_crontab(schedule),
-                        name=job_name,
-                        id=job_name,
-                        replace_existing=True)
+    OperatorContext.apscheduler.add_job(partial(enforce_scheduler_job,
+                                                retention_rule=retention_rule,
+                                                match_versions=match_versions,
+                                                parent_body=body,
+                                                logger=logger),
+                                        CronTrigger.from_crontab(schedule),
+                                        name=job_name,
+                                        id=job_name,
+                                        replace_existing=True)
 
 
 @kopf.on.delete(*BenjiRetentionSchedule.group_version_plural())
@@ -75,7 +75,7 @@ def benji_retention_schedule(namespace: str, spec: Dict[str, Any], body: Dict[st
 def benji_retention_schedule_delete(name: str, namespace: str, body: Dict[str, Any], logger,
                                     **_) -> Optional[Dict[str, Any]]:
     try:
-        apscheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
+        OperatorContext.apscheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
     delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)

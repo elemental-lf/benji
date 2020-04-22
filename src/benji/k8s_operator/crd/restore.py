@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 import kopf
 
 from benji.api import APIClient
-from benji.k8s_operator import kubernetes_client
+from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILDREN, API_GROUP, API_VERSION
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
@@ -49,7 +49,7 @@ def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], 
     if overwrite:
         command.append('--force')
 
-    job = BenjiJob(kubernetes_client, command, parent_body=body)
+    job = BenjiJob(OperatorContext.kubernetes_client, command, parent_body=body)
     job.create()
 
 
