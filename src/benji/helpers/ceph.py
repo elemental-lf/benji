@@ -115,7 +115,7 @@ def backup_differential(*,
                         namespace: str = '',
                         image: str,
                         last_snapshot: str,
-                        last_version_uid: str,
+                        base_version_uid: str,
                         version_labels: Dict[str, str],
                         version_uid: Optional[str],
                         source_compare: bool = False,
@@ -140,7 +140,7 @@ def backup_differential(*,
         rbd_hints.flush()
         benji_args = [
             'benji', '--machine-output', '--log-level', benji_log_level, 'backup', '--snapshot', snapshot,
-            '--rbd-hints', rbd_hints.name, '--base-version', last_version_uid
+            '--rbd-hints', rbd_hints.name, '--base-version', base_version_uid
         ]
         if version_uid is not None:
             benji_args.extend(['--uid', version_uid])
@@ -228,13 +228,13 @@ def backup(*,
             ],
                                       decode_json=True)
             if len(benji_ls['versions']) > 0:
-                last_version_uid = benji_ls['versions'][0]['uid']
+                base_version_uid = benji_ls['versions'][0]['uid']
                 result = backup_differential(volume=volume,
                                              pool=pool,
                                              namespace=namespace,
                                              image=image,
                                              last_snapshot=last_snapshot,
-                                             last_version_uid=last_version_uid,
+                                             base_version_uid=base_version_uid,
                                              version_uid=version_uid,
                                              version_labels=version_labels,
                                              source_compare=source_compare,

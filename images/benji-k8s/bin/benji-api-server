@@ -40,7 +40,7 @@ rpc_server = AMQPRPCServer(queue=args.queue, inactivity_timeout=120)
 @rpc_server.register_as_task()
 def ceph_v1_backup(version_uid: fields.Str(required=True), volume: fields.Str(required=True),
                    pool: fields.Str(required=True), image: fields.Str(required=True),
-                   version_labels: fields.List(fields.Str(), missing=[])):
+                   version_labels: fields.Dict(keys=fields.Str(), values=fields.Str(), missing={})):
     return ceph.backup(volume=volume, pool=pool, image=image, version_uid=version_uid, version_labels=version_labels)
 
 

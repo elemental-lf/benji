@@ -51,7 +51,7 @@ def determine_rbd_image_location(pv: pykube.PersistentVolume, *, logger) -> (str
             pool, image = options['pool'], options['image']
         else:
             logger.debug(f'PersistentVolume {pv_name} was provisioned by unknown driver {driver}.')
-    elif keys_exist(pv_obj['spec'], ('csi.driver', 'csi.volume_handle', 'csi.volume_attributes')):
+    elif keys_exist(pv_obj['spec'], ('csi.driver', 'csi.volumeHandle', 'csi.volumeAttributes')):
         logger.debug(f'Considering PersistentVolume {pv_name} as a Rook Ceph CSI volume.')
         driver = pv_obj['spec']['csi']['driver']
         volume_handle = pv_obj['spec']['csi']['volumeHandle']
@@ -102,33 +102,59 @@ def backup_scheduler_job(*,
             pykube.PersistentVolumeClaim.objects(OperatorContext.kubernetes_client).filter(namespace=ns,
                                                                                            selector=label_selector))
 
-    if len(pvcs) == 0:
+    if not pvcs:
         logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
         return
 
-    rpc_client = AMQPRPCClient(queue='')
+    pvc_pv_pairs = []
     for pvc in pvcs:
         pvc_obj = pvc.obj
         if 'volumeName' not in pvc_obj['spec'] or pvc_obj['spec']['volumeName'] in (None, ''):
             continue
 
-        volume = '{}/{}'.format(pvc_obj['metadata']['namespace'], pvc_obj['metadata']['name'])
-        version_uid = '{}-{}'.format(volume[:246], random_string(6))
-        pv = pykube.PersistentVolume.objects(OperatorContext.kubernetes_client).get_by_name(pvc_obj['spec']['volumeName'])
-        pool, image = determine_rbd_image_location(pv, logger=logger)
-        version_labels = build_version_labels_rbd(pvc=pvc, pv=pv, pool=pool, image=image)
+        try:
+            pv = pykube.PersistentVolume.objects(OperatorContext.kubernetes_client).get_by_name(
+                pvc_obj['spec']['volumeName'])
+        except pykube.exceptions.ObjectDoesNotExist:
+            pvc_name = '{}/{}'.format(pvc_obj['metadata']['namespace'], pvc_obj['metadata']['name'])
+            logger.warning(f'PVC {pvc_name} is currently not bound to any PV, skipping.')
 
-        rpc_client.call_async('ceph_v1_backup',
-                              version_uid=version_uid,
-                              volume=volume,
-                              pool=pool,
-                              image=image,
-                              version_labels=version_labels)
-    rpc_client.call_async('terminate')
+        pvc_pv_pairs.append((pvc, pv))
 
-    command = ['benji-api-server', '--queue', rpc_client.queue]
-    job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
-    job.create()
+    if not pvc_pv_pairs:
+        logger.warning(f'All PVCs matched by the selector {label_selector} in namespace(s) {", ".join(namespaces)} are currently unbound.')
+        return
+
+    with AMQPRPCClient(queue='') as rpc_client:
+        rpc_calls = 0
+        for pvc, pv in pvc_pv_pairs:
+            pvc_obj = pvc.obj
+
+            pvc_name = '{}/{}'.format(pvc_obj['metadata']['namespace'], pvc_obj['metadata']['name'])
+            version_uid = '{}-{}'.format(pvc_name[:246], random_string(6))
+
+            pool, image = determine_rbd_image_location(pv, logger=logger)
+            if pool is None or image is None:
+                logger.warning(f'Unable to determine RBD pool and image location for PVC {pvc_name}, maybe it is not backed by RBD.')
+                continue
+
+            version_labels = build_version_labels_rbd(pvc=pvc, pv=pv, pool=pool, image=image)
+
+            rpc_client.call_async('ceph_v1_backup',
+                                  version_uid=version_uid,
+                                  volume=pvc_name,
+                                  pool=pool,
+                                  image=image,
+                                  version_labels=version_labels,
+                                  one_way=True)
+            rpc_calls += 1
+
+        if rpc_calls > 0:
+            rpc_client.call_async('terminate', one_way=True)
+
+            command = ['benji-api-server', rpc_client.queue]
+            job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
+            job.create()
 
 
 @kopf.on.resume(*BenjiBackupSchedule.group_version_plural())

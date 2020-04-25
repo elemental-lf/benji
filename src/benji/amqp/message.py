@@ -29,6 +29,7 @@ MESSAGE_FIELD_PAYLOAD = 'payload'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_CORRELATION_ID = 'correlation_id'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_TASK = 'task'
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS = 'arguments'
+MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ONE_WAY = 'one_way'
 
 # rpc-result
 MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_RESULT_CORRELATION_ID = 'correlation_id'
@@ -67,19 +68,19 @@ class AMQPMessage(ReprMixIn):
         self._version = message_version
 
         if not isinstance(message_id, str):
-            raise AMQPMessageEncodeError(f'Message id has wrong type {type(message_id)}')
+            raise AMQPMessageEncodeError(f'Message id has invalid type {type(message_id)}')
         if message_id == '':
             raise AMQPMessageEncodeError(f'Message id is None or empty.')
         self._id = message_id
 
         if not isinstance(message_type, str):
-            raise AMQPMessageEncodeError(f'Message type has wrong type {type(message_id)}')
+            raise AMQPMessageEncodeError(f'Message type has invalid type {type(message_id)}')
         if message_type not in MESSAGE_TYPES:
             raise AMQPMessageEncodeError(f'Message type {message_type} is invalid.')
         self._type = message_type
 
         if not isinstance(message_payload, dict):
-            raise AMQPMessageDecodeError(f'Message payload has wrong type {type(message_payload)}.')
+            raise AMQPMessageDecodeError(f'Message payload has invalid type {type(message_payload)}.')
         self._payload = message_payload
 
     @property
@@ -128,20 +129,20 @@ class AMQPMessage(ReprMixIn):
         message_payload = message[MESSAGE_FIELD_PAYLOAD]
 
         if not isinstance(message_version, str):
-            raise AMQPMessageDecodeError(f'Message version has wrong type {type(message_version)}.')
+            raise AMQPMessageDecodeError(f'Message version has invalid type {type(message_version)}.')
         if message_version != MESSAGE_VERSION:
             raise AMQPMessageDecodeError(f'Unsupported version {message_version}.')
 
         if not isinstance(message_id, str):
-            raise AMQPMessageDecodeError(f'Message id has wrong type {type(message_id)}.')
+            raise AMQPMessageDecodeError(f'Message id has invalid type {type(message_id)}.')
         if message_id == '':
             raise AMQPMessageDecodeError(f'Message id is empty.')
 
         if not isinstance(message_type, str):
-            raise AMQPMessageDecodeError(f'Message type has wrong type {type(message_type)}.')
+            raise AMQPMessageDecodeError(f'Message type has invalid type {type(message_type)}.')
 
         if not isinstance(message_payload, dict):
-            raise AMQPMessageDecodeError(f'Message payload has wrong type {type(message_payload)}.')
+            raise AMQPMessageDecodeError(f'Message payload has invalid type {type(message_payload)}.')
 
         type_map = {
             MESSAGE_TYPE_RPC_CALL: AMQPRPCCall,
@@ -162,25 +163,35 @@ class AMQPMessage(ReprMixIn):
 
 class AMQPRPCCall(AMQPMessage):
 
-    def __init__(self, *, message_id: str = None, correlation_id: str, task: str, arguments: Dict[str, Any]) -> None:
+    def __init__(self,
+                 *,
+                 message_id: str = None,
+                 correlation_id: str,
+                 task: str,
+                 arguments: Dict[str, Any],
+                 one_way: bool) -> None:
         if not isinstance(correlation_id, str):
-            raise AMQPMessageEncodeError(f'Correlation id has wrong type {correlation_id}.')
+            raise AMQPMessageEncodeError(f'Correlation id has invalid type {type(correlation_id)}.')
         if correlation_id == '':
             raise AMQPMessageEncodeError(f'Correlation id is empty.')
 
         if not isinstance(task, str):
-            raise AMQPMessageEncodeError(f'Method has wrong type {task}.')
+            raise AMQPMessageEncodeError(f'Method has invalid type {type(task)}.')
         if task == '':
             raise AMQPMessageEncodeError(f'Method is empty.')
 
         if not isinstance(arguments, dict):
-            raise AMQPMessageEncodeError(f'Arguments has wrong type {correlation_id}.')
+            raise AMQPMessageEncodeError(f'Arguments has invalid type {type(arguments)}.')
+
+        if not isinstance(one_way, bool):
+            raise AMQPMessageEncodeError(f'One way indicator has invalid type {type(one_way)}.')
 
         calculated_message_id = message_id or str(uuid.uuid4())
         message_payload = {
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_CORRELATION_ID: correlation_id,
             MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_TASK: task,
-            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS: arguments
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS: arguments,
+            MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ONE_WAY: one_way,
         }
         super().__init__(message_version=MESSAGE_VERSION,
                          message_id=calculated_message_id,
@@ -189,20 +200,26 @@ class AMQPRPCCall(AMQPMessage):
         self._correlation_id = correlation_id
         self._task = task
         self._arguments = arguments
+        self._one_way = one_way
 
     @classmethod
     def from_message(cls, *, message_version: str, message_id: str, message_type: str,
                      message_payload: Dict[str, Any]) -> 'AMQPRPCCall':
-        for field in (MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_CORRELATION_ID,
-                      MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_TASK, MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS):
+        for field in (MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_CORRELATION_ID, MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_TASK,
+                      MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS, MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ONE_WAY):
             if field not in message_payload:
                 raise AMQPMessageDecodeError(f'Required payload field {field} is missing.')
 
         correlation_id = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_CORRELATION_ID]
         task = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_TASK]
         arguments = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ARGUMENTS]
+        one_way = message_payload[MESSAGE_FIELD_MESSAGE_PAYLOAD_RPC_CALL_ONE_WAY]
 
-        return cls(message_id=message_id, correlation_id=correlation_id, task=task, arguments=arguments)
+        return cls(message_id=message_id,
+                   correlation_id=correlation_id,
+                   task=task,
+                   arguments=arguments,
+                   one_way=one_way)
 
     @property
     def correlation_id(self) -> str:
@@ -216,6 +233,10 @@ class AMQPRPCCall(AMQPMessage):
     def arguments(self) -> Dict[str, Any]:
         return self._arguments
 
+    @property
+    def one_way(self) -> bool:
+        return self._one_way
+
 
 class AMQPRPCResult(AMQPMessage):
 
@@ -227,12 +248,12 @@ class AMQPRPCResult(AMQPMessage):
                  start_time: str,
                  completion_time: str) -> None:
         if not isinstance(correlation_id, str):
-            raise AMQPMessageEncodeError(f'Correlation id has wrong type {correlation_id}.')
+            raise AMQPMessageEncodeError(f'Correlation id has invalid type {type(correlation_id)}.')
         if correlation_id == '':
             raise AMQPMessageEncodeError(f'Correlation id is empty.')
 
         if not isinstance(result, ByteString):
-            raise AMQPMessageEncodeError('Result has wrong type {type(result)}.')
+            raise AMQPMessageEncodeError(f'Result has invalid type {type(result)}.')
 
         if not isinstance(start_time, str) or not _is_iso_8601(start_time):
             raise AMQPMessageEncodeError(f'Start time is invalid: {start_time}.')
@@ -293,17 +314,17 @@ class AMQPRPCError(AMQPMessage):
                  start_time: str,
                  completion_time: str) -> None:
         if not isinstance(correlation_id, str):
-            raise AMQPMessageEncodeError(f'Correlation id has wrong type {correlation_id}.')
+            raise AMQPMessageEncodeError(f'Correlation id has invalid type {type(correlation_id)}.')
         if correlation_id == '':
             raise AMQPMessageEncodeError(f'Correlation id is empty.')
 
         if not isinstance(reason, str):
-            raise AMQPMessageEncodeError(f'Reason has wrong type {reason}.')
+            raise AMQPMessageEncodeError(f'Reason has invalid type {type(reason)}.')
         if reason == '':
             raise AMQPMessageEncodeError(f'Reason is empty.')
 
         if not isinstance(message, str):
-            raise AMQPMessageEncodeError(f'Message has wrong type {message}.')
+            raise AMQPMessageEncodeError(f'Message has invalid type {type(message)}.')
         if message == '':
             raise AMQPMessageEncodeError(f'Message is empty.')
 
@@ -367,7 +388,7 @@ class AMQPEventVersionAdd(AMQPMessage):
 
     def __init__(self, *, message_id: str = None, version: Dict[str, Any]) -> None:
         if not isinstance(version, dict):
-            raise AMQPMessageEncodeError(f'Version has wrong type {version}.')
+            raise AMQPMessageEncodeError(f'Version has invalid type {type(version)}.')
 
         calculated_message_id = message_id or str(uuid.uuid4())
         message_payload = {
@@ -398,7 +419,7 @@ class AMQPEventVersionRemove(AMQPMessage):
 
     def __init__(self, *, message_id: str = None, version: Dict[str, Any]) -> None:
         if not isinstance(version, dict):
-            raise AMQPMessageEncodeError(f'Version has wrong type {version}.')
+            raise AMQPMessageEncodeError(f'Version has invalid type {type(version)}.')
 
         calculated_message_id = message_id or str(uuid.uuid4())
         message_payload = {
