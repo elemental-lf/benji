@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from concurrent.futures.thread import ThreadPoolExecutor
+from contextlib import AbstractContextManager
 from datetime import datetime
 from io import StringIO
 from typing import Any, Dict, ByteString
@@ -32,6 +33,7 @@ RECONNECT_SLEEP_TIME = 5  # in seconds
 AMQP_HEARTBEAT_INTERVAL = 600  # in seconds
 AMQP_BLOCKED_CONNECTION_TIMEOUT = 300  # in seconds
 AMQP_REQUEST_DEFAULT_QUEUE = 'benji-rpc'
+TERMINATE_TASK_NAME = 'terminate'
 
 # Constants used by the server
 SERVER_AMQP_QUEUE_CONSUMER_TAG = 'server'
@@ -58,16 +60,19 @@ def _create_connection() -> pika.BlockingConnection:
 
 
 def _setup_common_queues(channel, queue: str):
-    arguments = {'x-message-ttl': AMQP_MESSAGE_TTL}
-    auto_delete = False
-    if queue == '':
-        arguments['x-expires'] = AMQP_AUTO_DELETE_QUEUE_TIMEOUT
-        auto_delete = True
-    queue_declare_result = channel.queue_declare(queue=queue,
-                                                 durable=True,
-                                                 auto_delete=auto_delete,
-                                                 arguments=arguments)
-    return queue_declare_result.method.queue
+    if not queue.startswith('amq.'):
+        arguments = {'x-message-ttl': AMQP_MESSAGE_TTL}
+        auto_delete = False
+        if queue == '':
+            arguments['x-expires'] = AMQP_AUTO_DELETE_QUEUE_TIMEOUT
+            auto_delete = True
+        queue_declare_result = channel.queue_declare(queue=queue,
+                                                     durable=True,
+                                                     auto_delete=auto_delete,
+                                                     arguments=arguments)
+        return queue_declare_result.method.queue
+    else:
+        return queue
 
 
 class _ArgumentsParser(Parser):
@@ -98,6 +103,7 @@ class AMQPRPCServer:
                  inactivity_timeout: int = 0) -> None:
         self._queue = queue
         self.inactivity_timeout = inactivity_timeout
+        logger.info(f'AMQP inactitivty timeout set to {self.inactivity_timeout}.')
         self._arguments_parser = _ArgumentsParser()
         self._tasks = {}
         self._connection = self._channel = None
@@ -105,7 +111,7 @@ class AMQPRPCServer:
         self._last_activity = time.monotonic()
         self._executor = ThreadPoolExecutor(max_workers=threads, thread_name_prefix='RPC-Thread')
 
-        logger.info(f'AMQP inactitivty timeout set to {self.inactivity_timeout}.')
+        self._register_terminate_task()
 
     @property
     def queue(self) -> str:
@@ -123,6 +129,9 @@ class AMQPRPCServer:
         self._channel.basic_consume(queue=self._queue,
                                     on_message_callback=self._message_handler,
                                     consumer_tag=SERVER_AMQP_QUEUE_CONSUMER_TAG)
+
+    def _register_terminate_task(self):
+        self.register_as_task({}, rpc_task_name=TERMINATE_TASK_NAME)(lambda: self.close())
 
     def _inactivity_timeout_check(self) -> None:
         logger.debug('Inactivity timeout check started.')
@@ -166,11 +175,13 @@ class AMQPRPCServer:
                                      start_time=start_time,
                                      completion_time=completion_time).marshal()
 
-            def publish_response():
-                nonlocal body, method, properties
-                self._publish_response(body=body, method=method, properties=properties)
+            if not message.one_way:
 
-            self._connection.add_callback_threadsafe(publish_response)
+                def publish_response():
+                    nonlocal body, method, properties
+                    self._publish_response(body=body, method=method, properties=properties)
+
+                self._connection.add_callback_threadsafe(publish_response)
         except Exception as exception:
             logger.info(f'Thread {thread_name} - Unexpected exception {type(exception).__name__} while handling RPC call: {str(exception)}')
 
@@ -286,7 +297,7 @@ class AMQPRPCServer:
 
 # The client runs the AMQP client in a seperate thread and so doesn't block the main thread.
 # This also ensure that AMQP heartbeat messages are sent regularly.
-class AMQPRPCClient:
+class AMQPRPCClient(AbstractContextManager):
 
     def __init__(self,
                  *,
@@ -304,6 +315,9 @@ class AMQPRPCClient:
         self._callback_queue = None
         self._amqp_thread = threading.Thread(target=self._serve, daemon=True)
         self._amqp_thread.start()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     # Run only in AMQP thread context
     def _serve(self):
@@ -384,9 +398,9 @@ class AMQPRPCClient:
     def queue(self) -> str:
         return self._queue
 
-    def call_async(self, task: str, **kwargs) -> str:
+    def call_async(self, task: str, one_way: bool = False, **kwargs) -> str:
         correlation_id = str(uuid.uuid4())
-        body = AMQPRPCCall(correlation_id=correlation_id, task=task, arguments=kwargs).marshal()
+        body = AMQPRPCCall(correlation_id=correlation_id, task=task, arguments=kwargs, one_way=one_way).marshal()
 
         if self._connection_ready.wait(timeout=self._ready_timeout):
             # There is still a race here if the connection breaks down between getting ready above and using

@@ -15,7 +15,7 @@ from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPA
     RESOURCE_STATUS_LIST_OBJECT_REFERENCE, JOB_STATUS_START_TIME, JOB_STATUS_COMPLETION_TIME, \
     RESOURCE_STATUS_DEPENDANT_JOBS_STATUS, RESOURCE_JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, RESOURCE_JOB_STATUS_FAILED, \
     RESOURCE_JOB_STATUS_RUNNING, RESOURCE_JOB_STATUS_PENDING, RESOURCE_STATUS_DEPENDANT_JOBS, LABEL_INSTANCE
-from benji.k8s_operator.utils import service_account_namespace
+from benji.k8s_operator.utils import service_account_namespace, keys_exist
 
 
 class BenjiJob(pykube.Job):
@@ -106,13 +106,13 @@ def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -
     return reference
 
 
-def get_parent(*, parent_name: str, parent_namespace: str, logger, crd: APIObject) -> Dict[str, Any]:
+def get_parent(*, parent_name: str, parent_namespace: str, logger, crd: APIObject) -> APIObject:
     if parent_namespace is not None:
         logger.debug(f'Getting resource {parent_namespace}/{parent_name}.')
-        parent = crd.objects().filter(namespace=parent_namespace).get_by_name(parent_name)
+        parent = crd.objects(OperatorContext.kubernetes_client).filter(namespace=parent_namespace).get_by_name(parent_name)
     else:
         logger.debug(f'Getting resource {parent_name}.')
-        parent = crd.objects().get_by_name(parent_name)
+        parent = crd.objects(OperatorContext.kubernetes_client).get_by_name(parent_name)
 
     return parent
 
@@ -122,12 +122,13 @@ def patch_parent(*, parent_name: str, parent_namespace: Optional[str], logger, c
     try:
         if parent_namespace is not None:
             logger.debug(f'Patching resource {parent_namespace}/{parent_name} with: {parent_patch}')
-            api_object: APIObject = crd.objects().filter(namespace=parent_namespace).get_by_name(parent_name)
-            api_object.patch()
+            api_object: APIObject = crd.objects(
+                OperatorContext.kubernetes_client).filter(namespace=parent_namespace).get_by_name(parent_name)
+            api_object.patch(strategic_merge_patch=parent_patch)
         else:
             logger.debug(f'Patching resource {parent_name} with: {parent_patch}')
-            api_object: APIObject = crd.objects().get_by_name(parent_name)
-            api_object.patch()
+            api_object: APIObject = crd.objects(OperatorContext.kubernetes_client).get_by_name(parent_name)
+            api_object.patch(strategic_merge_patch=parent_patch)
     except HTTPError as exception:
         if exception.response.status_code == 404:
             logger.warning(f'{crd.kind}/{parent_namespace}/{parent_name} has gone away before it could be patched.')
@@ -225,9 +226,17 @@ def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any
 
     parent_name = meta['labels'][LABEL_PARENT_NAME]
 
-    parent = get_parent(parent_name=parent_name, parent_namespace=parent_namespace, logger=logger, crd=crd)
+    try:
+        parent = get_parent(parent_name=parent_name, parent_namespace=parent_namespace, logger=logger, crd=crd)
+    except pykube.exceptions.ObjectDoesNotExist:
+        logger.warning(f'The parent of job {name} has gone away, skipping status update.')
+        return
+
+    if keys_exist(parent.obj, ('metadata.deletionTimestamp')):
+        logger.warning(f'The parent of job {name} is in deletion, skipping status update.')
+
     parent_patch = {
-        'status': build_resource_status_dependant_jobs(parent.get('status', {}), body, delete=(reason == 'delete'))
+        'status': build_resource_status_dependant_jobs(parent.obj.get('status', {}), body, delete=(reason == 'delete'))
     }
     patch_parent(parent_name=parent_name,
                  parent_namespace=parent_namespace,
@@ -236,17 +245,18 @@ def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any
                  parent_patch=parent_patch)
 
 
-def _delete_dependant_jobs(*, jobs: Sequence[Dict[str, Any]], logger) -> None:
+def _delete_dependant_jobs(*, jobs: Sequence[pykube.Job], logger) -> None:
     for job in jobs:
-        logger.info(f'Deleting dependant job {job["metadata"]["namespace"]}/{job["metadata"]["name"]}.')
-        pykube.Job(OperatorContext.kubernetes_client, job).delete()
+        logger.info(f'Deleting dependant job {job.obj["metadata"]["namespace"]}/{job.obj["metadata"]["name"]}.')
+        job.delete()
 
 
 def delete_all_dependant_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
     jobs = pykube.Job.objects(OperatorContext.kubernetes_client).filter(
         namespace=service_account_namespace(),
         selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
-    _delete_dependant_jobs(jobs=jobs, logger=logger)
+    if jobs:
+        _delete_dependant_jobs(jobs=jobs, logger=logger)
 
 
 # def delete_old_dependant_jobs(*, name: str, namespace: str, kind: str, logger) -> None:

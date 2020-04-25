@@ -358,10 +358,6 @@ class APIServer:
 
             return result
 
-    @register_as_task
-    def terminate(self):
-        self._rpc_server.close()
-
 
 class APIClient:
 

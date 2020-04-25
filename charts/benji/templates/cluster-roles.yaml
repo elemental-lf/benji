@@ -52,7 +52,7 @@ rules:
       - benjiversions
     verbs:
       - create
-      - update
+      - patch
       - delete
   - apiGroups:
       - ""
@@ -64,7 +64,6 @@ rules:
       - "batch"
     resources:
       - jobs
-      - cronjobs
     verbs:
       - create
       - get
@@ -72,6 +71,15 @@ rules:
       - watch
       - patch
       - delete
+  - apiGroups:
+      - "batch"
+    resources:
+      - "jobs/status"
+    verbs:
+      - create
+      - get
+      - watch
+      - patch
   - apiGroups:
       - ""
     resources:
