@@ -9,7 +9,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.utils import parse_quantity
 
 from benji.helpers.kubernetes import create_pvc
-from benji.k8s_operator.crd.backup_schedule import determine_rbd_image_location
+from benji.k8s_operator.crd.backup_schedule import determine_rbd_materials
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
 
@@ -88,7 +88,7 @@ else:
         logger.warning(f'Existing PVC is {pvc_size - version_size} bytes bigger than version {args.version_uid}.')
 
 pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-pool, image = determine_rbd_image_location(pv)
+pool, image = determine_rbd_materials(pv)
 
 if pool is None or image is None:
     raise RuntimeError(f'Cannot determine RBD pool and image of PersistentVolume {pv.metadata.name}.')

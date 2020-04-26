@@ -1,5 +1,7 @@
+import re
+from base64 import b64decode
 from functools import partial
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, NamedTuple, Sequence
 
 import kopf
 import pykube
@@ -20,6 +22,9 @@ K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR = 'persistentVolumeCla
 K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR_MATCH_LABELS = 'matchLabels'
 K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR_MATCH_NAMESPACE_LABELS = 'matchNamespaceLabels'
 
+ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP = 'rook-ceph-mon-endpoints'
+ROOK_CEPH_MON_SECRET = 'rook-ceph-mon'
+
 
 class BenjiBackupSchedule(NamespacedAPIObject):
 
@@ -35,35 +40,76 @@ class ClusterBenjiBackupSchedule(APIObject):
     kind = 'ClusterBenjiBackupSchedule'
 
 
-def determine_rbd_image_location(pv: pykube.PersistentVolume, *, logger) -> (str, str):
+class _RBDMaterials(NamedTuple):
+    pool: str
+    image: str
+    monitors: Sequence[str]
+    user: str
+    keyring: str
+    key: str
+
+
+def determine_rbd_materials(pv: pykube.PersistentVolume, *, logger) -> Optional[_RBDMaterials]:
     pv_obj = pv.obj
-    pool, image = None, None
+    pool, image, monitors, user, keyring, key = None, None, None, None, None, None
 
     pv_name = pv_obj['metadata']['name']
+    logger.debug(f'Considering PV {pv_name}...')
     if keys_exist(pv_obj['spec'], ('rbd.pool', 'rbd.image')):
-        logger.debug(f'Considering PersistentVolume {pv_name} as a native Ceph RBD volume.')
+        logger.debug(f'Considering PV {pv_name} as a native Ceph RBD volume.')
         pool, image = pv_obj['spec']['rbd']['pool'], pv_obj['spec']['rbd']['image']
     elif keys_exist(pv_obj['spec'], ('flexVolume.options', 'flexVolume.driver')):
-        logger.debug(f'Considering PersistentVolume {pv_name} as a Rook Ceph FlexVolume volume.')
+
         options = pv_obj['spec']['flexVolume']['options']
         driver = pv_obj['spec']['flexVolume']['driver']
         if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
             pool, image = options['pool'], options['image']
         else:
-            logger.debug(f'PersistentVolume {pv_name} was provisioned by unknown driver {driver}.')
+            logger.warning(f'PV {pv_name} was provisioned by an unknown driver {driver}.')
+            return None
     elif keys_exist(pv_obj['spec'], ('csi.driver', 'csi.volumeHandle', 'csi.volumeAttributes')):
-        logger.debug(f'Considering PersistentVolume {pv_name} as a Rook Ceph CSI volume.')
         driver = pv_obj['spec']['csi']['driver']
-        volume_handle = pv_obj['spec']['csi']['volumeHandle']
         if driver.endswith('.rbd.csi.ceph.com') and 'pool' in pv_obj['spec']['csi']['volumeAttributes']:
+            logger.debug(f'Considering PV {pv_name} as a Rook Ceph CSI volume.')
+
+            user = 'admin'
+            volume_handle = pv_obj['spec']['csi']['volumeHandle']
             pool = pv_obj['spec']['csi']['volumeAttributes']['pool']
             image_ids = volume_handle.split('-')
             if len(image_ids) >= 9:
                 image = 'csi-vol-' + '-'.join(image_ids[len(image_ids) - 5:])
             else:
-                logger.warning(f'PersistentVolume {pv_name} was provisioned by Rook Ceph CSI, but we do not understand the volumeHandle format: {volume_handle}')
+                logger.error(f'PV {pv_name} was provisioned by Rook Ceph CSI, but we do not understand the volumeHandle format: {volume_handle}')
+                return None
 
-    return pool, image
+            controller_namespace = driver.split('.')[0]
+            try:
+                mon_endpoints = pykube.ConfigMap.objects(OperatorContext.kubernetes_client).filter(
+                    namespace=controller_namespace).get_by_name(ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP)
+                mon_secret = pykube.Secret.objects(OperatorContext.kubernetes_client).filter(
+                    namespace=controller_namespace).get_by_name(ROOK_CEPH_MON_SECRET)
+            except pykube.exceptions.ObjectDoesNotExist:
+                logger.error(f'PV {pv_name} was provisioned by Rook Ceph CSI, but the corresponding configmap {ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP} and secret {ROOK_CEPH_MON_SECRET} could not be found namespace {controller_namespace}.')
+                return None
+
+            if keys_exist(mon_endpoints.obj, ('data.data',)):
+                monitors = mon_endpoints.obj['data']['data']
+                monitors = re.sub(r'[a-z]=', '', monitors).split(',')
+            else:
+                logger.error(f'PV {pv_name} was provisioned by Rook Ceph CSI, but the configmap {controller_namespace}/{ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP} is missing field data.data.')
+                return None
+
+            if keys_exist(mon_secret.obj, ('data.admin-secret',)):
+                key = b64decode(mon_secret.obj['data']['admin-secret'])
+            else:
+                logger.error(f'PV {pv_name} was provisioned by Rook Ceph CSI, but the secret {controller_namespace}/{ROOK_CEPH_MON_SECRET} is missing field data.admin-secret.')
+                return None
+        else:
+            logger.warning(f'PV {pv_name} was provisioned by an unknown driver {driver}.')
+            return None
+
+    logger.debug(f'PV {pv_name}: image = {image}, pool = {pool}, monitors = {monitors}, keyring set = {keyring is not None}, key set = {key is not None}.')
+    return _RBDMaterials(pool=pool, image=image, monitors=monitors, user=user, keyring=keyring, key=key)
 
 
 def build_version_labels_rbd(*, pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume, pool: str,
@@ -133,18 +179,24 @@ def backup_scheduler_job(*,
             pvc_name = '{}/{}'.format(pvc_obj['metadata']['namespace'], pvc_obj['metadata']['name'])
             version_uid = '{}-{}'.format(pvc_name[:246], random_string(6))
 
-            pool, image = determine_rbd_image_location(pv, logger=logger)
-            if pool is None or image is None:
-                logger.warning(f'Unable to determine RBD pool and image location for PVC {pvc_name}, maybe it is not backed by RBD.')
+            rbd_materials = determine_rbd_materials(pv, logger=logger)
+            if rbd_materials is None:
                 continue
 
-            version_labels = build_version_labels_rbd(pvc=pvc, pv=pv, pool=pool, image=image)
+            version_labels = build_version_labels_rbd(pvc=pvc,
+                                                      pv=pv,
+                                                      pool=rbd_materials.pool,
+                                                      image=rbd_materials.image)
 
             rpc_client.call_async('ceph_v1_backup',
                                   version_uid=version_uid,
                                   volume=pvc_name,
-                                  pool=pool,
-                                  image=image,
+                                  pool=rbd_materials.pool,
+                                  image=rbd_materials.image,
+                                  monitors=rbd_materials.monitors,
+                                  user=rbd_materials.user,
+                                  keyring=rbd_materials.keyring,
+                                  key=rbd_materials.key,
                                   version_labels=version_labels,
                                   one_way=True)
             rpc_calls += 1
