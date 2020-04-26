@@ -33,27 +33,30 @@ rules:
   - apiGroups:
       - "benji-backup.me"
     resources:
+      - benjiversions
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - "benji-backup.me"
+    resources:
       - benjirestores
       - benjibackups
       - benjibackupschedules
       - clusterbenjibackupschedules
       - benjiretentionschedules
       - clusterbenjiretentionschedules
-      - benjiversions
       - benjioperatorconfigs
     verbs:
       - get
       - list
       - watch
       - patch
-  - apiGroups:
-      - "benji-backup.me"
-    resources:
-      - benjiversions
-    verbs:
-      - create
-      - patch
-      - delete
   - apiGroups:
       - ""
     resources:
@@ -93,6 +96,8 @@ rules:
     resources:
       - namespaces
       - persistentvolumes
+      - configmaps
+      - secrets
     verbs:
       - list
       - get
