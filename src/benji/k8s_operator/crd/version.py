@@ -6,7 +6,7 @@ from requests import HTTPError
 from benji.api import APIClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
-    LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_STORAGE_CLASS_NAME, LABEL_K8S_PV_TYPE
+    LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE
 from benji.k8s_operator.resources import NamespacedAPIObject
 
 # Key names in version
@@ -53,8 +53,7 @@ class BenjiVersion(NamespacedAPIObject):
         labels = version[VERSION_LABELS]
 
         required_label_names = [
-            LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE,
-            LABEL_K8S_STORAGE_CLASS_NAME
+            LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE
         ]
 
         for label_name in required_label_names:
@@ -95,9 +94,9 @@ class BenjiVersion(NamespacedAPIObject):
 
         logger.debug(f'Creating or updating version resource {namespace}/{version["uid"]}.')
         try:
-            version_obj: NamespacedAPIObject = cls(
-                OperatorContext.kubernetes_client).filter(namespace=namespace).get_by_name(version["uid"])
-            actual = version_obj.obj
+            version_object = cls.objects(OperatorContext.kubernetes_client).filter(namespace=namespace).get_by_name(
+                version["uid"])
+            actual = version_object.obj
 
             # Keep other labels and annotations but overwrite our own
             actual['metadata']['labels'] = actual['metadata'].get('labels', {})
@@ -113,16 +112,16 @@ class BenjiVersion(NamespacedAPIObject):
             actual['status'].update(target['status'])
             target['status'] = actual['status']
 
-            version_obj.set_obj(target)
-            version_obj.update(is_strategic=False)
+            version_object.set_obj(target)
+            version_object.update(is_strategic=False)
         except HTTPError as exception:
             if exception.response.status_code == 404:
-                version_obj = cls(OperatorContext.kubernetes_client, target)
-                version_obj.create()
+                version_object = cls(OperatorContext.kubernetes_client, target)
+                version_object.create()
             else:
                 raise
 
-        return version_obj
+        return version_object
 
 
 def check_version_access(benji: APIClient, version_uid: str, crd: Dict[Any, str]) -> None:

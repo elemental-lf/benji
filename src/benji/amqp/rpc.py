@@ -1,6 +1,7 @@
 import functools
 import inspect
 import json
+import logging
 import os
 import threading
 import time
@@ -45,6 +46,9 @@ CLIENT_AMQP_QUEUE_CONSUMER_TAG = 'client'
 CLIENT_CLOSING_TIMER_CHECK_INTERVAL = 1  # in seconds
 CLIENT_DEFAULT_RESPONSE_TIMEOUT = 10  # in seconds
 CLIENT_DEFAULT_READY_TIMEOUT = 10  # in seconds
+
+# Pika is quite verbose even at INFO level... tone it down a bit.
+logging.getLogger('pika').setLevel(logging.WARNING)
 
 
 def _create_connection() -> pika.BlockingConnection:
