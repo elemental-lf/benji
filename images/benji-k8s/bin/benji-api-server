@@ -40,14 +40,31 @@ rpc_server = AMQPRPCServer(queue=args.queue, inactivity_timeout=120)
 @rpc_server.register_as_task()
 def ceph_v1_backup(version_uid: fields.Str(required=True), volume: fields.Str(required=True),
                    pool: fields.Str(required=True), image: fields.Str(required=True),
+                   monitors: fields.List(fields.Str(), missing=None), user: fields.Str(missing=None),
+                   keyring: fields.Str(missing=None), key: fields.Str(missing=None),
                    version_labels: fields.Dict(keys=fields.Str(), values=fields.Str(), missing={})):
-    return ceph.backup(volume=volume, pool=pool, image=image, version_uid=version_uid, version_labels=version_labels)
+    return ceph.backup(volume=volume,
+                       pool=pool,
+                       image=image,
+                       monitors=monitors,
+                       user=user,
+                       keyring=keyring,
+                       key=key,
+                       version_uid=version_uid,
+                       version_labels=version_labels)
 
 
 @rpc_server.register_as_task()
 def ceph_v1_restore(version_uid: fields.Str(required=True), pool: fields.Str(required=True),
-                    image: fields.Str(required=True)):
-    return ceph.restore(version_uid=version_uid, pool=pool, image=image)
+                    image: fields.Str(required=True), monitors: fields.List(fields.Str(), missing=None),
+                    user: fields.Str(missing=None), keyring: fields.Str(missing=None), key: fields.Str(missing=None)):
+    return ceph.restore(version_uid=version_uid,
+                        pool=pool,
+                        image=image,
+                        monitors=monitors,
+                        user=user,
+                        keyring=keyring,
+                        key=key)
 
 
 rpc_server.serve()

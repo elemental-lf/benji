@@ -11,7 +11,6 @@ LABEL_INSTANCE = 'benji-backup.me/instance'
 LABEL_K8S_PVC_NAMESPACE = 'benji-backup.me/k8s-pvc-namespace'
 LABEL_K8S_PVC_NAME = 'benji-backup.me/k8s-pvc-name'
 LABEL_K8S_PV_NAME = 'benji-backup.me/k8s-pv-name'
-LABEL_K8S_STORAGE_CLASS_NAME = 'benji-backup.me/k8s-storage-class-name'
 LABEL_K8S_PV_TYPE = 'benji-backup.me/k8s-pv-type'
 
 # RBD specific
