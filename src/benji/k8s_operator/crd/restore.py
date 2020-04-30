@@ -2,12 +2,12 @@ from typing import Dict, Any, Optional
 
 import kopf
 
-from benji.api import APIClient
+from benji.celery import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILDREN, API_GROUP, API_VERSION
-from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
 from benji.k8s_operator.crd.version import check_version_access
+from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
 
 K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME = 'persistentVolumeClaimName'
 K8S_RESTORE_SPEC_VERSION_NAME = 'versionName'
@@ -35,8 +35,8 @@ def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], 
     storage_class_name = spec[K8S_RESTORE_SPEC_STORAGE_CLASS_NAME]
     overwrite = spec.get(K8S_RESTORE_SPEC_OVERWRITE, False)
 
-    benji = APIClient()
-    check_version_access(benji, version_name, body)
+    with RPCClient() as rpc_client:
+        check_version_access(rpc_client, version_name, body)
 
     command = [
         'benji-restore-pvc',

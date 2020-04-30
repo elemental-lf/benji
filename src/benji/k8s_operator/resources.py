@@ -8,7 +8,6 @@ from pykube import HTTPClient
 from pykube.objects import APIObject, APIObject as pykube_APIObject, NamespacedAPIObject as pykube_NamespacedAPIObject
 from requests import HTTPError
 
-import benji.k8s_operator
 from benji.helpers.settings import benji_instance, running_pod_name
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPACE, LABEL_PARENT_NAME, \
@@ -66,6 +65,13 @@ class BenjiJob(pykube.Job):
         job_manifest['spec']['template']['spec']['containers'][0]['args'] = []
 
         super().__init__(api, job_manifest)
+
+
+class StorageClass(pykube_APIObject):
+
+    version = 'storage.k8s.io/v1'
+    endpoint = 'storageclasses'
+    kind = 'StorageClass'
 
 
 def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,

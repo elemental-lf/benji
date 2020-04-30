@@ -73,9 +73,11 @@ Topic :: System :: Archiving :: Backup
         #'rbd': ['rados', 'rbd'],
         'dev': ['parameterized', 'wheel', 'yapf', 'mypy'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
-        'helpers': ['blinker>=1.4,<2'],
-        'k8s-operator': ['kopf>=0.27rc3,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4'],
-        'api': ['webargs>=6.0.0,<7', 'u-msgpack-python>=2.5.2,<3', 'pika>=1.1.0,<2'],
+        'k8s-operator': [
+            'kopf>=0.27rc3,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4', 'celery[msgpack]>=4.4.2,<5',
+            'attrs>=19.3.0,<20'
+        ],
+        'api': ['celery[msgpack]>=4.4.2,<5', 'attrs>=19.3.0,<20'],
     },
     python_requires='~=3.6',
     entry_points="""

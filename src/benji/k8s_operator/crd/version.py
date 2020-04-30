@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 import kopf
 from requests import HTTPError
 
-from benji.api import APIClient
+from benji.celery import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
     LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE
@@ -124,9 +124,9 @@ class BenjiVersion(NamespacedAPIObject):
         return version_object
 
 
-def check_version_access(benji: APIClient, version_uid: str, crd: Dict[Any, str]) -> None:
+def check_version_access(rpc_client: RPCClient, version_uid: str, crd: Dict[Any, str]) -> None:
     try:
-        version = benji.core_v1_get(version_uid=version_uid)
+        version = rpc_client.call('core_v1_get', version_uid=version_uid)
     except KeyError as exception:
         raise kopf.PermanentError(str(exception))
 
@@ -142,18 +142,18 @@ def check_version_access(benji: APIClient, version_uid: str, crd: Dict[Any, str]
 
 @kopf.on.field(*BenjiVersion.group_version_plural(), field='status.protected')
 def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
-    benji = APIClient()
-    check_version_access(benji, name, body)
-    protected = status.get('protected', False)
-    benji.protect(name, protected)
+    with RPCClient as rpc_client:
+        check_version_access(rpc_client, name, body)
+        protected = status.get('protected', False)
+        rpc_client.call('core_v1_protect', version_uid=name, protected=protected)
 
 
 @kopf.on.delete(*BenjiVersion.group_version_plural())
 def benji_remove(name: str, body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
-    benji = APIClient()
-    try:
-        benji.core_v1_get(name)
-    except KeyError:
-        return
-    check_version_access(benji, name, body)
-    benji.rm(name)
+    with RPCClient() as rpc_client:
+        try:
+            rpc_client.call('core_v1_get', version_uid=name)
+        except KeyError:
+            return
+        check_version_access(rpc_client, name, body)
+        rpc_client.call('rm', version_uid=name)

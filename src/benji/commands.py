@@ -444,8 +444,8 @@ class Commands:
             else:
                 self._storage_usage_table_output(usage)
 
-    def api_server(self, queue: str, threads: int, inactivity_timeout: int) -> None:
+    def api_server(self, queue: str, threads: int) -> None:
         from benji.api import APIServer
-        api = APIServer(config=self.config, queue=queue, threads=threads, inactivity_timeout=inactivity_timeout)
+        api = APIServer(config=self.config, queue=queue, threads=threads)
         logger.info(f'Starting API server, press CTRL-C to terminate it.')
         api.serve()

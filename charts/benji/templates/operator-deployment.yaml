@@ -56,6 +56,8 @@ spec:
               value: "{{ .Values.rabbitmq.service.port }}"
             - name: AMQP_VIRTUAL_HOST
               value: "/"
+            - name: C_FORCE_ROOT
+              value: "1"
 {{- with .Values.operator.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
