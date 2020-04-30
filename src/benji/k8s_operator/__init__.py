@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict, Any, NamedTuple
+from typing import Optional, Dict, Any
 
 import pykube
 from apscheduler.schedulers.background import BaseScheduler, BackgroundScheduler

@@ -2,11 +2,10 @@
 import argparse
 import os
 import sys
-
-from webargs import fields
+from typing import Sequence, Dict
 
 import benji.helpers.ceph as ceph
-from benji.amqp import AMQPRPCServer
+from benji.celery import RPCServer
 from benji.config import Config
 from benji.logging import logger, init_logging
 
@@ -34,15 +33,20 @@ init_logging(config.get('logFile', types=(str, type(None))),
              console_level=args.log_level,
              console_formatter='console-plain' if args.no_color else 'console-colored')
 
-rpc_server = AMQPRPCServer(queue=args.queue, inactivity_timeout=120)
+rpc_server = RPCServer(queue=args.queue)
 
 
 @rpc_server.register_as_task()
-def ceph_v1_backup(version_uid: fields.Str(required=True), volume: fields.Str(required=True),
-                   pool: fields.Str(required=True), image: fields.Str(required=True),
-                   monitors: fields.List(fields.Str(), missing=None), user: fields.Str(missing=None),
-                   keyring: fields.Str(missing=None), key: fields.Str(missing=None),
-                   version_labels: fields.Dict(keys=fields.Str(), values=fields.Str(), missing={})):
+def ceph_v1_backup(*,
+                   version_uid: str,
+                   volume: str,
+                   pool: str,
+                   image: str,
+                   monitors: Sequence[str] = None,
+                   user: str = None,
+                   keyring: str = None,
+                   key: str = None,
+                   version_labels: Dict[str, str] = {}):
     return ceph.backup(volume=volume,
                        pool=pool,
                        image=image,
@@ -55,9 +59,14 @@ def ceph_v1_backup(version_uid: fields.Str(required=True), volume: fields.Str(re
 
 
 @rpc_server.register_as_task()
-def ceph_v1_restore(version_uid: fields.Str(required=True), pool: fields.Str(required=True),
-                    image: fields.Str(required=True), monitors: fields.List(fields.Str(), missing=None),
-                    user: fields.Str(missing=None), keyring: fields.Str(missing=None), key: fields.Str(missing=None)):
+def ceph_v1_restore(*,
+                    version_uid: str,
+                    pool: str,
+                    image: str,
+                    monitors: Sequence[str] = None,
+                    user: str = None,
+                    keyring: str = None,
+                    key: str = None):
     return ceph.restore(version_uid=version_uid,
                         pool=pool,
                         image=image,

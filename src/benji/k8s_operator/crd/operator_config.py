@@ -3,11 +3,9 @@ from typing import Optional, Dict, Any
 
 import kopf
 from apscheduler.jobstores.base import JobLookupError
-from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-import benji.k8s_operator
-from benji.api import APIClient
+from benji.celery import RPCClient
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
@@ -30,9 +28,10 @@ def set_operator_config() -> None:
 
 
 def reconciliate_versions_job(*, logger):
-    benji = APIClient()
     logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
-    versions = benji.core_v1_ls(filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')['versions']
+    with RPCClient() as rpc_client:
+        versions = rpc_client.call('core_v1_ls',
+                                   filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')['versions']
     logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()

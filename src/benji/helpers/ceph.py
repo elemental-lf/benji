@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from tempfile import NamedTemporaryFile
-from typing import Dict, Any, Optional, Sequence, List
+from typing import Dict, Optional, Sequence, List
 
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run
