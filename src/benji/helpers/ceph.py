@@ -11,6 +11,7 @@ RBD_SNAP_CREATE_TIMEOUT = 30
 RBD_SNAP_RM_TIMEOUT = 30
 RBD_SNAP_NAME_PREFIX = 'b-'
 CEPH_DEFAULT_USER = 'admin'
+IO_MODULE_NAME = 'rbd'
 
 logger = logging.getLogger()
 
@@ -90,8 +91,11 @@ def backup_initial(
             benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
-        benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
-        result = subprocess_run(benji_args, decode_json=True)
+        benji_args.extend([
+            f'{IO_MODULE_NAME}:{pool}/{image}@{snapshot}?mon_host={",".join(monitors)}&client_identifier={user}&key={key}&keyring={keyring}',
+            volume
+        ])
+        result = subprocess_run(benji_args, decode_json=True, sensitive_info=key or keyring)
 
     return result
 
@@ -137,8 +141,12 @@ def backup_differential(
             benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
-        benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
-        result = subprocess_run(benji_args, decode_json=True)
+        benji_args.extend([
+            f'{IO_MODULE_NAME}:{pool}/{image}@{snapshot}?mon_host={",".join(monitors)}&client_identifier={user}&key={key}&keyring={keyring}',
+            volume
+        ])
+
+        result = subprocess_run(benji_args, decode_json=True, sensitive_info=key or keyring)
 
     return result
 

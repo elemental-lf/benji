@@ -26,8 +26,12 @@ def _one_line_stderr(stderr: str):
 def subprocess_run(args: List[str],
                    input: str = None,
                    timeout: int = None,
-                   decode_json: bool = False) -> Union[Dict, List, str]:
-    logger.info('Running process: {}'.format(' '.join(args)))
+                   decode_json: bool = False,
+                   sensitive_info: bool = False) -> Union[Dict, List, str]:
+    if sensitive_info:
+        logger.info(f'Running process: {args[0]} ... (possibly sensitive info redacted)')
+    else:
+        logger.info('Running process: {}'.format(' '.join(args)))
     try:
 
         result = subprocess.run(args=args,

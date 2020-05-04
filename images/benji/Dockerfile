@@ -61,11 +61,14 @@ RUN ulimit -n 1024 && \
 
 RUN mkdir /etc/benji && \
     ln -s $VENV_DIR/etc/benji.yaml /etc/benji/benji.yaml && \
-    echo "PATH=$PATH" >>/etc/environment
+    echo "PATH=$PATH" >>/etc/environment && \
+    touch /etc/ceph/ceph.conf /etc/ceph/ceph.client.admin.keyring
 
 COPY --from=build $VENV_DIR/ $VENV_DIR/
 COPY etc/benji-minimal.yaml $VENV_DIR/etc/benji.yaml
 COPY images/benji/bashrc /root/.bashrc
+COPY images/benji/bin/ $VENV_DIR/bin/
+RUN chmod a+x $VENV_DIR/bin/*
 
 WORKDIR $VENV_DIR
 

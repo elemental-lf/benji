@@ -33,6 +33,9 @@ spec:
           imagePullPolicy: {{ .Values.benji.image.pullPolicy }}
           securityContext:
             privileged: true
+          command:
+            - sleep
+            - 3650h
           env:
             - name: POD_NAME
               valueFrom:

@@ -74,7 +74,7 @@ Topic :: System :: Archiving :: Backup
         'dev': ['parameterized', 'wheel', 'yapf', 'mypy'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
         'k8s-operator': [
-            'kopf>=0.27rc3,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4', 'celery[msgpack]>=4.4.2,<5',
+            'kopf>=0.27rc5,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4', 'celery[msgpack]>=4.4.2,<5',
             'attrs>=19.3.0,<20'
         ],
         'api': ['celery[msgpack]>=4.4.2,<5', 'attrs>=19.3.0,<20'],
