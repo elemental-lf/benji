@@ -6,7 +6,7 @@ from requests import HTTPError
 from benji.celery import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
-    LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE
+    LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
 from benji.k8s_operator.resources import NamespacedAPIObject
 
 # Key names in version
@@ -52,9 +52,7 @@ class BenjiVersion(NamespacedAPIObject):
     def create_or_update_from_version(cls, *, version: Dict[str, Any], logger=None) -> 'BenjiVersion':
         labels = version[VERSION_LABELS]
 
-        required_label_names = [
-            LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE
-        ]
+        required_label_names = [LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PV_NAME]
 
         for label_name in required_label_names:
             if label_name not in labels:

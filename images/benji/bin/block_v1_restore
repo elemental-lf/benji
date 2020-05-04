@@ -5,13 +5,13 @@ import sys
 import time
 
 import kubernetes
+from benji.helpers.kubernetes import create_pvc
 from kubernetes.client.rest import ApiException
 from kubernetes.utils import parse_quantity
 
-from benji.helpers.kubernetes import create_pvc
-from benji.k8s_operator.crd.backup_schedule import determine_rbd_materials
 from benji.helpers.settings import benji_log_level
 from benji.helpers.utils import subprocess_run, setup_logging
+from benji.k8s_operator.crd.backup_schedule import determine_rbd_materials
 
 PVC_CREATION_TRIES = 30
 PVC_CREATION_WAIT = 2

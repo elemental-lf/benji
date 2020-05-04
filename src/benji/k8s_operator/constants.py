@@ -11,13 +11,6 @@ LABEL_INSTANCE = 'benji-backup.me/instance'
 LABEL_K8S_PVC_NAMESPACE = 'benji-backup.me/k8s-pvc-namespace'
 LABEL_K8S_PVC_NAME = 'benji-backup.me/k8s-pvc-name'
 LABEL_K8S_PV_NAME = 'benji-backup.me/k8s-pv-name'
-LABEL_K8S_PV_TYPE = 'benji-backup.me/k8s-pv-type'
-
-# RBD specific
-LABEL_RBD_IMAGE_SPEC = 'benji-backup.me/rbd-image-spec'
-
-# Valuefor LABEL_K8S_PV_TYPE
-PV_TYPE_RBD = 'rbd'
 
 # Constants for field names in the status section of a Job
 JOB_STATUS_COMPLETION_TIME = 'completionTime'
