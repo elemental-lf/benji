@@ -68,6 +68,8 @@ RUN mkdir /etc/benji && \
 COPY --from=build $VENV_DIR/ $VENV_DIR/
 COPY etc/benji-minimal.yaml $VENV_DIR/etc/benji.yaml
 COPY images/benji/bashrc /root/.bashrc
+COPY images/benji/bin/ $VENV_DIR/bin/
+RUN chmod a+x $VENV_DIR/bin/*
 
 WORKDIR $VENV_DIR
 

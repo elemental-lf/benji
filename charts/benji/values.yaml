@@ -184,5 +184,5 @@ rabbitmq:
     username: benji
     password: benji-pass
   networkPolicy:
-    enabled: false
+    enabled: true
     allowExternal: False

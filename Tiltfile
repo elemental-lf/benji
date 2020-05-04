@@ -28,24 +28,7 @@ docker_build(
     #     sync('src/benji', '/benji/lib/python3.6/site-packages/benji'),
     #     restart_container(),
     # ],
-    ignore=['src/benji/k8s_operator', 'src/benji/sql_migrations', 'images', '!images/benji'])
-
-docker_build(
-    'elementalnet/benji-k8s',
-    '.',
-    dockerfile='images/benji-k8s/Dockerfile',
-    build_args={
-        'VCS_REF': cfg.get('vcs-ref', 'unknown'),
-        'BUILD_DATE': cfg.get('build-date', 'unknown'),
-        'VCS_URL': cfg.get('vcs-url', 'unknown'),
-        'VERSION': cfg.get('version', 'unknown'),
-    },
-    # Disable Live Update for the time being, see https://github.com/windmilleng/tilt/issues/2948.
-    # live_update=[
-    #    sync('src/benji', '/benji/lib/python3.6/site-packages/benji'),
-    #    restart_container(),
-    # ],
-    ignore=['src/benji/k8s_operator', 'src/benji/sql_migrations', 'images', '!images/benji-k8s'])
+    ignore=['*', '!src', '!etc', '!setup.py', '!README.rst', 'src/benji/k8s_operator', '!images/benji'])
 
 docker_build('elementalnet/benji-k8s-operator',
              '.',
@@ -60,7 +43,10 @@ docker_build('elementalnet/benji-k8s-operator',
                  sync('src/benji', '/usr/local/lib/python3.7/site-packages/benji'),
                  restart_container(),
              ],
-             ignore=['src/benji/sql_migrations', 'images', '!images/benji-k8s-operator'])
+             ignore=[
+                 '*', '!src/benji/k8s_operator', '!src/benji/helpers', '!src/benji/celery', '!src/benji/_*version.py',
+                 '!src/benji/__init__.py', '!setup.py', '!README.rst', '!images/benji-k8s-operator'
+             ])
 
 k8s_resource('benji-operator', resource_deps=['benji-api'])
 k8s_resource('benji', extra_pod_selectors=[{'app.kubernetes.io/managed-by': 'benji-operator'}])

@@ -11,6 +11,7 @@ RBD_SNAP_CREATE_TIMEOUT = 30
 RBD_SNAP_RM_TIMEOUT = 30
 RBD_SNAP_NAME_PREFIX = 'b-'
 CEPH_DEFAULT_USER = 'admin'
+IO_MODULE_NAME = 'rbd'
 
 logger = logging.getLogger()
 
