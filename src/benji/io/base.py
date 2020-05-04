@@ -15,7 +15,7 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
                  block_size: int) -> None:
         self._name = name
         self._url = url
-        self._parsed_url = parse.urlparse(url)
+        self._parsed_url = parse.urlparse(url, allow_fragments=False)
         self._block_size = block_size
 
     @property
@@ -59,7 +59,8 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def read_get_completed(self, timeout: Optional[int] = None
+    def read_get_completed(self,
+                           timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         raise NotImplementedError
 
