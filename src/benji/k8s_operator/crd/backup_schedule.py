@@ -12,7 +12,7 @@ from benji.celery import RPCClient
 from benji.helpers import settings
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE, \
-    LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME, LABEL_K8S_PV_TYPE, PV_TYPE_RBD, LABEL_RBD_IMAGE_SPEC
+    LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, APIObject, \
     NamespacedAPIObject, StorageClass
 from benji.k8s_operator.utils import cr_to_job_name, random_string, keys_exist
@@ -154,9 +154,6 @@ def build_version_labels_rbd(*, pvc: pykube.PersistentVolumeClaim, pv: pykube.Pe
         LABEL_K8S_PVC_NAMESPACE: pvc_obj['metadata']['namespace'],
         LABEL_K8S_PVC_NAME: pvc_obj['metadata']['name'],
         LABEL_K8S_PV_NAME: pv_obj['metadata']['name'],
-        # RBD specific
-        LABEL_K8S_PV_TYPE: PV_TYPE_RBD,
-        LABEL_RBD_IMAGE_SPEC: f'{pool}/{image}',
     }
 
     return version_labels
