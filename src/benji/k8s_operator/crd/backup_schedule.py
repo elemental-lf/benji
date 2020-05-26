@@ -218,7 +218,7 @@ def backup_scheduler_job(*,
                                                       pool=rbd_materials.pool,
                                                       image=rbd_materials.image)
 
-            rpc_client.call_async('ceph_v1_backup',
+            rpc_client.call_async('rbd.v1.backup',
                                   version_uid=version_uid,
                                   volume=pvc_name,
                                   pool=rbd_materials.pool,
@@ -234,7 +234,7 @@ def backup_scheduler_job(*,
         if rpc_calls > 0:
             rpc_client.call_async('terminate', ignore_result=True)
 
-            command = ['benji-api-server', rpc_client.queue]
+            command = ['benji', 'api-server', rpc_client.queue]
             job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
             job.create()
 

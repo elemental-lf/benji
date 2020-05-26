@@ -124,7 +124,7 @@ class BenjiVersion(NamespacedAPIObject):
 
 def check_version_access(rpc_client: RPCClient, version_uid: str, crd: Dict[Any, str]) -> None:
     try:
-        version = rpc_client.call('core_v1_get', version_uid=version_uid)
+        version = rpc_client.call('core.v1.get', version_uid=version_uid)
     except KeyError as exception:
         raise kopf.PermanentError(str(exception))
 

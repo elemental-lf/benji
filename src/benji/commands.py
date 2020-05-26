@@ -7,6 +7,7 @@ from prettytable import PrettyTable
 
 import benji.exception
 from benji import __version__
+from benji.api import APIServer
 from benji.benji import Benji, BenjiStore
 from benji.database import Version, VersionUid
 from benji.logging import logger
@@ -445,7 +446,6 @@ class Commands:
                 self._storage_usage_table_output(usage)
 
     def api_server(self, queue: str, threads: int) -> None:
-        from benji.api import APIServer
         api = APIServer(config=self.config, queue=queue, threads=threads)
         logger.info(f'Starting API server, press CTRL-C to terminate it.')
         api.serve()

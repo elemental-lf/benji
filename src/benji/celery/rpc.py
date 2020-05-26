@@ -62,10 +62,10 @@ class RPCServer:
             encoded_result = json.dumps(result, check_circular=True, separators=(',', ': '), indent=2).encode(CHARSET)
         return encoded_result
 
-    def register_as_task(self, name: str = None):
+    def register_as_task(self, api_group, api_version, name: str = None):
 
         def decorator(func):
-            task_name = name or func.__name__
+            task_name = f'{api_group}.{api_version}.{name or func.__name__}'
 
             @functools.wraps(func)
             def call_task(*task_args, **task_kwargs):
