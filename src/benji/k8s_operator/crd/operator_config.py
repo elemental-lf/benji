@@ -30,7 +30,7 @@ def set_operator_config() -> None:
 def reconciliate_versions_job(*, logger):
     logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
     with RPCClient() as rpc_client:
-        versions = rpc_client.call('core_v1_ls',
+        versions = rpc_client.call('core.v1.ls',
                                    filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')['versions']
     logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
