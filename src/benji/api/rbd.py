@@ -103,6 +103,23 @@ class Tasks(TasksBase):
         return hints_from_rbd_diff(subprocess_run(rbd_diff_args))
 
     @register_as_task(API_GROUP, API_VERSION)
+    def snapshot_ls(self,
+                    *,
+                    pool: str,
+                    image: str,
+                    monitors: Sequence[str] = None,
+                    user: str = None,
+                    keyring: str = None,
+                    key: str = None):
+        ceph_credential_args = self._build_ceph_credential_arguments(monitors=monitors,
+                                                                     user=user,
+                                                                     keyring=keyring,
+                                                                     key=key)
+        rbd_snap_ls_args = ['rbd', 'snap', 'ls', '--format=json', f'{pool}/{image}']
+        rbd_snap_ls_args.extend(ceph_credential_args)
+        return subprocess_run(rbd_snap_ls_args, decode_json=True)
+
+    @register_as_task(API_GROUP, API_VERSION)
     def backup(self,
                *,
                version_uid: str,

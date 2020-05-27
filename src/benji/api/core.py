@@ -1,5 +1,5 @@
 from io import StringIO
-from typing import Sequence, Optional, Dict, Any, Tuple, List
+from typing import Sequence, Optional, Dict, Any, Tuple, List, Union
 
 from benji import __version__
 from benji.api import TasksBase
@@ -14,6 +14,12 @@ API_VERSION = 'v1'
 
 class Tasks(TasksBase):
 
+    @staticmethod
+    def _export_versions(benji_obj: Benji, versions: Union[Version, Sequence[Version]]) -> StringIO:
+        result = StringIO()
+        benji_obj.export_any(versions, result, ignore_relationships=[((Version,), ('blocks',))])
+        return result
+
     @register_as_task(API_GROUP, API_VERSION)
     def backup(self,
                *,
@@ -24,19 +30,21 @@ class Tasks(TasksBase):
                hints: Sequence[Tuple[int, int, bool]] = None,
                base_version_uid: str = None,
                block_size: int = None,
-               storage_name: str = None) -> None:
+               storage_name: str = None) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
         with Benji(self._config) as benji_obj:
-            benji_obj.backup(version_uid=version_uid_obj,
-                             volume=volume,
-                             snapshot=snapshot,
-                             source=source,
-                             hints=hints,
-                             base_version_uid=base_version_uid_obj,
-                             storage_name=storage_name,
-                             block_size=block_size)
+            return self._export_versions(
+                benji_obj,
+                benji_obj.backup(version_uid=version_uid_obj,
+                                 volume=volume,
+                                 snapshot=snapshot,
+                                 source=source,
+                                 hints=hints,
+                                 base_version_uid=base_version_uid_obj,
+                                 storage_name=storage_name,
+                                 block_size=block_size))
 
     @register_as_task(API_GROUP, API_VERSION)
     def restore(self,
@@ -54,13 +62,8 @@ class Tasks(TasksBase):
 
     @register_as_task(API_GROUP, API_VERSION)
     def get_version_by_uid(self, *, version_uid: str) -> StringIO:
-        result = StringIO()
         with Benji(self._config) as benji_obj:
-            benji_obj.export_any(benji_obj.get_version_by_uid(version_uid=VersionUid(version_uid)),
-                                 result,
-                                 ignore_relationships=[((Version,), ('blocks',))])
-
-        return result
+            return self._export_versions(benji_obj.get_version_by_uid(version_uid=VersionUid(version_uid)))
 
     @register_as_task(API_GROUP, API_VERSION)
     def protect(self, *, version_uid: str, protected: bool = True) -> None:
@@ -102,14 +105,11 @@ class Tasks(TasksBase):
 
     def _batch_scrub(self, method: str, filter_expression: Optional[str], version_percentage: int,
                      block_percentage: int, group_label: Optional[str]) -> StringIO:
-        result = StringIO()
         with Benji(self._config) as benji_obj:
             versions, errors = getattr(benji_obj, method)(filter_expression, version_percentage, block_percentage,
                                                           group_label)
 
-            benji_obj.export_any((versions, errors), result, ignore_relationships=[((Version,), ('blocks',))])
-
-        return result
+            return self._export_versions(benji_obj, versions), self._export_versions(benji_obj, errors)
 
     @register_as_task(API_GROUP, API_VERSION)
     def batch_scrub(self,
@@ -131,18 +131,9 @@ class Tasks(TasksBase):
                                  group_label)
 
     @register_as_task(API_GROUP, API_VERSION)
-    def find_versions_with_filter(self, *, filter_expression: str = None, include_blocks: bool = False) -> StringIO:
+    def find_versions_with_filter(self, *, filter_expression: str = None) -> StringIO:
         with Benji(self._config) as benji_obj:
-            versions = benji_obj.find_versions_with_filter(filter_expression)
-
-            result = StringIO()
-            benji_obj.export_any(
-                {'versions': versions},
-                result,
-                ignore_relationships=[((Version,), ('blocks',) if not include_blocks else ())],
-            )
-
-            return result
+            return self._export_versions(benji_obj, benji_obj.find_versions_with_filter(filter_expression))
 
     @register_as_task(API_GROUP, API_VERSION)
     def cleanup(self, *, override_lock: bool = False) -> None:
@@ -187,21 +178,14 @@ class Tasks(TasksBase):
                 dry_run: bool = False,
                 keep_metadata_backup: bool = False,
                 group_label: str = None) -> StringIO:
-        result = StringIO()
         with Benji(self._config) as benji_obj:
-            dismissed_versions = benji_obj.enforce_retention_policy(filter_expression=filter_expression,
-                                                                    rules_spec=rules_spec,
-                                                                    dry_run=dry_run,
-                                                                    keep_metadata_backup=keep_metadata_backup,
-                                                                    group_label=group_label)
-
-            benji_obj.export_any(
-                {'versions': dismissed_versions},
-                result,
-                ignore_relationships=[((Version,), ('blocks',))],
-            )
-
-        return result
+            return self._export_versions(
+                benji_obj,
+                benji_obj.enforce_retention_policy(filter_expression=filter_expression,
+                                                   rules_spec=rules_spec,
+                                                   dry_run=dry_run,
+                                                   keep_metadata_backup=keep_metadata_backup,
+                                                   group_label=group_label))
 
     @register_as_task(API_GROUP, API_VERSION)
     def storage_stats(self, *, storage_name: str) -> Tuple[int, int]:
