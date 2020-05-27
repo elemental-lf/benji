@@ -2,20 +2,22 @@ import re
 from base64 import b64decode
 
 import pykube
+from benji.k8s_operator.volume_driver.registry import VolumeDriverRegistry
 
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.utils import keys_exist
-from benji.k8s_operator.volume_driver.base import VolumeDriverBase
+from benji.k8s_operator.volume_driver.base import VolumeDriverInterface
+import benji.k8s_operator.backup.rbd
 
 ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP = 'rook-ceph-mon-endpoints'
 ROOK_CEPH_MON_SECRET = 'rook-ceph-mon'
 
 
-class RookCSI(VolumeDriverBase):
+@VolumeDriverRegistry.register(order=20)
+class VolumeDriver(VolumeDriverInterface):
 
     @classmethod
-    def handle(cls, pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume, *, logger):
-        pvc_obj = pvc.obj
+    def handle(cls, *, pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume, logger):
         pv_obj = pv.obj
         pool, image, monitors, user, keyring, key = None, None, None, None, None, None
 
@@ -59,6 +61,15 @@ class RookCSI(VolumeDriverBase):
             else:
                 logger.warning(f'PV {pv.name} was provisioned by an unknown driver {driver}.')
                 return None
+        else:
+            return None
 
         logger.info(f'PVC {pvc.namespace}/{pvc.name}, PV {pv.name}: image = {image}, pool = {pool}, monitors = {monitors}, keyring set = {keyring is not None}, key set = {key is not None}.')
-        return _RBDMaterials(pool=pool, image=image, monitors=monitors, user=user, keyring=keyring, key=key)
+        return benji.k8s_operator.backup.rbd.Backup(pvc=pvc,
+                                                    pv=pv,
+                                                    pool=pool,
+                                                    image=image,
+                                                    monitors=monitors,
+                                                    user=user,
+                                                    keyring=keyring,
+                                                    key=key)

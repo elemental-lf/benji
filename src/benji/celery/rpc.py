@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any, ByteString
 
 from celery import Celery
-from celery.exceptions import WorkerShutdown
 from celery.result import AsyncResult
 
 from benji.celery.message import RPCError, RPCResult, Message
@@ -18,6 +17,8 @@ from benji.celery.utils import random_string
 
 CELERY_SETTINGS = 'benji.celery.settings'
 WORKER_DEFAULT_THREADS = 1
+TERMINATE_TASK_API_GROUP = 'rpc'
+TERMINATE_TASK_API_VERSION = 'v1'
 TERMINATE_TASK_NAME = 'terminate'
 WORKER_QUEUE_PREFIX = 'benji-rpc-'
 CHARSET = 'utf-8'
@@ -50,7 +51,9 @@ class RPCServer:
             nonlocal self
             self._app.control.shutdown(destination=[self._app.current_worker_task.request.hostname])
 
-        self.register_as_task(name=TERMINATE_TASK_NAME)(terminate)
+        self.register_as_task(api_group=TERMINATE_TASK_API_GROUP,
+                              api_version=TERMINATE_TASK_API_VERSION,
+                              name=TERMINATE_TASK_NAME)(terminate)
 
     @staticmethod
     def _encode_result(result: Any) -> str:

@@ -10,8 +10,8 @@ class APIServer:
     def __init__(self, *, config: Config, queue: str, threads: int) -> None:
         self._rpc_server = RPCServer(queue=queue, threads=threads)
         self._tasks_collection = []
-        self._tasks_collection.append(benji.api.core.Tasks(config))
-        self._tasks_collection.append(benji.api.rbd.Tasks(config))
+        self._tasks_collection.append(benji.api.core.Tasks(config=config))
+        self._tasks_collection.append(benji.api.rbd.Tasks(config=config))
         for tasks in self._tasks_collection:
             self._install_tasks(tasks)
 

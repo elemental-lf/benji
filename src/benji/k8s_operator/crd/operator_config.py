@@ -14,6 +14,8 @@ from benji.k8s_operator.crd.version import BenjiVersion
 from benji.k8s_operator.resources import track_job_status, BenjiJob, NamespacedAPIObject
 from benji.k8s_operator.utils import service_account_namespace
 
+TASK_FIND_VERSIONS = 'core.v1.find_versions_with_filter'
+
 
 class BenjiOperatorConfig(NamespacedAPIObject):
 
@@ -30,7 +32,7 @@ def set_operator_config() -> None:
 def reconciliate_versions_job(*, logger):
     logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
     with RPCClient() as rpc_client:
-        versions = rpc_client.call('core.v1.ls',
+        versions = rpc_client.call(TASK_FIND_VERSIONS,
                                    filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')['versions']
     logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
