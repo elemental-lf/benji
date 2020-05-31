@@ -55,6 +55,8 @@ spec:
                   value: {{ .Values.benji.instance | quote }}
                 - name: BENJI_LOG_LEVEL
                   value: "INFO"
+                - name: BENJI_EXPERIMENTAL
+                  value: "1"
                 - name: PROM_PUSH_GATEWAY
                   value: "{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
                 - name: AMQP_USERNAME

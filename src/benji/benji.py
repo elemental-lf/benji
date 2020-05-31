@@ -9,6 +9,7 @@ import time
 from collections import defaultdict
 from concurrent.futures import CancelledError, TimeoutError
 from contextlib import AbstractContextManager
+from functools import wraps
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator

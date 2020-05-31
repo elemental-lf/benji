@@ -1000,7 +1000,8 @@ class _Database(ReprMixIn):
     # Based on: https://stackoverflow.com/questions/5022066/how-to-serialize-sqlalchemy-result-to-json/7032311,
     # https://stackoverflow.com/questions/1958219/convert-sqlalchemy-row-object-to-python-dict
     @staticmethod
-    def _new_benji_encoder(ignore_fields: Optional[List], ignore_relationships: Optional[List]):
+    def _new_benji_encoder(*, ignore_fields: Optional[Sequence], ignore_relationships: Optional[Sequence],
+                           embedded_metadata_version: bool):
         ignore_fields = list(ignore_fields) if ignore_fields is not None else []
         ignore_relationships = list(ignore_relationships) if ignore_relationships is not None else []
 
@@ -1098,6 +1099,10 @@ class _Database(ReprMixIn):
 
                     # Force ordering for versions to make iterative JSON parsing possible.
                     if isinstance(obj, Version):
+                        if embedded_metadata_version:
+                            fields[Database._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
+                            fields.move_to_end(Database._METADATA_VERSION_KEY, last=False)
+
                         if 'labels' in fields:
                             fields.move_to_end('labels')
 
@@ -1122,20 +1127,24 @@ class _Database(ReprMixIn):
     def export_any(self,
                    root_dict: Dict,
                    f: TextIO,
-                   ignore_fields: List = None,
-                   ignore_relationships: List = None,
-                   compact: bool = False) -> None:
-        # Metadata output is ordered in such a way as to make it possible to use an iterative JSON parser
-        # on import for version metadata. This is also the reason for using an OrderedDict for database objects
-        # and for placing the labels and blocks at the end.
-        root_dict = OrderedDict(root_dict.copy())
-        root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
-        root_dict.move_to_end(self._METADATA_VERSION_KEY, last=False)
+                   ignore_fields: Sequence = None,
+                   ignore_relationships: Sequence = None,
+                   compact: bool = False,
+                   embedded_metadata_version: bool = False) -> None:
+        if not embedded_metadata_version:
+            # Metadata output is ordered in such a way as to make it possible to use an iterative JSON parser
+            # on import for version metadata. This is also the reason for using an OrderedDict for database objects
+            # and for placing the labels and blocks at the end.
+            root_dict = OrderedDict(root_dict)
+            root_dict[self._METADATA_VERSION_KEY] = str(VERSIONS.database_metadata.current)
+            root_dict.move_to_end(self._METADATA_VERSION_KEY, last=False)
 
         json.dump(
             root_dict,
             f,
-            cls=self._new_benji_encoder(ignore_fields, ignore_relationships),
+            cls=self._new_benji_encoder(ignore_fields=ignore_fields,
+                                        ignore_relationships=ignore_relationships,
+                                        embedded_metadata_version=embedded_metadata_version),
             check_circular=True,
             separators=(',', ':') if compact else (',', ': '),
             indent=None if compact else 2,

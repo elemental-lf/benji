@@ -1,22 +1,19 @@
-import re
-from base64 import b64decode
 from functools import partial
-from typing import Dict, Any, Optional, NamedTuple, Sequence
+from typing import Dict, Any, Optional
 
 import kopf
 import pykube
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
-from benji.k8s_operator.volume_driver.registry import VolumeDriverRegistry
 
-from benji.celery import RPCClient
 from benji.helpers import settings
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
-from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, APIObject, \
-    NamespacedAPIObject, StorageClass
-from benji.k8s_operator.utils import cr_to_job_name, random_string, keys_exist
+from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, APIObject, \
+    NamespacedAPIObject
+from benji.k8s_operator.utils import cr_to_job_name
+from benji.k8s_operator.volume_driver import VolumeDriverRegistry
 
 K8S_BACKUP_SCHEDULE_SPEC_SCHEDULE = 'schedule'
 K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR = 'persistentVolumeClaimSelector'
@@ -97,7 +94,7 @@ def backup_scheduler_job(*,
         return
 
     for pvc, pv in pvc_pv_pairs:
-        backup_handler = VolumeDriverRegistry.handle(pvc=pvc, pv=pv, logger=logger)
+        backup_handler = VolumeDriverRegistry.handle(parent_body=parent_body, pvc=pvc, pv=pv, logger=logger)
         if backup_handler is not None:
             backup_handler.backup()
         else:

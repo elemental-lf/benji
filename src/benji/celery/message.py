@@ -26,7 +26,8 @@ class Message:
     message_id: str = attr.ib(default=attr.Factory(lambda: str(uuid.uuid4())),
                               validator=attr.validators.instance_of(str))
 
-    def from_dict(self, message: Dict) -> 'Message':
+    @staticmethod
+    def from_dict(message: Dict) -> 'Message':
         try:
             version = message['version']
         except KeyError:
