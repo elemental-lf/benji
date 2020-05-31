@@ -43,29 +43,28 @@ class Commands:
                 logger.debug(f'Loading RBD hints from file {rbd_hints}.')
                 with open(rbd_hints, 'r') as f:
                     hints = hints_from_rbd_diff(f.read())
-            backup_version = benji_obj.backup(version_uid=version_uid_obj,
-                                              volume=volume,
-                                              snapshot=snapshot,
-                                              source=source,
-                                              hints=hints,
-                                              base_version_uid=base_version_uid_obj,
-                                              storage_name=storage,
-                                              block_size=block_size)
+            version = benji_obj.backup(version_uid=version_uid_obj,
+                                       volume=volume,
+                                       snapshot=snapshot,
+                                       source=source,
+                                       hints=hints,
+                                       base_version_uid=base_version_uid_obj,
+                                       storage_name=storage,
+                                       block_size=block_size)
 
             if labels:
                 for key, value in label_add:
-                    benji_obj.add_label(backup_version.uid, key, value)
+                    benji_obj.add_label(version.uid, key, value)
                 for key in label_remove:
-                    benji_obj.rm_label(backup_version.uid, key)
+                    benji_obj.rm_label(version.uid, key)
                 if label_add:
                     logger.info('Added label(s) to version {}: {}.'.format(
-                        backup_version.uid, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
+                        version.uid, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
                 if label_remove:
-                    logger.info('Removed label(s) from version {}: {}.'.format(backup_version.uid,
-                                                                               ', '.join(label_remove)))
+                    logger.info('Removed label(s) from version {}: {}.'.format(version.uid, ', '.join(label_remove)))
 
             if self.machine_output:
-                benji_obj.export_any({'versions': [backup_version]},
+                benji_obj.export_any({'versions': [version]},
                                      sys.stdout,
                                      ignore_relationships=(((Version,), ('blocks',)),))
 
@@ -167,7 +166,7 @@ class Commands:
                         'errors': errors,
                     },
                                          sys.stdout,
-                                         ignore_relationships=[((Version,), ('blocks',))])
+                                         ignore_relationships=(((Version,), ('blocks',)),))
                 raise benji.exception.ScrubbingError('One or more version had scrubbing errors: {}.'.format(', '.join(
                     version.uid for version in errors)))
             else:
@@ -249,7 +248,7 @@ class Commands:
                 benji_obj.export_any(
                     {'versions': versions},
                     sys.stdout,
-                    ignore_relationships=[((Version,), ('blocks',))],
+                    ignore_relationships=(((Version,), ('blocks',)),),
                 )
             else:
                 self._ls_versions_table_output(versions, include_labels, include_stats)

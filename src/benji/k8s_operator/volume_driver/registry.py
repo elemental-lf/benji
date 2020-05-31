@@ -1,5 +1,5 @@
 from collections import Callable
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Any, Dict
 
 import pykube
 
@@ -27,10 +27,11 @@ class VolumeDriverRegistry:
         return func
 
     @classmethod
-    def handle(cls, *, pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume, logger) -> BackupInterface:
+    def handle(cls, *, parent_body: Dict[str, Any], pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume,
+               logger) -> BackupInterface:
         sorted_registry = sorted(cls._registry, key=lambda entry: entry.order)
 
         for entry in sorted_registry:
-            backup_handler = entry.handle(pvc=pvc, pv=pv, logger=logger)
+            backup_handler = entry.cls.handle(parent_body=parent_body, pvc=pvc, pv=pv, logger=logger)
             if backup_handler is not None:
                 return backup_handler

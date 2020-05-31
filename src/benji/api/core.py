@@ -17,7 +17,10 @@ class Tasks(TasksBase):
     @staticmethod
     def _export_versions(benji_obj: Benji, versions: Union[Version, Sequence[Version]]) -> StringIO:
         result = StringIO()
-        benji_obj.export_any(versions, result, ignore_relationships=[((Version,), ('blocks',))])
+        benji_obj.export_any(versions,
+                             result,
+                             ignore_relationships=(((Version,), ('blocks',)),),
+                             embedded_metadata_version=True)
         return result
 
     @register_as_task(API_GROUP, API_VERSION)

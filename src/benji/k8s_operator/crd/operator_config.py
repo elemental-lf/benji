@@ -33,7 +33,7 @@ def reconciliate_versions_job(*, logger):
     logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
     with RPCClient() as rpc_client:
         versions = rpc_client.call(TASK_FIND_VERSIONS,
-                                   filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')['versions']
+                                   filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')
     logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()
@@ -65,14 +65,16 @@ def install_maintenance_jobs(*, parent_body: Dict[str, Any], logger) -> None:
     OperatorContext.apscheduler.add_job(lambda: reconciliate_versions_job(logger=logger),
                                         CronTrigger().from_crontab(reconciliation_schedule),
                                         name=SCHED_VERSION_RECONCILIATION_JOB,
-                                        id=SCHED_VERSION_RECONCILIATION_JOB)
+                                        id=SCHED_VERSION_RECONCILIATION_JOB,
+                                        replace_existing=True)
 
     cleanup_schedule: Optional[str] = OperatorContext.operator_config.obj['spec'].get('cleanupSchedule', None)
     if cleanup_schedule is not None and cleanup_schedule:
         OperatorContext.apscheduler.add_job(lambda: cleanup_job(parent_body=parent_body, logger=logger),
                                             CronTrigger().from_crontab(cleanup_schedule),
                                             name=SCHED_CLEANUP_JOB,
-                                            id=SCHED_CLEANUP_JOB)
+                                            id=SCHED_CLEANUP_JOB,
+                                            replace_existing=True)
 
 
 def remove_maintenance_jobs() -> None:
@@ -82,36 +84,44 @@ def remove_maintenance_jobs() -> None:
         OperatorContext.apscheduler.remove_job(SCHED_CLEANUP_JOB)
 
 
-@kopf.on.startup()
-def startup(logger, **_) -> None:
+@kopf.on.resume(*BenjiOperatorConfig.group_version_plural())
+@kopf.on.create(*BenjiOperatorConfig.group_version_plural())
+@kopf.on.update(*BenjiOperatorConfig.group_version_plural())
+def startup_operator(name: str, namespace: str, logger, **_) -> Optional[Dict[str, Any]]:
+    if namespace != service_account_namespace() or name != OperatorContext.operator_config_name:
+        return
+
     set_operator_config()
 
     if OperatorContext.operator_config is None:
         raise RuntimeError('Operator configuration has not been loaded.')
 
-    OperatorContext.apscheduler.start()
-
-    remove_maintenance_jobs()
+    if not OperatorContext.apscheduler.running:
+        OperatorContext.apscheduler.start()
     install_maintenance_jobs(parent_body=OperatorContext.operator_config.obj, logger=logger)
 
 
-@kopf.on.cleanup()
-def cleanup(**_) -> None:
+def shutdown_operator():
     if OperatorContext.operator_config is None:
         return
 
     remove_maintenance_jobs()
-    OperatorContext.apscheduler.shutdown()
+    if OperatorContext.apscheduler.running:
+        OperatorContext.apscheduler.shutdown()
+    OperatorContext.operator_config = None
 
 
-@kopf.on.update(*BenjiOperatorConfig.group_version_plural())
-def reload_operator_config(name: str, namespace: str, logger, **_) -> Optional[Dict[str, Any]]:
+@kopf.on.cleanup()
+def shutdown_operator_on_termination(**_) -> Optional[Dict[str, Any]]:
+    shutdown_operator()
+
+
+@kopf.on.delete(*BenjiOperatorConfig.group_version_plural())
+def shutdown_operator_on_delete(name: str, namespace: str, **_) -> Optional[Dict[str, Any]]:
     if namespace != service_account_namespace() or name != OperatorContext.operator_config_name:
         return
 
-    set_operator_config()
-    remove_maintenance_jobs()
-    install_maintenance_jobs(parent_body=OperatorContext.operator_config.obj, logger=logger)
+    shutdown_operator()
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiOperatorConfig.kind})

@@ -1,5 +1,6 @@
 import functools
 import json
+import logging
 from io import StringIO
 from json import JSONDecodeError
 
@@ -137,12 +138,13 @@ class RPCClient(AbstractContextManager):
 
     def get_result(self, async_result: AsyncResult):
         result = async_result.get()
-        print(f'{result}')
+        logger = logging.getLogger(__name__)
+        logger.error(f'################## {result}')
         result = Message.from_dict(result)
         try:
             return self._decode_result(result.result)
         except AttributeError:
-            raise RPCCallFailed(result.message, result.reason)
+            raise RPCCallFailed(result.message, result.reason) from None
         except JSONDecodeError as exception:
             raise RPCCallFailed(str(exception), type(exception).__name__)
 
