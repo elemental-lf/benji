@@ -3,7 +3,7 @@ from typing import NamedTuple, List, Any, Dict
 
 import pykube
 
-from benji.k8s_operator.backup.interface import BackupInterface
+from benji.k8s_operator.executor.executor import BatchExecutor
 from benji.k8s_operator.volume_driver.interface import VolumeDriverInterface
 
 
@@ -27,11 +27,12 @@ class VolumeDriverRegistry:
         return func
 
     @classmethod
-    def handle(cls, *, parent_body: Dict[str, Any], pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume,
-               logger) -> BackupInterface:
+    def handle(cls, *, batch_executor: BatchExecutor, parent_body: Dict[str, Any], pvc: pykube.PersistentVolumeClaim,
+               pv: pykube.PersistentVolume) -> bool:
         sorted_registry = sorted(cls._registry, key=lambda entry: entry.order)
 
         for entry in sorted_registry:
-            backup_handler = entry.cls.handle(parent_body=parent_body, pvc=pvc, pv=pv, logger=logger)
-            if backup_handler is not None:
-                return backup_handler
+            if entry.cls.handle(batch_executor=batch_executor, parent_body=parent_body, pvc=pvc, pv=pv):
+                return True
+        else:
+            return False

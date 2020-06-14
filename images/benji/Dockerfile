@@ -1,3 +1,4 @@
+# syntax = docker/dockerfile:experimental
 FROM centos:7 AS build
 
 ARG CEPH_CODENAME="nautilus"
@@ -19,7 +20,8 @@ RUN ulimit -n 1024 && \
 
 ADD . /benji-source/
 
-RUN python3.6 -m venv --system-site-packages $VENV_DIR && \
+RUN --mount=type=cache,target=/root/.cache/pip,id=benji \
+    python3.6 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
 	pip install '/benji-source/[compression,s3,b2,api]'

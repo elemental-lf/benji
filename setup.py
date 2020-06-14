@@ -77,7 +77,9 @@ Topic :: System :: Archiving :: Backup
             'kopf>=0.27rc5,<0.28', 'pykube-ng>=0.27', 'apscheduler>=3.6.3,<4', 'celery[msgpack]>=4.4.2,<5',
             'attrs>=19.3.0,<20'
         ],
-        'api': ['celery[msgpack]>=4.4.2,<5', 'attrs>=19.3.0,<20'],
+        # future is needed by Celery but not declared in Celery version < 4.4.4
+        # See https://github.com/celery/celery/pull/6146
+        'api': ['celery[msgpack]>=4.4.2,<5', 'attrs>=19.3.0,<20', 'future>=0.18.0'],
     },
     python_requires='~=3.6',
     entry_points="""

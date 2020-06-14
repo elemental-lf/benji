@@ -10,6 +10,7 @@ from benji.helpers import settings
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
+from benji.k8s_operator.executor.executor import BatchExecutor
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, APIObject, \
     NamespacedAPIObject
 from benji.k8s_operator.utils import cr_to_job_name
@@ -93,13 +94,13 @@ def backup_scheduler_job(*,
         logger.warning(f'All PVCs matched by the selector {label_selector} in namespace(s) {", ".join(namespaces)} are currently unbound.')
         return
 
+    batch_executor = BatchExecutor(logger=logger)
     for pvc, pv in pvc_pv_pairs:
-        backup_handler = VolumeDriverRegistry.handle(parent_body=parent_body, pvc=pvc, pv=pv, logger=logger)
-        if backup_handler is not None:
-            backup_handler.backup()
-        else:
+        handled = VolumeDriverRegistry.handle(batch_executor=batch_executor, parent_body=parent_body, pvc=pvc, pv=pv)
+        if not handled:
             logger.error(f'Backup requested for PVC {pvc.namespace}/{pvc.name} but the kind of volume is unknown, '
                          'no backup will be performed.')
+    batch_executor.start()
 
 
 @kopf.on.resume(*BenjiBackupSchedule.group_version_plural())

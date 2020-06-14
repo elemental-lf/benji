@@ -1,7 +1,9 @@
+# syntax = docker/dockerfile:experimental
 FROM python:3.7 AS build
 
 ADD . /benji-source/
-RUN pip install '/benji-source/[helpers,k8s-operator,api]'
+RUN --mount=type=cache,target=/root/.cache/pip,id=benji \
+    pip install '/benji-source/[helpers,k8s-operator,api]'
 
 FROM python:3.7 AS runtime
 
