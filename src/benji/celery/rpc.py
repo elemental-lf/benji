@@ -138,8 +138,6 @@ class RPCClient(AbstractContextManager):
 
     def get_result(self, async_result: AsyncResult):
         result = async_result.get()
-        logger = logging.getLogger(__name__)
-        logger.error(f'################## {result}')
         result = Message.from_dict(result)
         try:
             return self._decode_result(result.result)
