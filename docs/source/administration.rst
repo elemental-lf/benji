@@ -93,7 +93,7 @@ Machine output
 
 Some commands can produce machine readable JSON output for usage in scripts::
 
-    INFO: $ /home/lf/src/backy2/venv/bin/benji -m ls
+    INFO: $ benji -m ls
     {
       "versions": [
         {
