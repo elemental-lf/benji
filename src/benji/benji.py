@@ -1152,6 +1152,10 @@ class Benji(ReprMixIn, AbstractContextManager):
     def list_storages() -> List[str]:
         return list(StorageFactory.get_modules().keys())
 
+    @staticmethod
+    def storage_usage(filter_expression: str = None) -> Dict[str, Dict[str, int]]:
+        return Version.storage_usage(filter_expression)
+
 
 class _BlockStore:
 

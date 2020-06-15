@@ -277,6 +277,11 @@ def main():
         p.add_argument('-p', '--bind-port', default=8080, type=int, help='Bind to the specified port')
         p.add_argument('--threads', default=1, type=int, help='Number of worker threads')
 
+    # DU
+    p = subparsers_root.add_parser('storage-usage', help='Provide storage usage statistics')
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
+    p.set_defaults(func='storage_usage')
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
 

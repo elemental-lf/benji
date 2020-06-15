@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import sys
-from typing import List, NamedTuple, Type, Optional
+from typing import List, NamedTuple, Type, Optional, Dict
 
 from prettytable import PrettyTable
 
@@ -502,6 +502,43 @@ class Commands:
         finally:
             if benji_obj:
                 benji_obj.close()
+
+    @staticmethod
+    def _storage_usage_table_output(usage: Dict[str, Dict[str, int]]) -> None:
+        tbl = PrettyTable()
+        tbl.field_names = [
+            'storage',
+            'virtual',
+            'sparse',
+            'shared',
+            'exclusive',
+            'deduplicated_exclusive',
+        ]
+        tbl.align['storage'] = 'l'
+        tbl.align['virtual'] = 'l'
+        tbl.align['sparse'] = 'l'
+        tbl.align['shared'] = 'r'
+        tbl.align['exclusive'] = 'r'
+        tbl.align['deduplicated_exclusive'] = 'r'
+        for storage_name, usage in usage.items():
+            row = [
+                storage_name,
+                PrettyPrint.bytes(usage['virtual']),
+                PrettyPrint.bytes(usage['sparse']),
+                PrettyPrint.bytes(usage['shared']),
+                PrettyPrint.bytes(usage['exclusive']),
+                PrettyPrint.bytes(usage['deduplicated_exclusive']),
+            ]
+            tbl.add_row(row)
+        print(tbl)
+
+    def storage_usage(self, filter_expression: str):
+        with Benji(self.config) as benji_obj:
+            usage = benji_obj.storage_usage(filter_expression)
+            if self.machine_output:
+                print(json.dumps(usage, indent=4))
+            else:
+                self._storage_usage_table_output(usage)
 
     def rest_api(self, bind_address: str, bind_port: int, threads: int) -> None:
         from benji.restapi import RestAPI

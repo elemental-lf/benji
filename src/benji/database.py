@@ -32,7 +32,8 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
-from sqlalchemy.orm import object_session, sessionmaker, scoped_session
+from sqlalchemy import func
+from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
@@ -534,6 +535,7 @@ class Version(Base, ReprMixIn):
 
     @property
     def sparse_blocks_count(self) -> int:
+        # noinspection PyComparisonWithNone
         non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
             Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
         non_sparse_blocks = {row.idx for row in non_sparse_blocks_query}
@@ -584,6 +586,58 @@ class Version(Base, ReprMixIn):
     def find_with_filter(cls, filter_expression: str = None):
         builder = _QueryBuilder()
         return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
+
+    @classmethod
+    def storage_usage(cls, filter_expression: str = None) -> Dict[str, Dict[str, int]]:
+        if filter_expression is not None:
+            builder = _QueryBuilder()
+            version_ids = [id for id, in builder.build(filter_expression, columns=(Version.id,)).all()]
+        else:
+            version_ids = None
+
+        usage = defaultdict(lambda: {
+            'virtual': 0,
+            'sparse': 0,
+            'shared': 0,
+            'exclusive': 0,
+            'deduplicated_exclusive': 0,
+        })
+
+        virtual = Session.query(Storage.id, Storage.name,
+                                func.sum(Version.size)).select_from(Version).join(Storage).group_by(
+                                    Storage.id, Storage.name)
+        if version_ids is not None:
+            virtual = virtual.filter(Version.id.in_(version_ids))
+
+        for _, storage_name, size in virtual.all():
+            usage[storage_name]['virtual'] = size
+
+        sq_block, sq_storage, sq_version = aliased(Block), aliased(Storage), aliased(Version)
+        share_count_overall_sq = Session.query(func.count('*')).select_from(sq_block).join(sq_version).join(
+            sq_storage).filter((Storage.id == sq_storage.id) & (Block.uid_left == sq_block.uid_left) &
+                               (Block.uid_right == sq_block.uid_right)).as_scalar()
+
+        # noinspection PyComparisonWithNone
+        share_count_query = Session.query(
+            Storage.id.label('storage_id'), Storage.name.label('storage_name'), Block.uid, Block.size.label('size'),
+            func.count('*').label('share_count_subset'),
+            share_count_overall_sq.label('share_count_overall')).select_from(Block).join(Version).join(Storage).filter(
+                (Block.uid_left != None) & (Block.uid_right != None)).group_by(Storage.id, Storage.name, Block.uid)
+
+        if version_ids is not None:
+            share_count_query = share_count_query.filter(Block.version_id.in_(version_ids))
+
+        for row in share_count_query.all():
+            if row.share_count_overall == row.share_count_subset:
+                usage[row.storage_name]['exclusive'] += row.size * row.share_count_subset
+                usage[row.storage_name]['deduplicated_exclusive'] += row.size
+            else:
+                usage[row.storage_name]['shared'] += row.size * row.share_count_subset
+
+        for storage_name, entry in usage.items():
+            usage[storage_name]['sparse'] = usage[storage_name]['virtual'] - usage[storage_name]['exclusive'] - usage[storage_name]['shared']
+
+        return usage
 
     def add_label(self, name: str, value: str) -> None:
         try:
@@ -1636,8 +1690,11 @@ class _QueryBuilder:
             ("or", 2, pyparsing.opAssoc.LEFT, OrOp),
         ])
 
-    def build(self, filter_expression: Optional[str]):
-        query = Session.query(Version)
+    def build(self, filter_expression: Optional[str], columns: Sequence[Any] = None) -> Any:
+        if columns is not None:
+            query = Session.query(*columns)
+        else:
+            query = Session.query(Version)
         if filter_expression:
             try:
                 parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]
