@@ -33,10 +33,10 @@ See section :ref:`installation` for installation instructions.
     restore
     enforce
     cleanup
+    statistics
     administration
     container
     filter_expressions
     datalayout
-    backy2
     support
     licenses

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Administration &mdash; Benji Backup 0.8.0.dev69+g095fc91 documentation</title>
+  <title>Administration &mdash; Benji Backup 0.8.0.dev72+g43f006c documentation</title>
   
 
   
@@ -21,11 +21,11 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/asciinema/asciinema-player.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script src="_static/asciinema/asciinema-player.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -38,7 +38,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Containerized Benji" href="container.html" />
-    <link rel="prev" title="Cleanup" href="cleanup.html" /> 
+    <link rel="prev" title="Storage Statistics" href="statistics.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -174,6 +174,11 @@
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="statistics.html">Storage Statistics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#id1">Storage Statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#space-usage-statistics">Space Usage Statistics</a></li>
+</ul>
+</li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Administration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#securing-version-metadata">Securing Version Metadata</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#backups-and-exports">Backups and Exports</a></li>
@@ -206,7 +211,6 @@
 <li class="toctree-l2"><a class="reference internal" href="datalayout.html#block-storages">Block Storages</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="backy2.html">For Backy² Users</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="support.html#issue-tracker">Issue Tracker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="support.html#documentation">Documentation</a></li>
@@ -356,7 +360,7 @@ information to troubleshoot the problem.</p></li>
 <div class="section" id="machine-output">
 <span id="id2"></span><h3>Machine output<a class="headerlink" href="#machine-output" title="Permalink to this headline">¶</a></h3>
 <p>Some commands can produce machine readable JSON output for usage in scripts:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>INFO: $ /home/lf/src/backy2/venv/bin/benji -m ls
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>INFO: $ benji -m ls
 {
   &quot;versions&quot;: [
     {
@@ -390,7 +394,7 @@ information to troubleshoot the problem.</p></li>
 </div>
 <p>All messages emitted by Benji are written to STDERR. In contrast the machine readable output is written to STDOUT.</p>
 <p>Here’s a table of commands supporting machine readable output and their output:</p>
-<table class="docutils align-center">
+<table class="docutils align-default">
 <colgroup>
 <col style="width: 23%" />
 <col style="width: 77%" />
@@ -445,7 +449,7 @@ Here’s a short example, but see the <code class="docutils literal notranslate"
         <a href="container.html" class="btn btn-neutral float-right" title="Containerized Benji" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="cleanup.html" class="btn btn-neutral float-left" title="Cleanup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="statistics.html" class="btn btn-neutral float-left" title="Storage Statistics" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

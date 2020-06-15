@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Retention Policy Enforcement &mdash; Benji Backup 0.8.0.dev72+g43f006c documentation</title>
+  <title>Storage Statistics &mdash; Benji Backup 0.8.0.dev72+g43f006c documentation</title>
   
 
   
@@ -37,8 +37,8 @@
   <link rel="stylesheet" href="_static/asciinema/asciinema-player.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Cleanup" href="cleanup.html" />
-    <link rel="prev" title="Restore" href="restore.html" /> 
+    <link rel="next" title="Administration" href="administration.html" />
+    <link rel="prev" title="Cleanup" href="cleanup.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -165,8 +165,8 @@
 <li class="toctree-l2"><a class="reference internal" href="restore.html#restoring-invalid-versions">Restoring Invalid <em>Versions</em></a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Retention Policy Enforcement</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#policy-specification">Policy Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="enforce.html">Retention Policy Enforcement</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="enforce.html#policy-specification">Policy Specification</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="cleanup.html">Cleanup</a><ul>
@@ -174,9 +174,9 @@
 <li class="toctree-l2"><a class="reference internal" href="cleanup.html#id1">Cleanup</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="statistics.html">Storage Statistics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="statistics.html#id1">Storage Statistics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="statistics.html#space-usage-statistics">Space Usage Statistics</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Storage Statistics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Storage Statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#space-usage-statistics">Space Usage Statistics</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="administration.html">Administration</a><ul>
@@ -263,13 +263,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Retention Policy Enforcement</li>
+      <li>Storage Statistics</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/enforce.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/statistics.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -282,97 +282,61 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="retention-policy-enforcement">
-<h1>Retention Policy Enforcement<a class="headerlink" href="#retention-policy-enforcement" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji enforce --help
-usage: benji enforce [-h] [--dry-run] [-k] [-g GROUP_LABEL]
-                     rules_spec [filter_expression]
+  <div class="section" id="storage-statistics">
+<h1>Storage Statistics<a class="headerlink" href="#storage-statistics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id1">
+<h2>Storage Statistics<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji storage-stats --help
+usage: benji storage-stats [-h] [storage_name]
 
 positional arguments:
-  rules_spec            Retention rules specification
-  filter_expression     Version filter expression
+  storage_name  Storage
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --dry-run             Only show which versions would be removed
-  -k, --keep-metadata-backup
-                        Keep version metadata backup
-  -g GROUP_LABEL, --group_label GROUP_LABEL
-                        Label to find related versions to remove
+  -h, --help    show this help message and exit
 </pre></div>
 </div>
-<p>Benji supports a simple but flexible mechanism for retention policy enforcement. Enforcement is done per <em>version</em> name,
-i.e. a specific policy is applied to all <em>versions</em> with the same name. Enforcement is not automatic and has to be
-initiated with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code>.</p>
-<p>This Benji command is just for policy enforcement (i.e. thinning out <em>versions</em> by removal over time). You have to adjust
-your schedule to match your policy. For example, if you want to keep hourly backups for the last 72 hours (hours72)
-you have to create a new <em>version</em> at least every hour.</p>
-<p>Filter expressions (see section <a class="reference internal" href="filter_expressions.html#filter-expressions"><span class="std std-ref">Filter Expressions</span></a>) are used to select the <em>versions</em> the specified policy
-is applied to.</p>
-<p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> supports machine readable output (see section <a class="reference internal" href="administration.html#machine-output"><span class="std std-ref">Machine output</span></a>). All removed versions are listed
-and could be aggregated into a report for example.</p>
-<div class="admonition attention">
-<p class="admonition-title">Attention</p>
-<p>Enforcement will remove any <em>version</em> which doesn’t match the policy. To exclude versions from
-enforcement protect them with <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">protect</span></code>.</p>
+<p>This command outputs the number of objects and their space usage. It will take some time as it enumerates all
+objects in the storage.</p>
 </div>
-<div class="section" id="policy-specification">
-<h2>Policy Specification<a class="headerlink" href="#policy-specification" title="Permalink to this headline">¶</a></h2>
-<p>The enforcement policy is specified as a comma separated list of time categories:</p>
-<ul class="simple">
-<li><p>latest (always refers to the youngest versions, regardless of how old they are)</p></li>
-<li><p>hours</p></li>
-<li><p>days</p></li>
-<li><p>weeks</p></li>
-<li><p>months</p></li>
-<li><p>years.</p></li>
-</ul>
-<p>Each time interval is directly followed by a positive number, no whitespace is allowed. The categorization (except for
-latest) follows natural time boundaries, i.e. the groups of <em>versions</em> formed by the hours category each start at
-the full hour. The same goes for months where each group starts at the first of each month at 00:00 and for years
-where each group starts at January 1st, 00:00. Each group of the weeks category starts on Monday at 00h00.</p>
-<div class="admonition attention">
-<p class="admonition-title">Attention</p>
-<p>Times are based on the timezone which is set when <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> is called. Ensure that each
-invocation of <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> uses the same timezone. Otherwise some additional <em>versions</em> might get deleted
-because of the time shift.</p>
+<div class="section" id="space-usage-statistics">
+<h2>Space Usage Statistics<a class="headerlink" href="#space-usage-statistics" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji storage-usage --help
+usage: benji storage-usage [-h] [filter_expression]
+
+positional arguments:
+  filter_expression  Version filter expression
+
+optional arguments:
+  -h, --help         show this help message and exit
+</pre></div>
 </div>
-<p>Examples:</p>
+<p>This command provides space usage statistics over all or a subset of versions:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: $ /home/lf/src/backy2/venv/bin/benji storage-usage
++-----------+---------+--------+--------+-----------+------------------------+
+<span class="p">|</span> storage   <span class="p">|</span> virtual <span class="p">|</span> sparse <span class="p">|</span> shared <span class="p">|</span> exclusive <span class="p">|</span> deduplicated_exclusive <span class="p">|</span>
++-----------+---------+--------+--------+-----------+------------------------+
+<span class="p">|</span> storage-1 <span class="p">|</span> <span class="m">12</span>.7MiB <span class="p">|</span> <span class="m">1</span>.0MiB <span class="p">|</span>   <span class="m">0</span>.0B <span class="p">|</span>   <span class="m">11</span>.7MiB <span class="p">|</span>                 <span class="m">6</span>.2MiB <span class="p">|</span>
++-----------+---------+--------+--------+-----------+------------------------+
+</pre></div>
+</div>
+<p>Answering the question of how much space a number of versions occupy on the storages is inherently hard to do due
+to the storage-wide deduplication that Benji employs. But this command tries to answer this question at least in part.
+If called without any arguments the statistics are calculated over all versions. But in general a filter expression
+should be used to limit the number of versions. Calculating these statistics is an expensive operation and will take
+some time if the number of versions and blocks is large.</p>
 <ul class="simple">
-<li><p>latest3,hours48,days7,weeks4,months12,years3</p>
-<ul>
-<li><p>Keep the youngest three versions regardless of their age</p></li>
-<li><p>Then keep one version per hour for the last 48 hours</p></li>
-<li><p>Then keep one version per week for the last four weeks</p></li>
-<li><p>Then keep one version per month for the last twelve months</p></li>
-<li><p>Then keep one version per year for the last three years</p></li>
+<li><p><strong>virtual</strong>: This number is the sum of the sizes of all matching versions. It is virtual in the sense that it does
+not represent the actual space usage on the storage.</p></li>
+<li><p><strong>sparse</strong>: This is the number of bytes that are sparse. Sparse blocks do not take up any space.</p></li>
+<li><p><strong>shared</strong>: This value represents the number of bytes that the matched subset of versions shares with other
+versions which are not part of this set.</p></li>
+<li><p><strong>exclusive</strong>: These are the number of bytes that are exclusive to this subset. If a block is used
+more than once in this subset of versions then it is counted multiple times towards this figure.</p></li>
+<li><p><strong>deduplicated_exclusive</strong>: This is like <strong>exclusive</strong> but only counts each distinct block on the storage once. It
+is an estimate of the space that would be freed if all matching versions would be deleted.</p></li>
+<li><p>The sum of <strong>sparse</strong>, <strong>shared</strong> and <strong>exclusive</strong> equals <strong>virtual</strong>.</p></li>
 </ul>
-</li>
-<li><p>years3,months12,latest2</p>
-<ul>
-<li><p>Keep the youngest two versions</p></li>
-<li><p>Then keep one version per month for the last twelve months</p></li>
-<li><p>Then keep one version per year for the last three years</p></li>
-</ul>
-</li>
-<li><p>hours72</p>
-<ul>
-<li><p>Keep one version per hour for the last 72 hours</p></li>
-</ul>
-</li>
-<li><p>latest10</p>
-<ul>
-<li><p>Keep the youngest ten versions</p></li>
-</ul>
-</li>
-</ul>
-<p>Even when you specify the time categories in a different order, they are always considered from youngest to oldest
-(see the second example).</p>
-<p>You can call <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">enforce</span></code> as many times a day as you want. If no version currently falls into a specified category
-the oldest version of the category below it is always kept, so that it has a chance to get old enough. So if in the
-third example there is one version which is older than 24 hours but younger than one year it will be kept till it is
-old enough even though it falls out of the first specified category.</p>
-<p>If there is overlap between two categories the younger category always takes precedence.</p>
 </div>
 </div>
 
@@ -384,10 +348,10 @@ old enough even though it falls out of the first specified category.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="cleanup.html" class="btn btn-neutral float-right" title="Cleanup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="administration.html" class="btn btn-neutral float-right" title="Administration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="restore.html" class="btn btn-neutral float-left" title="Restore" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="cleanup.html" class="btn btn-neutral float-left" title="Cleanup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
