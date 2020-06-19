@@ -1,5 +1,4 @@
-from functools import partial
-from typing import Dict, Any, Optional
+from typing import Dict, An Optional
 
 import kopf
 from apscheduler.jobstores.base import JobLookupError
@@ -31,7 +30,7 @@ class ClusterBenjiRetentionSchedule(NamespacedAPIObject):
     kind = 'ClusterBenjiRetentionSchedule'
 
 
-def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body, logger):
+def enforce_scheduler_job(*, retention_rule: str, match_versions: str, parent_body):
     command = ['benji-command', 'enforce', retention_rule, match_versions]
     job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
     job.create()
@@ -59,15 +58,12 @@ def benji_retention_schedule(namespace: str, spec: Dict[str, Any], body: Dict[st
         match_versions = f'{match_versions} and labels["{LABEL_K8S_PVC_NAMESPACE}"] == "{namespace}"'
 
     job_name = cr_to_job_name(body, 'scheduler')
-    OperatorContext.apscheduler.add_job(partial(enforce_scheduler_job,
-                                                retention_rule=retention_rule,
-                                                match_versions=match_versions,
-                                                parent_body=body,
-                                                logger=logger),
-                                        CronTrigger.from_crontab(schedule),
-                                        name=job_name,
-                                        id=job_name,
-                                        replace_existing=True)
+    OperatorContext.apscheduler.add_job(
+        lambda: enforce_scheduler_job(retention_rule=retention_rule, match_versions=match_versions, parent_body=body),
+        CronTrigger.from_crontab(schedule),
+        name=job_name,
+        id=job_name,
+        replace_existing=True)
 
 
 @kopf.on.delete(*BenjiRetentionSchedule.group_version_plural())

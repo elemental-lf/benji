@@ -1,4 +1,4 @@
-from typing import Sequence, List, Tuple
+from typing import Sequence, List, Tuple, Dict
 
 from benji.api import TasksBase
 from benji.api.base import register_as_task
@@ -131,6 +131,7 @@ class Tasks(TasksBase):
                base_version_uid: str = None,
                block_size: int = None,
                storage_name: str = None,
+               labels: Dict[str, str] = None,
                monitors: Sequence[str] = None,
                user: str = None,
                keyring: str = None,
@@ -144,14 +145,17 @@ class Tasks(TasksBase):
         source = f'{IO_MODULE_NAME}:{pool}/{image}@{snapshot}?{ceph_credentials_qs}'
 
         with Benji(self._config) as benji_obj:
-            benji_obj.backup(version_uid=VersionUid(version_uid),
-                             volume=volume,
-                             snapshot=snapshot,
-                             source=source,
-                             hints=hints,
-                             base_version_uid=VersionUid(base_version_uid) if base_version_uid else None,
-                             storage_name=storage_name,
-                             block_size=block_size)
+            version = benji_obj.backup(version_uid=VersionUid(version_uid),
+                                       volume=volume,
+                                       snapshot=snapshot,
+                                       source=source,
+                                       hints=hints,
+                                       base_version_uid=VersionUid(base_version_uid) if base_version_uid else None,
+                                       storage_name=storage_name,
+                                       block_size=block_size)
+            if labels:
+                for name, value in labels.items():
+                    version.add_label(name, value)
 
     @staticmethod
     def _build_ceph_credential_arguments(*, monitors: Sequence[str], user: str, keyring: str, key: str) -> List[str]:
