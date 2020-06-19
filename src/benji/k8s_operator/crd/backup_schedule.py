@@ -1,4 +1,5 @@
 from functools import partial
+from logging import getLogger
 from typing import Dict, Any, Optional
 
 import kopf
@@ -10,11 +11,10 @@ from benji.helpers import settings
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
-from benji.k8s_operator.executor.executor import BatchExecutor
+from benji.k8s_operator.executor.executor import BatchExecutor, BACKUP_ACTION
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, APIObject, \
     NamespacedAPIObject
 from benji.k8s_operator.utils import cr_to_job_name
-from benji.k8s_operator.volume_driver import VolumeDriverRegistry
 
 K8S_BACKUP_SCHEDULE_SPEC_SCHEDULE = 'schedule'
 K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR = 'persistentVolumeClaimSelector'
@@ -23,6 +23,8 @@ K8S_BACKUP_SCHEDULE_SPEC_PERSISTENT_VOLUME_CLAIM_SELECTOR_MATCH_NAMESPACE_LABELS
 
 ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP = 'rook-ceph-mon-endpoints'
 ROOK_CEPH_MON_SECRET = 'rook-ceph-mon'
+
+module_logger = getLogger(__name__)
 
 
 class BenjiBackupSchedule(NamespacedAPIObject):
@@ -39,25 +41,11 @@ class ClusterBenjiBackupSchedule(APIObject):
     kind = 'ClusterBenjiBackupSchedule'
 
 
-def build_version_labels_rbd(*, pvc: pykube.PersistentVolumeClaim, pv: pykube.PersistentVolume) -> Dict[str, str]:
-    pvc_obj = pvc.obj
-    pv_obj = pv.obj
-    version_labels = {
-        LABEL_INSTANCE: settings.benji_instance,
-        LABEL_K8S_PVC_NAMESPACE: pvc_obj['metadata']['namespace'],
-        LABEL_K8S_PVC_NAME: pvc_obj['metadata']['name'],
-        LABEL_K8S_PV_NAME: pv_obj['metadata']['name'],
-    }
-
-    return version_labels
-
-
 def backup_scheduler_job(*,
                          namespace_label_selector: str = None,
                          namespace: str = None,
                          label_selector: str,
-                         parent_body,
-                         logger):
+                         parent_body):
     if namespace_label_selector is not None:
         namespaces = [
             namespace.metadata.name for namespace in pykube.Namespace.objects(OperatorContext.kubernetes_client).filter(selector=namespace_label_selector)
@@ -72,7 +60,7 @@ def backup_scheduler_job(*,
                                                                                            selector=label_selector))
 
     if not pvcs:
-        logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
+        module_logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
         return
 
     pvc_pv_pairs = []
@@ -86,21 +74,21 @@ def backup_scheduler_job(*,
                 pvc_obj['spec']['volumeName'])
         except pykube.exceptions.ObjectDoesNotExist:
             pvc_name = '{}/{}'.format(pvc_obj['metadata']['namespace'], pvc_obj['metadata']['name'])
-            logger.warning(f'PVC {pvc_name} is currently not bound to any PV, skipping.')
+            module_logger.warning(f'PVC {pvc_name} is currently not bound to any PV, skipping.')
 
         pvc_pv_pairs.append((pvc, pv))
 
     if not pvc_pv_pairs:
-        logger.warning(f'All PVCs matched by the selector {label_selector} in namespace(s) {", ".join(namespaces)} are currently unbound.')
+        module_logger.warning(f'All PVCs matched by the selector {label_selector} in namespace(s) {", ".join(namespaces)} are currently unbound.')
         return
 
-    batch_executor = BatchExecutor(logger=logger)
+    executor = BatchExecutor()
     for pvc, pv in pvc_pv_pairs:
-        handled = VolumeDriverRegistry.handle(batch_executor=batch_executor, parent_body=parent_body, pvc=pvc, pv=pv)
+        handled = executor.handle(action=BACKUP_ACTION, parent_body=parent_body, pvc=pvc, pv=pv)
         if not handled:
-            logger.error(f'Backup requested for PVC {pvc.namespace}/{pvc.name} but the kind of volume is unknown, '
-                         'no backup will be performed.')
-    batch_executor.start()
+            module_logger.error(f'Backup requested for PVC {pvc.namespace}/{pvc.name} but the kind of volume is unknown, '
+                                'no backup will be performed.')
+    executor.start()
 
 
 @kopf.on.resume(*BenjiBackupSchedule.group_version_plural())
@@ -124,8 +112,7 @@ def benji_backup_schedule(namespace: str, spec: Dict[str, Any], body: Dict[str, 
                                                 namespace_label_selector=namespace_label_selector,
                                                 namespace=namespace,
                                                 label_selector=label_selector,
-                                                parent_body=body,
-                                                logger=logger),
+                                                parent_body=body),
                                         CronTrigger.from_crontab(schedule),
                                         name=job_name,
                                         id=job_name,

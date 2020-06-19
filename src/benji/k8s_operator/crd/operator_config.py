@@ -1,3 +1,4 @@
+import logging
 from contextlib import suppress
 from typing import Optional, Dict, Any
 
@@ -16,6 +17,8 @@ from benji.k8s_operator.utils import service_account_namespace
 
 TASK_FIND_VERSIONS = 'core.v1.find_versions_with_filter'
 
+module_logger = logging.getLogger(__name__)
+
 
 class BenjiOperatorConfig(NamespacedAPIObject):
 
@@ -29,40 +32,40 @@ def set_operator_config() -> None:
         namespace=service_account_namespace()).get_by_name(OperatorContext.operator_config_name)
 
 
-def reconciliate_versions_job(*, logger):
-    logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
+def reconciliate_versions_job():
+    module_logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
     with RPCClient() as rpc_client:
         versions = rpc_client.call(TASK_FIND_VERSIONS,
                                    filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')
-    logger.debug(f"Number of matching versions in the database: {len(versions)}.")
+    module_logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()
     for version in versions:
         try:
-            version_resource = BenjiVersion.create_or_update_from_version(version=version, logger=logger)
+            version_resource = BenjiVersion.create_or_update_from_version(version=version)
         except KeyError as exception:
-            logger.warning(str(exception))
+            module_logger.warning(str(exception))
             continue
 
         versions_seen.add(version_resource)
 
-    logger.debug(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
+    module_logger.debug(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
     for version_resource in BenjiVersion.objects(
             OperatorContext.kubernetes_client).filter(selector=f'{LABEL_INSTANCE}={benji_instance}'):
         if version_resource not in versions_seen:
             version_resource.delete()
 
 
-def cleanup_job(*, parent_body: Dict[str, Any], logger):
+def cleanup_job(*, parent_body: Dict[str, Any]):
     command = ['benji-command', 'cleanup']
     job = BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=parent_body)
     job.create()
 
 
-def install_maintenance_jobs(*, parent_body: Dict[str, Any], logger) -> None:
+def install_maintenance_jobs(*, parent_body: Dict[str, Any]) -> None:
     reconciliation_schedule: Optional[str] = OperatorContext.operator_config.obj['spec']['reconciliationSchedule']
 
-    OperatorContext.apscheduler.add_job(lambda: reconciliate_versions_job(logger=logger),
+    OperatorContext.apscheduler.add_job(reconciliate_versions_job,
                                         CronTrigger().from_crontab(reconciliation_schedule),
                                         name=SCHED_VERSION_RECONCILIATION_JOB,
                                         id=SCHED_VERSION_RECONCILIATION_JOB,
@@ -70,7 +73,7 @@ def install_maintenance_jobs(*, parent_body: Dict[str, Any], logger) -> None:
 
     cleanup_schedule: Optional[str] = OperatorContext.operator_config.obj['spec'].get('cleanupSchedule', None)
     if cleanup_schedule is not None and cleanup_schedule:
-        OperatorContext.apscheduler.add_job(lambda: cleanup_job(parent_body=parent_body, logger=logger),
+        OperatorContext.apscheduler.add_job(lambda: cleanup_job(parent_body=parent_body),
                                             CronTrigger().from_crontab(cleanup_schedule),
                                             name=SCHED_CLEANUP_JOB,
                                             id=SCHED_CLEANUP_JOB,
@@ -98,7 +101,7 @@ def startup_operator(name: str, namespace: str, logger, **_) -> Optional[Dict[st
 
     if not OperatorContext.apscheduler.running:
         OperatorContext.apscheduler.start()
-    install_maintenance_jobs(parent_body=OperatorContext.operator_config.obj, logger=logger)
+    install_maintenance_jobs(parent_body=OperatorContext.operator_config.obj)
 
 
 def shutdown_operator():

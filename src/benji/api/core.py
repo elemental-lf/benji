@@ -33,21 +33,24 @@ class Tasks(TasksBase):
                hints: Sequence[Tuple[int, int, bool]] = None,
                base_version_uid: str = None,
                block_size: int = None,
-               storage_name: str = None) -> StringIO:
+               storage_name: str = None,
+               labels: Dict[str, str] = None) -> StringIO:
         version_uid_obj = VersionUid(version_uid)
         base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
         with Benji(self._config) as benji_obj:
-            return self._export_versions(
-                benji_obj,
-                benji_obj.backup(version_uid=version_uid_obj,
-                                 volume=volume,
-                                 snapshot=snapshot,
-                                 source=source,
-                                 hints=hints,
-                                 base_version_uid=base_version_uid_obj,
-                                 storage_name=storage_name,
-                                 block_size=block_size))
+            version = benji_obj.backup(version_uid=version_uid_obj,
+                                       volume=volume,
+                                       snapshot=snapshot,
+                                       source=source,
+                                       hints=hints,
+                                       base_version_uid=base_version_uid_obj,
+                                       storage_name=storage_name,
+                                       block_size=block_size)
+            if labels:
+                for name, value in labels.items():
+                    version.add_label(name, value)
+            return self._export_versions(benji_obj, version)
 
     @register_as_task(API_GROUP, API_VERSION)
     def restore(self,
