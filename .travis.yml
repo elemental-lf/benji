@@ -27,10 +27,6 @@ python:
   - 3.8
   - nightly
 
-matrix:
-  allow_failures:
-    - python: nightly
-
 stages:
   - test
   - push
@@ -56,6 +52,8 @@ script:
   - make -C tests/postgresql-setup down
 
 jobs:
+  allow_failures:
+    - python: nightly
   include:
     - stage: test
       install:
