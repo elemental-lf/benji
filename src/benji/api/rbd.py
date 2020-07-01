@@ -1,10 +1,11 @@
 from typing import Sequence, List, Tuple, Dict
 
-from benji.api import TasksBase
-from benji.api.base import register_as_task
+from benji.api.rpc import RPCServer
+from benji.api.base import APIBase
 from benji.benji import Benji
 from benji.database import VersionUid
 from benji.helpers.utils import subprocess_run
+from benji.logging import logger
 from benji.utils import hints_from_rbd_diff
 
 API_GROUP = 'rbd'
@@ -17,9 +18,10 @@ CEPH_DEFAULT_USER = 'admin'
 IO_MODULE_NAME = 'rbd'
 
 
-class Tasks(TasksBase):
+@RPCServer.register_api()
+class RBDAPI(APIBase):
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def restore(
         self,
         version_uid: str,
@@ -43,7 +45,7 @@ class Tasks(TasksBase):
         with Benji(self._config, in_memory_database=database_backend_less) as benji_obj:
             benji_obj.restore(version_uid=VersionUid(version_uid), target=target, sparse=sparse, force=force)
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def snapshot_create(self,
                         *,
                         pool: str,
@@ -58,10 +60,11 @@ class Tasks(TasksBase):
                                                                      keyring=keyring,
                                                                      key=key)
         rbd_snap_create_args = ['rbd', 'snap', 'create', f'{pool}/{image}@{snapshot}']
+        args_repr = ' '.join(rbd_snap_create_args)
         rbd_snap_create_args.extend(ceph_credential_args)
-        subprocess_run(rbd_snap_create_args, timeout=RBD_SNAP_CREATE_TIMEOUT)
+        subprocess_run(rbd_snap_create_args, timeout=RBD_SNAP_CREATE_TIMEOUT, args_repr=args_repr)
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def snapshot_rm(self,
                     *,
                     pool: str,
@@ -76,10 +79,11 @@ class Tasks(TasksBase):
                                                                      keyring=keyring,
                                                                      key=key)
         rbd_snap_rm_args = ['rbd', 'snap', 'rm', f'{pool}/{image}@{snapshot}']
+        args_repr = ' '.join(rbd_snap_rm_args)
         rbd_snap_rm_args.extend(ceph_credential_args)
-        subprocess_run(rbd_snap_rm_args, timeout=RBD_SNAP_RM_TIMEOUT)
+        subprocess_run(rbd_snap_rm_args, timeout=RBD_SNAP_RM_TIMEOUT, args_repr=args_repr)
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def snapshot_diff(self,
                       *,
                       pool: str,
@@ -98,11 +102,12 @@ class Tasks(TasksBase):
         if last_snapshot:
             rbd_diff_args.extend(['--from-snap', last_snapshot])
         rbd_diff_args.append(f'{pool}/{image}@{snapshot}')
+        args_repr = ' '.join(rbd_diff_args)
         rbd_diff_args.extend(ceph_credential_args)
 
-        return hints_from_rbd_diff(subprocess_run(rbd_diff_args))
+        return hints_from_rbd_diff(subprocess_run(rbd_diff_args, args_repr=args_repr))
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def snapshot_ls(self,
                     *,
                     pool: str,
@@ -116,10 +121,11 @@ class Tasks(TasksBase):
                                                                      keyring=keyring,
                                                                      key=key)
         rbd_snap_ls_args = ['rbd', 'snap', 'ls', '--format=json', f'{pool}/{image}']
+        args_repr = ' '.join(rbd_snap_ls_args)
         rbd_snap_ls_args.extend(ceph_credential_args)
-        return subprocess_run(rbd_snap_ls_args, decode_json=True)
+        return subprocess_run(rbd_snap_ls_args, decode_json=True, args_repr=args_repr)
 
-    @register_as_task(API_GROUP, API_VERSION)
+    @RPCServer.register_task(API_GROUP, API_VERSION)
     def backup(self,
                *,
                version_uid: str,
@@ -143,7 +149,7 @@ class Tasks(TasksBase):
                                                                        key=key)
 
         source = f'{IO_MODULE_NAME}:{pool}/{image}@{snapshot}?{ceph_credentials_qs}'
-
+        logger.info(f'{source}')
         with Benji(self._config) as benji_obj:
             version = benji_obj.backup(version_uid=VersionUid(version_uid),
                                        volume=volume,

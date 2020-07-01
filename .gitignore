@@ -41,3 +41,4 @@ tests-scratch
 .mypy_cache
 charts/benji/charts
 charts/benji/requirements.lock
+tilt_modules

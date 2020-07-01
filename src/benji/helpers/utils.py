@@ -27,9 +27,9 @@ def subprocess_run(args: List[str],
                    input: str = None,
                    timeout: int = None,
                    decode_json: bool = False,
-                   sensitive_info: bool = False) -> Union[Dict, List, str]:
-    if sensitive_info:
-        logger.info(f'Running process: {args[0]} ... (possibly sensitive info redacted)')
+                   args_repr: str = None) -> Union[Dict, List, str]:
+    if args_repr is not None:
+        logger.info(f'Running process: {args_repr}')
     else:
         logger.info('Running process: {}'.format(' '.join(args)))
     try:

@@ -80,7 +80,7 @@ class NbdTestCase:
         self.nbd_client_thread.join()
 
         self.assertEqual({self.version_uid[0], VersionUid(2)},
-                         {version.uid for version in benji_obj.find_versions_with_filter()})
+                         {version.uid for version in benji_obj.core_v1_find_versions_with_filter()})
 
         benji_obj.close()
 

@@ -8,12 +8,12 @@ from typing import Sequence, Optional, List, Dict, Any
 import attr
 import pykube
 
+from benji.api import RPCClient
 from benji.helpers import settings
 from benji.k8s_operator.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME
 from benji.k8s_operator.executor.executor import ExecutorInterface, ActionType, \
     BACKUP_ACTION, BatchExecutor
 
-from benji.celery import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.resources import BenjiJob, StorageClass
 from benji.k8s_operator.utils import random_string, keys_exist
@@ -21,12 +21,13 @@ from benji.k8s_operator.utils import random_string, keys_exist
 ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP = 'rook-ceph-mon-endpoints'
 ROOK_CEPH_MON_SECRET = 'rook-ceph-mon'
 
-TASK_FIND_VERSIONS = 'core.v1.find_versions_with_filter'
-TASK_RBD_SNAPSHOT_LS = 'rbd.v1.snapshot_ls'
-TASK_RBD_SNAPSHOT_CREATE = 'rbd.v1.snapshot_create'
-TASK_RBD_SNAPSHOT_RM = 'rbd.v1.snapshot_rm'
-TASK_RBD_SNAPSHOT_DIFF = 'rbd.v1.snapshot_diff'
-TASK_RBD_BACKUP = 'rbd.v1.backup'
+core_v1_find_versions_with_filter = RPCClient.signature('core.v1.find_versions_with_filter')
+rbd_v1_snapshot_ls = RPCClient.signature('rbd.v1.snapshot_ls')
+rbd_v1_snapshot_create = RPCClient.signature('rbd.v1.snapshot_create')
+rbd_v1_snapshot_rm = RPCClient.signature('rbd.v1.snapshot_rm')
+rbd_v1_snapshot_diff = RPCClient.signature('rbd.v1.snapshot_diff')
+rbd_v1_backup = RPCClient.signature('rbd.v1.backup', options={'ignore_result': True})
+rpc_v1_terminate = RPCClient.signature('rpc.v1.terminate', options={'ignore_result': True})
 
 RBD_SNAP_NAME_PREFIX = 'b-'
 
@@ -52,7 +53,8 @@ class RBDExecutor(ExecutorInterface):
     def __init__(self):
         self._volumes: Dict[object, List[_Volume]] = defaultdict(lambda: [])
         self._rpc_client = RPCClient()
-        self._rpc_client_job = RPCClient(auto_queue=True)
+        self._rbd_v1_backup = self._rpc_client.to_dedicated_queue(rbd_v1_backup)
+        self._rpc_v1_terminate = self._rpc_client.to_dedicated_queue(rpc_v1_terminate)
 
     @BatchExecutor.register_as_volume_handler
     def handle_rook_csi(self, *, action: ActionType, parent_body: Dict[str, Any], pvc: pykube.PersistentVolumeClaim,
@@ -215,10 +217,11 @@ class RBDExecutor(ExecutorInterface):
         if self._volumes:
             for volume in self._volumes[BACKUP_ACTION]:
                 self._queue_backup(volume)
-            self._rpc_client_job.call_async('rpc.v1.terminate', ignore_result=True)
+            self._rpc_v1_terminate.delay()
 
-            command = ['benji', 'api-server', self._rpc_client_job.queue]
+            command = ['benji', 'api-server', self._rpc_client.dedicated_queue]
             BenjiJob(OperatorContext.kubernetes_client, command=command, parent_body=volume.parent_body).create()
+        self._rpc_client.close()
 
     @staticmethod
     def _build_version_labels(pvc: pykube.PersistentVolumeClaim) -> Dict[str, str]:
@@ -238,13 +241,12 @@ class RBDExecutor(ExecutorInterface):
         now = datetime.utcnow()
         new_snapshot = RBD_SNAP_NAME_PREFIX + now.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        benjis_snapshots = self._rpc_client.call(TASK_RBD_SNAPSHOT_LS,
-                                                 pool=volume.pool,
-                                                 image=volume.image,
-                                                 monitors=volume.monitors,
-                                                 user=volume.user,
-                                                 keyring=volume.keyring,
-                                                 key=volume.key)
+        benjis_snapshots = rbd_v1_snapshot_ls.delay(pool=volume.pool,
+                                                    image=volume.image,
+                                                    monitors=volume.monitors,
+                                                    user=volume.user,
+                                                    keyring=volume.keyring,
+                                                    key=volume.key).get()
 
         benjis_snapshots = [
             snapshot['name'] for snapshot in benjis_snapshots if snapshot['name'].startswith(RBD_SNAP_NAME_PREFIX)
@@ -253,124 +255,117 @@ class RBDExecutor(ExecutorInterface):
         if len(benjis_snapshots) == 0:
             logger.info(f'{volume_name}: No previous RBD snapshot found, performing initial backup.')
 
-            self._rpc_client.call(TASK_RBD_SNAPSHOT_CREATE,
-                                  pool=volume.pool,
-                                  image=volume.image,
-                                  monitors=volume.monitors,
-                                  user=volume.user,
-                                  keyring=volume.keyring,
-                                  key=volume.key,
-                                  snapshot=new_snapshot)
+            # Don't ignore result, we want exceptions to be delivered
+            rbd_v1_snapshot_create.delay(pool=volume.pool,
+                                         image=volume.image,
+                                         monitors=volume.monitors,
+                                         user=volume.user,
+                                         keyring=volume.keyring,
+                                         key=volume.key,
+                                         snapshot=new_snapshot).get()
             logger.info(f'{volume_name}: Newest RBD snapshot is {volume.pool}/{volume.image}@{new_snapshot}.')
 
-            self._rpc_client_job.call_async(TASK_RBD_BACKUP,
-                                            version_uid=version_uid,
-                                            volume=volume_name,
-                                            labels=labels,
-                                            pool=volume.pool,
-                                            image=volume.image,
-                                            snapshot=new_snapshot,
-                                            monitors=volume.monitors,
-                                            user=volume.user,
-                                            keyring=volume.keyring,
-                                            key=volume.key,
-                                            ignore_result=True)
+            self._rbd_v1_backup.delay(version_uid=version_uid,
+                                      volume=volume_name,
+                                      labels=labels,
+                                      pool=volume.pool,
+                                      image=volume.image,
+                                      snapshot=new_snapshot,
+                                      monitors=volume.monitors,
+                                      user=volume.user,
+                                      keyring=volume.keyring,
+                                      key=volume.key)
         else:
             # Delete all snapshots except the newest
             for snapshot in benjis_snapshots[:-1]:
                 logger.info(f'{volume_name}: Deleting older RBD snapshot {volume.pool}/{volume.image}@{snapshot}.')
-                self._rpc_client.call(TASK_RBD_SNAPSHOT_RM,
-                                      pool=volume.pool,
-                                      image=volume.image,
-                                      monitors=volume.monitors,
-                                      user=volume.user,
-                                      keyring=volume.keyring,
-                                      key=volume.key,
-                                      snapshot=snapshot)
+                # Don't ignore result, we want exceptions to be delivered
+                rbd_v1_snapshot_rm.delay(pool=volume.pool,
+                                         image=volume.image,
+                                         monitors=volume.monitors,
+                                         user=volume.user,
+                                         keyring=volume.keyring,
+                                         key=volume.key,
+                                         snapshot=snapshot).get()
 
             last_snapshot = benjis_snapshots[-1]
             logger.info(f'{volume_name}: Last RBD snapshot is {volume.pool}/{volume.image}@{last_snapshot}.')
 
-            versions = self._rpc_client.call(
-                TASK_FIND_VERSIONS,
-                filter_expression=f'volume == "{volume_name}" and snapshot == "{last_snapshot}" and status == "valid"')
+            versions = core_v1_find_versions_with_filter.delay(
+                filter_expression=f'volume == "{volume_name}" and snapshot == "{last_snapshot}" and status == "valid"'
+            ).get()
             if versions:
                 base_version_uid = versions[0]['uid']
 
-                self._rpc_client.call(TASK_RBD_SNAPSHOT_CREATE,
-                                      pool=volume.pool,
-                                      image=volume.image,
-                                      monitors=volume.monitors,
-                                      user=volume.user,
-                                      keyring=volume.keyring,
-                                      key=volume.key,
-                                      snapshot=new_snapshot)
+                # Don't ignore result, we want exceptions to be delivered
+                rbd_v1_snapshot_create.delay(pool=volume.pool,
+                                             image=volume.image,
+                                             monitors=volume.monitors,
+                                             user=volume.user,
+                                             keyring=volume.keyring,
+                                             key=volume.key,
+                                             snapshot=new_snapshot).get()
                 logger.info(f'{volume_name}: Newest RBD snapshot is {volume.pool}/{volume.image}@{new_snapshot}.')
 
-                hints = self._rpc_client.call(TASK_RBD_SNAPSHOT_DIFF,
-                                              pool=volume.pool,
-                                              image=volume.image,
-                                              monitors=volume.monitors,
-                                              user=volume.user,
-                                              keyring=volume.keyring,
-                                              key=volume.key,
-                                              snapshot=new_snapshot,
-                                              last_snapshot=last_snapshot)
+                hints = rbd_v1_snapshot_diff.delay(pool=volume.pool,
+                                                   image=volume.image,
+                                                   monitors=volume.monitors,
+                                                   user=volume.user,
+                                                   keyring=volume.keyring,
+                                                   key=volume.key,
+                                                   snapshot=new_snapshot,
+                                                   last_snapshot=last_snapshot).get()
 
                 logger.info(f'{volume_name}: Deleting last RBD snapshot {volume.pool}/{volume.image}@{last_snapshot}.')
-                self._rpc_client.call(TASK_RBD_SNAPSHOT_RM,
-                                      pool=volume.pool,
-                                      image=volume.image,
-                                      monitors=volume.monitors,
-                                      user=volume.user,
-                                      keyring=volume.keyring,
-                                      key=volume.key,
-                                      snapshot=last_snapshot)
+                # Don't ignore result, we want exceptions to be delivered
+                rbd_v1_snapshot_rm.delay(pool=volume.pool,
+                                         image=volume.image,
+                                         monitors=volume.monitors,
+                                         user=volume.user,
+                                         keyring=volume.keyring,
+                                         key=volume.key,
+                                         snapshot=last_snapshot).get()
 
-                self._rpc_client_job.call_async(TASK_RBD_BACKUP,
-                                                version_uid=version_uid,
-                                                volume=volume_name,
-                                                labels=labels,
-                                                pool=volume.pool,
-                                                image=volume.image,
-                                                snapshot=new_snapshot,
-                                                monitors=volume.monitors,
-                                                user=volume.user,
-                                                keyring=volume.keyring,
-                                                key=volume.key,
-                                                base_version_uid=base_version_uid,
-                                                hints=hints,
-                                                ignore_result=True)
+                self._rbd_v1_backup.delay(version_uid=version_uid,
+                                          volume=volume_name,
+                                          labels=labels,
+                                          pool=volume.pool,
+                                          image=volume.image,
+                                          snapshot=new_snapshot,
+                                          monitors=volume.monitors,
+                                          user=volume.user,
+                                          keyring=volume.keyring,
+                                          key=volume.key,
+                                          base_version_uid=base_version_uid,
+                                          hints=hints)
             else:
                 logger.info(f'{volume_name}: Existing RBD snapshot {volume.pool}/{volume.image}@{last_snapshot} not found in Benji, deleting it and reverting to initial backup.')
-                self._rpc_client.call(TASK_RBD_SNAPSHOT_RM,
-                                      pool=volume.pool,
-                                      image=volume.image,
-                                      monitors=volume.monitors,
-                                      user=volume.user,
-                                      keyring=volume.keyring,
-                                      key=volume.key,
-                                      snapshot=last_snapshot)
+                # Don't ignore result, we want exceptions to be delivered
+                rbd_v1_snapshot_rm.delay(pool=volume.pool,
+                                         image=volume.image,
+                                         monitors=volume.monitors,
+                                         user=volume.user,
+                                         keyring=volume.keyring,
+                                         key=volume.key,
+                                         snapshot=last_snapshot).get()
 
-                self._rpc_client.call(TASK_RBD_SNAPSHOT_CREATE,
-                                      pool=volume.pool,
-                                      image=volume.image,
-                                      monitors=volume.monitors,
-                                      user=volume.user,
-                                      keyring=volume.keyring,
-                                      key=volume.key,
-                                      snapshot=new_snapshot)
+                # Don't ignore result, we want exceptions to be delivered
+                rbd_v1_snapshot_create.delay(pool=volume.pool,
+                                             image=volume.image,
+                                             monitors=volume.monitors,
+                                             user=volume.user,
+                                             keyring=volume.keyring,
+                                             key=volume.key,
+                                             snapshot=new_snapshot).get()
                 logger.info(f'{volume_name}: Newest RBD snapshot is {volume.pool}/{volume.image}@{new_snapshot}.')
 
-                self._rpc_client_job.call_async(TASK_RBD_BACKUP,
-                                                version_uid=version_uid,
-                                                volume=volume_name,
-                                                labels=labels,
-                                                pool=volume.pool,
-                                                image=volume.image,
-                                                snapshot=new_snapshot,
-                                                monitors=volume.monitors,
-                                                user=volume.user,
-                                                keyring=volume.keyring,
-                                                key=volume.key,
-                                                ignore_result=True)
+                self._rbd_v1_backup.delay(version_uid=version_uid,
+                                          volume=volume_name,
+                                          labels=labels,
+                                          pool=volume.pool,
+                                          image=volume.image,
+                                          snapshot=new_snapshot,
+                                          monitors=volume.monitors,
+                                          user=volume.user,
+                                          keyring=volume.keyring,
+                                          key=volume.key)

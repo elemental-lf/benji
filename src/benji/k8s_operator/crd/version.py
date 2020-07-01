@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 import kopf
 from requests import HTTPError
 
-from benji.celery import RPCClient
+from benji.api import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
     LABEL_K8S_PVC_NAME
@@ -41,6 +41,10 @@ K8S_VERSION_SPEC_PERSISTENT_VOLUME_CLAIM_NAME = 'persistentVolumeClaimName'
 
 K8S_VERSION_STATUS_PROTECTED = 'protected'
 K8S_VERSION_STATUS_STATUS = 'status'
+
+core_v1_protect = RPCClient.signature('core.v1.protect')
+core_v1_get_version_by_uid = RPCClient.signature('core.v1.get_version_by_uid')
+core_v1_rm = RPCClient.signature('core.v1.rm')
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +129,9 @@ class BenjiVersion(NamespacedAPIObject):
         return version_object
 
 
-def check_version_access(rpc_client: RPCClient, version_uid: str, crd: Dict[Any, str]) -> None:
+def check_version_access(version_uid: str, crd: Dict[Any, str]) -> None:
     try:
-        version = rpc_client.call('core.v1.get', version_uid=version_uid)
+        version = core_v1_get_version_by_uid.delay(version_uid=version_uid).get()
     except KeyError as exception:
         raise kopf.PermanentError(str(exception))
 
@@ -143,18 +147,20 @@ def check_version_access(rpc_client: RPCClient, version_uid: str, crd: Dict[Any,
 
 @kopf.on.field(*BenjiVersion.group_version_plural(), field='status.protected')
 def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
-    with RPCClient as rpc_client:
-        check_version_access(rpc_client, name, body)
+    with RPCClient():
+        check_version_access(name, body)
         protected = status.get('protected', False)
-        rpc_client.call('core_v1_protect', version_uid=name, protected=protected)
+        # Don't ignore result, we want exceptions to be delivered
+        core_v1_protect.delay(version_uid=name, protected=protected).get()
 
 
 @kopf.on.delete(*BenjiVersion.group_version_plural())
 def benji_remove(name: str, body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
-    with RPCClient() as rpc_client:
+    with RPCClient():
         try:
-            rpc_client.call('core_v1_get', version_uid=name)
+            core_v1_get_version_by_uid.delay(version_uid=name).get()
         except KeyError:
             return
-        check_version_access(rpc_client, name, body)
-        rpc_client.call('rm', version_uid=name)
+        check_version_access(name, body)
+        # Don't ignore result, we want exceptions to be delivered
+        core_v1_rm.delay(version_uid=name).get()

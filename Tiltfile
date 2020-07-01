@@ -44,11 +44,7 @@ docker_build_with_restart('elementalnet/benji-k8s-operator',
                           live_update=[
                               sync('src/benji', '/usr/local/lib/python3.7/site-packages/benji'),
                           ],
-                          ignore=[
-                              '*', '!src/benji/k8s_operator', '!src/benji/helpers', '!src/benji/celery',
-                              '!src/benji/_*version.py', '!src/benji/__init__.py', '!setup.py', '!README.rst',
-                              '!images/benji-k8s-operator'
-                          ])
+                          ignore=['*', '!src', '!etc', '!setup.py', '!README.rst', '!images/benji'])
 
 k8s_resource('benji-operator', resource_deps=['benji-api'])
 k8s_resource('benji', extra_pod_selectors=[{'app.kubernetes.io/managed-by': 'benji-operator'}])

@@ -6,7 +6,7 @@ import kopf
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.celery import RPCClient
+from benji.api import RPCClient
 from benji.helpers.settings import benji_instance
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
@@ -15,7 +15,7 @@ from benji.k8s_operator.crd.version import BenjiVersion
 from benji.k8s_operator.resources import track_job_status, BenjiJob, NamespacedAPIObject
 from benji.k8s_operator.utils import service_account_namespace
 
-TASK_FIND_VERSIONS = 'core.v1.find_versions_with_filter'
+core_v1_find_versions_with_filter = RPCClient.signature('core.v1.find_versions_with_filter')
 
 module_logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ def set_operator_config() -> None:
 def reconciliate_versions_job():
     module_logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
     with RPCClient() as rpc_client:
-        versions = rpc_client.call(TASK_FIND_VERSIONS,
-                                   filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"')
+        versions = core_v1_find_versions_with_filter.delay(
+            filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"').get()
     module_logger.debug(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()

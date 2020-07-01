@@ -1,4 +1,4 @@
-from typing import Dict, An Optional
+from typing import Dict, Any, Optional
 
 import kopf
 from apscheduler.jobstores.base import JobLookupError
