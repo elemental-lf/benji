@@ -269,6 +269,11 @@ def main():
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
 
+    # STORAGE-USAGE
+    p = subparsers_root.add_parser('storage-usage', help='Provide storage usage statistics')
+    p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
+    p.set_defaults(func='storage_usage')
+
     # API-SERVER
     if enable_experimental:
         p = subparsers_root.add_parser('api-server', help='Start AMQP API server')
