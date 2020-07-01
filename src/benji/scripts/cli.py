@@ -274,7 +274,7 @@ def main():
         p = subparsers_root.add_parser('api-server', help='Start AMQP API server')
         p.set_defaults(func='api_server')
         p.add_argument('--threads', default=1, type=int, help='Number of worker threads')
-        p.add_argument(dest='queue', nargs='?', default='benji-rpc', help='Queue to listen on for messages')
+        p.add_argument(dest='queue', nargs='?', default=None, help='Queue to listen on for messages')
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

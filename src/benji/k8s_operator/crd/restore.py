@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 
 import kopf
 
-from benji.celery import RPCClient
+from benji.api import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, \
     RESOURCE_STATUS_CHILDREN, API_GROUP, API_VERSION
@@ -35,8 +35,8 @@ def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], 
     storage_class_name = spec[K8S_RESTORE_SPEC_STORAGE_CLASS_NAME]
     overwrite = spec.get(K8S_RESTORE_SPEC_OVERWRITE, False)
 
-    with RPCClient() as rpc_client:
-        check_version_access(rpc_client, version_name, body)
+    with RPCClient():
+        check_version_access(version_name, body)
 
     command = [
         'benji-restore-pvc',

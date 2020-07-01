@@ -147,7 +147,7 @@ class SmokeTestCase(BenjiTestCaseBase):
             logger.debug('Block list successful')
 
             benji_obj = self.benji_open()
-            versions = benji_obj.find_versions_with_filter()
+            versions = benji_obj.core_v1_find_versions_with_filter()
             self.assertEqual(set(), {version.uid for version in versions} ^ set(version_uids))
             self.assertTrue(reduce(and_, [version.volume == 'data-backup' for version in versions]))
             self.assertTrue(reduce(and_, [version.snapshot == 'snapshot-name' for version in versions]))
