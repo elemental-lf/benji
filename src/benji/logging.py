@@ -157,8 +157,6 @@ def init_logging(logfile: Optional[str],
     if os.getenv('BENJI_DEBUG_SQL') == '1':
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-    logger.info('$ ' + ' '.join(sys.argv))
-
 
 # Source: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python/16993115#16993115
 def handle_exception(exc_type, exc_value, exc_traceback):
