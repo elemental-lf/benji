@@ -6,6 +6,7 @@ import threading
 import time
 from collections import deque
 from typing import Tuple, Optional, Union, Iterator, Deque
+from urllib.parse import parse_qs
 
 import rados
 # noinspection PyUnresolvedReferences
@@ -33,12 +34,30 @@ class IO(IOBase):
                          block_size=block_size)
 
         if self.parsed_url.username or self.parsed_url.password or self.parsed_url.hostname or self.parsed_url.port \
-                    or self.parsed_url.params or self.parsed_url.fragment or self.parsed_url.query:
+                    or self.parsed_url.params or self.parsed_url.fragment:
             raise UsageError('The supplied URL {} is invalid.'.format(self.url))
+        if self.parsed_url.query:
+            try:
+                extra_ceph_conf = parse_qs(self.parsed_url.query,
+                                           keep_blank_values=True,
+                                           strict_parsing=True,
+                                           errors='strict')
+            except (ValueError, UnicodeError) as exception:
+                raise UsageError('The supplied URL {} is invalid.'.format(self.url)) from exception
+
+            # parse_qs returns the values as lists, only consider the first appearance of each key in the query string.
+            extra_ceph_conf = {key: value[0] for key, value in extra_ceph_conf.items()}
+        else:
+            extra_ceph_conf = {}
 
         ceph_config_file = config.get_from_dict(module_configuration, 'cephConfigFile', types=str)
-        client_identifier = config.get_from_dict(module_configuration, 'clientIdentifier', types=str)
-        self._cluster = rados.Rados(conffile=ceph_config_file, rados_id=client_identifier)
+        if 'client_identifier' in extra_ceph_conf:
+            client_identifier = extra_ceph_conf['client_identifier']
+            del extra_ceph_conf['client_identifier']
+        else:
+            client_identifier = config.get_from_dict(module_configuration, 'clientIdentifier', types=str)
+
+        self._cluster = rados.Rados(conffile=ceph_config_file, rados_id=client_identifier, conf=extra_ceph_conf)
         self._cluster.connect()
         # create a bitwise or'd list of the configured features
         self._new_image_features = 0
