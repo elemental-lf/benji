@@ -1,3 +1,24 @@
+## 0.9.0, 27.07.2020
+
+* Sparse blocks are no longer explicitly represented in the database. This greatly speeds up the initial step
+  of backup creation if the backup is based on an older version, and a lot of the blocks are sparse. It also reduces
+  database size and speeds up database operations overall due to the reduced number of rows in the blocks table. No
+  database migration is necessary, but the changed representation will only apply to newly created versions.
+
+* Implement `benji storage-usage` command. See the documentation on how the usage is calculated and its inherent
+  limitations.
+  
+* For the `rbd` and `rbdaio` IO modules add a feature to pass all Ceph credentials as part of the URL of the 
+  `benji backup` command. This can also be used to pass other Ceph configuration options, and it is also possible
+  to override the `client_identifier` set in Benji's configuration file. This allows Benji to connect to any
+  Ceph cluster without setting up `/etc/ceph/ceph.conf` beforehand. See the documentation for the full URL syntax.
+    
+* `benji enforce` now skips removed or otherwise unavailable versions and continues with the removal.
+
+* NBD server: The block cache is split up into a block cache and a copy-on-write store for changed blocks. For the
+  block cache a maximum size can be specified and least frequently used blocks are evicted if the cache gets full.
+  Some adjustments are needed to Benji's configuration due to this change. See `etc/benji.yaml` for an example.
+    
 ## 0.8.0, 19.11.2019
 
 Notable changes:

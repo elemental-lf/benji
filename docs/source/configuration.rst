@@ -237,8 +237,26 @@ recommended to increase this number to increase this number to get better concur
 I/O Module rbd
 ~~~~~~~~~~~~~~
 
-The ``rbd`` I/O module requires that Ceph's Python modules ``rados`` and ``rbd`` are installed. It supports
-the following configuration options:
+The ``rbd`` I/O module requires that Ceph's Python modules ``rados`` and ``rbd`` are installed. With it it is
+possible to backup RBD images of a Ceph cluster. The supported URL syntax is::
+
+    <module instance>:<pool>/<image>
+    <module instance>:<pool>/<image>@<snapshot>
+
+Additional options can be passed as query parameters:
+
+- ``client_identifier``: Overrides the ``clientIdentfier`` from the module instance's configuration
+- ``mon_host``: Comma separated list of monitor hosts, either host names or IP addresses, optionally with a port number
+  (``<host>:<port>``)
+- ``key``: Verbatim Cephx key
+- ``keyring``: Path to a CephX keyring file
+- any other Ceph configuration options
+
+Full example::
+
+    rbd:pool/image@snapshot?client_identifier=guest&mon_host=10.0.0.1:6789,10.0.0.2:6789&key=XXXXXXXX
+
+This module supports the following configuration options:
 
 * name: **simultaneousReads**
 * type: integer
