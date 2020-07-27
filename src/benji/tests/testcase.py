@@ -45,8 +45,7 @@ class TestCaseBase:
 
     def setUp(self):
         self.testpath = self.TestPath()
-        init_logging(None,
-                     logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
+        init_logging(console_level=logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
                      console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 

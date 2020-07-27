@@ -6,7 +6,7 @@ import os
 import sys
 import threading
 import warnings
-from typing import Optional, Dict
+from typing import Dict
 
 import structlog
 from structlog._frames import _find_first_app_frame_and_name
@@ -52,18 +52,11 @@ _sl_processors = [
     structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
 ]
 
-structlog.configure(
-    processors=_sl_processors,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
 
-
-def init_logging(logfile: Optional[str],
-                 console_level: str,
-                 console_formatter: str = "console-plain",
+def init_logging(*,
+                 logfile: str = None,
+                 console_level: str = 'INFO',
+                 console_formatter: str = 'json',
                  logfile_formatter: str = 'legacy') -> None:
 
     logging_config: Dict = {
@@ -139,27 +132,9 @@ def init_logging(logfile: Optional[str],
 
     logging.config.dictConfig(logging_config)
 
-    # silence alembic
-    logging.getLogger('alembic').setLevel(logging.WARN)
-    # silence boto3
-    # See https://github.com/boto/boto3/issues/521
-    logging.getLogger('boto3').setLevel(logging.WARN)
-    logging.getLogger('botocore').setLevel(logging.WARN)
-    logging.getLogger('nose').setLevel(logging.WARN)
-    # This disables ResourceWarnings from boto3 which are normal
-    # See: https://github.com/boto/boto3/issues/454
-    warnings.filterwarnings("ignore",
-                            category=ResourceWarning,
-                            message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
-    # silence b2
-    logging.getLogger('b2').setLevel(logging.WARN)
-
-    if os.getenv('BENJI_DEBUG_SQL') == '1':
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
 
 # Source: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python/16993115#16993115
-def handle_exception(exc_type, exc_value, exc_traceback):
+def _handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
@@ -167,4 +142,30 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 
-sys.excepthook = handle_exception
+sys.excepthook = _handle_exception
+
+structlog.configure(
+    processors=_sl_processors,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+init_logging()
+
+# silence alembic
+logging.getLogger('alembic').setLevel(logging.WARN)
+# silence boto3
+# See https://github.com/boto/boto3/issues/521
+logging.getLogger('boto3').setLevel(logging.WARN)
+logging.getLogger('botocore').setLevel(logging.WARN)
+logging.getLogger('nose').setLevel(logging.WARN)
+# This disables ResourceWarnings from boto3 which are normal
+# See: https://github.com/boto/boto3/issues/454
+warnings.filterwarnings("ignore", category=ResourceWarning, message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
+# silence b2
+logging.getLogger('b2').setLevel(logging.WARN)
+
+if os.getenv('BENJI_DEBUG_SQL') == '1':
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
