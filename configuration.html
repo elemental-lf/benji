@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.8.0.dev72+g43f006c documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.9.0 documentation</title>
   
 
   
@@ -507,8 +507,26 @@ recommended to increase this number to increase this number to get better concur
 </div>
 <div class="section" id="i-o-module-rbd">
 <h3>I/O Module rbd<a class="headerlink" href="#i-o-module-rbd" title="Permalink to this headline">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. It supports
-the following configuration options:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. With it it is
+possible to backup RBD images of a Ceph cluster. The supported URL syntax is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>&lt;module instance&gt;:&lt;pool&gt;/&lt;image&gt;
+&lt;module instance&gt;:&lt;pool&gt;/&lt;image&gt;@&lt;snapshot&gt;
+</pre></div>
+</div>
+<p>Additional options can be passed as query parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">client_identifier</span></code>: Overrides the <code class="docutils literal notranslate"><span class="pre">clientIdentfier</span></code> from the module instance’s configuration</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mon_host</span></code>: Comma separated list of monitor hosts, either host names or IP addresses, optionally with a port number
+(<code class="docutils literal notranslate"><span class="pre">&lt;host&gt;:&lt;port&gt;</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">key</span></code>: Verbatim Cephx key</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">keyring</span></code>: Path to a CephX keyring file</p></li>
+<li><p>any other Ceph configuration options</p></li>
+</ul>
+<p>Full example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rbd:pool/image@snapshot?client_identifier<span class="o">=</span>guest<span class="p">&amp;</span><span class="nv">mon_host</span><span class="o">=</span><span class="m">10</span>.0.0.1:6789,10.0.0.2:6789<span class="p">&amp;</span><span class="nv">key</span><span class="o">=</span>XXXXXXXX
+</pre></div>
+</div>
+<p>This module supports the following configuration options:</p>
 <ul class="simple">
 <li><p>name: <strong>simultaneousReads</strong></p></li>
 <li><p>type: integer</p></li>
