@@ -304,9 +304,15 @@ def main():
     else:
         config = Config()
 
-    init_logging(config.get('logFile', types=(str, type(None))),
+    console_formatter = 'console-colored'
+    if args.machine_output:
+        console_formatter = 'json'
+    elif args.no_color:
+        console_formatter = 'console-plain'
+
+    init_logging(logfile=config.get('logFile', types=(str, type(None))),
                  console_level=args.log_level,
-                 console_formatter='console-plain' if args.no_color else 'console-colored')
+                 console_formatter=console_formatter)
 
     IOFactory.initialize(config)
     StorageFactory.initialize(config)
