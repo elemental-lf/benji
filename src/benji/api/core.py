@@ -3,8 +3,7 @@ from io import StringIO
 from typing import Sequence, Optional, Dict, Any, Tuple, List, Union
 
 from benji import __version__
-from benji.api.rpc import RPCServer
-from benji.api.base import APIBase
+from benji.api.server import RPCServer, APIBase
 from benji.benji import Benji
 from benji.database import VersionUid, Version
 from benji.versions import VERSIONS

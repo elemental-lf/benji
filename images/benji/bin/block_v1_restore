@@ -9,15 +9,16 @@ from benji.helpers.kubernetes import create_pvc
 from kubernetes.client.rest import ApiException
 from kubernetes.utils import parse_quantity
 
-from benji.helpers.settings import benji_log_level
-from benji.helpers.utils import subprocess_run, setup_logging
+from benji.k8s_operator.settings import benji_log_level
+from benji.helpers.utils import setup_logging
+from benji.utils import subprocess_run
 from benji.k8s_operator.crd.backup_schedule import determine_rbd_materials
 
 PVC_CREATION_TRIES = 30
 PVC_CREATION_WAIT = 2
 
 setup_logging()
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 

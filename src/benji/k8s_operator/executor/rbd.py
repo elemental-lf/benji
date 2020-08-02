@@ -8,13 +8,11 @@ from typing import Sequence, Optional, List, Dict, Any
 import attr
 import pykube
 
-from benji.api import RPCClient
-from benji.helpers import settings
+from benji.api.client import RPCClient
+from benji.k8s_operator import OperatorContext, settings
 from benji.k8s_operator.constants import LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME
 from benji.k8s_operator.executor.executor import ExecutorInterface, ActionType, \
     BACKUP_ACTION, BatchExecutor
-
-from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.resources import BenjiJob, StorageClass
 from benji.k8s_operator.utils import random_string, keys_exist
 

@@ -1,32 +1,28 @@
-import logging
-import string
-from contextlib import AbstractContextManager
-import random
 from typing import List, Callable, NamedTuple
 
-from celery.canvas import Signature
-
-from benji.exception import InternalError
+import structlog
+from celery import Celery
 
 from benji.config import Config
-from celery import Celery, signature
+from benji.exception import InternalError
 
-from benji.api.base import APIBase
-
+# Also adjust in client.py
 CELERY_SETTINGS = 'benji.api.settings'
-WORKER_DEFAULT_THREADS = 1
 WORKER_API_QUEUE_PREFIX = 'benji-api-'
-WORKER_DEDICATED_QUEUE_PREFIX = 'benji-api-dedicated-'
+
+WORKER_DEFAULT_THREADS = 1
 
 TERMINATE_TASK_API_GROUP = 'rpc'
 TERMINATE_TASK_API_VERSION = 'v1'
 TERMINATE_TASK_NAME = 'terminate'
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
-def random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
-    return ''.join(random.choice(characters) for _ in range(length))
+class APIBase:
+
+    def __init__(self, *, config: Config) -> None:
+        self._config = config
 
 
 class RPCServer:
@@ -103,32 +99,4 @@ class RPCServer:
         logger.info(f'Subscribing to queue{"s" if len(self._queues) > 1 else ""} {", ".join(self._queues)}.')
         worker_args.extend(['-Q', ','.join(self._queues)])
         self._app.start(worker_args)
-        self._app.close()
-
-
-class RPCClient(AbstractContextManager):
-
-    def __init__(self) -> None:
-        self._app = Celery(set_as_current=True)
-        self._app.config_from_object(CELERY_SETTINGS)
-        self._dedicated_queue = None
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    @property
-    def dedicated_queue(self):
-        if self._dedicated_queue is None:
-            self._dedicated_queue = f'{WORKER_DEDICATED_QUEUE_PREFIX}{random_string(24)}'
-        return self._dedicated_queue
-
-    def to_dedicated_queue(self, sig: Signature) -> Signature:
-        return sig.clone(queue=self.dedicated_queue)
-
-    @classmethod
-    def signature(cls, task: str, *args, **kwargs):
-        queue = WORKER_API_QUEUE_PREFIX + task.split('.')[0]
-        return signature(task, *args, queue=queue, **kwargs)
-
-    def close(self) -> None:
         self._app.close()

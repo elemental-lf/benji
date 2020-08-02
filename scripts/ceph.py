@@ -1,20 +1,23 @@
+import json
 import logging
+import os
+import re
+import subprocess
 from datetime import datetime
 from functools import reduce
+from json import JSONDecodeError
 from operator import or_
 from tempfile import NamedTemporaryFile
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 
 from blinker import signal
-
-from benji.helpers.settings import benji_log_level
-from benji.helpers.utils import subprocess_run
 
 SIGNAL_SENDER = 'ceph'
 RBD_SNAP_CREATE_TIMEOUT = 30
 RBD_SNAP_NAME_PREFIX = 'b-'
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+benji_log_level = os.getenv('BENJI_LOG_LEVEL', 'INFO')
 
 signal_snapshot_create_pre = signal('snapshot_create_pre')
 signal_snapshot_create_post_success = signal('snapshot_create_post_success')
@@ -25,6 +28,58 @@ signal_backup_post_error = signal('on_backup_post_error')
 signal_restore_pre = signal('restore_pre')
 signal_restore_post_success = signal('restore_post_success')
 signal_restore_post_error = signal('restore_post_error')
+
+
+def _one_line_stderr(stderr: str):
+    stderr = re.sub(r'\n(?!$)', ' | ', stderr)
+    stderr = re.sub(r'\s+', ' ', stderr)
+    return stderr
+
+
+def subprocess_run(args: List[str],
+                   input: str = None,
+                   timeout: int = None,
+                   decode_json: bool = False,
+                   args_repr: str = None) -> Union[Dict, List, str]:
+    if args_repr is not None:
+        logger.info(f'Running process: {args_repr}')
+    else:
+        logger.info('Running process: {}'.format(' '.join(args)))
+    try:
+
+        result = subprocess.run(args=args,
+                                input=input,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                encoding='utf-8',
+                                errors='ignore',
+                                timeout=timeout)
+    except subprocess.TimeoutExpired as exception:
+        stderr = _one_line_stderr(exception.stderr)
+        raise RuntimeError(f'{args[0]} invocation failed due to timeout with output: ' + stderr) from None
+    except Exception as exception:
+        raise RuntimeError(f'{args[0]} invocation failed with a {type(exception).__name__} exception: {str(exception)}') from None
+
+    if result.stderr != '':
+        for line in result.stderr.splitlines():
+            logger.info(line)
+
+    if result.returncode == 0:
+        logger.debug('Process finished successfully.')
+        if decode_json:
+            try:
+                stdout_json = json.loads(result.stdout)
+            except JSONDecodeError:
+                raise RuntimeError(f'{args[0]} invocation was successful but did not return valid JSON. Output on stderr was: {_one_line_stderr(result.stderr)}.')
+
+            if stdout_json is None or not isinstance(stdout_json, (dict, list)):
+                raise RuntimeError(f'{args[0]} invocation was successful but did return null or empty JSON dictonary. Output on stderr was: {_one_line_stderr(result.stderr)}.')
+
+            return stdout_json
+        else:
+            return result.stdout
+    else:
+        raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode} and output: {_one_line_stderr(result.stderr)}')
 
 
 def snapshot_create(*, volume: str, pool: str, image: str, snapshot: str, context: Any = None):

@@ -6,14 +6,16 @@ import kopf
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.api import RPCClient
-from benji.helpers.settings import benji_instance
+from benji.api.client import RPCClient
 from benji.k8s_operator import OperatorContext
-from benji.k8s_operator.constants import LABEL_PARENT_KIND, SCHED_VERSION_RECONCILIATION_JOB, \
-    SCHED_CLEANUP_JOB, API_VERSION, API_GROUP, LABEL_INSTANCE
+from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE
 from benji.k8s_operator.crd.version import BenjiVersion
 from benji.k8s_operator.resources import track_job_status, BenjiJob, NamespacedAPIObject
+from benji.k8s_operator.settings import benji_instance
 from benji.k8s_operator.utils import service_account_namespace
+
+SCHED_VERSION_RECONCILIATION_JOB = 'version-reconciliation'
+SCHED_CLEANUP_JOB = 'cleanup'
 
 core_v1_find_versions_with_filter = RPCClient.signature('core.v1.find_versions_with_filter')
 

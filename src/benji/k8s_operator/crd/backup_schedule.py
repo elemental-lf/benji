@@ -7,10 +7,8 @@ import pykube
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.helpers import settings
 from benji.k8s_operator import OperatorContext
-from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE, \
-    LABEL_K8S_PVC_NAMESPACE, LABEL_K8S_PVC_NAME, LABEL_K8S_PV_NAME
+from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP
 from benji.k8s_operator.executor.executor import BatchExecutor, BACKUP_ACTION
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, APIObject, \
     NamespacedAPIObject

@@ -9,11 +9,11 @@ import time
 from collections import defaultdict
 from concurrent.futures import CancelledError, TimeoutError
 from contextlib import AbstractContextManager
-from functools import wraps
 from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator
 
+import structlog
 from diskcache import Cache
 
 from benji.blockuidhistory import BlockUidHistory
@@ -22,12 +22,13 @@ from benji.database import Database, VersionUid, Version, Block, \
     BlockUid, DereferencedBlock, VersionStatus, Storage, Locking, DeletedBlock, SparseBlockUid
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError, ConfigurationError
 from benji.io.factory import IOFactory
-from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.storage.factory import StorageFactory
 from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
+
+logger = structlog.get_logger(__name__)
 
 
 class Benji(ReprMixIn, AbstractContextManager):

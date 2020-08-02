@@ -1,12 +1,11 @@
 from typing import Sequence, List, Tuple, Dict
 
-from benji.api.rpc import RPCServer
-from benji.api.base import APIBase
+import structlog
+
+from benji.api.server import RPCServer, APIBase
 from benji.benji import Benji
 from benji.database import VersionUid
-from benji.helpers.utils import subprocess_run
-from benji.logging import logger
-from benji.utils import hints_from_rbd_diff
+from benji.utils import hints_from_rbd_diff, subprocess_run
 
 API_GROUP = 'rbd'
 API_VERSION = 'v1'
@@ -16,6 +15,8 @@ RBD_SNAP_RM_TIMEOUT = 30
 RBD_SNAP_NAME_PREFIX = 'b-'
 CEPH_DEFAULT_USER = 'admin'
 IO_MODULE_NAME = 'rbd'
+
+logger = structlog.get_logger(__name__)
 
 
 @RPCServer.register_api()

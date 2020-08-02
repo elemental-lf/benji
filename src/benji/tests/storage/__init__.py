@@ -1,9 +1,10 @@
 import random
 
 from benji.database import Block, BlockUid, VersionUid
-from benji.logging import logger
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.tests.testcase import StorageTestCaseBase
+
+logger = structlog.get_logger(__name__)
 
 
 class StorageTestCase(StorageTestCaseBase):

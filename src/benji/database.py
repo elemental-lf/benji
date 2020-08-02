@@ -28,6 +28,7 @@ import sqlalchemy
 import sqlalchemy.ext.declarative
 import sqlalchemy.ext.mutable
 import sqlalchemy.orm
+import structlog
 from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
@@ -38,11 +39,12 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ConfigurationError
-from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 from benji.versions import VERSIONS
+
+logger = structlog.get_logger(__name__)
 
 
 # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!

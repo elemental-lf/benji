@@ -4,11 +4,11 @@ import kopf
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.helpers.settings import benji_instance
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_GROUP, API_VERSION, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
+from benji.k8s_operator.settings import benji_instance
 from benji.k8s_operator.utils import cr_to_job_name
 
 K8S_RESTORE_SPEC_SCHEDULE = 'schedule'

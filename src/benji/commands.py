@@ -3,17 +3,19 @@ import os
 import sys
 from typing import List, NamedTuple, Type, Optional, Dict
 
+import structlog
 from prettytable import PrettyTable
 
 import benji.exception
 from benji import __version__
-from benji.api import RPCServer
+from benji.api.server import RPCServer
 from benji.benji import Benji, BenjiStore
 from benji.database import Version, VersionUid
-from benji.logging import logger
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation, random_string
 from benji.versions import VERSIONS
+
+logger = structlog.get_logger(__name__)
 
 
 class _ExceptionMapping(NamedTuple):

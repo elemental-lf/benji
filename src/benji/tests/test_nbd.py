@@ -9,9 +9,10 @@ from unittest import TestCase
 
 from benji.benji import BenjiStore
 from benji.database import VersionUid
-from benji.logging import logger
 from benji.nbdserver import NbdServer
 from benji.tests.testcase import BenjiTestCaseBase
+
+logger = structlog.get_logger(__name__)
 
 kB = 1024
 MB = kB * 1024

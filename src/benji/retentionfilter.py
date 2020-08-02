@@ -31,11 +31,13 @@ from collections import defaultdict
 from typing import List, Dict, Sequence, Union, Tuple, Set
 
 import dateutil
+import structlog
 
 from benji.database import Version
 from benji.exception import UsageError
-from benji.logging import logger
 from benji.repr import ReprMixIn
+
+logger = structlog.get_logger(__name__)
 
 
 class RetentionFilter(ReprMixIn):
@@ -90,8 +92,9 @@ class RetentionFilter(ReprMixIn):
     def filter(self, versions: Union[Sequence[Version], Set[Version]]) -> List[Version]:
         return self._filter(versions)[0]
 
-    def _filter(self, versions: Union[Sequence[Version], Set[Version]]
-               ) -> Tuple[List[Version], Dict[str, Dict[int, List[Version]]]]:
+    def _filter(
+            self, versions: Union[Sequence[Version],
+                                  Set[Version]]) -> Tuple[List[Version], Dict[str, Dict[int, List[Version]]]]:
         # Category labels without latest
         categories = [category for category in self.rules.keys() if category != 'latest']
 

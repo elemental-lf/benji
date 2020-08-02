@@ -3,7 +3,9 @@ from concurrent.futures import ThreadPoolExecutor, Future
 from threading import BoundedSemaphore
 from typing import List, Callable, Iterator, Any
 
-from benji.logging import logger
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class JobExecutor:

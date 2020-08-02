@@ -8,6 +8,7 @@ from typing import Any, Union, Iterable, Tuple
 import b2
 import b2.api
 import b2.file_version
+import structlog
 from b2.account_info.exception import MissingAccountData
 from b2.account_info.in_memory import InMemoryAccountInfo
 from b2.account_info.sqlite_account_info import SqliteAccountInfo
@@ -15,8 +16,9 @@ from b2.download_dest import DownloadDestBytes
 from b2.exception import B2Error, FileNotPresent, B2ConnectionError
 
 from benji.config import Config, ConfigDict
-from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
+
+logger = structlog.get_logger(__name__)
 
 
 class Storage(ReadCacheStorageBase):
@@ -157,7 +159,8 @@ class Storage(ReadCacheStorageBase):
     #             errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str = None,
+    def _list_objects(self,
+                      prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
         for file_version_info, folder_name in self.bucket.find_versions(folder_to_list=prefix if prefix is not None else '',
                                                                         recursive=True):
