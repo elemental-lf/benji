@@ -2,10 +2,10 @@ from typing import Dict, Any, Optional
 
 import kopf
 
-from benji.api import RPCClient
+from benji.api.client import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, \
-    RESOURCE_STATUS_CHILDREN, API_GROUP, API_VERSION
+    API_GROUP, API_VERSION, RESOURCE_STATUS_JOBS
 from benji.k8s_operator.crd.version import check_version_access
 from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
 
@@ -26,8 +26,9 @@ class BenjiRestore(NamespacedAPIObject):
 @kopf.on.create(*BenjiRestore.group_version_plural())
 def benji_restore(namespace: str, spec: Dict[str, Any], status: Dict[str, Any], body: Dict[str, Any], logger,
                   **_) -> Optional[Dict[str, Any]]:
-    if RESOURCE_STATUS_CHILDREN in status:
+    if RESOURCE_STATUS_JOBS in status:
         # We've already seen this resource
+        logger.debug('Job already started, skipping.')
         return
 
     pvc_name = spec[K8S_RESTORE_SPEC_PERSISTENT_VOLUME_CLAIM_NAME]

@@ -5,12 +5,15 @@ import threading
 import time
 from typing import Tuple, Optional, Union, Iterator
 
+import structlog
+
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError
 from benji.io.base import IOBase
 from benji.jobexecutor import JobExecutor
-from benji.logging import logger
+
+logger = structlog.get_logger(__name__)
 
 
 class IO(IOBase):
@@ -97,7 +100,8 @@ class IO(IOBase):
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
         return self._read(block.deref())[1]
 
-    def read_get_completed(self, timeout: Optional[int] = None
+    def read_get_completed(self,
+                           timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         assert self._read_executor is not None
         return self._read_executor.get_completed(timeout=timeout)

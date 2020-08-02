@@ -11,9 +11,10 @@ from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.database import VersionUid, Version
-from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff
+
+logger = structlog.get_logger(__name__)
 
 kB = 1024
 MB = kB * 1024

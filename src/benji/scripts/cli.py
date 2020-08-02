@@ -9,10 +9,15 @@ from functools import partial
 from typing import NamedTuple, Type, Optional
 
 import argcomplete
+import structlog
 
+from benji.config import Config
 from benji.exception import InternalError
 from benji.io.factory import IOFactory
+from benji.logging import init_logging
 from benji.storage.factory import StorageFactory
+
+logger = structlog.get_logger(__name__)
 
 
 class _ExceptionMapping(NamedTuple):
@@ -292,8 +297,6 @@ def main():
         completion(args.shell)
         sys.exit(os.EX_OK)
 
-    from benji.config import Config
-    from benji.logging import logger, init_logging
     if args.config_file is not None and args.config_file != '':
         try:
             cfg = open(args.config_file, 'r', encoding='utf-8').read()

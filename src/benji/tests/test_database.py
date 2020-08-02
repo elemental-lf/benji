@@ -10,8 +10,9 @@ from dateutil import tz
 
 from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking
 from benji.exception import InternalError, UsageError, AlreadyLocked
-from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
+
+logger = structlog.get_logger(__name__)
 
 
 class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):

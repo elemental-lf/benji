@@ -4,13 +4,15 @@ import threading
 from typing import Iterable, Union, Tuple
 
 import boto3
+import structlog
 from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
 
 from benji.config import Config, ConfigDict
-from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
+
+logger = structlog.get_logger(__name__)
 
 
 class Storage(ReadCacheStorageBase):

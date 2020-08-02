@@ -14,8 +14,9 @@ from b2sdk.account_info.sqlite_account_info import SqliteAccountInfo
 from b2sdk.download_dest import DownloadDestBytes
 from b2sdk.exception import B2Error, FileNotPresent
 from benji.config import Config, ConfigDict
-from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
+
+logger = structlog.get_logger(__name__)
 
 
 class Storage(ReadCacheStorageBase):

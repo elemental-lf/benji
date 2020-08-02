@@ -6,12 +6,14 @@ from typing import Tuple, Optional, Callable, Any, List, Union, Iterator
 
 # noinspection PyUnresolvedReferences
 import libiscsi.libiscsi as libiscsi
+import structlog
 
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import ConfigurationError, UsageError
 from benji.io.base import IOBase
-from benji.logging import logger
+
+logger = structlog.get_logger(__name__)
 
 
 class IO(IOBase):
@@ -180,7 +182,8 @@ class IO(IOBase):
     def read_sync(self, block: Union[DereferencedBlock, Block]) -> bytes:
         return self._read(block.deref())[1]
 
-    def read_get_completed(self, timeout: Optional[int] = None
+    def read_get_completed(self,
+                           timeout: Optional[int] = None
                           ) -> Iterator[Union[Tuple[DereferencedBlock, bytes], BaseException]]:
         while len(self._read_queue) > 0:
             yield self._read(self._read_queue.pop())

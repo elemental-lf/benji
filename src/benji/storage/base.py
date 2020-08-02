@@ -10,19 +10,21 @@ from abc import ABCMeta, abstractmethod
 from typing import Union, Optional, Dict, Tuple, List, Sequence, cast, Iterator, Iterable
 
 import semantic_version
+import structlog
 from diskcache import FanoutCache
 
 from benji.config import Config, ConfigDict
 from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
 from benji.exception import ConfigurationError, BenjiException
 from benji.jobexecutor import JobExecutor
-from benji.logging import logger
 from benji.repr import ReprMixIn
 from benji.storage.dicthmac import DictHMAC
 from benji.transform.base import TransformBase
 from benji.transform.factory import TransformFactory
 from benji.utils import TokenBucket, derive_key
 from benji.versions import VERSIONS
+
+logger = structlog.get_logger(__name__)
 
 
 class InvalidBlockException(BenjiException, IOError):

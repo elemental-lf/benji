@@ -8,11 +8,14 @@ from collections.abc import Iterable
 from io import StringIO
 from unittest import TestCase
 
+import structlog
+
 from benji.database import VersionUid, VersionStatus, Block, Label
-from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff
 from benji.versions import VERSIONS
+
+logger = structlog.get_logger(__name__)
 
 kB = 1024
 MB = kB * 1024

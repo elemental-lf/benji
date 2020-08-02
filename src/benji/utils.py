@@ -5,23 +5,27 @@ import json
 import random
 import re
 import string
+import subprocess
 import sys
 from ast import literal_eval
 from concurrent.futures import Future
 from datetime import datetime
 from importlib import import_module
+from json.decoder import JSONDecodeError
 from threading import Lock
 from time import time
 from typing import List, Tuple, Union, Any, Optional, Dict, Iterator, Sequence
 
 import setproctitle
+import structlog
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
 
 from benji.exception import ConfigurationError, UsageError
-from benji.logging import logger
+
+logger = structlog.get_logger(__name__)
 
 
 def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:

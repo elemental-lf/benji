@@ -10,12 +10,16 @@ from typing import List, Callable, Union, Dict, Any, Optional, Sequence
 
 import ruamel.yaml
 import semantic_version
+# Import benji.logging to initialize basic logging
+import benji.logging
+import structlog
 from cerberus import Validator, SchemaError
 from pkg_resources import resource_filename
 
 from benji.exception import ConfigurationError, InternalError
-from benji.logging import logger
 from benji.versions import VERSIONS
+
+logger = structlog.get_logger(__name__)
 
 
 class ConfigDict(dict):

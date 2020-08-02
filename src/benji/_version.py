@@ -6,6 +6,7 @@ import subprocess
 from collections import namedtuple
 from typing import List, Any, Dict, Optional, Sequence, Tuple
 
+from setuptools.command.build_py import build_py as build_py_orig
 from setuptools.command.sdist import sdist as sdist_orig
 from setuptools.command.build_py import build_py as build_py_orig
 

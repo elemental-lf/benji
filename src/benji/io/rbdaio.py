@@ -16,7 +16,8 @@ from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError, InternalError
 from benji.io.base import IOBase
-from benji.logging import logger
+
+logger = structlog.get_logger(__name__)
 
 
 class IO(IOBase):

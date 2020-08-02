@@ -4,7 +4,8 @@ from typing import Optional, Dict, Any
 import pykube
 from apscheduler.schedulers.background import BaseScheduler, BackgroundScheduler
 
-from .constants import OPERATOR_CONFIG_ENV_NAME, DEFAULT_OPERATOR_CONFIG_NAME
+OPERATOR_CONFIG_ENV_NAME = 'BENJI_K8S_OPERATOR_CONFIG_NAME'
+DEFAULT_OPERATOR_CONFIG_NAME = 'benji'
 
 
 class _OperatorContext:

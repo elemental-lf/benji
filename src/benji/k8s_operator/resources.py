@@ -8,12 +8,12 @@ from pykube import HTTPClient
 from pykube.objects import APIObject, APIObject as pykube_APIObject, NamespacedAPIObject as pykube_NamespacedAPIObject
 from requests import HTTPError
 
-from benji.helpers.settings import benji_instance, running_pod_name
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPACE, LABEL_PARENT_NAME, \
     RESOURCE_STATUS_LIST_OBJECT_REFERENCE, JOB_STATUS_START_TIME, JOB_STATUS_COMPLETION_TIME, \
     RESOURCE_STATUS_DEPENDANT_JOBS_STATUS, RESOURCE_JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, RESOURCE_JOB_STATUS_FAILED, \
-    RESOURCE_JOB_STATUS_RUNNING, RESOURCE_JOB_STATUS_PENDING, RESOURCE_STATUS_DEPENDANT_JOBS, LABEL_INSTANCE
+    RESOURCE_JOB_STATUS_RUNNING, RESOURCE_JOB_STATUS_PENDING, RESOURCE_STATUS_JOBS, LABEL_INSTANCE
+from benji.k8s_operator.settings import benji_instance, running_pod_name
 from benji.k8s_operator.utils import service_account_namespace, keys_exist
 
 
@@ -205,12 +205,12 @@ def build_resource_status_dependant_jobs(status: Dict[str, Any],
                                          job: Dict[str, Any],
                                          delete: bool = False) -> Dict[str, Any]:
     if delete:
-        dependant_jobs = delete_from_status_list(status.get(RESOURCE_STATUS_DEPENDANT_JOBS, []), job)
+        dependant_jobs = delete_from_status_list(status.get(RESOURCE_STATUS_JOBS, []), job)
     else:
-        dependant_jobs = update_status_list(status.get(RESOURCE_STATUS_DEPENDANT_JOBS, []), job,
+        dependant_jobs = update_status_list(status.get(RESOURCE_STATUS_JOBS, []), job,
                                             build_dependant_job_status(job))
 
-    return {RESOURCE_STATUS_DEPENDANT_JOBS: dependant_jobs}
+    return {RESOURCE_STATUS_JOBS: dependant_jobs}
 
 
 def track_job_status(reason: str, name: str, namespace: str, meta: Dict[str, Any], body: Dict[str, Any], logger,
