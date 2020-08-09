@@ -6,7 +6,7 @@ import kopf
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.api.client import RPCClient
+from benji.rpc.client import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE
 from benji.k8s_operator.crd.version import BenjiVersion

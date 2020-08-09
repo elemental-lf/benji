@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP
 from benji.k8s_operator.executor.executor import BatchExecutor, BACKUP_ACTION
-from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, APIObject, \
+from benji.k8s_operator.resources import track_job_status, delete_all_jobs, APIObject, \
     NamespacedAPIObject
 from benji.k8s_operator.utils import cr_to_job_name
 
@@ -125,7 +125,7 @@ def benji_backup_schedule_delete(name: str, namespace: str, body: Dict[str, Any]
         OperatorContext.apscheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
-    delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
+    delete_all_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiBackupSchedule.kind})

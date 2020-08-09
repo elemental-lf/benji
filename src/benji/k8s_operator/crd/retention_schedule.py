@@ -7,7 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_GROUP, API_VERSION, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE
-from benji.k8s_operator.resources import track_job_status, delete_all_dependant_jobs, BenjiJob, NamespacedAPIObject
+from benji.k8s_operator.resources import track_job_status, delete_all_jobs, BenjiJob, NamespacedAPIObject
 from benji.k8s_operator.settings import benji_instance
 from benji.k8s_operator.utils import cr_to_job_name
 
@@ -74,7 +74,7 @@ def benji_retention_schedule_delete(name: str, namespace: str, body: Dict[str, A
         OperatorContext.apscheduler.remove_job(job_id=cr_to_job_name(body, 'scheduler'))
     except JobLookupError:
         pass
-    delete_all_dependant_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
+    delete_all_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
 
 
 @kopf.on.create('batch', 'v1', 'jobs', labels={LABEL_PARENT_KIND: BenjiRetentionSchedule.kind})

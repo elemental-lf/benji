@@ -1,3 +1,7 @@
+#
+# This together with benji.rpc.settings must be usable as a standalone module without importing any other
+# of Benji's packages or modules.
+#
 import random
 import string
 from contextlib import AbstractContextManager
@@ -6,7 +10,7 @@ from celery import Celery, signature
 from celery.canvas import Signature
 
 # Also adjust in server.py
-CELERY_SETTINGS = 'benji.api.settings'
+CELERY_SETTINGS = 'benji.rpc.settings'
 WORKER_API_QUEUE_PREFIX = 'benji-api-'
 
 WORKER_DEDICATED_QUEUE_PREFIX = 'benji-api-dedicated-'

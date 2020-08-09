@@ -8,7 +8,7 @@ from prettytable import PrettyTable
 
 import benji.exception
 from benji import __version__
-from benji.api.server import RPCServer
+from benji.rpc.server import RPCServer
 from benji.benji import Benji, BenjiStore
 from benji.database import Version, VersionUid
 from benji.nbdserver import NbdServer
@@ -447,6 +447,7 @@ class Commands:
                 self._storage_usage_table_output(usage)
 
     def api_server(self, queue: str, threads: int) -> None:
+        import benji.api
         rpc_server = RPCServer(config=self.config, queue=queue, threads=threads)
         logger.info(f'Starting API server, press CTRL-C to terminate it.')
         rpc_server.serve()

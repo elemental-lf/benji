@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 import kopf
 from requests import HTTPError
 
-from benji.api.client import RPCClient
+from benji.rpc.client import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
     LABEL_K8S_PVC_NAME

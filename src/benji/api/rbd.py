@@ -1,8 +1,9 @@
+import urllib
 from typing import Sequence, List, Tuple, Dict
 
 import structlog
 
-from benji.api.server import RPCServer, APIBase
+from benji.rpc.server import RPCServer, APIBase
 from benji.benji import Benji
 from benji.database import VersionUid
 from benji.utils import hints_from_rbd_diff, subprocess_run
@@ -177,14 +178,14 @@ class RBDAPI(APIBase):
             arguments += ['-k', keyring]
         return arguments
 
-    @staticmethod
-    def _build_ceph_credential_query_string(*, monitors: Sequence[str], user: str, keyring: str, key: str) -> List[str]:
+    def _build_ceph_credential_query_string(self, *, monitors: Sequence[str], user: str, keyring: str,
+                                            key: str) -> List[str]:
         query_string = []
         if monitors:
-            query_string.append(f'mon_host={",".join(monitors)}')
-        query_string.append(f'client_identifier={user or CEPH_DEFAULT_USER}')
+            query_string.append(('mon_host', ','.join(monitors)))
+        query_string.append(('client_identifier', user or CEPH_DEFAULT_USER))
         if key:
-            query_string.append(f'key={key}')
+            query_string.append(('key', key))
         elif keyring:
-            query_string.append(f'keyring={keyring}')
-        return '&'.join(query_string)
+            query_string.append(('keyring', keyring))
+        return urllib.parse.urlencode(query_string)
