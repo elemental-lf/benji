@@ -63,7 +63,7 @@ class IOFactory(ReprMixIn):
 
     @classmethod
     def get(cls, url: str, block_size: int) -> IOBase:
-        parsed_url = parse.urlparse(url)
+        parsed_url = parse.urlparse(url, allow_fragments=False)
 
         name = parsed_url.scheme
         if not name:

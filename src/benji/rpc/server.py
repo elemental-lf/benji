@@ -7,7 +7,7 @@ from benji.config import Config
 from benji.exception import InternalError
 
 # Also adjust in client.py
-CELERY_SETTINGS = 'benji.api.settings'
+CELERY_SETTINGS = 'benji.rpc.settings'
 WORKER_API_QUEUE_PREFIX = 'benji-api-'
 
 WORKER_DEFAULT_THREADS = 1
@@ -93,7 +93,7 @@ class RPCServer:
                 self._app.task(attr, name=task_name)
 
     def serve(self) -> None:
-        worker_args = ['', 'worker', '-O', 'fair', '-q', '-l', 'debug', '--without-mingle', '--without-gossip']
+        worker_args = ['', 'worker', '-O', 'fair', '-q', '-l', 'INFO', '--without-mingle', '--without-gossip']
         if not self._queues:
             raise InternalError('No queues discovered from tasks and no dedicated queue specified.')
         logger.info(f'Subscribing to queue{"s" if len(self._queues) > 1 else ""} {", ".join(self._queues)}.')
