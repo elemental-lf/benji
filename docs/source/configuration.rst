@@ -450,9 +450,9 @@ cannot be decrypted anymore.
 
 
 Transform Module ecc
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
-This module encrypts each data block using the ``aes_256_gcm``module
+This module encrypts each data block using the ``aes_256_gcm`` module
 (see above). Instead of specifying a symmetric master key, the encryption
 key is encrypted asymmetrically using elliptic curve cryptography.
 
@@ -473,15 +473,13 @@ For restore (decryption) this must include the private key.
 
 The ECC curve to use. Valid values are 'NIST P-256', 'NIST P-384' and 'NIST P-521'.
 
-Example python code to create a valid ECC key for **EccKey** (using ``PyCryptodome``):
+Example python code to create a valid ECC key for **EccKey** (using ``PyCryptodome``)::
 
-```
-from base64 import b64encode
-from Crypto.PublicKey import ECC
-key = ECC.generate(curve=EccCurve)
-public_key = b64encode(key.public_key().export_key(format='DER', compress=True)).decode('ascii'))
-private_key = b64encode(key.export_key(format='DER', compress=True).decode('ascii'))
-```
+    from base64 import b64encode
+    from Crypto.PublicKey import ECC
+    key = ECC.generate(curve=EccCurve)
+    public_key = b64encode(key.public_key().export_key(format='DER', compress=True)).decode('ascii'))
+    private_key = b64encode(key.export_key(format='DER', compress=True).decode('ascii'))
 
 
 Storage Modules
