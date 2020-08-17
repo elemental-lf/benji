@@ -11,6 +11,7 @@ from benji.utils import derive_key
 
 
 class Transform(TransformBase):
+    AES_KEY_LEN = 32
 
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
         super().__init__(config=config, name=name, module_configuration=module_configuration)
@@ -19,7 +20,7 @@ class Transform(TransformBase):
         if master_key_encoded is not None:
             master_key = base64.b64decode(master_key_encoded)
 
-            if len(master_key) != 32:
+            if len(master_key) != self.AES_KEY_LEN:
                 raise ValueError('Key masterKey has the wrong length. It must be 32 bytes long and encoded as BASE64.')
 
             self._master_key = master_key
@@ -30,15 +31,21 @@ class Transform(TransformBase):
 
             self._master_key = derive_key(salt=kdf_salt, iterations=kdf_iterations, key_length=32, password=password)
 
+    def _create_envelope_key(self) -> Tuple[bytes, bytes]:
+        envelope_key = get_random_bytes(self.AES_KEY_LEN)
+        encrypted_key = aes_wrap_key(self._master_key, envelope_key)
+        return envelope_key, encrypted_key
+
+    def _derive_envelope_key(self, encrypted_key: bytes) -> bytes:
+        return aes_unwrap_key(self._master_key, encrypted_key)
+
     def encapsulate(self, *, data: bytes) -> Tuple[Optional[bytes], Optional[Dict]]:
-        envelope_key = get_random_bytes(32)
+        envelope_key, encrypted_key = self._create_envelope_key()
         envelope_iv = get_random_bytes(16)
         encryptor = AES.new(envelope_key, AES.MODE_GCM, nonce=envelope_iv)
 
-        envelope_key = aes_wrap_key(self._master_key, envelope_key)
-
         materials = {
-            'envelope_key': base64.b64encode(envelope_key).decode('ascii'),
+            'envelope_key': base64.b64encode(encrypted_key).decode('ascii'),
             'iv': base64.b64encode(envelope_iv).decode('ascii'),
         }
 
@@ -59,8 +66,8 @@ class Transform(TransformBase):
             raise ValueError('Encryption materials IV iv has wrong length of {}. It must be 16 bytes long.'.format(
                 len(iv)))
 
-        envelope_key = aes_unwrap_key(self._master_key, envelope_key)
-        if len(envelope_key) != 32:
+        envelope_key = self._derive_envelope_key(envelope_key)
+        if len(envelope_key) != self.AES_KEY_LEN:
             raise ValueError(
                 'Encryption materials key envelope_key has wrong length of {}. It must be 32 bytes long.'.format(
                     len(envelope_key)))
