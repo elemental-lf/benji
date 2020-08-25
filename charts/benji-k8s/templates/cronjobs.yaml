@@ -72,16 +72,13 @@ spec:
               hostPath:
                 path: /usr/share/zoneinfo/{{ $.Values.timeZone }}
             {{ toYaml $.Values.benji.volumes | nindent 12 }}
-    {{- with $.Values.benji.nodeSelector -}}
-          nodeSelector:
-            {{ toYaml . | nindent 12 }}
+    {{- with $.Values.benji.nodeSelector }}
+          nodeSelector: {{ toYaml . | nindent 12 }}
     {{- end -}}
-    {{- with $.Values.benji.affinity -}}
-          affinity:
-            {{ toYaml . | nindent 12 }}
+    {{- with $.Values.benji.affinity }}
+          affinity: {{ toYaml . | nindent 12 }}
     {{- end -}}
-    {{- with $.Values.benji.tolerations -}}
-          tolerations:
-            {{ toYaml . | nindent 12 }}
+    {{- with $.Values.benji.tolerations }}
+          tolerations: {{ toYaml . | nindent 12 }}
     {{- end -}}
 {{- end -}}
