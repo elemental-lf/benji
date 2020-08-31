@@ -321,11 +321,19 @@ for pvc in pvcs:
         driver = pv.spec.flex_volume.driver
         if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
             pool, image = options['pool'], options['image']
-    elif hasattr(pv.spec, 'csi') and hasattr(pv.spec.csi, 'driver') and hasattr(pv.spec.csi, 'volume_attributes'):
+    elif (hasattr(pv.spec, 'csi')
+            and hasattr(pv.spec.csi, 'driver')
+            and pv.spec.csi.driver == 'rook-ceph.rbd.csi.ceph.com'
+            and hasattr(pv.spec.csi, 'volume_handle')
+            and pv.spec.csi.volume_handle
+            and hasattr(pv.spec.csi, 'volume_attributes')
+            and pv.spec.csi.volume_attributes.get('pool')):
         attributes = pv.spec.csi.volume_attributes
-        driver = pv.spec.csi.driver
-        if driver == 'rook-ceph.rbd.csi.ceph.com' and attributes.get('pool') and attributes.get('imageName'):
-            pool, image = attributes['pool'], attributes['imageName']
+        volume_handle_parts = pv.spec.csi.volume_handle.split('-')
+        if len(volume_handle_parts) >= 9:
+          image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
+          image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts)-5:])
+          pool, image = attributes['pool'], image_prefix + image_suffix
 
     if pool is None or image is None:
         continue
