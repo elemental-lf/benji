@@ -449,17 +449,24 @@ the salt and iteration count after writing encrypted data objects,  they
 cannot be decrypted anymore.
 
 
-Transform Module ecc
-~~~~~~~~~~~~~~~~~~~~
+Transform Module aes_256_gcm_ecc
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module encrypts each data block using the ``aes_256_gcm`` module
 (see above). Instead of specifying a symmetric master key, the encryption
-key is encrypted asymmetrically using elliptic curve cryptography.
+key is encrypted asymmetrically using elliptic curve cryptography. The
+implementation is based on the algorithm outlined in the ebook
+`Practical Cryptography for Developers <https://cryptobook.nakov.com/asymmetric-key-ciphers/ecc-encryption-decryption>`_.
 
+The idea of this module is that the configuration used for backup does not
+need to include the private key of the ECC key pair and so cannot decrypt any
+of the data once it has been stored. For restore and deep-scrubbing operations
+the private key is still needed but this key can be confined to a separate
+specifically secured installation of Benji.
 
-The ``ecc`` module supports the following configuration options:
+The ``aes_256_gcm_ecc`` module supports the following configuration options:
 
-* name: **EccKey**
+* name: **eccKey**
 * type: BASE64-encoded DER representation of a ECC key (public or private)
 * default: none
 
@@ -467,17 +474,17 @@ Specify the encryption keyfile to encrypt a block's symmetric key.
 For backup (encryption-only) this should be the public key only.
 For restore (decryption) this must include the private key.
 
-* name: **EccCurve**
+* name: **eccCurve**
 * type: string
 * default: ``NIST P-384``
 
 The ECC curve to use. Valid values are 'NIST P-256', 'NIST P-384' and 'NIST P-521'.
 
-Example python code to create a valid ECC key for **EccKey** (using ``PyCryptodome``)::
+Example python code to create a valid ECC key for **eccKey** (using ``PyCryptodome``)::
 
     from base64 import b64encode
     from Crypto.PublicKey import ECC
-    key = ECC.generate(curve=EccCurve)
+    key = ECC.generate(curve='NIST P-384')
     public_key = b64encode(key.public_key().export_key(format='DER', compress=True)).decode('ascii'))
     private_key = b64encode(key.export_key(format='DER', compress=True).decode('ascii'))
 

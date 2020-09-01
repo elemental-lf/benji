@@ -74,7 +74,14 @@ storages:
 #       kdfSalt:
 #       kdfIterations:
 #       password:
+#      or
 #       masterKey:
+#
+#   - name:
+#     module: aes_256_gcm_ecc
+#     configuration:
+#       eccCurve:
+#       eccKey:
 
 io:
 #

@@ -1,32 +1,34 @@
 import base64
-from typing import Dict, Tuple, Optional
 from hashlib import sha256
+from typing import Dict, Tuple, Optional
 
 from Crypto.PublicKey import ECC
 
 from benji.config import Config, ConfigDict
-from benji.transform.aes_256_gcm import Transform as TransformAES
 from benji.logging import logger
+from benji.transform.aes_256_gcm import Transform as TransformAES
 
 
 class Transform(TransformAES):
 
     def __init__(self, *, config: Config, name: str, module_configuration: ConfigDict) -> None:
-        ecc_key_der: str = Config.get_from_dict(module_configuration, 'EccKey', types=str)
-        ecc_curve: Optional[str] = Config.get_from_dict(module_configuration, 'EccCurve', 'NIST P-384', types=str)
+        ecc_key_der: str = Config.get_from_dict(module_configuration, 'eccKey', types=str)
+        ecc_curve: Optional[str] = Config.get_from_dict(module_configuration, 'eccCurve', 'NIST P-384', types=str)
 
         ecc_key = self._unpack_envelope_key(base64.b64decode(ecc_key_der))
 
         if ecc_key.curve != ecc_curve:
-            raise ValueError('Key EccKey does not match the EccCurve setting. Found: {}, Expected: {}'.format(ecc_key.curve, ecc_curve))
+            raise ValueError(f'Key eccKey does not match the eccCurve setting (found: {ecc_key.curve}, expected: {ecc_curve}).')
 
         self._ecc_key = ecc_key
         self._ecc_curve = ecc_key.curve
 
-        assert self._ecc_key.pointQ.size_in_bytes() >= self.AES_KEY_LEN
+        point_q_len = self._ecc_key.pointQ.size_in_bytes()
+        if point_q_len < self.AES_KEY_LEN:
+            raise ValueError(f'Size of point Q is smaller than the AES key length, which reduces security ({point_q_len} < {self.AES_KEY_LEN}).')
 
-        # note: we don't actually have a "master" aes key, because the key is derived from the ECC key
-        # and set before calling the parent's encapsulate/decapsulate method
+        # Note: We don't actually have a "master" aes key, because the key is derived from the ECC key
+        # and set before calling the parent's encapsulate/decapsulate method.
         aes_config = module_configuration.copy()
         aes_config['masterKey'] = base64.b64encode(b'\x00' * self.AES_KEY_LEN).decode('ascii')
         super().__init__(config=config, name=name, module_configuration=aes_config)
@@ -56,10 +58,10 @@ class Transform(TransformAES):
 
     def encapsulate(self, *, data: bytes) -> Tuple[Optional[bytes], Optional[Dict]]:
         if self._ecc_key.has_private():
-            logger.warning('EccKey from config includes private key data, which is not needed for encryption!')
+            logger.warning('ECC key loaded from config includes private key data, which is not needed for encryption.')
         return super().encapsulate(data=data)
 
     def decapsulate(self, *, data: bytes, materials: Dict) -> bytes:
         if not self._ecc_key.has_private():
-            raise ValueError('EccKey from config does not include private key data.')
+            raise ValueError('ECC key loaded from config does not include private key data, cannot proceed.')
         return super().decapsulate(data=data, materials=materials)
