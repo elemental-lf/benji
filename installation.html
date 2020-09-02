@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Benji Backup 0.9.0 documentation</title>
+  <title>Installation &mdash; Benji Backup 0.9.0.dev11+g8932954 documentation</title>
   
 
   
@@ -113,6 +113,7 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#transform-modules">Transform Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-zstd">Transform Module zstd</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-aes-256-gcm">Transform Module aes_256_gcm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-aes-256-gcm-ecc">Transform Module aes_256_gcm_ecc</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#storage-modules">Storage Modules</a><ul>
@@ -351,7 +352,6 @@ pip install git+https://github.com/elemental-lf/benji
 <li><p><code class="docutils literal notranslate"><span class="pre">s3</span></code>: AWS S3 object storage support</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">b2</span></code>: Backblaze’s B2 Cloud object storage support</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compression</span></code>: Compression support</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">readcache</span></code>: Disk caching support</p></li>
 </ul>
 <p>Specify any extra extra features as a comma delimited list in square brackets after the package URL:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install benji<span class="o">[</span>compression,s3,readcache,b2<span class="o">]==</span><span class="m">0</span>.8.0

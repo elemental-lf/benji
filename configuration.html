@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Configuration &mdash; Benji Backup 0.9.0 documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.9.0.dev11+g8932954 documentation</title>
   
 
   
@@ -113,6 +113,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#transform-modules">Transform Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#transform-module-zstd">Transform Module zstd</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#transform-module-aes-256-gcm">Transform Module aes_256_gcm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transform-module-aes-256-gcm-ecc">Transform Module aes_256_gcm_ecc</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#storage-modules">Storage Modules</a><ul>
@@ -706,6 +707,42 @@ the other three configuration directives by using PBKDF2 with SHA-512.</p>
 your own random salt and chose your own number of iterations. Don’t change
 the salt and iteration count after writing encrypted data objects,  they
 cannot be decrypted anymore.</p>
+</div>
+<div class="section" id="transform-module-aes-256-gcm-ecc">
+<h3>Transform Module aes_256_gcm_ecc<a class="headerlink" href="#transform-module-aes-256-gcm-ecc" title="Permalink to this headline">¶</a></h3>
+<p>This module encrypts each data block using the <code class="docutils literal notranslate"><span class="pre">aes_256_gcm</span></code> module
+(see above). Instead of specifying a symmetric master key, the encryption
+key is encrypted asymmetrically using elliptic curve cryptography. The
+implementation is based on the algorithm outlined in the ebook
+<a class="reference external" href="https://cryptobook.nakov.com/asymmetric-key-ciphers/ecc-encryption-decryption">Practical Cryptography for Developers</a>.</p>
+<p>The idea of this module is that the configuration used for backup does not
+need to include the private key of the ECC key pair and so cannot decrypt any
+of the data once it has been stored. For restore and deep-scrubbing operations
+the private key is still needed but this key can be confined to a separate
+specifically secured installation of Benji.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">aes_256_gcm_ecc</span></code> module supports the following configuration options:</p>
+<ul class="simple">
+<li><p>name: <strong>eccKey</strong></p></li>
+<li><p>type: BASE64-encoded DER representation of a ECC key (public or private)</p></li>
+<li><p>default: none</p></li>
+</ul>
+<p>Specify the encryption keyfile to encrypt a block’s symmetric key.
+For backup (encryption-only) this should be the public key only.
+For restore (decryption) this must include the private key.</p>
+<ul class="simple">
+<li><p>name: <strong>eccCurve</strong></p></li>
+<li><p>type: string</p></li>
+<li><p>default: <code class="docutils literal notranslate"><span class="pre">NIST</span> <span class="pre">P-384</span></code></p></li>
+</ul>
+<p>The ECC curve to use. Valid values are ‘NIST P-256’, ‘NIST P-384’ and ‘NIST P-521’.</p>
+<p>Example python code to create a valid ECC key for <strong>eccKey</strong> (using <code class="docutils literal notranslate"><span class="pre">PyCryptodome</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>from base64 import b64encode
+from Crypto.PublicKey import ECC
+<span class="nv">key</span> <span class="o">=</span> ECC.generate<span class="o">(</span><span class="nv">curve</span><span class="o">=</span><span class="s1">&#39;NIST P-384&#39;</span><span class="o">)</span>
+<span class="nv">public_key</span> <span class="o">=</span> b64encode<span class="o">(</span>key.public_key<span class="o">()</span>.export_key<span class="o">(</span><span class="nv">format</span><span class="o">=</span><span class="s1">&#39;DER&#39;</span>, <span class="nv">compress</span><span class="o">=</span>True<span class="o">))</span>.decode<span class="o">(</span><span class="s1">&#39;ascii&#39;</span><span class="o">))</span>
+<span class="nv">private_key</span> <span class="o">=</span> b64encode<span class="o">(</span>key.export_key<span class="o">(</span><span class="nv">format</span><span class="o">=</span><span class="s1">&#39;DER&#39;</span>, <span class="nv">compress</span><span class="o">=</span>True<span class="o">)</span>.decode<span class="o">(</span><span class="s1">&#39;ascii&#39;</span><span class="o">))</span>
+</pre></div>
+</div>
 </div>
 </div>
 <div class="section" id="storage-modules">

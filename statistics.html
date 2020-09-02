@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Storage Statistics &mdash; Benji Backup 0.9.0 documentation</title>
+  <title>Storage Statistics &mdash; Benji Backup 0.9.0.dev11+g8932954 documentation</title>
   
 
   
@@ -113,6 +113,7 @@
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#transform-modules">Transform Modules</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-zstd">Transform Module zstd</a></li>
 <li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-aes-256-gcm">Transform Module aes_256_gcm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#transform-module-aes-256-gcm-ecc">Transform Module aes_256_gcm_ecc</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html#storage-modules">Storage Modules</a><ul>
@@ -286,30 +287,18 @@
 <h1>Storage Statistics<a class="headerlink" href="#storage-statistics" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id1">
 <h2>Storage Statistics<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji storage-stats --help
-usage: benji storage-stats [-h] [storage_name]
-
-positional arguments:
-  storage_name  Storage
-
-optional arguments:
-  -h, --help    show this help message and exit
-</pre></div>
+<div class="system-message">
+<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/statistics.rst</span>, line 13)</p>
+<p>Command 'benji storage-stats --help' failed: [Errno 2] No such file or directory: 'benji'</p>
 </div>
 <p>This command outputs the number of objects and their space usage. It will take some time as it enumerates all
 objects in the storage.</p>
 </div>
 <div class="section" id="space-usage-statistics">
 <h2>Space Usage Statistics<a class="headerlink" href="#space-usage-statistics" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji storage-usage --help
-usage: benji storage-usage [-h] [filter_expression]
-
-positional arguments:
-  filter_expression  Version filter expression
-
-optional arguments:
-  -h, --help         show this help message and exit
-</pre></div>
+<div class="system-message">
+<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/statistics.rst</span>, line 21)</p>
+<p>Command 'benji storage-usage --help' failed: [Errno 2] No such file or directory: 'benji'</p>
 </div>
 <p>This command provides space usage statistics over all or a subset of versions:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>INFO: $ /home/lf/src/backy2/venv/bin/benji storage-usage

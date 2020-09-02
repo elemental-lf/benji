@@ -72,7 +72,6 @@ For certain features additional dependencies are needed. These are referenced by
 - ``s3``: AWS S3 object storage support
 - ``b2``: Backblaze's B2 Cloud object storage support
 - ``compression``: Compression support
-- ``readcache``: Disk caching support
 
 Specify any extra extra features as a comma delimited list in square brackets after the package URL::
 
