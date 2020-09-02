@@ -40,7 +40,7 @@ before_install:
 
 install:
   - travis_retry pip install --upgrade setuptools pip
-  - travis_retry pip install '.[s3,b2,compression,readcache,dev,doc]'
+  - travis_retry pip install '.[s3,b2,compression,dev,doc]'
 
 script:
   - pip freeze
