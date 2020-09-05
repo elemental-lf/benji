@@ -1,4 +1,23 @@
+## 0.10.0, 05.09.2020
+
+Notable changes:
+
+* Helm chart changes:
+
+  * Change chart's requirements to use URL based repository references. This should help when deploying Benji via 
+    FluxCD's helm-operator for example. (#89)
+
+  * Fix rendering error when specifying a nodeSelector, node affinities or tolerations. (#90)
+  
+  * Use API group rbac.authorization.k8s.io/v1 for RBAC related resources
+  
+* Add new transform module `aes_256_gcm_ecc` (#86)
+
+* Add support for discovering RBD images provisioned by Ceph's CSI provisioner to the `benji-backup-pvc` script (#91)
+
 ## 0.9.0, 27.07.2020
+
+Notable changes:
 
 * Sparse blocks are no longer explicitly represented in the database. This greatly speeds up the initial step
   of backup creation if the backup is based on an older version, and a lot of the blocks are sparse. It also reduces
