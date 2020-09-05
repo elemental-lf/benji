@@ -57,7 +57,7 @@ jobs:
   include:
     - stage: test
       install:
-        - travis_retry pip install --upgrade setuptools pip
+        - travis_retry pip install --upgrade 'setuptools>=50.2.0' pip
       script:
         - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji/Dockerfile maint-scripts/docker-build
         - SKIP_DOCKER_PUSH=1 DOCKER_BUILDKIT=0 VERSION_VARIANT=miniver DOCKERFILE_PATH=images/benji-k8s/Dockerfile maint-scripts/docker-build
