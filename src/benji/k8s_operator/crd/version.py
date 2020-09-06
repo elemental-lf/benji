@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any, Optional
 
 import kopf
-from requests import HTTPError
+import pykube
 
 from benji.rpc.client import RPCClient
 from benji.k8s_operator import OperatorContext
@@ -97,11 +97,12 @@ class BenjiVersion(NamespacedAPIObject):
             }
         }
 
-        logger.debug(f'Creating or updating version resource {namespace}/{version["uid"]}.')
         try:
-            version_object = cls.objects(OperatorContext.kubernetes_client).filter(namespace=namespace).get_by_name(
-                version["uid"])
+            version_object = cls.objects(OperatorContext.kubernetes_client,
+                                         namespace=namespace).get_by_name(version['uid'])
             actual = version_object.obj
+
+            logger.debug(f'Updating version resource {namespace}/{version["uid"]}.')
 
             # Keep other labels and annotations but overwrite our own
             actual['metadata']['labels'] = actual['metadata'].get('labels', {})
@@ -119,17 +120,15 @@ class BenjiVersion(NamespacedAPIObject):
 
             version_object.set_obj(target)
             version_object.update(is_strategic=False)
-        except HTTPError as exception:
-            if exception.response.status_code == 404:
-                version_object = cls(OperatorContext.kubernetes_client, target)
-                version_object.create()
-            else:
-                raise
+        except pykube.ObjectDoesNotExist:
+            logger.debug(f'Creating version resource {namespace}/{version["uid"]}.')
+            version_object = cls(OperatorContext.kubernetes_client, target)
+            version_object.create()
 
         return version_object
 
 
-def check_version_access(version_uid: str, crd: Dict[Any, str]) -> None:
+def check_version_access(version_uid: str, crd: Dict[Any, str]) -> BenjiVersion:
     try:
         version = core_v1_get_version_by_uid.delay(version_uid=version_uid).get()
     except KeyError as exception:
@@ -144,14 +143,18 @@ def check_version_access(version_uid: str, crd: Dict[Any, str]) -> None:
     if crd_namespace != version_namespace:
         raise kopf.PermanentError('Version namespace label does not match resource namespace, permission denied')
 
+    return version
+
 
 @kopf.on.field(*BenjiVersion.group_version_plural(), field='status.protected')
 def benji_protect(name: str, status: Dict[str, Any], body: Dict[str, Any], **_) -> Optional[Dict[str, Any]]:
     with RPCClient():
-        check_version_access(name, body)
+        version = check_version_access(name, body)
         protected = status.get('protected', False)
-        # Don't ignore result, we want exceptions to be delivered
-        core_v1_protect.delay(version_uid=name, protected=protected).get()
+        # FIXME: This is racy but it prevents unnecessary updates *shrug*
+        if version[VERSION_PROTECTED] != protected:
+            # Don't ignore result, we want exceptions to be delivered
+            core_v1_protect.delay(version_uid=name, protected=protected).get()
 
 
 @kopf.on.delete(*BenjiVersion.group_version_plural())

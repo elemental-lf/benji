@@ -54,8 +54,8 @@ def backup_scheduler_job(*,
     pvcs = []
     for ns in namespaces:
         pvcs.extend(
-            pykube.PersistentVolumeClaim.objects(OperatorContext.kubernetes_client).filter(namespace=ns,
-                                                                                           selector=label_selector))
+            pykube.PersistentVolumeClaim.objects(OperatorContext.kubernetes_client,
+                                                 namespace=ns).filter(selector=label_selector))
 
     if not pvcs:
         module_logger.warning(f'No PVC matched the selector {label_selector} in namespace(s) {", ".join(namespaces)}.')
