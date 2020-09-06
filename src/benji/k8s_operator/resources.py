@@ -116,7 +116,7 @@ def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -
 def get_parent(*, parent_name: str, parent_namespace: str, logger, crd: APIObject) -> APIObject:
     if parent_namespace is not None:
         logger.debug(f'Getting resource {parent_namespace}/{parent_name}.')
-        parent = crd.objects(OperatorContext.kubernetes_client).filter(namespace=parent_namespace).get_by_name(parent_name)
+        parent = crd.objects(OperatorContext.kubernetes_client, namespace=parent_namespace).get_by_name(parent_name)
     else:
         logger.debug(f'Getting resource {parent_name}.')
         parent = crd.objects(OperatorContext.kubernetes_client).get_by_name(parent_name)
@@ -129,8 +129,8 @@ def patch_parent(*, parent_name: str, parent_namespace: Optional[str], logger, c
     try:
         if parent_namespace is not None:
             logger.debug(f'Patching resource {parent_namespace}/{parent_name} with: {parent_patch}')
-            api_object: APIObject = crd.objects(
-                OperatorContext.kubernetes_client).filter(namespace=parent_namespace).get_by_name(parent_name)
+            api_object: APIObject = crd.objects(OperatorContext.kubernetes_client,
+                                                namespace=parent_namespace).get_by_name(parent_name)
             api_object.patch(strategic_merge_patch=parent_patch)
         else:
             logger.debug(f'Patching resource {parent_name} with: {parent_patch}')
@@ -255,19 +255,17 @@ def _delete_jobs(*, jobs: Sequence[pykube.Job], logger) -> None:
 
 
 def delete_all_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
-    jobs = pykube.Job.objects(OperatorContext.kubernetes_client).filter(
-        namespace=service_account_namespace(),
+    jobs = pykube.Job.objects(OperatorContext.kubernetes_client, namespace=service_account_namespace()).filter(
         selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
     if jobs:
         _delete_jobs(jobs=jobs, logger=logger)
 
 
-def delete_old_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
-    jobs = pykube.Job.objects(OperatorContext.kubernetes_client).filter(
-        namespace=service_account_namespace(),
-        selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
-    for job in jobs
-        _delete_jobs(jobs=jobs, logger=logger)
+# def delete_old_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
+#     jobs = pykube.Job.objects(OperatorContext.kubernetes_client, namespace=service_account_namespace()).filter(
+#         selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
+#     for job in jobs
+#         _delete_jobs(jobs=jobs, logger=logger)
 
 
 def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str, pvc_name: str, pvc_uid: str) -> None:
@@ -323,6 +321,12 @@ class APIObject(pykube_APIObject):
     def __hash__(self):
         return hash(self.name)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.name == other.name
+        else:
+            return False
+
 
 class NamespacedAPIObject(pykube_NamespacedAPIObject):
 
@@ -333,3 +337,9 @@ class NamespacedAPIObject(pykube_NamespacedAPIObject):
 
     def __hash__(self):
         return hash((self.namespace, self.name))
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.namespace == other.namespace and self.name == other.name
+        else:
+            return False

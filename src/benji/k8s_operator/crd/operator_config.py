@@ -30,16 +30,17 @@ class BenjiOperatorConfig(NamespacedAPIObject):
 
 
 def set_operator_config() -> None:
-    OperatorContext.operator_config = BenjiOperatorConfig.objects(OperatorContext.kubernetes_client).filter(
-        namespace=service_account_namespace()).get_by_name(OperatorContext.operator_config_name)
+    OperatorContext.operator_config = BenjiOperatorConfig.objects(OperatorContext.kubernetes_client,
+                                                                  namespace=service_account_namespace()).get_by_name(
+                                                                      OperatorContext.operator_config_name)
 
 
 def reconciliate_versions_job():
-    module_logger.debug(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
-    with RPCClient() as rpc_client:
+    module_logger.info(f'Finding versions with filter labels["{LABEL_INSTANCE}"] == "{benji_instance}".')
+    with RPCClient():
         versions = core_v1_find_versions_with_filter.delay(
             filter_expression=f'labels["{LABEL_INSTANCE}"] == "{benji_instance}"').get()
-    module_logger.debug(f"Number of matching versions in the database: {len(versions)}.")
+    module_logger.info(f"Number of matching versions in the database: {len(versions)}.")
 
     versions_seen = set()
     for version in versions:
@@ -51,9 +52,11 @@ def reconciliate_versions_job():
 
         versions_seen.add(version_resource)
 
-    module_logger.debug(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
-    for version_resource in BenjiVersion.objects(
-            OperatorContext.kubernetes_client).filter(selector=f'{LABEL_INSTANCE}={benji_instance}'):
+    module_logger.info(f'Listing all version resources with label {LABEL_INSTANCE}={benji_instance}.')
+    version_resources = BenjiVersion.objects(
+        OperatorContext.kubernetes_client).filter(selector=f'{LABEL_INSTANCE}={benji_instance}')
+    module_logger.info(f"Number of matching version resources: {len(version_resources)}.")
+    for version_resource in version_resources:
         if version_resource not in versions_seen:
             version_resource.delete()
 

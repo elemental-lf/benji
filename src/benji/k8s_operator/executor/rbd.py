@@ -77,10 +77,11 @@ class RBDExecutor(ExecutorInterface):
 
                 controller_namespace = driver.split('.')[0]
                 try:
-                    mon_endpoints = pykube.ConfigMap.objects(OperatorContext.kubernetes_client).filter(
+                    mon_endpoints = pykube.ConfigMap.objects(
+                        OperatorContext.kubernetes_client,
                         namespace=controller_namespace).get_by_name(ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP)
-                    mon_secret = pykube.Secret.objects(OperatorContext.kubernetes_client).filter(
-                        namespace=controller_namespace).get_by_name(ROOK_CEPH_MON_SECRET)
+                    mon_secret = pykube.Secret.objects(OperatorContext.kubernetes_client,
+                                                       namespace=controller_namespace).get_by_name(ROOK_CEPH_MON_SECRET)
                 except pykube.exceptions.ObjectDoesNotExist:
                     logger.error(f'PV {pv.name} was provisioned by Rook Ceph CSI, but the corresponding configmap {ROOK_CEPH_MON_ENDPOINTS_CONFIGMAP} and secret {ROOK_CEPH_MON_SECRET} could not be found namespace {controller_namespace}.')
                     return False
@@ -142,7 +143,8 @@ class RBDExecutor(ExecutorInterface):
                         admin_secret_namespace = storage_class_obj['parameters']['adminSecretNamespace']
 
                         try:
-                            admin_secret = pykube.Secret.objects(OperatorContext.kubernetes_client).filter(
+                            admin_secret = pykube.Secret.objects(
+                                OperatorContext.kubernetes_client,
                                 namespace=admin_secret_namespace).get_by_name(admin_secret_name)
                         except pykube.exceptions.ObjectDoesNotExist:
                             logger.error(f'Unable to determine Ceph credentials for PVC {pvc.namespace}/{pvc.name}/'
@@ -234,7 +236,8 @@ class RBDExecutor(ExecutorInterface):
 
     def _queue_backup(self, volume: _Volume):
         volume_name = '{}/{}'.format(volume.pvc.namespace, volume.pvc.name)
-        version_uid = '{}-{}'.format(volume_name[:246], random_string(6))
+        version_uid_prefix = '{}-{}'.format(volume.pvc.namespace, volume.pvc.name)
+        version_uid = '{}-{}'.format(version_uid_prefix[:246], random_string(6))
         labels = self._build_version_labels(volume.pvc)
         now = datetime.utcnow()
         new_snapshot = RBD_SNAP_NAME_PREFIX + now.strftime('%Y-%m-%dT%H:%M:%SZ')
