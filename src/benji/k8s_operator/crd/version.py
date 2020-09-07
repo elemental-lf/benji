@@ -3,12 +3,12 @@ from typing import Dict, Any, Optional
 
 import kopf
 import pykube
+from pykube import HTTPClient
 
-from benji.rpc.client import RPCClient
-from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import API_VERSION, API_GROUP, LABEL_INSTANCE, LABEL_K8S_PVC_NAMESPACE, \
     LABEL_K8S_PVC_NAME
 from benji.k8s_operator.resources import NamespacedAPIObject
+from benji.rpc.client import RPCClient
 
 # Key names in version
 VERSION_UID = 'uid'
@@ -56,7 +56,7 @@ class BenjiVersion(NamespacedAPIObject):
     kind = 'BenjiVersion'
 
     @classmethod
-    def create_or_update_from_version(cls, *, version: Dict[str, Any]) -> 'BenjiVersion':
+    def create_or_update_from_version(cls, api: HTTPClient, *, version: Dict[str, Any]) -> 'BenjiVersion':
         labels = version[VERSION_LABELS]
 
         required_label_names = [LABEL_INSTANCE, LABEL_K8S_PVC_NAME, LABEL_K8S_PVC_NAMESPACE]
@@ -98,8 +98,7 @@ class BenjiVersion(NamespacedAPIObject):
         }
 
         try:
-            version_object = cls.objects(OperatorContext.kubernetes_client,
-                                         namespace=namespace).get_by_name(version['uid'])
+            version_object = cls.objects(api, namespace=namespace).get_by_name(version['uid'])
             actual = version_object.obj
 
             logger.debug(f'Updating version resource {namespace}/{version["uid"]}.')
@@ -122,7 +121,7 @@ class BenjiVersion(NamespacedAPIObject):
             version_object.update(is_strategic=False)
         except pykube.ObjectDoesNotExist:
             logger.debug(f'Creating version resource {namespace}/{version["uid"]}.')
-            version_object = cls(OperatorContext.kubernetes_client, target)
+            version_object = cls(api, target)
             version_object.create()
 
         return version_object

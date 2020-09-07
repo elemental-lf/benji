@@ -7,7 +7,8 @@ from apscheduler.triggers.cron import CronTrigger
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_GROUP, API_VERSION, LABEL_INSTANCE, \
     LABEL_K8S_PVC_NAMESPACE
-from benji.k8s_operator.resources import track_job_status, delete_all_jobs, BenjiJob, NamespacedAPIObject
+from benji.k8s_operator.resources import track_job_status, delete_all_jobs, BenjiJob, NamespacedAPIObject, \
+    delete_old_jobs
 from benji.k8s_operator.settings import benji_instance
 from benji.k8s_operator.utils import cr_to_job_name
 
@@ -91,3 +92,9 @@ def benji_track_job_status_retention_schedule(**kwargs) -> Optional[Dict[str, An
 @kopf.on.field('batch', 'v1', 'jobs', field='status', labels={LABEL_PARENT_KIND: ClusterBenjiRetentionSchedule.kind})
 def benji_track_job_status_cluster_retention_schedule(**kwargs) -> Optional[Dict[str, Any]]:
     return track_job_status(crd=ClusterBenjiRetentionSchedule, **kwargs)
+
+
+@kopf.timer(*BenjiRetentionSchedule.group_version_plural(), initial_delay=60, interval=60)
+@kopf.timer(*ClusterBenjiRetentionSchedule.group_version_plural(), initial_delay=60, interval=60)
+def benji_backup_schedule_job_gc(name: str, namespace: str, body: Dict[str, Any], logger, **_):
+    delete_old_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)

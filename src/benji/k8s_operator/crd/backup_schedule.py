@@ -11,7 +11,7 @@ from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP
 from benji.k8s_operator.executor.executor import BatchExecutor, BACKUP_ACTION
 from benji.k8s_operator.resources import track_job_status, delete_all_jobs, APIObject, \
-    NamespacedAPIObject
+    NamespacedAPIObject, delete_old_jobs
 from benji.k8s_operator.utils import cr_to_job_name
 
 K8S_BACKUP_SCHEDULE_SPEC_SCHEDULE = 'schedule'
@@ -146,5 +146,5 @@ def benji_track_job_status_cluster_backup_schedule(**kwargs) -> Optional[Dict[st
 
 @kopf.timer(*BenjiBackupSchedule.group_version_plural(), initial_delay=60, interval=60)
 @kopf.timer(*ClusterBenjiBackupSchedule.group_version_plural(), initial_delay=60, interval=60)
-def benji_backup_schedule_job_gc(name: str, namespace: str, **_):
-    pass
+def benji_backup_schedule_job_gc(name: str, namespace: str, body: Dict[str, Any], logger, **_):
+    delete_old_jobs(name=name, namespace=namespace, kind=body['kind'], logger=logger)
