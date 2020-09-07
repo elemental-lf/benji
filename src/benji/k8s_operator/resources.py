@@ -5,17 +5,20 @@ from typing import Dict, Any, List, Optional, Sequence, NamedTuple, Tuple
 
 import pykube
 from pykube import HTTPClient
-from pykube.objects import APIObject, APIObject as pykube_APIObject, NamespacedAPIObject as pykube_NamespacedAPIObject
+from pykube.objects import APIObject, APIObject as pykube_APIObject, NamespacedAPIObject as pykube_NamespacedAPIObject, \
+    PersistentVolumeClaim as pykube_PersistentVolumeClaim
 
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, LABEL_PARENT_NAMESPACE, LABEL_PARENT_NAME, \
     RESOURCE_STATUS_LIST_OBJECT_REFERENCE, JOB_STATUS_START_TIME, JOB_STATUS_COMPLETION_TIME, \
-    RESOURCE_STATUS_DEPENDANT_JOBS_STATUS, RESOURCE_JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, RESOURCE_JOB_STATUS_FAILED, \
+    RESOURCE_STATUS_JOBS_STATUS, RESOURCE_JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, RESOURCE_JOB_STATUS_FAILED, \
     RESOURCE_JOB_STATUS_RUNNING, RESOURCE_JOB_STATUS_PENDING, RESOURCE_STATUS_JOBS, LABEL_INSTANCE
 from benji.k8s_operator.settings import benji_instance, running_pod_name
 from benji.k8s_operator.utils import service_account_namespace, keys_exist
 
 EVENT_REPORTING_COMPONENT = 'benji'
+
+JOBS_TO_KEEP = 1
 
 
 class BenjiJob(pykube.Job):
@@ -68,36 +71,31 @@ class BenjiJob(pykube.Job):
         super().__init__(api, job_manifest)
 
 
-class StorageClass(pykube_APIObject):
+class PersistentVolumeClaim(pykube_PersistentVolumeClaim):
 
-    version = 'storage.k8s.io/v1'
-    endpoint = 'storageclasses'
-    kind = 'StorageClass'
-
-
-def create_pvc(*, pvc_name: str, pvc_namespace: str, pvc_size: str,
-               storage_class_name: str) -> pykube.PersistentVolumeClaim:
-    manifest = {
-        'kind': 'PersistentVolumeClaim',
-        'apiVersion': 'v1',
-        'metadata': {
-            'namespace': pvc_namespace,
-            'name': pvc_name,
-        },
-        'spec': {
-            'storageClassName': storage_class_name,
-            'accessModes': ['ReadWriteOnce'],
-            'resources': {
-                'requests': {
-                    'storage': pvc_size
+    @classmethod
+    def from_storage_class(cls, api: HTTPClient, *, name: str, namespace: str, size: str,
+                           storage_class_name: str) -> 'PersistentVolumeClaim':
+        manifest = {
+            'kind': 'PersistentVolumeClaim',
+            'apiVersion': 'v1',
+            'metadata': {
+                'namespace': namespace,
+                'name': name,
+            },
+            'spec': {
+                'storageClassName': storage_class_name,
+                'accessModes': ['ReadWriteOnce'],
+                'resources': {
+                    'requests': {
+                        'storage': size
+                    }
                 }
             }
         }
-    }
 
-    pvc = pykube.PersistentVolumeClaim(OperatorContext.kubernetes_client, manifest)
-    pvc.create()
-    return pvc
+        pvc = cls(api, manifest)
+        return pvc
 
 
 def create_object_ref(resource_dict: Dict[str, Any], include_gvk: bool = True) -> Dict[str, Any]:
@@ -197,7 +195,7 @@ def build_dependant_job_status(job_status: Dict[str, Any]) -> Dict[str, Any]:
     if derived_status.completion_time is not None:
         dependant_job_status[JOB_STATUS_COMPLETION_TIME] = derived_status.completion_time
 
-    dependant_job_status[RESOURCE_STATUS_DEPENDANT_JOBS_STATUS] = derived_status.status
+    dependant_job_status[RESOURCE_STATUS_JOBS_STATUS] = derived_status.status
 
     return dependant_job_status
 
@@ -261,11 +259,13 @@ def delete_all_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
         _delete_jobs(jobs=jobs, logger=logger)
 
 
-# def delete_old_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
-#     jobs = pykube.Job.objects(OperatorContext.kubernetes_client, namespace=service_account_namespace()).filter(
-#         selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
-#     for job in jobs
-#         _delete_jobs(jobs=jobs, logger=logger)
+def delete_old_jobs(*, name: str, namespace: str, kind: str, logger) -> None:
+    jobs = pykube.Job.objects(OperatorContext.kubernetes_client, namespace=service_account_namespace()).filter(
+        selector=f'{LABEL_PARENT_KIND}={kind},{LABEL_PARENT_NAME}={name},{LABEL_PARENT_NAMESPACE}={namespace}')
+    jobs = sorted(jobs, key=lambda job: job.obj['metadata']['creationTimestamp'])[0:-JOBS_TO_KEEP]
+    jobs = [job for job in jobs if keys_exist(job.obj, [f'status.{JOB_STATUS_COMPLETION_TIME}'])]
+    if jobs:
+        _delete_jobs(jobs=jobs, logger=logger)
 
 
 def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str, pvc_name: str, pvc_uid: str) -> None:
@@ -343,3 +343,10 @@ class NamespacedAPIObject(pykube_NamespacedAPIObject):
             return self.namespace == other.namespace and self.name == other.name
         else:
             return False
+
+
+class StorageClass(APIObject):
+
+    version = 'storage.k8s.io/v1'
+    endpoint = 'storageclasses'
+    kind = 'StorageClass'

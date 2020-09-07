@@ -6,13 +6,13 @@ import kopf
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.triggers.cron import CronTrigger
 
-from benji.rpc.client import RPCClient
 from benji.k8s_operator import OperatorContext
 from benji.k8s_operator.constants import LABEL_PARENT_KIND, API_VERSION, API_GROUP, LABEL_INSTANCE
 from benji.k8s_operator.crd.version import BenjiVersion
 from benji.k8s_operator.resources import track_job_status, BenjiJob, NamespacedAPIObject
 from benji.k8s_operator.settings import benji_instance
 from benji.k8s_operator.utils import service_account_namespace
+from benji.rpc.client import RPCClient
 
 SCHED_VERSION_RECONCILIATION_JOB = 'version-reconciliation'
 SCHED_CLEANUP_JOB = 'cleanup'
@@ -45,7 +45,8 @@ def reconciliate_versions_job():
     versions_seen = set()
     for version in versions:
         try:
-            version_resource = BenjiVersion.create_or_update_from_version(version=version)
+            version_resource = BenjiVersion.create_or_update_from_version(OperatorContext.kubernetes_client,
+                                                                          version=version)
         except KeyError as exception:
             module_logger.warning(str(exception))
             continue

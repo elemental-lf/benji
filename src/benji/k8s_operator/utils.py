@@ -1,7 +1,7 @@
 import inspect
 import random
 import string
-from typing import Any, Sequence
+from typing import Any, Sequence, Dict
 
 SERVICE_NAMESPACE_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
 
@@ -30,16 +30,13 @@ def random_string(length: int, characters: str = string.ascii_lowercase + string
     return ''.join(random.choice(characters) for _ in range(length))
 
 
-def keys_exist(obj: Any, keys: Sequence[str]) -> bool:
+def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
     split_keys = [attr.split('.') for attr in keys]
 
     for split_key in split_keys:
         position = obj
         for component in split_key:
-            try:
-                position = position.get(component, None)
-            except AttributeError:
-                return False
+            position = position.get(component, None)
             if position is None:
                 return False
 
