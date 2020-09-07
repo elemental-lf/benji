@@ -269,14 +269,6 @@ def main():
     p = subparsers_root.add_parser('version-info', help='Program version information')
     p.set_defaults(func='version_info')
 
-    # REST-API
-    if enable_experimental:
-        p = subparsers_root.add_parser('rest-api', help='Start REST API server')
-        p.set_defaults(func='rest_api')
-        p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
-        p.add_argument('-p', '--bind-port', default=8080, type=int, help='Bind to the specified port')
-        p.add_argument('--threads', default=1, type=int, help='Number of worker threads')
-
     # DU
     p = subparsers_root.add_parser('storage-usage', help='Provide storage usage statistics')
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
