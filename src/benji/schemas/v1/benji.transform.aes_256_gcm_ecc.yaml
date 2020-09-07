@@ -1,0 +1,15 @@
+configuration:
+  required: True
+  schema:
+    eccKey:
+      type: string
+      empty: False
+      required: True
+    eccCurve:
+      type: string
+      empty: False
+      default: NIST P-384
+      allowed:
+        - NIST P-256
+        - NIST P-384
+        - NIST P-521
