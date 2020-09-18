@@ -622,7 +622,8 @@ class Version(Base, ReprMixIn):
             Storage.id.label('storage_id'), Storage.name.label('storage_name'), Block.uid, Block.size.label('size'),
             func.count('*').label('share_count_subset'),
             share_count_overall_sq.label('share_count_overall')).select_from(Block).join(Version).join(Storage).filter(
-                (Block.uid_left != None) & (Block.uid_right != None)).group_by(Storage.id, Storage.name, Block.uid)
+                (Block.uid_left != None) & (Block.uid_right != None)).group_by(Storage.id, Storage.name, Block.uid,
+                                                                               Block.size)
 
         if version_ids is not None:
             share_count_query = share_count_query.filter(Block.version_id.in_(version_ids))

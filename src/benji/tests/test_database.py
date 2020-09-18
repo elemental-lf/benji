@@ -425,6 +425,73 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                                      block_size=4 * 1024 * 4096)
             self.assertEqual(math.ceil(version.size / version.block_size), version.blocks_count)
 
+    def test_storage_usage(self):
+        Storage.sync('s-1', storage_id=1)
+        for i in range(2):
+            version = Version.create(version_uid=VersionUid(f'v{i + 1}'),
+                                     volume='backup-name',
+                                     snapshot='snapshot-name.{}'.format(i),
+                                     size=32 * 1024 * 4096,
+                                     storage_id=1,
+                                     block_size=1024 * 4096)
+
+            blocks: List[Dict[str, Any]] = []
+            # shared
+            for idx in range(0, 6):
+                uid = BlockUid(1, idx)
+                blocks.append({
+                    'idx': idx,
+                    'uid_left': uid.left,
+                    'uid_right': uid.right,
+                    'checksum': None,
+                    'size': 1024 * 4096,
+                    'valid': True
+                })
+            # sparse
+            for idx in range(6, 13):
+                uid = BlockUid(i + 1, idx)
+                blocks.append({
+                    'idx': idx,
+                    'uid_left': None,
+                    'uid_right': None,
+                    'checksum': None,
+                    'size': 1024 * 4096,
+                    'valid': True
+                })
+            # exclusive
+            for idx in range(13, 25):
+                uid = BlockUid(i + 1, idx)
+                blocks.append({
+                    'idx': idx,
+                    'uid_left': uid.left,
+                    'uid_right': uid.right,
+                    'checksum': None,
+                    'size': 1024 * 4096,
+                    'valid': True
+                })
+            # exclusive deduplicated
+            for idx in range(25, 32):
+                uid = BlockUid(i + 1, idx - 7)
+                blocks.append({
+                    'idx': idx,
+                    'uid_left': uid.left,
+                    'uid_right': uid.right,
+                    'checksum': None,
+                    'size': 1024 * 4096,
+                    'valid': True
+                })
+            version.create_blocks(blocks=blocks)
+
+        for uid in ('v1', 'v2'):
+            usage = Version.storage_usage(f'uid == "{uid}"')
+            self.assertIsInstance(usage.get('s-1', None), dict)
+            usage_s_1 = usage['s-1']
+            self.assertEqual(32 * 1024 * 4096, usage_s_1.get('virtual', None))
+            self.assertEqual(6 * 1024 * 4096, usage_s_1.get('shared', None))
+            self.assertEqual(7 * 1024 * 4096, usage_s_1.get('sparse', None))
+            self.assertEqual(19 * 1024 * 4096, usage_s_1.get('exclusive', None))
+            self.assertEqual((19 - 7) * 1024 * 4096, usage_s_1.get('deduplicated_exclusive', None))
+
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):
 
