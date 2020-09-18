@@ -7,7 +7,7 @@ from unittest.mock import Mock, MagicMock
 import dateutil
 from parameterized import parameterized
 
-from benji.database import VersionUid, Version
+from benji.database import Version
 from benji.retentionfilter import RetentionFilter
 
 

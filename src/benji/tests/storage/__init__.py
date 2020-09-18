@@ -1,6 +1,6 @@
 import random
 
-from benji.database import Block, BlockUid, VersionUid
+from benji.database import Block, BlockUid
 from benji.logging import logger
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.tests.testcase import StorageTestCaseBase

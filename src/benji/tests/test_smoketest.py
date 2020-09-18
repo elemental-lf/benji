@@ -10,7 +10,7 @@ from shutil import copyfile
 from unittest import TestCase
 
 from benji.blockuidhistory import BlockUidHistory
-from benji.database import VersionUid, Version
+from benji.database import Version
 from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff

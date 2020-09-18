@@ -131,49 +131,6 @@ class VersionStatusType(sqlalchemy.types.TypeDecorator):
             return None
 
 
-class VersionUid(str, StorageKeyMixIn['VersionUid']):
-
-    def __new__(cls, uid: str):
-        if not isinstance(uid, str):
-            raise InternalError(f'Unexpected type {type(uid)} in constructor.')
-        if not InputValidation.is_version_uid(uid):
-            raise InputDataError('Version name {} is invalid.'.format(uid))
-        return str.__new__(cls, uid)  # type: ignore
-
-    # Start: Implements StorageKeyMixIn
-    _STORAGE_PREFIX = 'versions/'
-
-    @classmethod
-    def storage_prefix(cls) -> str:
-        return cls._STORAGE_PREFIX
-
-    def _storage_object_to_key(self) -> str:
-        return str(self)
-
-    @classmethod
-    def _storage_key_to_object(cls, key: str) -> 'VersionUid':
-        return VersionUid(key)
-
-    # End: Implements StorageKeyMixIn
-
-
-class VersionUidType(sqlalchemy.types.TypeDecorator):
-
-    impl = sqlalchemy.String(255)
-
-    def process_bind_param(self, value: Optional[str], dialect) -> Optional[str]:
-        if value is None or isinstance(value, str):
-            return value
-        else:
-            raise InternalError('Unexpected type {} for value in VersionUidType.process_bind_param'.format(type(value)))
-
-    def process_result_value(self, value: Optional[str], dialect) -> Optional[VersionUid]:
-        if value is not None:
-            return VersionUid(value)
-        else:
-            return None
-
-
 class ChecksumType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.LargeBinary
@@ -301,7 +258,7 @@ class Version(Base, ReprMixIn):
     __table_args__ = {'sqlite_autoincrement': True}
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True, nullable=False)
-    uid = sqlalchemy.Column(VersionUidType, unique=True, nullable=False)
+    uid = sqlalchemy.Column(sqlalchemy.String(255), unique=True, nullable=False)
     date = sqlalchemy.Column(BenjiDateTime, nullable=False)
     volume = sqlalchemy.Column(sqlalchemy.String(255), nullable=False, index=True)
     snapshot = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
@@ -334,7 +291,7 @@ class Version(Base, ReprMixIn):
 
     @classmethod
     def create(cls,
-               version_uid: VersionUid,
+               version_uid: str,
                volume: str,
                snapshot: str,
                size: int,
@@ -471,7 +428,7 @@ class Version(Base, ReprMixIn):
             raise
 
     @classmethod
-    def set_block_invalid(cls, block_uid: BlockUid) -> List[VersionUid]:
+    def set_block_invalid(cls, block_uid: BlockUid) -> List[str]:
         try:
             affected_version_uids_query = Session.query(sqlalchemy.distinct(
                 Version.uid).label('uid')).join(Block).filter(Block.uid == block_uid)
@@ -543,7 +500,7 @@ class Version(Base, ReprMixIn):
         return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
 
     @classmethod
-    def get_by_uid(cls, version_uid: VersionUid) -> 'Version':
+    def get_by_uid(cls, version_uid: str) -> 'Version':
         version = Session.query(cls).filter(cls.uid == version_uid).one_or_none()
 
         if version is None:
@@ -564,7 +521,7 @@ class Version(Base, ReprMixIn):
 
     @classmethod
     def find(cls,
-             version_uid: VersionUid = None,
+             version_uid: str = None,
              volume: str = None,
              snapshot: str = None,
              labels: List[Tuple[str, str]] = None) -> List['Version']:
@@ -622,7 +579,8 @@ class Version(Base, ReprMixIn):
             Storage.id.label('storage_id'), Storage.name.label('storage_name'), Block.uid, Block.size.label('size'),
             func.count('*').label('share_count_subset'),
             share_count_overall_sq.label('share_count_overall')).select_from(Block).join(Version).join(Storage).filter(
-                (Block.uid_left != None) & (Block.uid_right != None)).group_by(Storage.id, Storage.name, Block.uid)
+                (Block.uid_left != None) & (Block.uid_right != None)).group_by(Storage.id, Storage.name, Block.uid,
+                                                                               Block.size)
 
         if version_ids is not None:
             share_count_query = share_count_query.filter(Block.version_id.in_(version_ids))
@@ -680,6 +638,22 @@ class Version(Base, ReprMixIn):
 
     def __hash__(self) -> int:
         return self.id
+
+    # Start: Implements StorageKeyMixIn
+    _STORAGE_PREFIX = 'versions/'
+
+    @classmethod
+    def storage_prefix(cls) -> str:
+        return cls._STORAGE_PREFIX
+
+    def _storage_object_to_key(self) -> str:
+        return self.uid
+
+    @classmethod
+    def _storage_key_to_object(cls, key: str) -> str:
+        return key
+
+    # End: Implements StorageKeyMixIn
 
 
 class Label(Base, ReprMixIn):
@@ -1050,9 +1024,6 @@ class _Database(ReprMixIn):
                 if isinstance(obj, datetime.datetime):
                     return obj.isoformat(timespec='microseconds') + 'Z'
 
-                if isinstance(obj, VersionUid):
-                    return str(obj)
-
                 if isinstance(obj, BlockUid):
                     return {'left': obj.left, 'right': obj.right}
 
@@ -1141,12 +1112,12 @@ class _Database(ReprMixIn):
             indent=None if compact else 2,
         )
 
-    def export(self, version_uids: Sequence[VersionUid], f: TextIO):
+    def export(self, version_uids: Sequence[str], f: TextIO):
         self.export_any({'versions': [Version.get_by_uid(version_uid) for version_uid in version_uids]},
                         f,
                         compact=True)
 
-    def import_(self, f: TextIO) -> List[VersionUid]:
+    def import_(self, f: TextIO) -> List[str]:
         try:
             json_input = json.load(f)
         except Exception as exception:
@@ -1178,7 +1149,7 @@ class _Database(ReprMixIn):
 
         return version_uids
 
-    def import_v1(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+    def import_v1(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[str]:
         for version_dict in json_input['versions']:
             # We only do enough input validation for the key we access here, the rest will be done by import_v2
             if not isinstance(version_dict, dict):
@@ -1187,9 +1158,7 @@ class _Database(ReprMixIn):
             if 'uid' not in version_dict:
                 raise InputDataError('Missing attribute uid in version.')
 
-            # Will raise ValueError when invalid
-            version_uid = VersionUid(f'V{version_dict["uid"]:010d}')
-            version_dict['uid'] = str(version_uid)
+            version_dict['uid'] = f'V{version_dict["uid"]:010d}'
 
             attributes_to_check = ['labels', 'blocks', 'date', 'storage_id', 'name']
 
@@ -1249,13 +1218,13 @@ class _Database(ReprMixIn):
 
         return self.import_v3(metadata_version, json_input)
 
-    def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
+    def import_v2(self, metadata_version: semantic_version.Version, json_input: Dict) -> List[str]:
         # The v3 format doesn't list sparse blocks anymore.
         return self.import_v3(metadata_version, json_input)
 
     @staticmethod
-    def import_v3(metadata_version: semantic_version.Version, json_input: Dict) -> List[VersionUid]:
-        version_uids: List[VersionUid] = []
+    def import_v3(metadata_version: semantic_version.Version, json_input: Dict) -> List[str]:
+        version_uids: List[str] = []
         for version_dict in json_input['versions']:
             if not isinstance(version_dict, dict):
                 raise InputDataError('Wrong data type for versions list element.')
@@ -1263,8 +1232,7 @@ class _Database(ReprMixIn):
             if 'uid' not in version_dict:
                 raise InputDataError('Missing attribute uid in version.')
 
-            # Will raise ValueError when invalid
-            version_uid = VersionUid(version_dict['uid'])
+            version_uid = version_dict['uid']
 
             attributes_to_check = [
                 'date',
@@ -1321,7 +1289,7 @@ class _Database(ReprMixIn):
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
             try:
-                Version.get_by_uid(VersionUid(version_dict['uid']))
+                Version.get_by_uid(version_dict['uid'])
             except KeyError:
                 pass  # does not exist
             else:
@@ -1469,19 +1437,19 @@ class _Locking:
         except:
             pass
 
-    def lock_version(self, version_uid: VersionUid, reason: str = None, override_lock: bool = False) -> None:
+    def lock_version(self, version_uid: str, reason: str = None, override_lock: bool = False) -> None:
         self.lock(lock_name='Version {}'.format(version_uid),
                   reason=reason,
                   locked_msg='Version {} is already locked.'.format(version_uid),
                   override_lock=override_lock)
 
-    def is_version_locked(self, version_uid: VersionUid) -> bool:
+    def is_version_locked(self, version_uid: str) -> bool:
         return self.is_locked(lock_name='Version {}'.format(version_uid))
 
-    def update_version_lock(self, version_uid: VersionUid, reason: str = None) -> None:
+    def update_version_lock(self, version_uid: str, reason: str = None) -> None:
         self.update_lock(lock_name='Version {}'.format(version_uid), reason=reason)
 
-    def unlock_version(self, version_uid: VersionUid) -> None:
+    def unlock_version(self, version_uid: str) -> None:
         self.unlock(lock_name='Version {}'.format(version_uid))
 
     @contextmanager
@@ -1504,7 +1472,7 @@ class _Locking:
 
     @contextmanager
     def with_version_lock(self,
-                          version_uid: VersionUid,
+                          version_uid: str,
                           reason: str = None,
                           unlock: bool = True,
                           override_lock: bool = False) -> Iterator[None]:

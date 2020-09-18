@@ -13,7 +13,7 @@ import semantic_version
 from diskcache import FanoutCache
 
 from benji.config import Config, ConfigDict
-from benji.database import VersionUid, DereferencedBlock, BlockUid, Block
+from benji.database import DereferencedBlock, BlockUid, Block, Version
 from benji.exception import ConfigurationError, BenjiException
 from benji.jobexecutor import JobExecutor
 from benji.logging import logger
@@ -355,19 +355,19 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
 
-    def list_versions(self) -> Iterable[VersionUid]:
-        keys = self._list_objects(VersionUid.storage_prefix())
+    def list_versions(self) -> Iterable[str]:
+        keys = self._list_objects(Version.storage_prefix())
         for key in keys:
             assert isinstance(key, str)
             if key.endswith(self._META_SUFFIX):
                 continue
             try:
-                yield VersionUid.storage_path_to_object(key)
+                yield Version.storage_path_to_object(key)
             except (RuntimeError, ValueError):
                 # Ignore any keys which don't match our pattern to account for stray objects/files
                 pass
 
-    def read_version(self, version_uid: VersionUid) -> str:
+    def read_version(self, version_uid: str) -> str:
         key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         data = self._read_object(key)
@@ -384,8 +384,8 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
 
         return data.decode('utf-8')
 
-    def write_version(self, version_uid: VersionUid, data: str, overwrite: Optional[bool] = False) -> None:
-        key = version_uid.storage_object_to_path()
+    def write_version(self, version: Version, data: str, overwrite: Optional[bool] = False) -> None:
+        key = version.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
 
         if not overwrite:
@@ -418,7 +418,7 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
         if self._consistency_check_writes:
             self._check_write(key=key, metadata_key=metadata_key, data_expected=data_bytes)
 
-    def rm_version(self, version_uid: VersionUid) -> None:
+    def rm_version(self, version_uid: str) -> None:
         key = version_uid.storage_object_to_path()
         metadata_key = key + self._META_SUFFIX
         try:

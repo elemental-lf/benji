@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from io import StringIO
 from unittest import TestCase
 
-from benji.database import VersionUid, VersionStatus, Block, Label
+from benji.database import VersionStatus, Block, Label
 from benji.logging import logger
 from benji.tests.testcase import BenjiTestCaseBase
 from benji.utils import hints_from_rbd_diff
@@ -123,7 +123,6 @@ class ImportExportTestCase():
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_0_0))
         version = benji_obj.get_version_by_uid(version_uid=version_uid)
-        self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
@@ -155,7 +154,6 @@ class ImportExportTestCase():
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(self.IMPORT_1_1_0))
         version = benji_obj.get_version_by_uid(version_uid=version_uid)
-        self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)
@@ -199,7 +197,6 @@ class ImportExportTestCase():
         version_uid = VersionUid('V0000000001')
         benji_obj.metadata_import(StringIO(import_source))
         version = benji_obj.get_version_by_uid(version_uid=version_uid)
-        self.assertTrue(isinstance(version.uid, VersionUid))
         self.assertEqual(version_uid, version.uid)
         self.assertEqual('data-backup', version.volume)
         self.assertEqual('snapshot-name', version.snapshot)

@@ -17,7 +17,7 @@ from diskcache import Cache
 
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
-from benji.database import Database, VersionUid, Version, Block, \
+from benji.database import Database, Version, Block, \
     BlockUid, DereferencedBlock, VersionStatus, Storage, Locking, DeletedBlock, SparseBlockUid
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ScrubbingError, ConfigurationError
 from benji.io.factory import IOFactory
@@ -70,13 +70,13 @@ class Benji(ReprMixIn, AbstractContextManager):
 
     def create_version(self,
                        *,
-                       version_uid: VersionUid,
+                       version_uid: str,
                        volume: str,
                        snapshot: str,
                        block_size: int = None,
                        storage_name: str = None,
                        size: int = None,
-                       base_version_uid: VersionUid = None,
+                       base_version_uid: str = None,
                        base_version_locking: bool = True) -> Version:
         """ Prepares the metadata for a new version.
         If base_version_uid is given, this is taken as the base, otherwise
@@ -198,7 +198,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         return version
 
     @staticmethod
-    def get_version_by_uid(version_uid: VersionUid) -> Version:
+    def get_version_by_uid(version_uid: str) -> Version:
         return Version.get_by_uid(version_uid)
 
     @staticmethod
@@ -235,8 +235,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                 read_jobs += 1
         return read_jobs
 
-    def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, read_jobs: int,
-                               done_read_jobs: int, deep_scrub: bool) -> None:
+    def _scrub_report_progress(self, *, version_uid: str, block: DereferencedBlock, read_jobs: int, done_read_jobs: int,
+                               deep_scrub: bool) -> None:
         logger.debug('{} of block {} (UID {}) ok.'.format('Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid))
 
         notify(
@@ -247,7 +247,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             logger.info('{} {}/{} blocks ({:.1f}%)'.format('Deep-scrubbed' if deep_scrub else 'Scrubbed',
                                                            done_read_jobs, read_jobs, done_read_jobs / read_jobs * 100))
 
-    def scrub(self, version_uid: VersionUid, block_percentage: int = 100, history: BlockUidHistory = None) -> None:
+    def scrub(self, version_uid: str, block_percentage: int = 100, history: BlockUidHistory = None) -> None:
         Locking.lock_version(version_uid, reason='Scrubbing version')
         try:
             version = Version.get_by_uid(version_uid)
@@ -322,7 +322,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             raise ScrubbingError('Scrub of version {} failed.'.format(version_uid))
 
     def deep_scrub(self,
-                   version_uid: VersionUid,
+                   version_uid: str,
                    source: str = None,
                    block_percentage: int = 100,
                    history: BlockUidHistory = None) -> None:
@@ -497,7 +497,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                          group_label: Optional[str] = None) -> Tuple[List[Version], List[Version]]:
         return self._batch_scrub('deep_scrub', filter_expression, version_percentage, block_percentage, group_label)
 
-    def restore(self, version_uid: VersionUid, target: str, sparse: bool = False, force: bool = False) -> None:
+    def restore(self, version_uid: str, target: str, sparse: bool = False, force: bool = False) -> None:
         block: Union[DereferencedBlock, Block]
 
         Locking.lock_version(version_uid, reason='Restoring version')
@@ -657,12 +657,12 @@ class Benji(ReprMixIn, AbstractContextManager):
             version.uid, PrettyPrint.duration(max(int(t2 - t1), 1)), PrettyPrint.bytes(written / (t2 - t1))))
 
     @staticmethod
-    def protect(version_uid: VersionUid, protected: bool) -> None:
+    def protect(version_uid: str, protected: bool) -> None:
         version = Version.get_by_uid(version_uid)
         version.set(protected=protected)
 
     @staticmethod
-    def rm(version_uid: VersionUid,
+    def rm(version_uid: str,
            force: bool = True,
            disallow_rm_when_younger_than_days: int = 0,
            keep_metadata_backup: bool = False,
@@ -722,12 +722,12 @@ class Benji(ReprMixIn, AbstractContextManager):
 
     def backup(self,
                *,
-               version_uid: VersionUid,
+               version_uid: str,
                volume: str,
                snapshot: str,
                source: str,
                hints: List[Tuple[int, int, bool]] = None,
-               base_version_uid: VersionUid = None,
+               base_version_uid: str = None,
                storage_name: str = None,
                block_size: int = None) -> Version:
         """ Create a backup from source.
@@ -1001,12 +1001,12 @@ class Benji(ReprMixIn, AbstractContextManager):
             notify(self._process_name)
 
     @staticmethod
-    def add_label(version_uid: VersionUid, key: str, value: str) -> None:
+    def add_label(version_uid: str, key: str, value: str) -> None:
         version = Version.get_by_uid(version_uid)
         version.add_label(key, value)
 
     @staticmethod
-    def rm_label(version_uid: VersionUid, key: str) -> None:
+    def rm_label(version_uid: str, key: str) -> None:
         version = Version.get_by_uid(version_uid)
         version.rm_label(key)
 
@@ -1018,7 +1018,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         Database.close()
 
     @staticmethod
-    def metadata_export(version_uids: Sequence[VersionUid], f: TextIO) -> None:
+    def metadata_export(version_uids: Sequence[str], f: TextIO) -> None:
         try:
             locked_version_uids = []
             for version_uid in version_uids:
@@ -1032,7 +1032,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 Locking.unlock_version(version_uid)
 
     @staticmethod
-    def metadata_backup(version_uids: Sequence[VersionUid], overwrite: bool = False, locking: bool = True) -> None:
+    def metadata_backup(version_uids: Sequence[str], overwrite: bool = False, locking: bool = True) -> None:
         versions = [Version.get_by_uid(version_uid) for version_uid in version_uids]
         try:
             locked_version_uids = []
@@ -1045,8 +1045,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 with StringIO() as metadata_export:
                     Database.export([version.uid], metadata_export)
                     storage = StorageFactory.get_by_name(version.storage.name)
-                    logger.debug(metadata_export.getvalue())
-                    storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
+                    storage.write_version(version, metadata_export.getvalue(), overwrite=overwrite)
                 logger.info('Backed up metadata of version {}.'.format(version.uid))
         finally:
             for version_uid in locked_version_uids:
@@ -1062,7 +1061,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         version_uids = Database.import_(f)
         logger.info('Imported metadata of version(s): {}.'.format(', '.join(version_uids)))
 
-    def metadata_restore(self, version_uids: Sequence[VersionUid], storage_name: str = None) -> None:
+    def metadata_restore(self, version_uids: Sequence[str], storage_name: str = None) -> None:
         storage = StorageFactory.get_by_name(storage_name or self._default_storage_name)
         try:
             locked_version_uids = []
@@ -1079,7 +1078,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             for version_uid in locked_version_uids:
                 Locking.unlock_version(version_uid)
 
-    def metadata_ls(self, storage_name: str = None) -> List[VersionUid]:
+    def metadata_ls(self, storage_name: str = None) -> List[str]:
         storage = StorageFactory.get_by_name(storage_name or self._default_storage_name)
         return storage.list_versions()
 
@@ -1221,7 +1220,7 @@ class _BlockStore:
 class BenjiStore(ReprMixIn):
 
     _benji_obj: Benji
-    _cow: Dict[VersionUid, Dict[int, DereferencedBlock]]
+    _cow: Dict[str, Dict[int, DereferencedBlock]]
 
     def __init__(self, benji_obj: Benji) -> None:
         self._benji_obj = benji_obj
@@ -1249,7 +1248,7 @@ class BenjiStore(ReprMixIn):
         Locking.unlock_version(version.uid)
 
     @staticmethod
-    def find_versions(version_uid: VersionUid = None) -> List[Version]:
+    def find_versions(version_uid: str = None) -> List[Version]:
         return Version.find(version_uid=version_uid)
 
     @staticmethod

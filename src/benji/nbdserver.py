@@ -39,7 +39,7 @@ from asyncio import StreamReader, StreamWriter
 from typing import Generator, Optional, Any, Tuple
 
 from benji.benji import BenjiStore
-from benji.database import VersionUid, Version
+from benji.database import Version
 from benji.repr import ReprMixIn
 
 
@@ -152,7 +152,10 @@ class NbdServer(ReprMixIn):
         self.loop = asyncio.get_event_loop()
 
     @asyncio.coroutine
-    def nbd_response(self, writer: StreamWriter, handle: int, error: int = 0,
+    def nbd_response(self,
+                     writer: StreamWriter,
+                     handle: int,
+                     error: int = 0,
                      data: bytes = None) -> Generator[Any, None, None]:
         writer.write(struct.pack('>LLQ', self.NBD_REPLY_MAGIC, error, handle))
         if data:

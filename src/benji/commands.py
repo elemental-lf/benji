@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import sys
 from typing import List, NamedTuple, Type, Optional, Dict
@@ -9,7 +8,7 @@ from prettytable import PrettyTable
 import benji.exception
 from benji import __version__
 from benji.benji import Benji, BenjiStore
-from benji.database import Version, VersionUid
+from benji.database import Version
 from benji.logging import logger
 from benji.nbdserver import NbdServer
 from benji.utils import hints_from_rbd_diff, PrettyPrint, InputValidation, random_string
@@ -32,8 +31,6 @@ class Commands:
                block_size: int, labels: List[str], storage: str) -> None:
         if version_uid is None:
             version_uid = '{}-{}'.format(volume[:248], random_string(6))
-        version_uid_obj = VersionUid(version_uid)
-        base_version_uid_obj = VersionUid(base_version_uid) if base_version_uid else None
 
         if labels:
             label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
@@ -43,12 +40,12 @@ class Commands:
                 logger.debug(f'Loading RBD hints from file {rbd_hints}.')
                 with open(rbd_hints, 'r') as f:
                     hints = hints_from_rbd_diff(f.read())
-            backup_version = benji_obj.backup(version_uid=version_uid_obj,
+            backup_version = benji_obj.backup(version_uid=version_uid,
                                               volume=volume,
                                               snapshot=snapshot,
                                               source=source,
                                               hints=hints,
-                                              base_version_uid=base_version_uid_obj,
+                                              base_version_uid=base_version_uid,
                                               storage_name=storage,
                                               block_size=block_size)
 
@@ -74,29 +71,25 @@ class Commands:
         if not database_less and storage is not None:
             raise benji.exception.UsageError('Specifying a storage location is only supported for database-less restores.')
 
-        version_uid_obj = VersionUid(version_uid)
         with Benji(self.config, in_memory_database=database_less) as benji_obj:
             if database_less:
-                benji_obj.metadata_restore([version_uid_obj], storage)
-            benji_obj.restore(version_uid_obj, destination, sparse, force)
+                benji_obj.metadata_restore([version_uid], storage)
+            benji_obj.restore(version_uid, destination, sparse, force)
 
     def protect(self, version_uids: List[str]) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         with Benji(self.config) as benji_obj:
-            for version_uid in version_uid_objs:
+            for version_uid in version_uids:
                 benji_obj.protect(version_uid, protected=True)
 
     def unprotect(self, version_uids: List[str]) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         with Benji(self.config) as benji_obj:
-            for version_uid in version_uid_objs:
+            for version_uid in version_uids:
                 benji_obj.protect(version_uid, protected=False)
 
     def rm(self, version_uids: List[str], force: bool, keep_metadata_backup: bool, override_lock: bool) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         disallow_rm_when_younger_than_days = self.config.get('disallowRemoveWhenYounger', types=int)
         with Benji(self.config) as benji_obj:
-            for version_uid in version_uid_objs:
+            for version_uid in version_uids:
                 benji_obj.rm(version_uid,
                              force=force,
                              disallow_rm_when_younger_than_days=disallow_rm_when_younger_than_days,
@@ -104,17 +97,16 @@ class Commands:
                              override_lock=override_lock)
 
     def scrub(self, version_uid: str, block_percentage: int) -> None:
-        version_uid_obj = VersionUid(version_uid)
         with Benji(self.config) as benji_obj:
             try:
-                benji_obj.scrub(version_uid_obj, block_percentage=block_percentage)
+                benji_obj.scrub(version_uid, block_percentage=block_percentage)
             except benji.exception.ScrubbingError:
                 assert benji_obj is not None
                 if self.machine_output:
                     benji_obj.export_any(
                         {
-                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid)],
+                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid)]
                         },
                         sys.stdout,
                         ignore_relationships=(((Version,), ('blocks',)),))
@@ -123,24 +115,23 @@ class Commands:
                 if self.machine_output:
                     benji_obj.export_any(
                         {
-                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid)],
                             'errors': []
                         },
                         sys.stdout,
                         ignore_relationships=(((Version,), ('blocks',)),))
 
     def deep_scrub(self, version_uid: str, source: str, block_percentage: int) -> None:
-        version_uid_obj = VersionUid(version_uid)
         with Benji(self.config) as benji_obj:
             try:
-                benji_obj.deep_scrub(version_uid_obj, source=source, block_percentage=block_percentage)
+                benji_obj.deep_scrub(version_uid, source=source, block_percentage=block_percentage)
             except benji.exception.ScrubbingError:
                 assert benji_obj is not None
                 if self.machine_output:
                     benji_obj.export_any(
                         {
-                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)],
-                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid_obj)]
+                            'versions': [benji_obj.get_version_by_uid(version_uid=version_uid)],
+                            'errors': [benji_obj.get_version_by_uid(version_uid=version_uid)]
                         },
                         sys.stdout,
                         ignore_relationships=(((Version,), ('blocks',)),))
@@ -284,12 +275,11 @@ class Commands:
                     benji_obj.metadata_import(f)
 
     def metadata_restore(self, version_uids: List[str], storage: str = None) -> None:
-        version_uid_objs = [VersionUid(version_uid) for version_uid in version_uids]
         with Benji(self.config) as benji_obj:
-            benji_obj.metadata_restore(version_uid_objs, storage)
+            benji_obj.metadata_restore(version_uids, storage)
 
     @staticmethod
-    def _metadata_ls_table_output(version_uids: List[VersionUid]):
+    def _metadata_ls_table_output(version_uids: List[str]):
         tbl = PrettyTable()
         tbl.field_names = ['uid']
         tbl.align['uid'] = 'l'
@@ -310,18 +300,17 @@ class Commands:
                 self._metadata_ls_table_output(version_uids)
 
     def label(self, version_uid: str, labels: List[str]) -> None:
-        version_uid_obj = VersionUid(version_uid)
         label_add, label_remove = InputValidation.parse_and_validate_labels(labels)
         with Benji(self.config) as benji_obj:
             for name, value in label_add:
-                benji_obj.add_label(version_uid_obj, name, value)
+                benji_obj.add_label(version_uid, name, value)
             for name in label_remove:
-                benji_obj.rm_label(version_uid_obj, name)
+                benji_obj.rm_label(version_uid, name)
             if label_add:
                 logger.info('Added label(s) to version {}: {}.'.format(
-                    version_uid_obj, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
+                    version_uid, ', '.join('{}={}'.format(name, value) for name, value in label_add)))
             if label_remove:
-                logger.info('Removed label(s) from version {}: {}.'.format(version_uid_obj, ', '.join(label_remove)))
+                logger.info('Removed label(s) from version {}: {}.'.format(version_uid, ', '.join(label_remove)))
 
     def database_init(self) -> None:
         Benji(self.config, init_database=True).close()

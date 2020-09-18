@@ -8,7 +8,7 @@ from unittest import TestCase
 
 from dateutil import tz
 
-from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking
+from benji.database import BlockUid, VersionStatus, Version, Storage, DeletedBlock, Locking
 from benji.exception import InternalError, UsageError, AlreadyLocked
 from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
