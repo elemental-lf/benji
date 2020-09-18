@@ -1,3 +1,7 @@
+## 0.11.0, 18.09.2020
+
+* Fix SQL generation for `benji storage-usage` command (issue #95)
+
 ## 0.10.0, 05.09.2020
 
 Notable changes:
