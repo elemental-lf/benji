@@ -203,7 +203,7 @@ I/O Modules
 
 Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
+increase this number to get better concurrency
 and performance.
 
 * name: **simultaneousWrites**
@@ -211,7 +211,7 @@ and performance.
 * default: ``1``
 
 Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 I/O Module file
 ~~~~~~~~~~~~~~~~
@@ -224,15 +224,14 @@ The ``file`` I/O module supports the following configuration options:
 
 Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
-and performance.
+increase this number to get better concurrency and performance.
 
 * name: **simultaneousWrites**
 * type: integer
 * default: ``1``
 
 Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 I/O Module rbd
 ~~~~~~~~~~~~~~
@@ -264,7 +263,7 @@ This module supports the following configuration options:
 
 Number of reader threads when reading from a backup source. Also
 affects the internal read queue length. It is highly recommended to
-increase this number to increase this number to get better concurrency
+increase this number to get better concurrency
 and performance.
 
 * name: **simultaneousWrites**
@@ -272,7 +271,7 @@ and performance.
 * default: ``1``
 
 Number of writer threads when restoring a version. Also affects the internal write queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 * name: **cephConfigFile**
 * type: string
@@ -485,8 +484,8 @@ Example python code to create a valid ECC key for **eccKey** (using ``PyCryptodo
     from base64 import b64encode
     from Crypto.PublicKey import ECC
     key = ECC.generate(curve='NIST P-384')
-    public_key = b64encode(key.public_key().export_key(format='DER', compress=True)).decode('ascii'))
-    private_key = b64encode(key.export_key(format='DER', compress=True).decode('ascii'))
+    public_key = b64encode(key.public_key().export_key(format='DER', compress=True)).decode('ascii')
+    private_key = b64encode(key.export_key(format='DER', compress=True)).decode('ascii')
 
 
 Storage Modules
@@ -499,21 +498,21 @@ All storage modules support the following configuration directives:
 * default: ``1``
 
 Number of reader threads when reading from a storage. Also affects the internal read queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 * name: **simultaneousWrites**
 * type: integer
 * default: ``1``
 
 Number of writer threads when writing to a storage. Also affects the internal write queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 * name: **simultaneousRemovals**
 * type: integer
 * default: ``1``
 
 Number of removal threads when removing blocks from a storage. Also affects the internal queue length. It is highly
-recommended to increase this number to increase this number to get better concurrency and performance.
+recommended to increase this number to get better concurrency and performance.
 
 * name: **bandwidthRead**
 * type: integer
