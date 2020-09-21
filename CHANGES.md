@@ -1,3 +1,7 @@
+## 0.12.0, 21.09.2020
+
+* Fix type conversion bug in `benji storage-usage` command (issue #96)
+
 ## 0.11.0, 18.09.2020
 
 * Fix SQL generation for `benji storage-usage` command (issue #95)
