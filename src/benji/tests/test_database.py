@@ -486,11 +486,17 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             usage = Version.storage_usage(f'uid == "{uid}"')
             self.assertIsInstance(usage.get('s-1', None), dict)
             usage_s_1 = usage['s-1']
-            self.assertEqual(32 * 1024 * 4096, usage_s_1.get('virtual', None))
-            self.assertEqual(6 * 1024 * 4096, usage_s_1.get('shared', None))
-            self.assertEqual(7 * 1024 * 4096, usage_s_1.get('sparse', None))
-            self.assertEqual(19 * 1024 * 4096, usage_s_1.get('exclusive', None))
-            self.assertEqual((19 - 7) * 1024 * 4096, usage_s_1.get('deduplicated_exclusive', None))
+            check_value_matrix = (
+                ('virtual', 32 * 1024 * 4096),
+                ('shared', 6 * 1024 * 4096),
+                ('sparse', 7 * 1024 * 4096),
+                ('exclusive', 19 * 1024 * 4096),
+                ('deduplicated_exclusive', (19 - 7) * 1024 * 4096),
+            )
+            for field, amount in check_value_matrix:
+                value = usage_s_1.get(field, None)
+                self.assertIsInstance(value, int)
+                self.assertEqual(amount, value)
 
 
 class DatabaseBackendTestSQLLite(DatabaseBackendTestCase, TestCase):

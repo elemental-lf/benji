@@ -610,7 +610,7 @@ class Version(Base, ReprMixIn):
             virtual = virtual.filter(Version.id.in_(version_ids))
 
         for _, storage_name, size in virtual.all():
-            usage[storage_name]['virtual'] = size
+            usage[storage_name]['virtual'] = int(size)  # func.sum()/SUM() returns type Decimal
 
         sq_block, sq_storage, sq_version = aliased(Block), aliased(Storage), aliased(Version)
         share_count_overall_sq = Session.query(func.count('*')).select_from(sq_block).join(sq_version).join(
