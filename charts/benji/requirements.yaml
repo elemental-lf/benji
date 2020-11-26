@@ -1,12 +1,14 @@
 dependencies:
       - name: postgresql
-        version: 7.7.2
-        repository: https://kubernetes-charts.storage.googleapis.com/
-        condition: postgresql.enabled
+        version: 9.8.5
+        repository: https://charts.bitnami.com/bitnami
       - name: prometheus-pushgateway
         alias: pushgateway
         version: 1.2.6
         repository: https://kubernetes-charts.storage.googleapis.com/
       - name: rabbitmq
         version: 6.25.2
-        repository: "@bitnami"
+        repository: https://charts.bitnami.com/bitnami
+      - name: argo
+        version: 0.13.2
+        repository: https://argoproj.github.io/argo-helm

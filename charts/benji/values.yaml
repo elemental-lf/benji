@@ -74,11 +74,11 @@ fsfreeze:
   affinity: {}
 
 postgresql:
-  enabled: true
   postgresqlUsername: benji
   postgresqlDatabase: benji
   postgresqlPassword: benji-pass
-  persistence: false
+  persistence: 
+    enabled: false
 
 pushgateway:
   image:
@@ -98,3 +98,22 @@ rabbitmq:
   networkPolicy:
     enabled: true
     allowExternal: False
+
+argo:
+  images:
+    tag: v2.11.6
+  singleNamespace: true
+  workflow:
+    serviceAccount:
+      create: true
+    rbac:
+      create: true
+  controller:
+    containerRuntimeExecutor: "pns"
+    workflowNamespaces:
+      - benji
+    workflowDefaults:
+      spec:
+        serviceAccountName: argo-workflow
+  server:
+    enabled: false
