@@ -186,3 +186,22 @@ rabbitmq:
   networkPolicy:
     enabled: true
     allowExternal: False
+
+argo:
+  images:
+    tag: v2.11.6
+  singleNamespace: true
+  workflow:
+    serviceAccount:
+      create: true
+    rbac:
+      create: true
+  controller:
+    containerRuntimeExecutor: "pns"
+    workflowNamespaces:
+      - benji
+    workflowDefaults:
+      spec:
+        serviceAccountName: argo-workflow
+  server:
+    enabled: false
