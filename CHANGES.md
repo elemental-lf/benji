@@ -1,3 +1,8 @@
+## 0.13.0, 27.11.2020
+
+* Fix Helm chart repo URLs because of Helm chart repostitory deprecation
+  (see https://helm.sh/blog/charts-repo-deprecation/ for more information)
+
 ## 0.12.0, 21.09.2020
 
 * Fix type conversion bug in `benji storage-usage` command (issue #96)
