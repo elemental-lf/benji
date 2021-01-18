@@ -34,6 +34,8 @@ class Storage(ReadCacheStorageBase):
         use_ssl = Config.get_from_dict(module_configuration, 'useSsl', None, types=bool)
         addressing_style = Config.get_from_dict(module_configuration, 'addressingStyle', None, types=str)
         signature_version = Config.get_from_dict(module_configuration, 'signatureVersion', None, types=str)
+        read_timeout = Config.get_from_dict(module_configuration, 'read_timeout', None, types=int)
+        retries = Config.get_from_dict(module_configuration, 'retries', None, types=int)
 
         self._bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
         self._disable_encoding_type = Config.get_from_dict(module_configuration, 'disableEncodingType', types=bool)
@@ -58,6 +60,12 @@ class Storage(ReadCacheStorageBase):
 
         if signature_version:
             resource_config['signature_version'] = signature_version
+
+        if read_timeout:
+            resource_config['read_timeout'] = read_timeout
+
+        if retries:
+            resource_config['retries'] = { 'max_attempts':  retries }
 
         self._resource_config['config'] = BotoCoreClientConfig(**resource_config)
         self._local = threading.local()

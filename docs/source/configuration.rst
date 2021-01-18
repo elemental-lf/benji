@@ -728,6 +728,19 @@ during some operations. Enabling this setting prevents this by not sending
 this HTTP header. This needs to be set to ``true`` when connecting
 to a Google Storage bucket.
 
+* name: **read_timeout**
+* type: integer
+* default: 30
+
+Seconds until a s3 read request times out
+
+* name: **retries**
+* type: integer
+* default: 4
+
+Number of retries for s3 requests (boto3 retries.max_attempts) until it finally fails
+
+
 Storage Module b2
 ~~~~~~~~~~~~~~~~~~
 

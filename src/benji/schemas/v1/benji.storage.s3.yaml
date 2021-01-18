@@ -51,3 +51,9 @@ configuration:
       type: boolean
       empty: False
       default: False
+    retries:
+      type: integer
+      empty: False
+    read_timeout:
+      type: integer
+      empty: False
