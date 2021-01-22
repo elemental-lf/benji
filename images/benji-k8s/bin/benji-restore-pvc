@@ -81,8 +81,38 @@ while True:
 
 pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
 
+pool, image = None, None
+
+# Taken from backup code, maybe refactor?
+if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
+    # Native Kubernetes RBD PV
+    pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
+elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
+        pv.spec.flex_volume, 'driver'):
+    # Rook Ceph PV
+    options = pv.spec.flex_volume.options
+    driver = pv.spec.flex_volume.driver
+    if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
+        pool, image = options['pool'], options['image']
+elif (hasattr(pv.spec, 'csi')
+        and hasattr(pv.spec.csi, 'driver')
+        and pv.spec.csi.driver == 'rook-ceph.rbd.csi.ceph.com'
+        and hasattr(pv.spec.csi, 'volume_handle')
+        and pv.spec.csi.volume_handle
+        and hasattr(pv.spec.csi, 'volume_attributes')
+        and pv.spec.csi.volume_attributes.get('pool')):
+    attributes = pv.spec.csi.volume_attributes
+    volume_handle_parts = pv.spec.csi.volume_handle.split('-')
+    if len(volume_handle_parts) >= 9:
+      image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
+      image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts)-5:])
+      pool, image = attributes['pool'], image_prefix + image_suffix
+
+if pool is None or image is None:
+    raise RuntimeError(f'Unable to determine PersistentVolume pool or image for {pv.metadata.name}')
+
 utils.subprocess_run([
     'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version_uid,
-    f'rbd:{pv.spec.rbd.pool}/{pv.spec.rbd.image}'
+    f'rbd:{pool}/{image}',
 ])
 sys.exit(0)
