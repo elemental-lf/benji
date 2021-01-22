@@ -27,6 +27,8 @@ parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC nam
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
 parser.add_argument('--pvc-storage-class', metavar='pvc_storage_class', dest='pvc_storage_class',
                     help='PVC storageclassname', default='rbd')
+parser.add_argument('--ios-name', metavar='ios_name', dest='ios_name', help='Name of I/O',
+                    default='rbd')
 
 args = parser.parse_args()
 
@@ -113,6 +115,6 @@ if pool is None or image is None:
 
 utils.subprocess_run([
     'benji', '--log-level', settings.benji_log_level, 'restore', '--sparse', '--force', args.version_uid,
-    f'rbd:{pool}/{image}',
+    f'{args.ios_name}:{pool}/{image}',
 ])
 sys.exit(0)
