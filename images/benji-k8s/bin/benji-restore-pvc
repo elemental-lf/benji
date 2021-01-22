@@ -25,7 +25,8 @@ parser.add_argument('-f',
 parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
 parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
-parser.add_argument(metavar='pvc_storage_class', dest='pvc_storage_class', help='PVC storageclassname')
+parser.add_argument('--pvc-storage-class', metavar='pvc_storage_class', dest='pvc_storage_class',
+                    help='PVC storageclassname', default='rbd')
 
 args = parser.parse_args()
 
