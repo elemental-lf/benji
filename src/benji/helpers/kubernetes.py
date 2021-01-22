@@ -172,7 +172,7 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
 
 
 def create_pvc(pvc_name: str, pvc_namespace: int,
-               pvc_size: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
+               pvc_size: str, pvc_storage_class: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -181,7 +181,7 @@ def create_pvc(pvc_name: str, pvc_namespace: int,
             'name': pvc_name,
         },
         'spec': {
-            'storageClassName': 'rbd',
+            'storageClassName': pvc_storage_class,
             'accessModes': ['ReadWriteOnce'],
             'resources': {
                 'requests': {

@@ -25,6 +25,7 @@ parser.add_argument('-f',
 parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
 parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
 parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
+parser.add_argument(metavar='pvc_storage_class', dest='pvc_storage_class', help='PVC storageclassname')
 
 args = parser.parse_args()
 
@@ -57,7 +58,8 @@ except ApiException as exception:
         raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
 if pvc is None:
-    pvc = benji.helpers.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size)
+    pvc = benji.helpers.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace,
+                                              version_size, args.pvc_storage_class)
 else:
     if not args.force:
         raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
