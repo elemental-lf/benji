@@ -26,8 +26,9 @@ class test_s3(StorageTestCase, TestCase):
             consistencyCheckWrites: True
             simultaneousWrites: 5
             simultaneousReads: 5
-            retries: 1000
-            read_timeout: 300
+            connectTimeout: 10.0
+            readTimeout: 10.0
+            maxAttempts: 1
             activeTransforms:
               - zstd
               - k1
