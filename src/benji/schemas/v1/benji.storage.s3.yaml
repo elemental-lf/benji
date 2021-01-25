@@ -51,9 +51,18 @@ configuration:
       type: boolean
       empty: False
       default: False
-    retries:
+    connectTimeout:
+      type: float
+      empty: False
+      min: 0.0
+      default: 60.0
+    readTimeout:
+      type: float
+      empty: False
+      min: 0.0
+      default: 60.0
+    maxAttempts:
       type: integer
       empty: False
-    read_timeout:
-      type: integer
-      empty: False
+      min: 1
+      default: 5

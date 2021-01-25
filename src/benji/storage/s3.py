@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import threading
-from typing import Iterable, Union, Tuple
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
+from typing import Iterable, Union, Tuple
 
 from benji.config import Config, ConfigDict
 from benji.logging import logger
@@ -34,8 +34,9 @@ class Storage(ReadCacheStorageBase):
         use_ssl = Config.get_from_dict(module_configuration, 'useSsl', None, types=bool)
         addressing_style = Config.get_from_dict(module_configuration, 'addressingStyle', None, types=str)
         signature_version = Config.get_from_dict(module_configuration, 'signatureVersion', None, types=str)
-        read_timeout = Config.get_from_dict(module_configuration, 'read_timeout', None, types=int)
-        retries = Config.get_from_dict(module_configuration, 'retries', None, types=int)
+        connect_timeout = Config.get_from_dict(module_configuration, 'connectTimeout', types=float)
+        read_timeout = Config.get_from_dict(module_configuration, 'readTimeout', types=float)
+        max_attempts = Config.get_from_dict(module_configuration, 'maxAttempts', types=int)
 
         self._bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
         self._disable_encoding_type = Config.get_from_dict(module_configuration, 'disableEncodingType', types=bool)
@@ -61,11 +62,13 @@ class Storage(ReadCacheStorageBase):
         if signature_version:
             resource_config['signature_version'] = signature_version
 
-        if read_timeout:
-            resource_config['read_timeout'] = read_timeout
-
-        if retries:
-            resource_config['retries'] = { 'max_attempts':  retries }
+        resource_config['connect_timeout'] = connect_timeout
+        resource_config['read_timeout'] = read_timeout
+        # See https://boto3.amazonaws.com/v1/documentation/api/latest/guide/retries.html
+        resource_config['retries'] = {
+            'mode': 'standard',
+            'max_attempts':  max_attempts,
+        }
 
         self._resource_config['config'] = BotoCoreClientConfig(**resource_config)
         self._local = threading.local()

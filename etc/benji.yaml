@@ -43,6 +43,9 @@ storages:
 #      bucketName:
 #      addressingStyle:
 #      disableEncodingType: false
+#      connectTimeout:
+#      readTimeout:
+#      maxAttempts:
 #
 # For Google S3 API use:
 #

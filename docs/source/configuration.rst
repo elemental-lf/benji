@@ -728,18 +728,25 @@ during some operations. Enabling this setting prevents this by not sending
 this HTTP header. This needs to be set to ``true`` when connecting
 to a Google Storage bucket.
 
-* name: **read_timeout**
+* name: **connectTimeout**
+* type: float
+* default: 60.0
+
+This sets the connect timeout for S3 requests.
+
+* name: **readTimeout**
+* type: float
+* default: 60.0
+
+This sets the read timeout for S3 requests.
+
+* name: **maxAttempts**
 * type: integer
-* default: 30
+* default: 5
 
-Seconds until a s3 read request times out
-
-* name: **retries**
-* type: integer
-* default: 4
-
-Number of retries for s3 requests (boto3 retries.max_attempts) until it finally fails
-
+This sets the maximum number of attempts to complete an S3 request. It includes the
+initial request and so cannot be set lower than one. Benji uses the ``standard`` retry
+mode of the ``boto3`` library.
 
 Storage Module b2
 ~~~~~~~~~~~~~~~~~~
