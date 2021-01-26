@@ -66,7 +66,7 @@ Topic :: System :: Archiving :: Backup
         'diskcache>=3.0.6',
     ],
     extras_require={
-        's3': ['boto3>=1.7.28'],
+        's3': ['boto3>=1.15.0'],
         'b2': ['b2>=1.3.2,<=1.3.8'],
         'compression': ['zstandard>=0.9.0'],
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
