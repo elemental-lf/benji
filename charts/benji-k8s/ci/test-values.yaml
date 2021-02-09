@@ -1,0 +1,67 @@
+timeZone: UTC
+
+benji:
+  image:
+    registry: docker.io
+    repository: elementalnet/benji-k8s
+    tag: latest
+    pullPolicy: Always
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  configuration:
+    configurationVersion: '1'
+    databaseEngine: sqlite:////tmp/benji.sqlite
+    defaultStorage: storage-1
+    storages:
+      - name: storage-1
+        storageId: 1
+        module: file
+        configuration:
+          path: /tmp/benji-data
+    ios:
+      - name: file
+        module: file
+
+  crontab: []
+  volumes: []
+  volumeMounts: []
+
+fsfreeze:
+  enabled: false
+
+  image:
+    registry: docker.io
+    repository: centos
+    tag: 7
+    pullPolicy: IfNotPresent
+
+  resources: {}
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+# Running the database backend on the same cluster could be dangerous!
+# Please consider the implications.
+postgresql:
+  enabled: false
+  postgresqlUsername: benji
+  postgresqlDatabase: benji
+  postgresqlPassword: secret
+
+pushgateway:
+  image:
+    registry: docker.io
+    repository: prom/pushgateway
+    tag: v0.8.0
+    pullPolicy: IfNotPresent
+  nameOverride: pushgateway

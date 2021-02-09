@@ -5,8 +5,8 @@ Installation
 ============
 
 Release versions of Benji are available on PyPi and can installed via `pip`. In addition there are two container images:
-One generic image and an extended one for the use with Kubernetes. The generic ``elementalnet/benji`` image is the
-easiest and fastest way to try out Benji but can also be used in production. It includes all dependencies and extra
+One generic image and an extended one for the use with Kubernetes. The generic ``ghcr.io/elementalnet/benji`` image is
+the easiest and fastest way to try out Benji but can also be used in production. It includes all dependencies and extra
 features listed below (including RBD and iSCSI support). See section :ref:`container` for more information about the
 images.
 

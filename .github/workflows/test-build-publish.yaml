@@ -1,0 +1,312 @@
+name: test-build-publish
+
+on: push
+
+env:
+  PYTHONUNBUFFERED: "1"
+  UNITTEST_QUIET: "1"
+  # UNITTEST_SKIP_POSTGESQL: "1"
+  # UNITTEST_SKIP_S3: "1"
+  UNITTEST_SKIP_B2: "1"
+  UNITTEST_SKIP_NBD: "1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - '3.6'
+          - '3.7'
+          - '3.8'
+          - '3.9'
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Benji and its dependencies into the virtual environment
+        shell: bash
+        run: |
+          pip install --upgrade setuptools pip
+          pip install --upgrade '.[s3,b2,compression,dev,doc]'
+          pip freeze
+
+      - name: Set up tests
+        shell: bash
+        run: |
+          make -C tests/minio-setup up
+          make -C tests/postgresql-setup up
+
+      - name: Run tests
+        shell: bash
+        run: |
+          python -m unittest discover -v -t src -s src/benji/tests
+          python setup.py sdist
+
+      - name: Teardown tests
+        shell: bash
+        run: |
+          make -C tests/minio-setup down
+          make -C tests/postgresql-setup down
+
+  lint-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v2
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.5.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.0.1
+
+      - name: Run chart-testing (lint)
+        run: ct lint --all
+
+#  install-chart:
+#    runs-on: ubuntu-latest
+#    needs: lint-chart
+#    strategy:
+#      matrix:
+#        k8s:
+#          - v1.17.5
+#          - v1.18.4
+#          - v1.20.2
+#    steps:
+#      - name: Checkout repository files
+#        uses: actions/checkout@v2
+#
+#      - name: Set up Helm
+#        uses: azure/setup-helm@v1
+#        with:
+#          version: v3.5.2
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v2
+#        with:
+#          python-version: 3.9
+#
+#      - name: Set up chart-testing
+#        uses: helm/chart-testing-action@v2.0.1
+#
+#      - name: Create a kind cluster
+#        uses: helm/kind-action@v1.1.0
+#        with:
+#          version: v0.10.0
+#          node_image: kindest/node:${{ matrix.k8s }}
+#
+#      - name: Run chart-testing (install)
+#        run: ct install --all --debug
+
+  build-and-publish-container-images:
+    needs:
+      - test
+      - lint-chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v2
+        with:
+          # This is needed so that maint-scripts/get-version-miniver works properly.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Determine branch and version
+        id: version
+        shell: bash
+        run: |
+          set -ueo pipefail
+
+          branch="${GITHUB_REF#refs/heads/}"
+          echo "::debug::Setting branch to ${branch}"
+          echo "::set-output name=branch::${branch}"
+
+          version="$(./maint-scripts/get-version-miniver)"
+          echo "::debug::Setting version to $version"
+          echo "::set-output name=version::${version}"
+
+          # Remove labels for public version
+          public_version=${version%+*}
+          echo "::debug::Setting public_version to $public_version"
+          echo "::set-output name=public_version::${public_version}"
+
+          if [[ $version =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
+            echo '::set-output name=release::true'
+          else
+            echo '::set-output name=release::false'
+          fi
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CONTAINER_REGISTRY_PAT }}
+
+      - name: Determine branch and container image arguments
+        id: args
+        shell: bash
+        run: |
+          echo "::set-output name=vcs_ref::$(git rev-parse --short HEAD)"
+          echo "::set-output name=build_date::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+      - name: Build and push benji (release)
+        uses: docker/build-push-action@v2
+        if: "steps.version.outputs.release == 'true'"
+        with:
+          context: .
+          file: ./images/benji/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/benji:latest
+            ghcr.io/${{ github.repository_owner }}/benji:${{ steps.version.outputs.version }}
+          build-args: |
+            VCS_REF=${{ steps.args.outputs.vcs_ref }}
+            BUILD_DATE=${{ steps.args.outputs.build_date }}
+            VCS_URL=https://github.com/${{ github.repository }}
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build and push benji (pre-release)
+        uses: docker/build-push-action@v2
+        if: "steps.version.outputs.release == 'false'"
+        with:
+          context: .
+          file: ./images/benji/Dockerfile
+          platforms: linux/amd64
+          push: true
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/benji:${{ steps.version.outputs.branch }}
+          cache-to: type=inline
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/benji:${{ steps.version.outputs.branch }}
+          build-args: |
+            VCS_REF=${{ steps.args.outputs.vcs_ref }}
+            BUILD_DATE=${{ steps.args.outputs.build_date }}
+            VCS_URL=https://github.com/${{ github.repository }}
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build and push benji-k8s (release)
+        uses: docker/build-push-action@v2
+        if: "steps.version.outputs.release == 'true'"
+        with:
+          context: .
+          file: ./images/benji-k8s/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/benji-k8s:latest
+            ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.version }}
+          build-args: |
+            VCS_REF=${{ steps.args.outputs.vcs_ref }}
+            BUILD_DATE=${{ steps.args.outputs.build_date }}
+            VCS_URL=https://github.com/${{ github.repository }}
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build and push benji-k8s (pre-release)
+        uses: docker/build-push-action@v2
+        if: "steps.version.outputs.release == 'false'"
+        with:
+          context: .
+          file: ./images/benji-k8s/Dockerfile
+          platforms: linux/amd64
+          push: true
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.branch }}
+          cache-to: type=inline
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.branch }}
+          build-args: |
+            BASE_TAG=${{ steps.version.outputs.branch }}
+            VCS_REF=${{ steps.args.outputs.vcs_ref }}
+            BUILD_DATE=${{ steps.args.outputs.build_date }}
+            VCS_URL=https://github.com/${{ github.repository }}
+            VERSION=${{ steps.version.outputs.version }}
+
+  build-and-publish-pypi-artifacts:
+    needs:
+      - test
+      - lint-chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository files
+        uses: actions/checkout@v2
+        with:
+          # This is needed so that maint-scripts/get-version-miniver works properly.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: Determine branch and version
+        id: version
+        shell: bash
+        run: |
+          set -ueo pipefail
+
+          branch="${GITHUB_REF#refs/heads/}"
+          echo "::debug::Setting branch to ${branch}"
+          echo "::set-output name=branch::${branch}"
+
+          version="$(./maint-scripts/get-version-miniver)"
+          echo "::debug::Setting version to $version"
+          echo "::set-output name=version::${version}"
+
+          # Remove labels for public version
+          public_version=${version%+*}
+          echo "::debug::Setting public_version to $public_version"
+          echo "::set-output name=public_version::${public_version}"
+
+          if [[ $version =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
+            echo '::set-output name=release::true'
+          else
+            echo '::set-output name=release::false'
+          fi
+
+      - name: Install tools for generating the PyPI artifacts
+        shell: bash
+        run: |
+          pip install --upgrade setuptools pip
+          pip install --upgrade build
+          pip freeze
+
+      - name: Build PyPI artifacts
+        shell: bash
+        run: |
+          python -m build --sdist --wheel --outdir dist/ .
+          ls -al dist/
+        env:
+          BENJI_VERSION_OVERRIDE: "${{ steps.version.outputs.public_version }}"
+
+      - name: Publish artifacts to PyPI (pre-release)
+        if: "steps.version.outputs.release == 'false'"
+        uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          password: ${{ secrets.PYPI_TEST_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+          skip_existing: true
+
+      - name: Publish artifacts to PyPI (release)
+        if: "steps.version.outputs.release == 'true'"
+        uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+

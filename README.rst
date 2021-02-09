@@ -1,5 +1,5 @@
-.. image:: https://img.shields.io/travis/elemental-lf/benji/master.svg?style=plastic&label=Travis%20CI
-    :target: https://travis-ci.org/elemental-lf/benji
+.. image:: https://img.shields.io/github/workflow/status/elemental-lf/benji/test-build-publish?style=plastic
+    :target: https://github.com/elemental-lf/benji/actions?query=branch%3Amaster
 
 .. image:: https://img.shields.io/pypi/l/benji.svg?style=plastic&label=License
     :target: https://pypi.org/project/benji/

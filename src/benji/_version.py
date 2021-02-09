@@ -22,6 +22,10 @@ STATIC_VERSION_FILE = '_static_version.py'
 
 
 def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
+    version_override = os.getenv('BENJI_VERSION_OVERRIDE', None)
+    if version_override:
+        return version_override
+
     version_info = get_static_version_info(version_file)
     if version_info['version'] == "__use_git__":
         version = get_version_from_git()
@@ -31,11 +35,6 @@ def get_version(version_file: str = STATIC_VERSION_FILE) -> str:
             version = Version("unknown", None, None)
         return pep440_format(version)
     else:
-        if version_info['version'] == "unknown":
-            # This is the version info injected into images
-            image_version = os.getenv('IMAGE_VERSION', None)
-            if image_version is not None:
-                return image_version
         return version_info['version']
 
 

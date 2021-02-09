@@ -2,7 +2,7 @@ timeZone: Europe/Berlin
 
 benji:
   image:
-    registry: docker.io
+    registry: ghcr.io
     repository: elementalnet/benji-k8s
     tag: latest
     pullPolicy: Always
@@ -70,7 +70,7 @@ benji:
       readOnly: true
 
 fsfreeze:
-  enabled: True
+  enabled: true
 
   image:
     registry: docker.io
