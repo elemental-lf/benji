@@ -323,7 +323,7 @@ for pvc in pvcs:
             pool, image = options['pool'], options['image']
     elif (hasattr(pv.spec, 'csi')
             and hasattr(pv.spec.csi, 'driver')
-            and pv.spec.csi.driver == 'rook-ceph.rbd.csi.ceph.com'
+            and pv.spec.csi.driver in ('rook-ceph.rbd.csi.ceph.com', 'rbd.csi.ceph.com')
             and hasattr(pv.spec.csi, 'volume_handle')
             and pv.spec.csi.volume_handle
             and hasattr(pv.spec.csi, 'volume_attributes')
