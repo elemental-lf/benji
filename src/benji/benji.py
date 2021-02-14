@@ -82,7 +82,11 @@ class Benji(ReprMixIn, AbstractContextManager):
         If base_version_uid is given, this is taken as the base, otherwise
         a pure sparse version is created.
         """
-        storage_id = Storage.get_by_name(storage_name).id if storage_name else None
+        if storage_name:
+            new_storage = Storage.get_by_name(storage_name)
+        else:
+            new_storage = Storage.get_by_name(self._default_storage_name)
+
         old_blocks_iter: Optional[Iterator[Block]] = None
         if base_version_uid:
             if not base_version_locking and not Locking.is_version_locked(base_version_uid):
@@ -92,9 +96,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                 raise UsageError('You can only base a new version on a valid old version.')
             if block_size is not None and old_version.block_size != block_size:
                 raise UsageError('You cannot base a new version on an old version with a different block size.')
-            if storage_id is not None and old_version.storage_id != storage_id:
-                raise UsageError('Base version and new version have to be in the same storage.')
-            new_storage_id = old_version.storage_id
+            if old_version.storage != new_storage:
+                raise UsageError(f'Base version and new version have to be in the same storage ({old_version.storage.name} != {new_storage.name}).')
 
             base_version = Version.get_by_uid(base_version_uid)
             old_blocks_iter = base_version.blocks
@@ -106,7 +109,6 @@ class Benji(ReprMixIn, AbstractContextManager):
 
             new_version_block_size = old_version.block_size
         else:
-            new_storage_id = storage_id or Storage.get_by_name(self._default_storage_name).id
             if size is None:
                 raise InternalError('Size needs to be specified if there is no base version.')
             new_size = size
@@ -125,7 +127,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                                      snapshot=snapshot,
                                      size=new_size,
                                      block_size=new_version_block_size,
-                                     storage_id=new_storage_id,
+                                     storage_id=new_storage.id,
                                      status=VersionStatus.incomplete)
             Locking.lock_version(version.uid, reason='Preparing version')
 
