@@ -825,6 +825,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     raise InputDataError('Source changed in regions outside of ones indicated by the hints.')
             logger.info('Finished sanity check. Checked {} blocks.'.format(read_jobs))
 
+        logger.info(f'Starting backup of {io.sanitized_url} to storage {version.storage.name}, the newly created version is {version.uid}.')
         try:
             storage = StorageFactory.get_by_name(version.storage.name)
             read_jobs = 0
@@ -970,7 +971,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         Locking.unlock_version(version.uid)
         notify(self._process_name)
-        logger.info('New version {} created, backup successful.'.format(version.uid))
+        logger.info('Backup successful.'.format(version.uid))
         return version
 
     def cleanup(self, dt: int = 3600, override_lock: bool = False) -> None:

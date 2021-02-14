@@ -31,6 +31,17 @@ class IOBase(ReprMixIn, metaclass=ABCMeta):
         return self._parsed_url
 
     @property
+    def sanitized_url(self) -> str:
+        # This assumes that sensitive information is either contained in the username, password, params,
+        # query or fragment part of the URL. If not, this property could be overridden by the subclass.
+        return parse.ParseResult(scheme=self._parsed_url.scheme,
+                                 netloc=self._parsed_url.netloc.split('@')[-1],
+                                 path=self._parsed_url.path,
+                                 params='',
+                                 query='',
+                                 fragment='').geturl()
+
+    @property
     def block_size(self):
         return self._block_size
 
