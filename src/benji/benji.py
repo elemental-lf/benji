@@ -478,7 +478,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     version.volume))
                 getattr(self, method)(version.uid, block_percentage=block_percentage, history=history)
             except ScrubbingError as exception:
-                logger.error(exception)
+                logger.error(str(exception))
                 errors.append(version)
             except AlreadyLocked:
                 logger.warning(f'Skipping version {version.uid}, it is locked. ')
