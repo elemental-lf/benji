@@ -334,6 +334,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             if not version.status.is_deep_scrubbable():
                 raise ScrubbingError('Version {} cannot be deep-scrubbed, it has a status of {}.'.format(
                     version_uid, version.status.name))
+            # This only outputs a warning to let the user know that the version it not valid to begin with.
             if not version.status.is_valid():
                 logger.warn('Version {} has a status of {}.'.format(version_uid, version.status.name))
 
@@ -397,9 +398,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                                          block.idx, version_uid, block.uid,
                                          self._block_hash.data_hexdigest(source_data)[:16], data_checksum[:16]))
                         valid = False
-                        # We are not setting the block invalid here because
-                        # when the block is there AND the checksum is good,
-                        # then the source is probably invalid.
+                        # We are not setting the block invalid here because when the block exists and the checksum is
+                        # correct then the source is probably invalid.
                         source_mismatch = True
 
                 if history:
