@@ -57,7 +57,7 @@ class SmokeTestCase(BenjiTestCaseBase):
         old_size = 0
         init_database = True
         image_filename = os.path.join(testpath, 'image')
-        block_size = random.sample({512, 1024, 2048, 4096}, 1)[0]
+        block_size = random.sample([512, 1024, 2048, 4096], 1)[0]
         scrub_history = BlockUidHistory()
         deep_scrub_history = BlockUidHistory()
         storage_name = 's1'
