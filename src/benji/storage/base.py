@@ -247,13 +247,13 @@ class StorageBase(ReprMixIn, metaclass=ABCMeta):
             t2 = time.time()
         except FileNotFoundError as exception:
             raise InvalidBlockException(
-                'Object metadata or data of block {} (UID{}) not found.'.format(block.idx, block.uid),
+                'Object metadata or data of block {} (UID {}) not found.'.format(block.idx, block.uid),
                 block) from exception
 
         try:
             metadata = self._decode_metadata(metadata_json=metadata_json, key=key, data_length=data_length)
         except (KeyError, ValueError) as exception:
-            raise InvalidBlockException('Object metadata of block {} (UID{}) is invalid.'.format(block.idx, block.uid),
+            raise InvalidBlockException('Object metadata of block {} (UID {}) is invalid.'.format(block.idx, block.uid),
                                         block) from exception
 
         if self._CHECKSUM_KEY not in metadata:
