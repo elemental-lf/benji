@@ -11,6 +11,15 @@ env:
   UNITTEST_SKIP_NBD: "1"
 
 jobs:
+  cancel:
+    name: 'Cancel previous workflow runs'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: styfle/cancel-workflow-action@0.8.0
+        with:
+          workflow_id: test-build-publish.yaml
+          access_token: ${{ github.token }}
   test:
     runs-on: ubuntu-latest
     strategy:
