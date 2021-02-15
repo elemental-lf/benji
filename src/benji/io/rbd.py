@@ -7,9 +7,9 @@ from typing import Tuple, Optional, Union, Iterator
 from urllib.parse import parse_qs
 
 import rados
+
 # noinspection PyUnresolvedReferences
 import rbd
-
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError
@@ -158,7 +158,9 @@ class IO(IOBase):
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
-            data = image.read(offset, block.size, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
+            # LIBRADOS_OP_FLAG_FADVISE_DONTNEED: Indicates read data will not be accessed in the near future (by anyone)
+            # LIBRADOS_OP_FLAG_FADVISE_NOCACHE: Indicates read data will not be accessed again (by *this* client)
+            data = image.read(offset, block.size, rados.LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
         t2 = time.time()
 
         if not data:

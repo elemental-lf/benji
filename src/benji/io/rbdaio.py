@@ -9,9 +9,9 @@ from typing import Tuple, Optional, Union, Iterator, Deque
 from urllib.parse import parse_qs
 
 import rados
+
 # noinspection PyUnresolvedReferences
 import rbd
-
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
 from benji.exception import UsageError, ConfigurationError
@@ -243,7 +243,9 @@ class IO(IOBase):
 
             self._submitted_aio_writes.acquire()
             offset = block.idx * self.block_size
-            self._rbd_image.aio_write(data, offset, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
+            # LIBRADOS_OP_FLAG_FADVISE_DONTNEED: Indicates read data will not be accessed in the near future (by anyone)
+            # LIBRADOS_OP_FLAG_FADVISE_NOCACHE: Indicates read data will not be accessed again (by *this* client)
+            self._rbd_image.aio_write(data, offset, aio_callback, rados.LIBRADOS_OP_FLAG_FADVISE_NOCACHE)
             self._outstanding_aio_writes += 1
 
     def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
