@@ -62,20 +62,27 @@ Benji only backups changed blocks. It can do this in two different ways:
 
 1. **By reading the whole image**: Benji reads and calculates a checksum for each block. The checksum is then looked
    up in the database. If a block with the same checksum is found, only a reference to this block is saved. Otherwise
-   a new block is created and saved to the storage.
+   a new block is created and saved to the storage. This is actually the deduplication of Benji at work.
 
 2. **By using a hints file**: The hints file is a JSON formatted list of (offset, size, usage) tuples (see
    :ref:`hints_file`). Each tuple indicates if a specific region of the image is used at all or if it has changed
-   since the last backup. The format of the hints file understood by Benji matches the output of
-   ``rbd diff … --format=json``. If a hints file is specified Benji only reads and checksums blocks hinted at by the
-   hints file. The checksum is then again looked up in the database. If a block with the same checksum is found, only
-   a reference to this block is saved. Otherwise a new block is created and saved to the storage.
-   The hints file is passed via the ``--rbd-hints`` option to ``benji backup``. It is not Ceph RBD specific per se and
-   could also be used in other scenarios like the backup of LVM snapshots.
+   relative to the last backup. The last backup is specified as a reference to an older *version* (called the base
+   *version*). This base *version* must correspond to the snapshot of the last backup.
 
-.. NOTE:: Benji does **forward-incremental backups**. In contrast to other backup modes, there is no need to create
-    another full backup after the first one. From a restore standpoint all versions are full backups (sometimes
-    called a synthetic full backup).
+   The format of the hints file understood by Benji matches the output of ``rbd diff … --format=json``. If a hints file
+   is specified Benji **only reads and checksums blocks hinted at by the hints file**. The checksum is then again looked
+   up in the database. If a block with the same checksum is found, only a reference to this block is saved. Otherwise
+   a new block is created and saved to the storage. The hints file is passed via the ``--rbd-hints`` option to
+   ``benji backup``. It is not Ceph RBD specific per se and could also be used in other scenarios like the backup of
+   LVM snapshots.
+
+   Benji does a partial sanity check on the provided hints by randomly picking a small percentage of blocks that should
+   not have changed. If Benji detects that at least one block has changed after all the backup will not start and Benji
+   will terminate.
+
+   If a base version is specified the new *version* will reside in the same storage as the base version. If the user
+   specifies a different storage than the storage of the base version directly on the command line or indirectly by
+   setting the ``defaultStorage`` option in the configuration file Benji will terminate with an error.
 
 .. NOTE:: If Benji detects that a backup source's size has changed, Benji will assume that the image was extended at the
     end. This is normally the case when you resize partitions or when extending logical volumes or Ceph RBD images.
@@ -117,13 +124,17 @@ Manually
 
 In this example, we will backup an RBD image called ``vm1`` which is in the pool ``pool``.
 
-1. Create an initial backup::
+1. Creating an initial backup::
 
     $ rbd snap create pool/vm1@backup1
     $ rbd diff --whole-object pool/vm1@backup1 --format=json > /tmp/vm1.diff
     $ benji backup --snapshot-name backup1 --rbd-hints /tmp/vm1.diff rbd:pool/vm1@backup1 vm1
 
-2. Create a differential backup::
+.. NOTE:: Supplying hints to Benji is useful even with an initial backup as the hints will indicate which blocks are
+    used and which are unused and so sparse. This will speed up the backup process significantly depending on how many
+    blocks are actually sparse.
+
+2. Creating a differential backup::
 
     $ rbd snap create pool/vm1@backup2
     $ rbd diff --whole-object pool/vm1@backup2 --from-snap backup1 --format=json > /tmp/vm1.diff
@@ -136,6 +147,7 @@ In this example, we will backup an RBD image called ``vm1`` which is in the pool
 
     # And backup (replace V001234567 with the version UID you identified in the last step)
     $ benji backup --snapshot-name backup2 --rbd-hints /tmp/vm1.diff --base-version V001234567 rbd:pool/vm1@backup2 vm1
+
 
 Automation
 ^^^^^^^^^^
@@ -197,7 +209,7 @@ One possible use case for different block sizes is backing up LVM volumes and Ce
 installation. While for Ceph RBD four megabytes is usually the best size, LVM volumes might profit from a smaller
 block size.
 
-If you want to base a new version on an old version (as it can be the case when doing a differential backup) the block
+If you want to base a new version on an old version (as it can be the case when doing a incremental backup) the block
 size of the old and new version must match. Benji will terminate with an error if this is not the case.
 
 Labeling *Versions*
