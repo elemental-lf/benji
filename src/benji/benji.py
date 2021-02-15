@@ -221,17 +221,17 @@ class Benji(ReprMixIn, AbstractContextManager):
                 'Preparing {} of version {} ({:.1f}%)'.format('deep-scrub' if deep_scrub else 'scrub', version.uid,
                                                               (i + 1) / version.blocks_count * 100))
             if not block.uid:
-                logger.debug('{} of block {} (UID {}) skipped (sparse).'.format('Deep-scrub' if deep_scrub else 'Scrub',
-                                                                                block.idx, block.uid))
+                logger.debug('{} of block {} of version {} (UID {}) skipped (sparse).'.format(
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
-                logger.debug('{} of block {} (UID {}) skipped (already seen).'.format(
-                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid))
+                logger.debug('{} of block {} of version {} (UID {}) skipped (already seen).'.format(
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid))
                 continue
-            # i != 0 makes sure that we always scrub at least one block (the first in this case)
+            # i != 0 ensures that we always scrub at least one block (the first in this case)
             if i != 0 and block_percentage < 100 and random.randint(1, 100) > block_percentage:
-                logger.debug('{} of block {} (UID {}) skipped (percentile is {}).'.format(
-                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid, block_percentage))
+                logger.debug('{} of block {} of version {} (UID {}) skipped (percentile is {}).'.format(
+                    'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid, block_percentage))
             else:
                 storage.read_block_async(block, metadata_only=(not deep_scrub))
                 read_jobs += 1
@@ -373,8 +373,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                 try:
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
-                    logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
-                        block.idx, block.uid, exception))
+                    logger.error('Metadata check failed, block {} of version {} (UID {}) is invalid: {}'.format(
+                        block.idx, version_uid, block.uid, exception))
                     Version.set_block_invalid(block.uid)
                     valid = False
                     continue
@@ -382,8 +382,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                 data_checksum = self._block_hash.data_hexdigest(data)
                 if data_checksum != block.checksum:
                     logger.error(
-                        'Checksum mismatch during deep-scrub of block {} (UID {}) (is: {}... should-be: {}...).'.format(
-                            block.idx, block.uid, data_checksum[:16],
+                        'Checksum mismatch during deep-scrub of block {} of version {} (UID {}) (is: {}... should-be: {}...).'.format(
+                            block.idx, version_uid, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
                     affected_version_uids.extend(Version.set_block_invalid(block.uid))
                     valid = False
@@ -392,9 +392,9 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if source:
                     source_data = io.read_sync(block)
                     if source_data != data:
-                        logger.error('Source data has changed for block {} (UID {}) (is: {}... should-be: {}...). '
-                                     'Won\'t set this block to invalid, because the source looks wrong.'.format(
-                                         block.idx, block.uid,
+                        logger.error('Source data has changed for block {} of version {} (UID {}) (is: {}... should-be: {}...). '
+                                     'Will not mark this block as invalid, because the source looks wrong.'.format(
+                                         block.idx, version_uid, block.uid,
                                          self._block_hash.data_hexdigest(source_data)[:16], data_checksum[:16]))
                         valid = False
                         # We are not setting the block invalid here because
@@ -440,7 +440,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             if version.uid in affected_version_uids:
                 affected_version_uids.remove(version.uid)
             if affected_version_uids:
-                logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.' \
+                logger.error('Marked the following versions as invalid too because of invalid blocks: {}.' \
                              .format(', '.join(sorted(affected_version_uids))))
 
         Locking.unlock_version(version_uid)
