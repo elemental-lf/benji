@@ -18,8 +18,10 @@ LABEL org.label-schema.schema-version="1.0" \
 RUN curl -o /usr/bin/kubectl -sSL https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
 	chmod a+x /usr/bin/kubectl
 
-COPY images/benji-k8s/bin/ $VENV_DIR/bin/
-RUN chmod a+x $VENV_DIR/bin/*
+COPY images/benji-k8s/k8s-tools /k8s-tools-source
+RUN . $VENV_DIR/bin/activate && \
+    pip install /k8s-tools-source && \
+    rm -rf /k8s-tools-source
 
 ENTRYPOINT ["/bin/bash"]
 CMD ["-c", "sleep 3650d"]

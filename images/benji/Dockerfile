@@ -15,7 +15,7 @@ RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
 		python36-devel python36-pip python36-libs python36-setuptools \
 		python36-rbd python36-rados
 
-ADD . /benji-source/
+COPY . /benji-source/
 
 RUN python3.6 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \

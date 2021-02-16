@@ -250,114 +250,89 @@ def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, vers
     raise exception
 
 
-# This arguments parser tries to mimic kubectl
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
+def main():
+    # This arguments parser tries to mimic kubectl
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 
-parser.add_argument('-n',
-                    '--namespace',
-                    metavar='namespace',
-                    dest='namespace',
-                    default=None,
-                    help='Filter on namespace')
-parser.add_argument('-l',
-                    '--selector',
-                    metavar='label-selector',
-                    dest='labels',
-                    action='append',
-                    default=[],
-                    help='Filter PVCs on label selector')
-parser.add_argument('--field-selector',
-                    metavar='field-selector',
-                    dest='fields',
-                    action='append',
-                    default=[],
-                    help='Filter PVCs on field selector')
+    parser.add_argument('-n',
+                        '--namespace',
+                        metavar='namespace',
+                        dest='namespace',
+                        default=None,
+                        help='Filter on namespace')
+    parser.add_argument('-l',
+                        '--selector',
+                        metavar='label-selector',
+                        dest='labels',
+                        action='append',
+                        default=[],
+                        help='Filter PVCs on label selector')
+    parser.add_argument('--field-selector',
+                        metavar='field-selector',
+                        dest='fields',
+                        action='append',
+                        default=[],
+                        help='Filter PVCs on field selector')
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-benji.helpers.kubernetes.load_config()
-core_v1_api = kubernetes.client.CoreV1Api()
+    benji.helpers.kubernetes.load_config()
+    core_v1_api = kubernetes.client.CoreV1Api()
 
-labels = ','.join(args.labels)
-fields = ','.join(args.fields)
+    labels = ','.join(args.labels)
+    fields = ','.join(args.fields)
 
-if args.namespace is not None:
-    logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
-else:
-    logger.info(f'Backing up all PVCs in all namespaces.')
-if labels != '':
-    logger.info(f'Matching label(s) {labels}.')
-if fields != '':
-    logger.info(f'Matching field(s) {fields}.')
+    if args.namespace is not None:
+        logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
+    else:
+        logger.info(f'Backing up all PVCs in all namespaces.')
+    if labels != '':
+        logger.info(f'Matching label(s) {labels}.')
+    if fields != '':
+        logger.info(f'Matching field(s) {fields}.')
 
-if args.namespace is not None:
-    pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
-                                                               watch=False,
-                                                               label_selector=labels,
-                                                               field_selector=fields).items
-else:
-    pvcs = core_v1_api.list_persistent_volume_claim_for_all_namespaces(watch=False,
-                                                                       label_selector=labels,
-                                                                       field_selector=fields).items
-if len(pvcs) == 0:
-    logger.info('Not matching PVCs found.')
+    if args.namespace is not None:
+        pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
+                                                                   watch=False,
+                                                                   label_selector=labels,
+                                                                   field_selector=fields).items
+    else:
+        pvcs = core_v1_api.list_persistent_volume_claim_for_all_namespaces(watch=False,
+                                                                           label_selector=labels,
+                                                                           field_selector=fields).items
+    if len(pvcs) == 0:
+        logger.info('Not matching PVCs found.')
+        sys.exit(0)
+
+    for pvc in pvcs:
+        if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+            continue
+
+        pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+        pool, image = benji.helpers.kubernetes.determine_rbd_image_from_pv(pv)
+        if pool is None or image is None:
+            continue
+
+        volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
+        # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
+        version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
+
+        version_labels = {
+            'benji-backup.me/instance': settings.benji_instance,
+            'benji-backup.me/ceph-pool': pool,
+            'benji-backup.me/ceph-rbd-image': image,
+            'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
+            'benji-backup.me/k8s-pvc': pvc.metadata.name,
+            'benji-backup.me/k8s-pv': pv.metadata.name
+        }
+
+        context = {'pvc': pvc}
+        ceph.backup(volume=volume,
+                    pool=pool,
+                    image=image,
+                    version_uid=version_uid,
+                    version_labels=version_labels,
+                    context=context)
+
+    prometheus.push(prometheus.backup_registry)
     sys.exit(0)
-
-for pvc in pvcs:
-    if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
-        continue
-
-    pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-
-    pool, image = None, None
-
-    if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
-        # Native Kubernetes RBD PV
-        pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
-    elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
-            pv.spec.flex_volume, 'driver'):
-        # Rook Ceph PV
-        options = pv.spec.flex_volume.options
-        driver = pv.spec.flex_volume.driver
-        if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
-            pool, image = options['pool'], options['image']
-    elif (hasattr(pv.spec, 'csi')
-            and hasattr(pv.spec.csi, 'driver')
-            and pv.spec.csi.driver in ('rook-ceph.rbd.csi.ceph.com', 'rbd.csi.ceph.com')
-            and hasattr(pv.spec.csi, 'volume_handle')
-            and pv.spec.csi.volume_handle
-            and hasattr(pv.spec.csi, 'volume_attributes')
-            and pv.spec.csi.volume_attributes.get('pool')):
-        attributes = pv.spec.csi.volume_attributes
-        volume_handle_parts = pv.spec.csi.volume_handle.split('-')
-        if len(volume_handle_parts) >= 9:
-          image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
-          image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts)-5:])
-          pool, image = attributes['pool'], image_prefix + image_suffix
-
-    if pool is None or image is None:
-        continue
-
-    volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
-    # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
-    version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}' [:246], _random_string(6))
-
-    version_labels = {
-        'benji-backup.me/instance': settings.benji_instance,
-        'benji-backup.me/ceph-pool': pool,
-        'benji-backup.me/ceph-rbd-image': image,
-        'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
-        'benji-backup.me/k8s-pvc': pvc.metadata.name,
-        'benji-backup.me/k8s-pv': pv.metadata.name
-    }
-
-    context = {'pvc': pvc}
-    ceph.backup(volume=volume,
-                pool=pool,
-                image=image,
-                version_uid=version_uid,
-                version_labels=version_labels,
-                context=context)
-
-prometheus.push(prometheus.backup_registry)
-sys.exit(0)

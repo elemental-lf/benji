@@ -5,7 +5,7 @@ import re
 import time
 import uuid
 from subprocess import TimeoutExpired, CalledProcessError
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 import kubernetes
 from kubernetes.stream import stream
@@ -49,7 +49,11 @@ def service_account_namespace() -> str:
 # connect_post_namespaced_pod_exec. The examples from the kubernetes client use connect_get_namespaced_pod_exec instead.
 # There shouldn't be any differences in functionality but the settings in the RBAC role are different (create vs. get)
 # which is why we follow the kubectl implementation here.
-def pod_exec(args: List[str], *, name: str, namespace: str, container: str = None,
+def pod_exec(args: List[str],
+             *,
+             name: str,
+             namespace: str,
+             container: str = None,
              timeout: float = float("inf")) -> Tuple[str, str]:
     core_v1_api = kubernetes.client.CoreV1Api()
     logger.debug('Running command in pod {}/{}: {}.'.format(namespace, name, ' '.join(args)))
@@ -171,8 +175,8 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
     return core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
 
 
-def create_pvc(pvc_name: str, pvc_namespace: int,
-               pvc_size: str, pvc_storage_class: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
+def create_pvc(pvc_name: str, pvc_namespace: int, pvc_size: str,
+               pvc_storage_class: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -193,6 +197,34 @@ def create_pvc(pvc_name: str, pvc_namespace: int,
 
     core_v1_api = kubernetes.client.CoreV1Api()
     return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
+
+
+def determine_rbd_image_from_pv(
+        pv: kubernetes.client.models.v1_persistent_volume.V1PersistentVolume) -> Tuple[Optional[str], Optional[str]]:
+    pool, image = None, None
+
+    if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
+        # Native Kubernetes RBD PV
+        pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
+    elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
+            pv.spec.flex_volume, 'driver'):
+        # Rook Ceph PV
+        options = pv.spec.flex_volume.options
+        driver = pv.spec.flex_volume.driver
+        if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
+            pool, image = options['pool'], options['image']
+    elif (hasattr(pv.spec, 'csi') and hasattr(pv.spec.csi, 'driver') and
+          pv.spec.csi.driver in ('rook-ceph.rbd.csi.ceph.com', 'rbd.csi.ceph.com') and
+          hasattr(pv.spec.csi, 'volume_handle') and pv.spec.csi.volume_handle and
+          hasattr(pv.spec.csi, 'volume_attributes') and pv.spec.csi.volume_attributes.get('pool')):
+        attributes = pv.spec.csi.volume_attributes
+        volume_handle_parts = pv.spec.csi.volume_handle.split('-')
+        if len(volume_handle_parts) >= 9:
+            image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
+            image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts) - 5:])
+            pool, image = attributes['pool'], image_prefix + image_suffix
+
+    return pool, image
 
 
 # This is taken from https://github.com/kubernetes-client/python/pull/855 with minimal changes.
