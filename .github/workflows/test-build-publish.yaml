@@ -187,6 +187,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/benji:latest
             ghcr.io/${{ github.repository_owner }}/benji:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/benji:${{ steps.version.outputs.branch }}
           build-args: |
             VCS_REF=${{ steps.args.outputs.vcs_ref }}
             BUILD_DATE=${{ steps.args.outputs.build_date }}
@@ -222,7 +223,10 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/benji-k8s:latest
             ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.branch }}
           build-args: |
+            IMAGE_REPOSITORY=ghcr.io
+            BASE_TAG=${{ steps.version.outputs.branch }}
             VCS_REF=${{ steps.args.outputs.vcs_ref }}
             BUILD_DATE=${{ steps.args.outputs.build_date }}
             VCS_URL=https://github.com/${{ github.repository }}
@@ -241,6 +245,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/benji-k8s:${{ steps.version.outputs.branch }}
           build-args: |
+            IMAGE_REPOSITORY=ghcr.io
             BASE_TAG=${{ steps.version.outputs.branch }}
             VCS_REF=${{ steps.args.outputs.vcs_ref }}
             BUILD_DATE=${{ steps.args.outputs.build_date }}
