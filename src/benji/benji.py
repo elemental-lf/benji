@@ -278,7 +278,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids.extend(Version.set_block_invalid(entry.block.uid))
+                        affected_version_uids.extend(Version.set_block_valid(entry.block.uid, False))
                         valid = False
                         continue
                     else:
@@ -291,7 +291,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
                         block.idx, block.uid, exception))
-                    affected_version_uids.extend(Version.set_block_invalid(block.uid))
+                    affected_version_uids.extend(Version.set_block_valid(block.uid, False))
                     valid = False
                     continue
 
@@ -366,7 +366,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids.extend(Version.set_block_invalid(entry.block.uid))
+                        affected_version_uids.extend(Version.set_block_valid(entry.block.uid, False))
                         valid = False
                         continue
                     else:
@@ -379,7 +379,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} of version {} (UID {}) is invalid: {}'.format(
                         block.idx, version_uid, block.uid, exception))
-                    Version.set_block_invalid(block.uid)
+                    Version.set_block_valid(block.uid, False)
                     valid = False
                     continue
 
@@ -389,7 +389,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         'Checksum mismatch during deep-scrub of block {} of version {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.idx, version_uid, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
-                    affected_version_uids.extend(Version.set_block_invalid(block.uid))
+                    affected_version_uids.extend(Version.set_block_valid(block.uid, False))
                     valid = False
                     continue
 
@@ -405,6 +405,13 @@ class Benji(ReprMixIn, AbstractContextManager):
                         # correct then the source is probably invalid.
                         source_mismatch = True
 
+                if not block.valid:
+                    logger.info('Block {} of version {} (UID {}) passed revalidation, marking it as valid.'.format(
+                        block.idx, version_uid, block.uid))
+                    Version.set_block_valid(block.uid, True)
+
+                # Only add the block to the history if it is valid. This ensure that this block will also get flagged
+                # again when deep-scrubbing other versions containing it.
                 if history:
                     history.add(version.storage_id, block.uid)
 
@@ -611,7 +618,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     logger.error('Storage backend read failed: {}'.format(entry))
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, (KeyError, ValueError)):
-                        Version.set_block_invalid(block.uid)
+                        Version.set_block_valid(block.uid, False)
                         continue
                     else:
                         raise entry
@@ -626,7 +633,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     storage.check_block_metadata(block=block, data_length=len(data), metadata=metadata)
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block is invalid: {}'.format(exception))
-                    Version.set_block_invalid(block.uid)
+                    Version.set_block_valid(block.uid, False)
                     continue
 
                 data_checksum = self._block_hash.data_hexdigest(data)
@@ -635,7 +642,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                                  'block.valid: {}). Block restored is invalid.'.format(
                                      block.idx, block.uid, data_checksum[:16],
                                      cast(str, block.checksum)[:16], block.valid))  # We know that block.checksum is set
-                    Version.set_block_invalid(block.uid)
+                    Version.set_block_valid(block.uid, False)
                 else:
                     logger.debug('Restored block {} successfully ({} bytes).'.format(block.idx, block.size))
 

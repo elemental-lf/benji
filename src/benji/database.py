@@ -471,22 +471,30 @@ class Version(Base, ReprMixIn):
             raise
 
     @classmethod
-    def set_block_invalid(cls, block_uid: BlockUid) -> List[VersionUid]:
+    def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> List[VersionUid]:
         try:
-            affected_version_uids_query = Session.query(sqlalchemy.distinct(
-                Version.uid).label('uid')).join(Block).filter(Block.uid == block_uid)
-            affected_version_uids = [row.uid for row in affected_version_uids_query]
-            assert len(affected_version_uids) > 0
+            # Can't use DISTINCT here as PostgreSQL doesn't support DISTINCT together with FOR UPDATE.
+            affected_version_uids_query = Session.query(cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid)
+            if not valid:
+                affected_version_uids_query = affected_version_uids_query.with_for_update()
+            # Use a set to replace the missing DISTINCT above.
+            affected_version_uids = set([row.uid for row in affected_version_uids_query])
 
-            Session.query(Block).filter(Block.uid == block_uid).update({'valid': False}, synchronize_session=False)
-            Session.commit()
+            Session.query(Block).filter(Block.uid == block_uid).update({'valid': valid}, synchronize_session=False)
 
-            logger.error('Marked block with UID {} as invalid. Affected versions: {}.'.format(
-                block_uid, ', '.join(affected_version_uids)))
+            if len(affected_version_uids) > 0:
+                logger.error('Marked block with UID {} as {} in all affected versions: {}.'.format(
+                    block_uid, 'valid' if valid else 'invalid', ', '.join(affected_version_uids)))
 
-            for version_uid in affected_version_uids:
-                version = Version.get_by_uid(version_uid)
-                version.set(status=VersionStatus.invalid)
+                # We won't mark any versions as valid because they might contain other invalid blocks.
+                if not valid:
+                    Session.query(cls).filter(cls.uid.in_(affected_version_uids)).update(
+                        {'status': VersionStatus.invalid}, synchronize_session=False)
+            else:
+                # Version could have been deleted in the meantime
+                logger.warning('No version was affected by marking block with UID {} as {}.'.format(
+                    block_uid, 'valid' if valid else 'invalid'))
+
             Session.commit()
         except:
             Session.rollback()

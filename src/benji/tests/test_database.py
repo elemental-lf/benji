@@ -379,7 +379,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             datetime.datetime.now(tz=tz.tzlocal()).strftime("%Y-%m-%dT%H:%M:%S")))
         self.assertEqual(3, len(versions))
 
-    def test_set_block_invalid(self):
+    def test_set_block_valid(self):
         Storage.sync('s-1', storage_id=1)
         versions = []
         good_uid = BlockUid(1, 2)
@@ -404,11 +404,25 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
             versions.append(version)
 
-        Version.set_block_invalid(bad_uid)
+        for i in range(6):
+            self.assertEqual(VersionStatus.valid, versions[i].status)
+            self.assertTrue(list(versions[i].blocks)[0].valid)
+
+        Version.set_block_valid(bad_uid, False)
 
         for i in range(3):
             self.assertEqual(VersionStatus.invalid, versions[i].status)
             self.assertFalse(list(versions[i].blocks)[0].valid)
+
+        for i in range(3, 6):
+            self.assertEqual(VersionStatus.valid, versions[i].status)
+            self.assertTrue(list(versions[i].blocks)[0].valid)
+
+        Version.set_block_valid(bad_uid, True)
+
+        for i in range(3):
+            self.assertEqual(VersionStatus.invalid, versions[i].status)
+            self.assertTrue(list(versions[i].blocks)[0].valid)
 
         for i in range(3, 6):
             self.assertEqual(VersionStatus.valid, versions[i].status)
