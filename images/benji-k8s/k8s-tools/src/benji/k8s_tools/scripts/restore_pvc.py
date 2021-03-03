@@ -7,9 +7,9 @@ import time
 import kubernetes
 from kubernetes.client.rest import ApiException
 
-import benji.helpers.kubernetes
 import benji.helpers.settings as settings
 import benji.helpers.utils as utils
+import benji.k8s_tools.kubernetes
 
 utils.setup_logging()
 logger = logging.getLogger()
@@ -40,7 +40,7 @@ def main():
 
     args = parser.parse_args()
 
-    benji.helpers.kubernetes.load_config()
+    benji.k8s_tools.kubernetes.load_config()
 
     logger.info(f'Restoring version {args.version_uid} to PVC {args.pvc_namespace}/{args.pvc_name}.')
 
@@ -68,14 +68,14 @@ def main():
             raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
     if pvc is None:
-        pvc = benji.helpers.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size,
-                                                  args.pvc_storage_class)
+        pvc = benji.k8s_tools.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size,
+                                                    args.pvc_storage_class)
     else:
         if not args.force:
             raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
 
         # I don't really understand why capacity is a regular dict and not an object. Oh, well.
-        pvc_size = int(benji.helpers.kubernetes.parse_quantity(pvc.status.capacity['storage']))
+        pvc_size = int(benji.k8s_tools.kubernetes.parse_quantity(pvc.status.capacity['storage']))
         if pvc_size < version_size:
             raise RuntimeError(f'Existing PVC is too small to hold version {args.version_uid} ({pvc_size} < {version_size}).')
         elif pvc_size > version_size:
@@ -89,7 +89,7 @@ def main():
         time.sleep(1)
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    pool, image = benji.helpers.kubernetes.determine_rbd_image_from_pv(pv)
+    pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
     if pool is None or image is None:
         raise RuntimeError(f'Unable to determine PersistentVolume pool or image for {pv.metadata.name}')
 
