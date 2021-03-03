@@ -11,10 +11,10 @@ import kubernetes
 import kubernetes.stream
 
 import benji.helpers.ceph as ceph
-import benji.helpers.kubernetes
 import benji.helpers.prometheus as prometheus
 import benji.helpers.settings as settings
 import benji.helpers.utils as utils
+import benji.k8s_tools.kubernetes
 
 FSFREEZE_TIMEOUT = 15
 FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
@@ -40,7 +40,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
 
     core_v1_api = kubernetes.client.CoreV1Api()
     pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
-    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
+    service_account_namespace = benji.k8s_tools.kubernetes.service_account_namespace()
     if hasattr(pvc.metadata,
                'annotations') and FSFREEZE_ANNOTATION in pvc.metadata.annotations and pvc.metadata.annotations[FSFREEZE_ANNOTATION] == 'yes':
         pods = core_v1_api.list_namespaced_pod(service_account_namespace, watch=False).items
@@ -59,7 +59,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
                 break
 
         if pv_fsfreeze:
-            pods = core_v1_api.list_namespaced_pod(benji.helpers.kubernetes.service_account_namespace(),
+            pods = core_v1_api.list_namespaced_pod(benji.k8s_tools.kubernetes.service_account_namespace(),
                                                    label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
 
             if not pods:
@@ -105,21 +105,21 @@ def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, sn
 
     logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip} (pod {pv_fsfreeze_pod}).')
 
-    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
+    service_account_namespace = benji.k8s_tools.kubernetes.service_account_namespace()
     try:
-        benji.helpers.kubernetes.pod_exec(['fsfreeze', '--freeze', pv_mount_point],
-                                          name=pv_fsfreeze_pod,
-                                          namespace=service_account_namespace,
-                                          container=FSFREEZE_CONTAINER_NAME,
-                                          timeout=FSFREEZE_TIMEOUT)
+        benji.k8s_tools.kubernetes.pod_exec(['fsfreeze', '--freeze', pv_mount_point],
+                                            name=pv_fsfreeze_pod,
+                                            namespace=service_account_namespace,
+                                            container=FSFREEZE_CONTAINER_NAME,
+                                            timeout=FSFREEZE_TIMEOUT)
     except Exception as exception:
         # Try to unfreeze in any case
         try:
-            benji.helpers.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
-                                              name=pv_fsfreeze_pod,
-                                              namespace=service_account_namespace,
-                                              container=FSFREEZE_CONTAINER_NAME,
-                                              timeout=FSFREEZE_TIMEOUT)
+            benji.k8s_tools.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
+                                                name=pv_fsfreeze_pod,
+                                                namespace=service_account_namespace,
+                                                container=FSFREEZE_CONTAINER_NAME,
+                                                timeout=FSFREEZE_TIMEOUT)
         except Exception as exception_2:
             raise exception_2 from exception
         else:
@@ -142,17 +142,17 @@ def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, image
 
     logger.info(f'Unfreezing filesystem {pv_mount_point} on host {pv_host_ip}.')
 
-    service_account_namespace = benji.helpers.kubernetes.service_account_namespace()
+    service_account_namespace = benji.k8s_tools.kubernetes.service_account_namespace()
     for delay in FSFREEZE_UNFREEZE_TRIES:
         if delay > 0:
             time.sleep(delay)
 
         try:
-            benji.helpers.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
-                                              name=pv_fsfreeze_pod,
-                                              namespace=service_account_namespace,
-                                              container=FSFREEZE_CONTAINER_NAME,
-                                              timeout=FSFREEZE_TIMEOUT)
+            benji.k8s_tools.kubernetes.pod_exec(['fsfreeze', '--unfreeze', pv_mount_point],
+                                                name=pv_fsfreeze_pod,
+                                                namespace=service_account_namespace,
+                                                container=FSFREEZE_CONTAINER_NAME,
+                                                timeout=FSFREEZE_TIMEOUT)
         except Exception:
             pass
         else:
@@ -185,12 +185,12 @@ def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[st
     pvc_uid = context['pvc'].metadata.uid
 
     try:
-        benji.helpers.kubernetes.create_pvc_event(type=type,
-                                                  reason=reason,
-                                                  message=message,
-                                                  pvc_namespace=pvc_namespace,
-                                                  pvc_name=pvc_name,
-                                                  pvc_uid=pvc_uid)
+        benji.k8s_tools.kubernetes.create_pvc_event(type=type,
+                                                    reason=reason,
+                                                    message=message,
+                                                    pvc_namespace=pvc_namespace,
+                                                    pvc_name=pvc_name,
+                                                    pvc_uid=pvc_uid)
     except Exception as exception:
         logger.error(f'Creating Kubernetes event for {pvc_namespace}/{pvc_name} failed with a {exception.__class__.__name__} exception: {str(exception)}')
         pass
@@ -213,7 +213,7 @@ def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, ve
     prometheus.backup_status_succeeded.labels(volume=volume).set(1)
 
     try:
-        benji.helpers.kubernetes.create_pvc_event(
+        benji.k8s_tools.kubernetes.create_pvc_event(
             type='Normal',
             reason='SuccessfulBackup',
             message=f'Backup to {version["uid"]} completed successfully (took {completion_time - start_time:.0f} seconds).',
@@ -240,12 +240,12 @@ def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, vers
     prometheus.backup_runtime_seconds.labels(volume=volume).set(completion_time - start_time)
     prometheus.backup_status_failed.labels(volume=volume).set(1)
 
-    benji.helpers.kubernetes.create_pvc_event(type='Warning',
-                                              reason='FailedBackup',
-                                              message=f'Backup failed: {exception.__class__.__name__} {str(exception)}',
-                                              pvc_namespace=pvc_namespace,
-                                              pvc_name=pvc_name,
-                                              pvc_uid=pvc_uid)
+    benji.k8s_tools.kubernetes.create_pvc_event(type='Warning',
+                                                reason='FailedBackup',
+                                                message=f'Backup failed: {exception.__class__.__name__} {str(exception)}',
+                                                pvc_namespace=pvc_namespace,
+                                                pvc_name=pvc_name,
+                                                pvc_uid=pvc_uid)
 
     raise exception
 
@@ -276,7 +276,7 @@ def main():
 
     args = parser.parse_args()
 
-    benji.helpers.kubernetes.load_config()
+    benji.k8s_tools.kubernetes.load_config()
     core_v1_api = kubernetes.client.CoreV1Api()
 
     labels = ','.join(args.labels)
@@ -309,7 +309,7 @@ def main():
             continue
 
         pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-        pool, image = benji.helpers.kubernetes.determine_rbd_image_from_pv(pv)
+        pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
         if pool is None or image is None:
             continue
 
