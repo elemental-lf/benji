@@ -2,7 +2,7 @@ include MANIFEST.in README.rst TODO.rst LICENSE.txt .dockerignore
 include .style.yapf alembic
 recursive-include docs *.rst *.html Makefile *.gif *.png *.cast *.js *.css
 recursive-include src *.py *.ini *.yaml
-recursive-include images Dockerfile *.sh
+recursive-include images Dockerfile ceph.repo bashrc *.sh *.in *.py
 recursive-include scripts *.sh
 recursive-include charts *.yaml *.tpl .helmignore
 recursive-include tests Makefile *.yaml
