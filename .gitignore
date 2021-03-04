@@ -35,7 +35,7 @@ tags
 dist
 .github-access-token
 *~
-.b2-application-key.txt
-.b2-account-id.txt
+.b2-application-key*.txt
+.b2-account-id*.txt
 tests-scratch
 .mypy_cache
