@@ -122,8 +122,15 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          python -m unittest discover -v -t src -s src/benji/tests
-          python setup.py sdist
+          pytest src/benji/tests/
+
+      - name: Run packaging test
+        shell: bash
+        run: |
+          python -m build --sdist --wheel --outdir dist/ .
+          ls -al dist/
+        env:
+          BENJI_VERSION_OVERRIDE: "${{ needs.gather_info.outputs.public_version }}"
 
       - name: Tear down tests
         shell: bash
