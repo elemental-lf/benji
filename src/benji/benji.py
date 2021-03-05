@@ -13,8 +13,6 @@ from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator
 
-from diskcache import Cache
-
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import Database, VersionUid, Version, Block, \
@@ -27,6 +25,7 @@ from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.storage.factory import StorageFactory
 from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
+from diskcache import Cache
 
 
 class Benji(ReprMixIn, AbstractContextManager):
@@ -276,7 +275,9 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.idx, entry.block.uid, entry))
+                        logger.error('Block {} (UID {}) is invalid: {}{}'.format(
+                            entry.block.idx, entry.block.uid, entry,
+                            f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
                         affected_version_uids.extend(Version.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
@@ -362,7 +363,9 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
-                        logger.error('Block {} (UID {}) is invalid: {}'.format(entry.block.idx, entry.block.uid, entry))
+                        logger.error('Block {} (UID {}) is invalid: {}{}'.format(
+                            entry.block.idx, entry.block.uid, entry,
+                            f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
                         affected_version_uids.extend(Version.set_block_invalid(entry.block.uid))
                         valid = False
                         continue
