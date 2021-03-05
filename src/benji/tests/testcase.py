@@ -13,6 +13,22 @@ from benji.logging import init_logging
 from benji.storage.factory import StorageFactory
 
 
+class _TestPath:
+
+    def __init__(self):
+        self.path = '../../../tests-scratch/benji-test_' + TestCaseBase.random_string(16)
+        for dir in [
+                self.path,
+                self.path + '/data',
+                self.path + '/data-2',
+                self.path + '/lock',
+        ]:
+            os.makedirs(dir, exist_ok=True)
+
+    def close(self):
+        shutil.rmtree(self.path)
+
+
 class TestCaseBase:
 
     @staticmethod
@@ -27,24 +43,8 @@ class TestCaseBase:
     def random_hex(length):
         return hexlify(bytes(random.getrandbits(8) for _ in range(length))).decode('ascii')
 
-    class TestPath():
-
-        def __init__(self):
-            self.path = '../../../tests-scratch/benji-test_' + TestCaseBase.random_string(16)
-            for dir in [
-                    self.path,
-                    self.path + '/data',
-                    self.path + '/data-2',
-                    self.path + '/lock',
-            ]:
-                os.makedirs(dir, exist_ok=True)
-
-        def close(self):
-            pass
-            shutil.rmtree(self.path)
-
     def setUp(self):
-        self.testpath = self.TestPath()
+        self.testpath = _TestPath()
         init_logging(console_level=logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
                      console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
