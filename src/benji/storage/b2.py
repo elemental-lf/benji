@@ -3,17 +3,16 @@
 import logging
 import random
 import time
-from typing import Any, Union, Iterable, Tuple
+from typing import Union, Iterable, Tuple
 
-import b2
-import b2.api
-import b2.file_version
-from b2.account_info.exception import MissingAccountData
-from b2.account_info.in_memory import InMemoryAccountInfo
-from b2.account_info.sqlite_account_info import SqliteAccountInfo
-from b2.download_dest import DownloadDestBytes
-from b2.exception import B2Error, FileNotPresent, B2ConnectionError
-
+import b2sdk
+import b2sdk.api
+import b2sdk.file_version
+from b2sdk.account_info.exception import MissingAccountData
+from b2sdk.account_info.in_memory import InMemoryAccountInfo
+from b2sdk.account_info.sqlite_account_info import SqliteAccountInfo
+from b2sdk.download_dest import DownloadDestBytes
+from b2sdk.exception import B2Error, FileNotPresent
 from benji.config import Config, ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
@@ -46,13 +45,15 @@ class Storage(ReadCacheStorageBase):
         else:
             account_info = InMemoryAccountInfo()
 
-        b2.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(module_configuration, 'uploadAttempts', types=int)
+        b2sdk.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(module_configuration,
+                                                                       'uploadAttempts',
+                                                                       types=int)
 
         self._write_object_attempts = Config.get_from_dict(module_configuration, 'writeObjectAttempts', types=int)
 
         self._read_object_attempts = Config.get_from_dict(module_configuration, 'readObjectAttempts', types=int)
 
-        self.service = b2.api.B2Api(account_info)
+        self.service = b2sdk.api.B2Api(account_info)
         if account_info_file is not None:
             try:
                 # This temporarily disables all logging as the b2 library does some very verbose logging
@@ -67,16 +68,23 @@ class Storage(ReadCacheStorageBase):
 
         self.bucket = self.service.get_bucket_by_name(bucket_name)
 
+        # Check bucket configuration
+        bucket_type = self.bucket.type_
+        if bucket_type != 'allPrivate':
+            logger.warning(f'The type of bucket {bucket_name} is {bucket_type}. '
+                           'It is strongly recommended to set it to allPrivate.')
+
     def _write_object(self, key: str, data: bytes) -> None:
         for i in range(self._write_object_attempts):
             try:
                 self.bucket.upload_bytes(data, key)
-            except (B2Error, B2ConnectionError):
+            # This is overly broad!
+            except B2Error as exception:
                 if i + 1 < self._write_object_attempts:
                     sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
                     logger.warning(
-                        'Upload of object with key {} to B2 failed repeatedly, will try again in {:.2f} seconds.'.format(
-                            key, sleep_time))
+                        'Upload of object with key {} to B2 failed repeatedly, will try again in {:.2f} seconds. Exception thrown was {}'.format(
+                            key, sleep_time, str(exception)))
                     time.sleep(sleep_time)
                     continue
                 raise
@@ -88,15 +96,16 @@ class Storage(ReadCacheStorageBase):
             data_io = DownloadDestBytes()
             try:
                 self.bucket.download_file_by_name(key, data_io)
-            except (B2Error, B2ConnectionError) as exception:
+            # This is overly broad!
+            except B2Error as exception:
                 if isinstance(exception, FileNotPresent):
                     raise FileNotFoundError('Object {} not found.'.format(key)) from None
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
                         logger.warning(
-                            'Download of object with key {} to B2 failed, will try again in {:.2f} seconds.'.format(
-                                key, sleep_time))
+                            'Download of object with key {} to B2 failed, will try again in {:.2f} seconds. Exception thrown was {}'.format(
+                                key, sleep_time, str(exception)))
                         time.sleep(sleep_time)
                         continue
                     raise
@@ -105,39 +114,31 @@ class Storage(ReadCacheStorageBase):
 
         return data_io.get_bytes_written()
 
-    def _file_info(self, key: str) -> Any:
-        r = self.bucket.list_file_names(key, 1)
-        for entry in r['files']:
-            file_version_info = b2.file_version.FileVersionInfoFactory.from_api_response(entry)
-            if file_version_info.file_name == key:
-                return file_version_info
-
-        raise FileNotFoundError('Object {} not found.'.format(key))
-
     def _read_object_length(self, key: str) -> int:
         for i in range(self._read_object_attempts):
             try:
-                file_version_info = self._file_info(key)
-            except (B2Error, B2ConnectionError) as exception:
+                file_version_info = self.bucket.get_file_info_by_name(key)
+            # This is overly broad!
+            except B2Error as exception:
                 if isinstance(exception, FileNotPresent):
                     raise FileNotFoundError('Object {} not found.'.format(key)) from None
                 else:
                     if i + 1 < self._read_object_attempts:
                         sleep_time = (2**(i + 1)) + (random.randint(0, 1000) / 1000)
                         logger.warning(
-                            'Object length request for key {} to B2 failed, will try again in {:.2f} seconds.'.format(
-                                key, sleep_time))
+                            'Object length request for key {} to B2 failed, will try again in {:.2f} seconds. Exception thrown was {}'.format(
+                                key, sleep_time, str(exception)))
                         time.sleep(sleep_time)
                         continue
                     raise
             else:
                 break
 
-        return file_version_info.size
+        return int(file_version_info.size)
 
     def _rm_object(self, key: str) -> None:
         try:
-            file_version_info = self._file_info(key)
+            file_version_info = self.bucket.get_file_info_by_name(key)
             self.bucket.delete_file_version(file_version_info.id_, file_version_info.file_name)
         except B2Error as exception:
             if isinstance(exception, FileNotPresent):
@@ -157,10 +158,11 @@ class Storage(ReadCacheStorageBase):
     #             errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str = None,
+    def _list_objects(self,
+                      prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
-        for file_version_info, folder_name in self.bucket.find_versions(folder_to_list=prefix if prefix is not None else '',
-                                                                        recursive=True):
+        for file_version_info, folder_name in self.bucket.ls(folder_to_list=prefix if prefix is not None else '',
+                                                             recursive=True):
             if include_size:
                 yield file_version_info.file_name, file_version_info.size
             else:

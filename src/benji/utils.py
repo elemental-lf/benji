@@ -12,16 +12,15 @@ from datetime import datetime
 from importlib import import_module
 from threading import Lock
 from time import time
-from typing import List, Tuple, Union, Any, Optional, Dict, Iterator
+from typing import List, Tuple, Union, Any, Optional, Dict, Iterator, Sequence
 
 import setproctitle
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2
-from dateutil import tz
-from dateutil.relativedelta import relativedelta
-
 from benji.exception import ConfigurationError, UsageError
 from benji.logging import logger
+from dateutil import tz
+from dateutil.relativedelta import relativedelta
 
 
 def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
@@ -71,6 +70,23 @@ def derive_key(*, password, salt, iterations, key_length):
 
 def random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:
     return ''.join(random.choice(characters) for _ in range(length))
+
+
+def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
+    split_keys = [key.split('.') for key in keys]
+
+    KeyDoesNotExist = object()
+    for split_key in split_keys:
+        position = obj
+        for component in split_key:
+            try:
+                position = position.get(component, KeyDoesNotExist)
+            except AttributeError:
+                return False
+            if position is KeyDoesNotExist:
+                return False
+
+    return True
 
 
 class BlockHash:

@@ -19,8 +19,8 @@ class StorageTestB2(StorageTestCase, TestCase):
           configuration:
             accountIdFile: ../../../.b2-account-id.txt
             applicationKeyFile: ../../../.b2-application-key.txt
-            bucketName: elemental-backy2-test
-            accountInfoFile: {testpath}/b2_account_info
+            bucketName: elemental-benji-test-1
+            accountInfoFile: ../../../.b2-account-info
             writeObjectAttempts: 3
             readObjectAttempts: 3
             uploadAttempts: 5

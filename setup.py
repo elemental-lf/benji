@@ -68,7 +68,7 @@ Topic :: System :: Archiving :: Backup
     ],
     extras_require={
         's3': ['boto3>=1.15.0'],
-        'b2': ['b2>=1.3.2,<=1.3.8'],
+        'b2': ['b2sdk>=1.4.0,<2'],
         'compression': ['zstandard>=0.9.0'],
         # For RBD support the packages supplied by the Linux distribution or the Ceph team should be used,
         # possible packages names include: python-rados, python-rbd or python3-rados, python3-rbd

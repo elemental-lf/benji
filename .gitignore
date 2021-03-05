@@ -37,5 +37,6 @@ dist
 *~
 .b2-application-key*.txt
 .b2-account-id*.txt
+.b2-account-info*
 tests-scratch
 .mypy_cache

@@ -583,7 +583,7 @@ class SmokeTestCasePostgreSQL_S3_ReadCache(SmokeTestCase, TestCase):
 @unittest.skipIf(
     os.environ.get('UNITTEST_SKIP_POSTGRESQL', False) or os.environ.get('UNITTEST_SKIP_B2', False),
     'No PostgreSQL or B2 setup available.')
-class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
+class SmokeTestCasePostgreSQL_B2(SmokeTestCase, TestCase):
 
     CONFIG = """
             configurationVersion: '1'
@@ -603,8 +603,8 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
               configuration:
                 accountIdFile: ../../../.b2-account-id.txt
                 applicationKeyFile: ../../../.b2-application-key.txt
-                bucketName: elemental-backy2-test
-                accountInfoFile: {testpath}/b2_account_info
+                bucketName: elemental-benji-test-1
+                accountInfoFile: ../../../.b2-account-info
                 writeObjectAttempts: 3
                 readObjectAttempts: 3
                 uploadAttempts: 5
@@ -619,10 +619,10 @@ class SmokeTestCasePostgreSQL_B2(SmokeTestCase):
             - name: s2
               module: b2
               configuration:
-                accountIdFile: ../../../.b2-account-id.txt
-                applicationKeyFile: ../../../.b2-application-key.txt
-                bucketName: elemental-backy2-legolas
-                accountInfoFile: {testpath}/b2_account_info
+                accountIdFile: ../../../.b2-account-id-2.txt
+                applicationKeyFile: ../../../.b2-application-key-2.txt
+                bucketName: elemental-benji-test-2
+                accountInfoFile: ../../../.b2-account-info-2
                 writeObjectAttempts: 3
                 readObjectAttempts: 3
                 uploadAttempts: 5
