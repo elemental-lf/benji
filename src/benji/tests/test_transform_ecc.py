@@ -1,68 +1,74 @@
 import base64
-from unittest import TestCase
 
+import pytest
 from Crypto.PublicKey import ECC
-
 from benji.config import ConfigDict
 from benji.transform.aes_256_gcm_ecc import Transform
 
+CURVE = 'NIST P-384'
 
-class TestEccTransform(TestCase):
 
-    @staticmethod
-    def _get_transform_args(key):
-        conf = ConfigDict()
-        conf['eccKey'] = base64.b64encode(Transform._pack_envelope_key(key)).decode('ascii')
-        conf['eccCurve'] = key.curve
-        return Transform(name='EccTest', config=None, module_configuration=conf)
+def _get_transform(key):
+    conf = ConfigDict()
+    conf['eccKey'] = base64.b64encode(Transform._pack_envelope_key(key)).decode('ascii')
+    conf['eccCurve'] = key.curve
+    return Transform(name='EccTest', config=None, module_configuration=conf)
 
-    @classmethod
-    def _get_transform(cls):
-        curve = 'NIST P-384'
-        return cls._get_transform_args(ECC.generate(curve=curve))
 
-    def setUp(self):
-        self.ecc_transform = self._get_transform()
+@pytest.fixture
+def ecc_transform():
+    return _get_transform(ECC.generate(curve=CURVE))
 
-    def test_decryption(self):
-        data = b'THIS IS A TEST'
-        enc_data, materials = self.ecc_transform.encapsulate(data=data)
-        self.assertTrue(enc_data)
-        self.assertNotEqual(enc_data, data)
 
-        dec_data = self.ecc_transform.decapsulate(data=enc_data, materials=materials)
-        self.assertEqual(dec_data, data)
+@pytest.fixture
+def ecc_transform_2():
+    return _get_transform(ECC.generate(curve=CURVE))
 
-    def test_encryption_random(self):
-        ecc_transform_ref = self._get_transform()
 
-        data = b'THIS IS A TEST'
+@pytest.fixture
+def ecc_transform_pubkey_only():
+    return _get_transform(ECC.generate(curve=CURVE).public_key())
 
-        enc_data, materials = self.ecc_transform.encapsulate(data=data)
-        enc_data_ref, materials_ref = ecc_transform_ref.encapsulate(data=data)
 
-        self.assertNotEqual(enc_data, enc_data_ref)
-        self.assertNotEqual(materials['envelope_key'], materials_ref['envelope_key'])
+def test_decryption(ecc_transform):
+    data = b'THIS IS A TEST'
+    enc_data, materials = ecc_transform.encapsulate(data=data)
+    assert enc_data
+    assert enc_data != data
 
-    def test_envelope_key(self):
-        data = b'THIS IS A TEST'
+    dec_data = ecc_transform.decapsulate(data=enc_data, materials=materials)
+    assert dec_data == data
 
-        enc_data, materials = self.ecc_transform.encapsulate(data=data)
 
-        envelope_key = self.ecc_transform._unpack_envelope_key(base64.b64decode(materials['envelope_key']))
-        self.assertFalse(envelope_key.has_private())
+def test_encryption_random(ecc_transform, ecc_transform_2):
+    data = b'THIS IS A TEST'
 
-    def test_pubkey_only_encryption(self):
-        curve = 'NIST P-384'
-        ecc_transform = self._get_transform_args(ECC.generate(curve=curve).public_key())
-        data = b'THIS IS A TEST'
-        enc_data, materials = ecc_transform.encapsulate(data=data)
-        self.assertTrue(enc_data)
-        self.assertNotEqual(enc_data, data)
+    enc_data, materials = ecc_transform.encapsulate(data=data)
+    enc_data_ref, materials_ref = ecc_transform_2.encapsulate(data=data)
 
-    def test_pubkey_only_decryption(self):
-        curve = 'NIST P-384'
-        ecc_transform = self._get_transform_args(ECC.generate(curve=curve).public_key())
-        data = b'THIS IS A TEST'
-        enc_data, materials = ecc_transform.encapsulate(data=data)
-        self.assertRaises(ValueError, ecc_transform.decapsulate, data=enc_data, materials=materials)
+    assert enc_data != enc_data_ref
+    assert materials['envelope_key'] != materials_ref['envelope_key']
+
+
+def test_envelope_key(ecc_transform):
+    data = b'THIS IS A TEST'
+
+    enc_data, materials = ecc_transform.encapsulate(data=data)
+
+    envelope_key = ecc_transform._unpack_envelope_key(base64.b64decode(materials['envelope_key']))
+    assert not envelope_key.has_private()
+
+
+def test_pubkey_only_encryption(ecc_transform_pubkey_only):
+    data = b'THIS IS A TEST'
+    enc_data, materials = ecc_transform_pubkey_only.encapsulate(data=data)
+
+    assert enc_data
+    assert enc_data != data
+
+
+def test_pubkey_only_decryption(ecc_transform_pubkey_only):
+    data = b'THIS IS A TEST'
+    enc_data, materials = ecc_transform_pubkey_only.encapsulate(data=data)
+    with pytest.raises(ValueError):
+        ecc_transform_pubkey_only.decapsulate(data=enc_data, materials=materials)
