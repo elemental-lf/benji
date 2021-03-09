@@ -469,7 +469,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         if version_percentage and versions:
             # Will always scrub at least one matching version
-            versions = set(random.sample(versions, max(1, int(len(versions) * version_percentage / 100))))
+            versions = set(random.sample(list(versions), max(1, int(len(versions) * version_percentage / 100))))
         if not versions:
             logger.info('No matching versions found.')
             return [], []
