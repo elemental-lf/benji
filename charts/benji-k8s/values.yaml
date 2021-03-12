@@ -3,7 +3,7 @@ timeZone: Europe/Berlin
 benji:
   image:
     registry: ghcr.io
-    repository: elementalnet/benji-k8s
+    repository: elemental-lf/benji-k8s
     tag: latest
     pullPolicy: Always
 
