@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Configuration &mdash; Benji Backup 0.11.0+dirty documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.14.0+dirty documentation</title>
   
 
   
@@ -17,7 +17,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -30,7 +33,6 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script src="_static/asciinema/asciinema-player.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -53,7 +55,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Benji Backup
+            <a href="index.html" class="icon icon-home"> Benji Backup
           
 
           
@@ -202,10 +204,7 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-chart">Helm Chart</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
@@ -261,6 +260,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -272,7 +273,7 @@
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/configuration.rst.txt" rel="nofollow"> View page source</a>
           
         
@@ -978,6 +979,26 @@ signatures.</p>
 during some operations. Enabling this setting prevents this by not sending
 this HTTP header. This needs to be set to <code class="docutils literal notranslate"><span class="pre">true</span></code> when connecting
 to a Google Storage bucket.</p>
+<ul class="simple">
+<li><p>name: <strong>connectTimeout</strong></p></li>
+<li><p>type: float</p></li>
+<li><p>default: 60.0</p></li>
+</ul>
+<p>This sets the connect timeout for S3 requests.</p>
+<ul class="simple">
+<li><p>name: <strong>readTimeout</strong></p></li>
+<li><p>type: float</p></li>
+<li><p>default: 60.0</p></li>
+</ul>
+<p>This sets the read timeout for S3 requests.</p>
+<ul class="simple">
+<li><p>name: <strong>maxAttempts</strong></p></li>
+<li><p>type: integer</p></li>
+<li><p>default: 5</p></li>
+</ul>
+<p>This sets the maximum number of attempts to complete an S3 request. It includes the
+initial request and so cannot be set lower than one. Benji uses the <code class="docutils literal notranslate"><span class="pre">standard</span></code> retry
+mode of the <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library.</p>
 </div>
 <div class="section" id="storage-module-b2">
 <h3>Storage Module b2<a class="headerlink" href="#storage-module-b2" title="Permalink to this headline">¶</a></h3>
@@ -1098,37 +1119,29 @@ have a dedicated instance for restores for example.</p>
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="backup.html" class="btn btn-neutral float-right" title="Backup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="backup.html" class="btn btn-neutral float-right" title="Backup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
+        &#169; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 

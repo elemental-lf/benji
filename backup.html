@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Backup &mdash; Benji Backup 0.11.0+dirty documentation</title>
+  <title>Backup &mdash; Benji Backup 0.14.0+dirty documentation</title>
   
 
   
@@ -17,7 +17,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -30,7 +33,6 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script src="_static/asciinema/asciinema-player.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -53,7 +55,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Benji Backup
+            <a href="index.html" class="icon icon-home"> Benji Backup
           
 
           
@@ -202,10 +204,7 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-chart">Helm Chart</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
@@ -261,6 +260,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -272,7 +273,7 @@
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/backup.rst.txt" rel="nofollow"> View page source</a>
           
         
@@ -368,25 +369,28 @@ option or by using <code class="docutils literal notranslate"><span class="pre">
 <div class="section" id="differential-backup">
 <span id="id1"></span><h2>Differential Backup<a class="headerlink" href="#differential-backup" title="Permalink to this headline">¶</a></h2>
 <p>Benji only backups changed blocks. It can do this in two different ways:</p>
-<ol class="arabic simple">
+<ol class="arabic">
 <li><p><strong>By reading the whole image</strong>: Benji reads and calculates a checksum for each block. The checksum is then looked
 up in the database. If a block with the same checksum is found, only a reference to this block is saved. Otherwise
-a new block is created and saved to the storage.</p></li>
+a new block is created and saved to the storage. This is actually the deduplication of Benji at work.</p></li>
 <li><p><strong>By using a hints file</strong>: The hints file is a JSON formatted list of (offset, size, usage) tuples (see
 <a class="reference internal" href="#hints-file"><span class="std std-ref">The Hints File</span></a>). Each tuple indicates if a specific region of the image is used at all or if it has changed
-since the last backup. The format of the hints file understood by Benji matches the output of
-<code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>. If a hints file is specified Benji only reads and checksums blocks hinted at by the
-hints file. The checksum is then again looked up in the database. If a block with the same checksum is found, only
-a reference to this block is saved. Otherwise a new block is created and saved to the storage.
-The hints file is passed via the <code class="docutils literal notranslate"><span class="pre">--rbd-hints</span></code> option to <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>. It is not Ceph RBD specific per se and
-could also be used in other scenarios like the backup of LVM snapshots.</p></li>
+relative to the last backup. The last backup is specified as a reference to an older <em>version</em> (called the base
+<em>version</em>). This base <em>version</em> must correspond to the snapshot of the last backup.</p>
+<p>The format of the hints file understood by Benji matches the output of <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span> <span class="pre">…</span> <span class="pre">--format=json</span></code>. If a hints file
+is specified Benji <strong>only reads and checksums blocks hinted at by the hints file</strong>. The checksum is then again looked
+up in the database. If a block with the same checksum is found, only a reference to this block is saved. Otherwise
+a new block is created and saved to the storage. The hints file is passed via the <code class="docutils literal notranslate"><span class="pre">--rbd-hints</span></code> option to
+<code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">backup</span></code>. It is not Ceph RBD specific per se and could also be used in other scenarios like the backup of
+LVM snapshots.</p>
+<p>Benji does a partial sanity check on the provided hints by randomly picking a small percentage of blocks that should
+not have changed. If Benji detects that at least one block has changed after all the backup will not start and Benji
+will terminate.</p>
+<p>If a base version is specified the new <em>version</em> will reside in the same storage as the base version. If the user
+specifies a different storage than the storage of the base version directly on the command line or indirectly by
+setting the <code class="docutils literal notranslate"><span class="pre">defaultStorage</span></code> option in the configuration file Benji will terminate with an error.</p>
+</li>
 </ol>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Benji does <strong>forward-incremental backups</strong>. In contrast to other backup modes, there is no need to create
-another full backup after the first one. From a restore standpoint all versions are full backups (sometimes
-called a synthetic full backup).</p>
-</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If Benji detects that a backup source’s size has changed, Benji will assume that the image was extended at the
@@ -426,14 +430,22 @@ this is a very fast process if the <em>fast-diff</em> feature is enabled. In thi
 <h5>Manually<a class="headerlink" href="#manually" title="Permalink to this headline">¶</a></h5>
 <p>In this example, we will backup an RBD image called <code class="docutils literal notranslate"><span class="pre">vm1</span></code> which is in the pool <code class="docutils literal notranslate"><span class="pre">pool</span></code>.</p>
 <ol class="arabic">
-<li><p>Create an initial backup:</p>
+<li><p>Creating an initial backup:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup1
 $ rbd diff --whole-object pool/vm1@backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
 $ benji backup --snapshot-name backup1 --rbd-hints /tmp/vm1.diff rbd:pool/vm1@backup1 vm1
 </pre></div>
 </div>
 </li>
-<li><p>Create a differential backup:</p>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Supplying hints to Benji is useful even with an initial backup as the hints will indicate which blocks are
+used and which are unused and so sparse. This will speed up the backup process significantly depending on how many
+blocks are actually sparse.</p>
+</div>
+<ol class="arabic" start="2">
+<li><p>Creating a differential backup:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ rbd snap create pool/vm1@backup2
 $ rbd diff --whole-object pool/vm1@backup2 --from-snap backup1 --format<span class="o">=</span>json &gt; /tmp/vm1.diff
 
@@ -511,7 +523,7 @@ usage.</p>
 <p>One possible use case for different block sizes is backing up LVM volumes and Ceph images with the same Benji
 installation. While for Ceph RBD four megabytes is usually the best size, LVM volumes might profit from a smaller
 block size.</p>
-<p>If you want to base a new version on an old version (as it can be the case when doing a differential backup) the block
+<p>If you want to base a new version on an old version (as it can be the case when doing a incremental backup) the block
 size of the old and new version must match. Benji will terminate with an error if this is not the case.</p>
 </div>
 <div class="section" id="labeling-versions">
@@ -559,37 +571,29 @@ multiple times to set multiple labels at once.</p>
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="scrub.html" class="btn btn-neutral float-right" title="Scrub" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="scrub.html" class="btn btn-neutral float-right" title="Scrub" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
+        &#169; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 

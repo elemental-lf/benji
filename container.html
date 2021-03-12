@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Containerized Benji &mdash; Benji Backup 0.11.0+dirty documentation</title>
+  <title>Containerized Benji &mdash; Benji Backup 0.14.0+dirty documentation</title>
   
 
   
@@ -17,7 +17,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -30,7 +33,6 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script src="_static/asciinema/asciinema-player.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -53,7 +55,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Benji Backup
+            <a href="index.html" class="icon icon-home"> Benji Backup
           
 
           
@@ -202,10 +204,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">benji-k8s</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#helm-chart">Helm Chart</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
@@ -261,6 +260,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -272,7 +273,7 @@
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/container.rst.txt" rel="nofollow"> View page source</a>
           
         
@@ -290,81 +291,75 @@
 <span id="container"></span><h1>Containerized Benji<a class="headerlink" href="#containerized-benji" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="images">
 <h2>Images<a class="headerlink" href="#images" title="Permalink to this headline">¶</a></h2>
+<p>The container images are hosted in the GitHub Container Registry:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ghcr.io/elemental-lf/benji:latest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ghcr.io/elemental-lf/benji-k8s:latest</span></code></p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">latest</span></code> tag always points to the latest released version. Images for all Git branches of the repository are
+available under their branch name, i.e. the current development version is available by referring to the <code class="docutils literal notranslate"><span class="pre">master</span></code> tag.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Older versions of the images are still available on Docker Hub, but no new images will be published there.</p>
+</div>
 <div class="section" id="benji">
 <h3>benji<a class="headerlink" href="#benji" title="Permalink to this headline">¶</a></h3>
-<p>This image is based on CentOS 7 but uses the newer Python versions provided by IUS. It includes Benji and its
-dependencies. Ceph support is also present.</p>
+<p>The images is based on CentOS 7. Ceph and iSCSI support are present.</p>
 <p>The Benji configuration should be put into <code class="docutils literal notranslate"><span class="pre">/etc/benji/benji.yaml</span></code>. Either by inheriting from this image and
 overwriting it or by mounting it directly into the container. By default a minimal test configuration is provided
 by the image.</p>
-<p>The default Docker entry point is just <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>.</p>
+<p>The default entry point is just <code class="docutils literal notranslate"><span class="pre">/bin/bash</span></code>.</p>
 <p>One use case for this image is for testing Benji:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker run --interactive --tty --rm elementalnet/benji
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker run --interactive --tty --rm ghcr.io/elemental-lf/benji:latest
 </pre></div>
 </div>
-<p>After that you can directly proceed with step 1 of the instructions
-in section <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a>.</p>
-<p>The second use case would be to get some real work done without directly installing Benji on the host. A series of
-scripts to facilitate the calling of Benji are provided under <code class="docutils literal notranslate"><span class="pre">/scripts</span></code> inside the container. They can also be found
-in the <code class="docutils literal notranslate"><span class="pre">scripts</span></code> directory of the source distribution. For an example of how to use these scripts please see
-<code class="docutils literal notranslate"><span class="pre">images/benji-k8s/scripts/benji-backup-pvc</span></code>.</p>
+<p>After that you can directly proceed with step 1 of the instructions in section <a class="reference internal" href="quickstart.html#quickstart"><span class="std std-ref">Quick Start</span></a>.</p>
 </div>
 <div class="section" id="benji-k8s">
 <h3>benji-k8s<a class="headerlink" href="#benji-k8s" title="Permalink to this headline">¶</a></h3>
-<p>This image is directly derived from the <code class="docutils literal notranslate"><span class="pre">benji</span></code> image above. It includes a framework to do periodic backups of
-Kubernetes  persistent volumes backed by Ceph RBD. To access Kubernetes <code class="docutils literal notranslate"><span class="pre">kubectl</span></code> is used.</p>
-<p>When the image is started a regular <code class="docutils literal notranslate"><span class="pre">crond</span></code> is launched. All periodic actions can be configured via
-<code class="docutils literal notranslate"><span class="pre">/benji/etc/crontab</span></code>. By default this file is empty but here is one possible example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">PROM_PUSH_GATEWAY</span><span class="o">=</span>:9091
-BENJI_INSTANCE:-benji-k8s
-<span class="m">00</span>  * * * * root benji-backup-pvc --all-namespaces -l <span class="s1">&#39;release in (prod)&#39;</span>
-<span class="m">03</span>  * * * * root benji-backup-pvc --namespace staging
-<span class="m">00</span> <span class="m">04</span> * * * root benji-command enforce latest3,hours24,days30,months3 <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
-<span class="m">00</span> <span class="m">05</span> * * * root benji-command cleanup
-<span class="m">30</span> <span class="m">05</span> * * * root benji-versions-status
-<span class="m">00</span> <span class="m">06</span> * * * root benji-command batch-deep-scrub --version-percentage <span class="m">10</span> --block-percentage <span class="m">33</span> <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
+<p>This image is directly derived from the <code class="docutils literal notranslate"><span class="pre">benji</span></code> image above. It includes a number of scripts to do backups of
+Kubernetes persistent volumes backed by Ceph RBD:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">benji-backup-pvc</span></code> for doing backups</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji-restore-pvc</span></code> for restore operations to either existing or new PVCs/PVs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji-command</span></code> for all other Benji commands</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">benji-versions-status</span></code> publishes the number of invalid or incomplete versions as Prometheus metrics</p></li>
+</ul>
+<p>The scripts provide support for volumes provisioned by the classic RBD volume provider, by Rook Ceph CSI and by
+Ceph CSI.</p>
+<p>Example usages:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benji-backup-pvc --all-namespaces -l <span class="s1">&#39;release in (prod)&#39;</span>
+benji-backup-pvc --namespace staging
+benji-command enforce latest3,hours24,days30,months3 <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
+benji-command cleanup
+benji-versions-status
+benji-command batch-deep-scrub --version-percentage <span class="m">10</span> --block-percentage <span class="m">33</span> <span class="s1">&#39;labels[&quot;benji-backup.me/instance&quot;] == &quot;benji-k8s&quot;&#39;</span>
 </pre></div>
 </div>
-<p>When the environment variables <code class="docutils literal notranslate"><span class="pre">PROM_PUSH_GATEWAY</span></code> and <code class="docutils literal notranslate"><span class="pre">BENJI_INSTANCE</span></code> are not set, they default to the above
-listed values.</p>
 <p>The backup script <code class="docutils literal notranslate"><span class="pre">benji-backup-pvc</span></code> first searches for <code class="docutils literal notranslate"><span class="pre">PersistemtVolumeClaims</span></code> matching the selector supplied on
 the command line. Direct backups of <code class="docutils literal notranslate"><span class="pre">PersistentVolumes</span></code> are currently not supported by this script.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>See <a class="reference external" href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors</a>
-for possible ways to construct your selector.</p>
+for possible ways to construct the selector.</p>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">enforce</span></code> should be called regularly to expire old backup versions. Also <code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">cleanup</span></code> needs
-to be executed once in a while to actually remove blocks that are no longer used from the storages.</p>
-<p>At the end of each command related <a class="reference external" href="https://prometheus.io/">Prometheus</a> metrics are pushed to the configured
-<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. If <code class="docutils literal notranslate"><span class="pre">PROM_PUSH_GATEWAY</span></code> is not set, this step is skipped.</p>
-<p>The backup script uses Ceph’s and Benji’s differential backup features if possible. Normally only the initial backup
-is a full backup. RBD snapshots names are generated with a prefix of <code class="docutils literal notranslate"><span class="pre">b-</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">enforce</span></code> should be called regularly to expire old backup <em>versions</em>. Also <code class="docutils literal notranslate"><span class="pre">benji-command</span> <span class="pre">cleanup</span></code>
+needs to be executed once in a while to actually remove blocks that are no longer used from the storages.</p>
+<p>At the end of each command <a class="reference external" href="https://prometheus.io/">Prometheus</a> metrics are pushed to the configured
+<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. The format of the variable is <code class="docutils literal notranslate"><span class="pre">host:port</span></code>. If <code class="docutils literal notranslate"><span class="pre">host</span></code>
+part is left blank localhost is assumed. If <code class="docutils literal notranslate"><span class="pre">PROM_PUSH_GATEWAY</span></code> is not set, this step is skipped.</p>
+<p>The backup script uses Ceph’s differential backup features if possible. Normally only the initial backup is a full
+backup. RBD snapshots names are generated with a prefix of <code class="docutils literal notranslate"><span class="pre">b-</span></code>.</p>
 </div>
 </div>
-<div class="section" id="helm-charts">
-<h2>Helm Charts<a class="headerlink" href="#helm-charts" title="Permalink to this headline">¶</a></h2>
-<p>Helm charts are the preferred way to deploy the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image.</p>
-<div class="section" id="id1">
-<h3>benji-k8s<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
-<p>Benji includes a Helm chart to use the Docker image of the same name. It consists
-of a Deployment and supporting resources and assumes that you have RBAC in place.
-The deployment is composed a two containers: One running the benji-k8s Docker image
-and another one running a <a class="reference external" href="https://prometheus.io/">Prometheus</a>
-<a class="reference external" href="https://github.com/prometheus/pushgateway">pushgateway</a>. These can be scraped
-by a Prometheus server and the Pod generated by the Deployment has annotations
-so that it can be detected automatically:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>annotations:
-  prometheus.io/port: <span class="s2">&quot;{{ .Values.pushgateway.port }}&quot;</span>
-  prometheus.io/scrape: <span class="s2">&quot;true&quot;</span>
-</pre></div>
-</div>
+<div class="section" id="helm-chart">
+<h2>Helm Chart<a class="headerlink" href="#helm-chart" title="Permalink to this headline">¶</a></h2>
+<p>The Helm chart is the preferred way to deploy the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The deployed resources create a service account which has the right to <em>get</em>,
 <em>list</em> and <em>watch</em> all PersistentVolume, PersistentVolumeClaim, Storageclasses and Pod resources in all
-namespaces. Additionally it is able to <em>create</em> Events.</p>
-</div>
+namespaces. Additionally it is able to <em>create</em> Events and PersistentVolumeClaims.</p>
 </div>
 </div>
 </div>
@@ -374,37 +369,29 @@ namespaces. Additionally it is able to <em>create</em> Events.</p>
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="filter_expressions.html" class="btn btn-neutral float-right" title="Filter Expressions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="administration.html" class="btn btn-neutral float-left" title="Administration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="filter_expressions.html" class="btn btn-neutral float-right" title="Filter Expressions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="administration.html" class="btn btn-neutral float-left" title="Administration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
+        &#169; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 

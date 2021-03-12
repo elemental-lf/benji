@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Installation &mdash; Benji Backup 0.11.0+dirty documentation</title>
+  <title>Installation &mdash; Benji Backup 0.14.0+dirty documentation</title>
   
 
   
@@ -17,7 +17,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -30,7 +33,6 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script src="_static/asciinema/asciinema-player.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -53,7 +55,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Benji Backup
+            <a href="index.html" class="icon icon-home"> Benji Backup
           
 
           
@@ -202,10 +204,7 @@
 <li class="toctree-l3"><a class="reference internal" href="container.html#benji-k8s">benji-k8s</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="container.html#helm-charts">Helm Charts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="container.html#id1">benji-k8s</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="container.html#helm-chart">Helm Chart</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="filter_expressions.html">Filter Expressions</a></li>
@@ -261,6 +260,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -272,7 +273,7 @@
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
           
         
@@ -289,8 +290,8 @@
   <div class="section" id="installation">
 <span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p>Release versions of Benji are available on PyPi and can installed via <cite>pip</cite>. In addition there are two container images:
-One generic image and an extended one for the use with Kubernetes. The generic <code class="docutils literal notranslate"><span class="pre">elementalnet/benji</span></code> image is the
-easiest and fastest way to try out Benji but can also be used in production. It includes all dependencies and extra
+One generic image and an extended one for the use with Kubernetes. The generic <code class="docutils literal notranslate"><span class="pre">ghcr.io/elementalnet/benji</span></code> image is
+the easiest and fastest way to try out Benji but can also be used in production. It includes all dependencies and extra
 features listed below (including RBD and iSCSI support). See section <a class="reference internal" href="container.html#container"><span class="std std-ref">Containerized Benji</span></a> for more information about the
 images.</p>
 <div class="section" id="fedora-27-and-up">
@@ -306,7 +307,7 @@ zypper ref
 </pre></div>
 </div>
 <p>Then you can install it via:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper in benji
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>zypper <span class="k">in</span> benji
 </pre></div>
 </div>
 </div>
@@ -452,37 +453,29 @@ pip install <span class="s2">&quot;git+https://github.com/ceph/ceph@v</span><spa
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="quickstart.html" class="btn btn-neutral float-right" title="Quick Start" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="index.html" class="btn btn-neutral float-left" title="Benji, backup me!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="quickstart.html" class="btn btn-neutral float-right" title="Quick Start" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Benji, backup me!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft
+        &#169; Copyright 2017-2019, Lars Fenneberg, Daniel Kraft.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
