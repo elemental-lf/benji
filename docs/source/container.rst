@@ -7,8 +7,7 @@ Containerized Benji
 Images
 ------
 
-
-This images are hosted in the GitHub Container Registry:
+The container images are hosted in the GitHub Container Registry:
 
 * ``ghcr.io/elemental-lf/benji:latest``
 * ``ghcr.io/elemental-lf/benji-k8s:latest``
@@ -16,8 +15,7 @@ This images are hosted in the GitHub Container Registry:
 The ``latest`` tag always points to the latest released version. Images for all Git branches of the repository are
 available under their branch name, i.e. the current development version is available by referring to the ``master`` tag.
 
-.. NOTE:: Older versions of the images are still available on Docker Hub, but no new images will be published to the hub.
-
+.. NOTE:: Older versions of the images are still available on Docker Hub, but no new images will be published there.
 
 benji
 ~~~~~
@@ -28,74 +26,58 @@ The Benji configuration should be put into ``/etc/benji/benji.yaml``. Either by 
 overwriting it or by mounting it directly into the container. By default a minimal test configuration is provided
 by the image.
 
-The default Docker entry point is just ``/bin/bash``.
+The default entry point is just ``/bin/bash``.
 
 One use case for this image is for testing Benji::
 
     docker run --interactive --tty --rm ghcr.io/elemental-lf/benji:latest
 
-After that you can directly proceed with step 1 of the instructions
-in section :ref:`quickstart`.
-
-The second use case would be to get some real work done without directly installing Benji on the host. A series of
-scripts to facilitate the calling of Benji are provided under ``/scripts`` inside the container. They can also be found
-in the ``scripts`` directory of the source distribution. For an example of how to use these scripts please see
-``images/benji-k8s/scripts/benji-backup-pvc``.
+After that you can directly proceed with step 1 of the instructions in section :ref:`quickstart`.
 
 benji-k8s
 ~~~~~~~~~
 
-This image is directly derived from the ``benji`` image above. It includes a framework to do periodic backups of
-Kubernetes persistent volumes backed by Ceph RBD. To access Kubernetes ``kubectl`` is used.
+This image is directly derived from the ``benji`` image above. It includes a number of scripts to do backups of
+Kubernetes persistent volumes backed by Ceph RBD:
 
-When the image is started a regular ``crond`` is launched. All periodic actions can be configured via
-``/benji/etc/crontab``. By default this file is empty but here is one possible example::
+- ``benji-backup-pvc`` for doing backups
+- ``benji-restore-pvc`` for restore operations to either existing or new PVCs/PVs
+- ``benji-command`` for all other Benji commands
+- ``benji-versions-status`` publishes the number of invalid or incomplete versions as Prometheus metrics
 
-    PROM_PUSH_GATEWAY=:9091
-    BENJI_INSTANCE:-benji-k8s
-    00  * * * * root benji-backup-pvc --all-namespaces -l 'release in (prod)'
-    03  * * * * root benji-backup-pvc --namespace staging
-    00 04 * * * root benji-command enforce latest3,hours24,days30,months3 'labels["benji-backup.me/instance"] == "benji-k8s"'
-    00 05 * * * root benji-command cleanup
-    30 05 * * * root benji-versions-status
-    00 06 * * * root benji-command batch-deep-scrub --version-percentage 10 --block-percentage 33 'labels["benji-backup.me/instance"] == "benji-k8s"'
+The scripts provide support for volumes provisioned by the classic RBD volume provider, by Rook Ceph CSI and by
+Ceph CSI.
 
-When the environment variables ``PROM_PUSH_GATEWAY`` and ``BENJI_INSTANCE`` are not set, they default to the above
-listed values.
+Example usages::
+
+    benji-backup-pvc --all-namespaces -l 'release in (prod)'
+    benji-backup-pvc --namespace staging
+    benji-command enforce latest3,hours24,days30,months3 'labels["benji-backup.me/instance"] == "benji-k8s"'
+    benji-command cleanup
+    benji-versions-status
+    benji-command batch-deep-scrub --version-percentage 10 --block-percentage 33 'labels["benji-backup.me/instance"] == "benji-k8s"'
 
 The backup script ``benji-backup-pvc`` first searches for ``PersistemtVolumeClaims`` matching the selector supplied on
 the command line. Direct backups of ``PersistentVolumes`` are currently not supported by this script.
 
 .. TIP:: See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
-    for possible ways to construct your selector.
+    for possible ways to construct the selector.
 
-``benji-command enforce`` should be called regularly to expire old backup versions. Also ``benji-command cleanup`` needs
-to be executed once in a while to actually remove blocks that are no longer used from the storages.
+``benji-command enforce`` should be called regularly to expire old backup *versions*. Also ``benji-command cleanup``
+needs to be executed once in a while to actually remove blocks that are no longer used from the storages.
 
-At the end of each command related `Prometheus <https://prometheus.io/>`_ metrics are pushed to the configured
-`pushgateway <https://github.com/prometheus/pushgateway>`_. If ``PROM_PUSH_GATEWAY`` is not set, this step is skipped.
+At the end of each command `Prometheus <https://prometheus.io/>`_ metrics are pushed to the configured
+`pushgateway <https://github.com/prometheus/pushgateway>`_. The format of the variable is ``host:port``. If ``host``
+part is left blank localhost is assumed. If ``PROM_PUSH_GATEWAY`` is not set, this step is skipped.
 
-The backup script uses Ceph's and Benji's differential backup features if possible. Normally only the initial backup
-is a full backup. RBD snapshots names are generated with a prefix of ``b-``.
+The backup script uses Ceph's differential backup features if possible. Normally only the initial backup is a full
+backup. RBD snapshots names are generated with a prefix of ``b-``.
 
-Helm Charts
------------
+Helm Chart
+----------
 
-Helm charts are the preferred way to deploy the ``benji-k8s`` image.
-
-benji-k8s
-~~~~~~~~~
-
-Benji includes a Helm chart to use the Docker image of the same name. It consists of a Deployment and supporting
-resources and assumes that you have RBAC in place. The deployment is composed a two containers: One running the
-benji-k8s Docker image and another one running a `Prometheus <https://prometheus.io/>`_
-`pushgateway <https://github.com/prometheus/pushgateway>`_. These can be scraped by a Prometheus server and the Pod
-generated by the Deployment has annotations so that it can be detected automatically::
-
-      annotations:
-        prometheus.io/port: "{{ .Values.pushgateway.port }}"
-        prometheus.io/scrape: "true"
+The Helm chart is the preferred way to deploy the ``benji-k8s`` image.
 
 .. NOTE:: The deployed resources create a service account which has the right to *get*,
     *list* and *watch* all PersistentVolume, PersistentVolumeClaim, Storageclasses and Pod resources in all
-    namespaces. Additionally it is able to *create* Events.
+    namespaces. Additionally it is able to *create* Events and PersistentVolumeClaims.
