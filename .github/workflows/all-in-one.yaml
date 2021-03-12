@@ -1,6 +1,11 @@
 name: All-in-One
 
-on: push
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
 
 env:
   PYTHONUNBUFFERED: "1"
