@@ -1,3 +1,36 @@
+## 0.14.0, 12.03.2021
+
+* ACTION REQUIRED: New container images are only published to the GitHub container registry. The new image locations
+  are:
+
+  * `ghcr.io/elemental-lf/benji`
+  * `ghcr.io/elemental-lf/benji-k8s`
+
+  The image tag `latest` now points to the latest released version and not the current `master` branch. To get the
+  container image for the `master` branch use the tag `master` as with all other branches.
+
+* Add options to specify number of retries and timeouts to the S3 storage module (#100, #102, #103)
+
+* Switch to improved retry logic of the `boto3` library in the S3 storage module (#103, fixes #101)
+
+* Fix a bug where Benji would not error out if the base version's storage did not match the storage that would've
+  been taken if no base version was specified (fixes #105)
+
+* Use proper fadvise flags on a Ceph RBD read (don't cache us but cache other clients)
+
+* Migrate b2 storage module to b2sdk (closes #46)
+
+* Kubernetes integration:
+  * Add support for Ceph CSI in both backup and restore scripts (#106, #104, #107)
+  * Add option to restore to a specific storage class (#104, #107)
+  * Add option to template Benji restore URLs (#104, #107)
+  * Refactor: Move K8s helper functions to benji-k8s-tools package to facilitate code sharing
+
+* Development workflow:
+  * Migrate to GitHub Actions
+  * Start migration to pytest
+  * Automate releases to PyPI
+
 ## 0.13.0, 27.11.2020
 
 * Fix Helm chart repo URLs because of Helm chart repostitory deprecation
