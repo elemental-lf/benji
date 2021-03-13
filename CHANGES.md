@@ -1,3 +1,7 @@
+## 0.14.1, 13.03.2021
+
+* Fixed wrong container image repository reference in Helm chart
+
 ## 0.14.0, 12.03.2021
 
 * ACTION REQUIRED: New container images are only published to the GitHub container registry. The new image locations
