@@ -1,4 +1,4 @@
-.. image:: https://img.shields.io/github/workflow/status/elemental-lf/benji/test-build-publish?style=plastic
+.. image:: https://img.shields.io/github/workflow/status/elemental-lf/benji/All-in-One/master?style=plastic
     :target: https://github.com/elemental-lf/benji/actions?query=branch%3Amaster
 
 .. image:: https://img.shields.io/pypi/l/benji.svg?style=plastic&label=License
