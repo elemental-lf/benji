@@ -76,7 +76,7 @@ Please see :ref:`configuration` for a full list of configuration options.
 
 3. Backup the image (works similar with a device)::
 
-    $ benji backup file://TESTFILE myfirsttestbackup
+    $ benji backup file:TESTFILE myfirsttestbackup
         INFO: $ benji backup file://TESTFILE myfirsttestbackup
         INFO: Backed up 1/10 blocks (10.0%)
         INFO: Backed up 2/10 blocks (20.0%)
