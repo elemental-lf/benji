@@ -159,7 +159,7 @@
 [40.756207, "o", "u"]
 [40.980378, "o", "p"]
 [42.148175, "o", "\r\n"]
-[42.822204, "o", "    INFO: $ /benji/bin/benji backup file://TESTFILE myfirsttestbackup\r\n"]
+[42.822204, "o", "    INFO: $ /benji/bin/benji backup file:TESTFILE myfirsttestbackup\r\n"]
 [43.005395, "o", "    INFO: Marked version V0000000001 as unprotected.\r\n"]
 [43.099467, "o", "    INFO: Backed up 1/10 blocks (10.0%)\r\n"]
 [43.138277, "o", "    INFO: Backed up 2/10 blocks (20.0%)\r\n"]
