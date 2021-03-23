@@ -29,6 +29,9 @@ benji:
       - name: file
         module: file
 
+  cronJob:
+    activeDeadlineSeconds: null
+
   crontab:
     - name: backup-all
       schedule: "*/10 * * * *"

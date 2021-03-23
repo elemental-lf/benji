@@ -26,6 +26,9 @@ spec:
         app.kubernetes.io/component: cronjob-{{ .name }}
     spec:
       backoffLimit: 0
+      {{- if $.Values.benji.cronJob.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ $.Values.benji.cronJob.activeDeadlineSeconds }}
+      {{- end }}
       template:
         metadata:
           labels:
