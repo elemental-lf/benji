@@ -451,3 +451,9 @@ class Commands:
         logger.info(f'Starting REST API via gunicorn on {bind_address}:{bind_port}.')
         debug = bool(logger.isEnabledFor(logging.DEBUG))
         api.run(bind_address=bind_address, bind_port=bind_port, threads=threads, debug=debug)
+
+    def fuse(self, mount):
+        with Benji(self.config) as benji_obj:
+            store = BenjiStore(benji_obj)
+            logger.info(f'Starting FUSE.')
+            FUSE(BenjiFuse(store), mount, foreground=True, allow_other=True)

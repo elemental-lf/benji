@@ -282,6 +282,8 @@ def main():
     p.add_argument('filter_expression', nargs='?', default=None, help='Version filter expression')
     p.set_defaults(func='storage_usage')
 
+    # FUSE
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
