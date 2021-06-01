@@ -1,3 +1,10 @@
+## 0.15.0, 01.06.2021
+
+* Helm chart: Migrate Helm chart to version 2 of the chart format (only compatible with Helm 3)
+* Helm chart: Add option to set `activeDeadlineSeconds` for cronjobs (`benji.cronJob.activeDeadlineSeconds`) (#108)
+* Update container images to fix CVE-2021-20288 in the Ceph client code
+* Revalidate invalid blocks during deep-scrubbing (#105)
+
 ## 0.14.1, 13.03.2021
 
 * Fixed wrong container image repository reference in Helm chart
