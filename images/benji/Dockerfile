@@ -1,6 +1,6 @@
 FROM centos:7 AS build
 
-ARG CEPH_CODENAME="nautilus"
+ARG CEPH_CODENAME="octopus"
 ARG CEPH_DISTRO="el7"
 
 ENV VENV_DIR /benji
@@ -9,6 +9,7 @@ COPY images/benji/ceph.repo /etc/yum.repos.d/ceph.repo
 RUN sed -i -e "s/{ceph-release}/$CEPH_CODENAME/" -e "s/{distro}/$CEPH_DISTRO/" /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
+        ulimit -n 1024 && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y git gcc make \
@@ -48,6 +49,7 @@ LABEL org.label-schema.schema-version="1.0" \
 COPY --from=build /etc/yum.repos.d/ceph.repo /etc/yum.repos.d/ceph.repo
 
 RUN rpm --import 'https://download.ceph.com/keys/release.asc' && \
+        ulimit -n 1024 && \
 	yum install -y tzdata epel-release && \
 	yum update -y && \
 	yum install -y python36 && \
