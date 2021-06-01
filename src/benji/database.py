@@ -32,10 +32,6 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import func
-from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
-from sqlalchemy.orm.collections import attribute_mapped_collection
-
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ConfigurationError
 from benji.logging import logger
@@ -43,6 +39,9 @@ from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 from benji.versions import VERSIONS
+from sqlalchemy import func
+from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 
 # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
@@ -58,6 +57,9 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 class BenjiDateTime(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.DateTime
+
+    # This is non-cacheable as it may be a relative time specifications and so is dependent on the current time.
+    cache_ok = False
 
     def process_bind_param(self, value: Optional[Union[datetime.datetime, str]], dialect) -> Optional[datetime.datetime]:
         if isinstance(value, datetime.datetime):
@@ -111,6 +113,8 @@ class VersionStatusType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.Integer
 
+    cache_ok = True
+
     def process_bind_param(self, value: Optional[Union[int, str, VersionStatus]], dialect) -> Optional[int]:
         if value is None:
             return None
@@ -161,6 +165,8 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.String(255)
 
+    cache_ok = True
+
     def process_bind_param(self, value: Optional[str], dialect) -> Optional[str]:
         if value is None or isinstance(value, str):
             return value
@@ -177,6 +183,8 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
 class ChecksumType(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.LargeBinary
+
+    cache_ok = True
 
     def process_bind_param(self, value: Optional[str], dialect) -> Optional[bytes]:
         if value is not None:
