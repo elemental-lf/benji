@@ -18,6 +18,9 @@ spec:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
+  {{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ $.Values.benji.cronJob.startingDeadlineSeconds }}
+  {{- end }}
   jobTemplate:
     metadata:
       labels:
