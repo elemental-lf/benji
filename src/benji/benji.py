@@ -13,6 +13,8 @@ from io import StringIO, BytesIO
 from typing import List, Tuple, TextIO, Optional, Set, Dict, cast, Union, \
     Sequence, Any, Iterator
 
+from diskcache import Cache
+
 from benji.blockuidhistory import BlockUidHistory
 from benji.config import Config
 from benji.database import Database, VersionUid, Version, Block, \
@@ -25,7 +27,6 @@ from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.storage.factory import StorageFactory
 from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
-from diskcache import Cache
 
 
 class Benji(ReprMixIn, AbstractContextManager):
@@ -261,7 +262,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             raise
 
         valid = True
-        affected_version_uids = []
+        affected_version_uids = set()
         try:
             storage = StorageFactory.get_by_name(version.storage.name)
             read_jobs = self._scrub_prepare(version=version,
@@ -278,7 +279,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids.extend(Version.set_block_valid(entry.block.uid, False))
+                        affected_version_uids = affected_version_uids | Version.set_block_valid(entry.block.uid, False)
                         valid = False
                         continue
                     else:
@@ -291,7 +292,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
                         block.idx, block.uid, exception))
-                    affected_version_uids.extend(Version.set_block_valid(block.uid, False))
+                    affected_version_uids = affected_version_uids | Version.set_block_valid(block.uid, False)
                     valid = False
                     continue
 
@@ -318,7 +319,8 @@ class Benji(ReprMixIn, AbstractContextManager):
             logger.info('Scrub of version {} successful.'.format(version.uid))
         else:
             logger.error('Marked version {} as invalid because it has errors.'.format(version_uid))
-            affected_version_uids.remove(version_uid)
+            if version.uid in affected_version_uids:
+                affected_version_uids.remove(version_uid)
             if affected_version_uids:
                 logger.error('Marked the following versions as invalid, too, because of invalid blocks: {}.'\
                              .format(', '.join(sorted(affected_version_uids))))
@@ -348,7 +350,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         valid = True
         source_mismatch = False
-        affected_version_uids = []
+        affected_version_uids = set()
         try:
             storage = StorageFactory.get_by_name(version.storage.name)
             old_use_read_cache = storage.use_read_cache(False)
@@ -366,7 +368,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids.extend(Version.set_block_valid(entry.block.uid, False))
+                        affected_version_uids = affected_version_uids | Version.set_block_valid(entry.block.uid, False)
                         valid = False
                         continue
                     else:
@@ -389,7 +391,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         'Checksum mismatch during deep-scrub of block {} of version {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.idx, version_uid, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
-                    affected_version_uids.extend(Version.set_block_valid(block.uid, False))
+                    affected_version_uids = affected_version_uids | Version.set_block_valid(block.uid, False)
                     valid = False
                     continue
 
