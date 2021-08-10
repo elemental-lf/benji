@@ -279,7 +279,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids = affected_version_uids | Version.set_block_valid(entry.block.uid, False)
+                        affected_version_uids |= Version.set_block_valid(entry.block.uid, False)
                         valid = False
                         continue
                     else:
@@ -292,7 +292,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 except (KeyError, ValueError) as exception:
                     logger.error('Metadata check failed, block {} (UID {}) is invalid: {}'.format(
                         block.idx, block.uid, exception))
-                    affected_version_uids = affected_version_uids | Version.set_block_valid(block.uid, False)
+                    affected_version_uids |= Version.set_block_valid(block.uid, False)
                     valid = False
                     continue
 
@@ -368,7 +368,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         logger.error('Block {} (UID {}) is invalid: {}{}'.format(
                             entry.block.idx, entry.block.uid, entry,
                             f' Caused by: {entry.__cause__}' if entry.__cause__ else ''))
-                        affected_version_uids = affected_version_uids | Version.set_block_valid(entry.block.uid, False)
+                        affected_version_uids |= Version.set_block_valid(entry.block.uid, False)
                         valid = False
                         continue
                     else:
@@ -391,7 +391,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         'Checksum mismatch during deep-scrub of block {} of version {} (UID {}) (is: {}... should-be: {}...).'.format(
                             block.idx, version_uid, block.uid, data_checksum[:16],
                             cast(str, block.checksum)[:16]))  # We know that block.checksum is set
-                    affected_version_uids = affected_version_uids | Version.set_block_valid(block.uid, False)
+                    affected_version_uids |= Version.set_block_valid(block.uid, False)
                     valid = False
                     continue
 
