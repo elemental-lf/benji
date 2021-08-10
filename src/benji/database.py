@@ -32,6 +32,10 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
+from sqlalchemy import func
+from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
+from sqlalchemy.orm.collections import attribute_mapped_collection
+
 from benji.config import Config
 from benji.exception import InputDataError, InternalError, AlreadyLocked, UsageError, ConfigurationError
 from benji.logging import logger
@@ -39,9 +43,6 @@ from benji.repr import ReprMixIn
 from benji.storage.key import StorageKeyMixIn
 from benji.utils import InputValidation
 from benji.versions import VERSIONS
-from sqlalchemy import func
-from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
-from sqlalchemy.orm.collections import attribute_mapped_collection
 
 
 # SQLite 3 supports checking of foreign keys but it needs to be enabled explicitly!
@@ -479,7 +480,7 @@ class Version(Base, ReprMixIn):
             raise
 
     @classmethod
-    def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> List[VersionUid]:
+    def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> Set[VersionUid]:
         try:
             # Can't use DISTINCT here as PostgreSQL doesn't support DISTINCT together with FOR UPDATE.
             affected_version_uids_query = Session.query(cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid)

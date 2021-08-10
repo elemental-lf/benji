@@ -408,7 +408,9 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(VersionStatus.valid, versions[i].status)
             self.assertTrue(list(versions[i].blocks)[0].valid)
 
-        Version.set_block_valid(bad_uid, False)
+        affected_version_uids = Version.set_block_valid(bad_uid, False)
+        self.assertIsInstance(affected_version_uids, set)
+        self.assertEqual(len(affected_version_uids), 3)
 
         for i in range(3):
             self.assertEqual(VersionStatus.invalid, versions[i].status)
@@ -418,7 +420,9 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertEqual(VersionStatus.valid, versions[i].status)
             self.assertTrue(list(versions[i].blocks)[0].valid)
 
-        Version.set_block_valid(bad_uid, True)
+        affected_version_uids = Version.set_block_valid(bad_uid, True)
+        self.assertIsInstance(affected_version_uids, set)
+        self.assertEqual(len(affected_version_uids), 3)
 
         for i in range(3):
             self.assertEqual(VersionStatus.invalid, versions[i].status)
