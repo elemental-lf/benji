@@ -483,9 +483,8 @@ class Version(Base, ReprMixIn):
     def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> Set[VersionUid]:
         try:
             # Can't use DISTINCT here as PostgreSQL doesn't support DISTINCT together with FOR UPDATE.
-            affected_version_uids_query = Session.query(cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid)
-            if not valid:
-                affected_version_uids_query = affected_version_uids_query.with_for_update()
+            affected_version_uids_query = Session.query(
+                cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid).with_for_update()
             # Use a set to replace the missing DISTINCT above.
             affected_version_uids = set([row.uid for row in affected_version_uids_query])
 
