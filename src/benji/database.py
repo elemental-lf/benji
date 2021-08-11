@@ -463,7 +463,7 @@ class Version(Base, ReprMixIn):
             Session.rollback()
             raise
 
-    def set(self, *, status: VersionStatus = None, protected: bool = None):
+    def set(self, *, status: VersionStatus = None, protected: bool = None) -> None:
         try:
             if status is not None:
                 self.status = status
@@ -574,7 +574,7 @@ class Version(Base, ReprMixIn):
 
         return block
 
-    def get_block_by_checksum(self, checksum):
+    def get_block_by_checksum(self, checksum) -> 'Block':
         return Session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
                                                          Version.storage_id == self.storage_id).first()
 
@@ -599,7 +599,7 @@ class Version(Base, ReprMixIn):
         return query.order_by(Version.volume, Version.date).all()
 
     @classmethod
-    def find_with_filter(cls, filter_expression: str = None):
+    def find_with_filter(cls, filter_expression: str = None) -> List['Version']:
         builder = _QueryBuilder()
         return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
 
