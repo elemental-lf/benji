@@ -241,6 +241,7 @@ possible to backup RBD images of a Ceph cluster. The supported URL syntax is::
 
     <module instance>:<pool>/<image>
     <module instance>:<pool>/<image>@<snapshot>
+    <module instance>:<pool>/<namespace>/<image>@<snapshot>
 
 Additional options can be passed as query parameters:
 
