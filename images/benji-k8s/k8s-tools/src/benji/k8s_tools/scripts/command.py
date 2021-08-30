@@ -22,12 +22,12 @@ def main():
         completion_time = time.time()
         prometheus.command_completion_time.labels(command=command).set(completion_time)
         prometheus.command_runtime_seconds.labels(command=command).set(completion_time - start_time)
-        prometheus.push(prometheus.command_registry)
+        prometheus.push(prometheus.command_registry, grouping_key={"command": command})
         raise exception
     else:
         prometheus.command_status_succeeded.labels(command=command).set(1)
         completion_time = time.time()
         prometheus.command_completion_time.labels(command=command).set(completion_time)
         prometheus.command_runtime_seconds.labels(command=command).set(completion_time - start_time)
-        prometheus.push(prometheus.command_registry)
+        prometheus.push(prometheus.command_registry, grouping_key={"command": command})
         sys.exit(0)

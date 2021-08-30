@@ -2,6 +2,7 @@ import logging
 import urllib.error
 
 from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway, generate_latest
+from typing import Dict
 
 from benji.helpers.settings import prom_push_gateway, benji_instance
 
@@ -11,12 +12,13 @@ backup_registry = CollectorRegistry()
 version_status_registry = CollectorRegistry()
 
 
-def push(registry: CollectorRegistry):
+def push(registry: CollectorRegistry, grouping_key: Dict[str, str] = {}):
     if prom_push_gateway is not None and benji_instance is not None:
         logger.info(f'Pushing Prometheus metrics to gateway {prom_push_gateway}.')
         logger.debug(generate_latest(registry).decode('utf-8'))
+
         try:
-            pushadd_to_gateway(prom_push_gateway, job=benji_instance, registry=registry)
+            pushadd_to_gateway(prom_push_gateway, job=benji_instance, registry=registry, grouping_key=grouping_key)
         except urllib.error.URLError as exception:
             logger.error(f'Pushing Prometheus metrics failed with a {type(exception).__name__} exception: {str(exception)}')
             logger.error('Ignoring.')
