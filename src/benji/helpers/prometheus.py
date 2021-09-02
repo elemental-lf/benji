@@ -12,7 +12,7 @@ backup_registry = CollectorRegistry()
 version_status_registry = CollectorRegistry()
 
 
-def push(registry: CollectorRegistry, grouping_key: Dict[str, str] = {}):
+def push(registry: CollectorRegistry, grouping_key: Dict[str, str]):
     if prom_push_gateway is not None and benji_instance is not None:
         logger.info(f'Pushing Prometheus metrics to gateway {prom_push_gateway}.')
         logger.debug(generate_latest(registry).decode('utf-8'))

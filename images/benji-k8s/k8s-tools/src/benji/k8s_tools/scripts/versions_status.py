@@ -31,5 +31,5 @@ def main():
 
     prometheus.older_incomplete_versions.set(len(incomplete_versions['versions']))
     prometheus.invalid_versions.set(len(invalid_versions['versions']))
-    prometheus.push(prometheus.version_status_registry)
+    prometheus.push(prometheus.version_status_registry, grouping_key={})
     sys.exit(0)
