@@ -22,6 +22,7 @@ from benji.logging import logger
 class IO(IOBase):
 
     _pool_name: Optional[str]
+    _namespace_name: Optional[str]
     _image_name: Optional[str]
     _snapshot_name: Optional[str]
 
@@ -68,6 +69,7 @@ class IO(IOBase):
                 raise ConfigurationError('{}: Unknown image feature {}.'.format(module_configuration.full_name, feature))
 
         self._pool_name = None
+        self._namespace_name = None
         self._image_name = None
         self._snapshot_name = None
         self._rbd_image = None
@@ -85,15 +87,17 @@ class IO(IOBase):
                                                         DereferencedBlock]] = queue.Queue()
 
     def open_r(self) -> None:
-        re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]+)/)?([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
+            raise UsageError('URL {} is invalid . Need {}:<pool>/[<namespace>/]<imagename> or {}:<pool>/[<namespace>/]<imagename>@<snapshotname>.'.format(
                 self.url, self.name, self.name))
-        self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
+        self._pool_name, self._namespace_name, self._image_name, self._snapshot_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
@@ -103,14 +107,16 @@ class IO(IOBase):
             raise FileNotFoundError('RBD image or snapshot {} not found.'.format(self.url)) from None
 
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
-        re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]+)/)?([^@]+)$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename>.'.format(self.url, self.name))
-        self._pool_name, self._image_name = re_match.groups()
+            raise UsageError('URL {} is invalid . Need {}:<pool>/[<namespace>/]<imagename>.'.format(self.url, self.name))
+        self._pool_name, self._namespace_name, self._image_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 

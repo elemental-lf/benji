@@ -21,6 +21,7 @@ from benji.logging import logger
 class IO(IOBase):
 
     _pool_name: Optional[str]
+    _namespace_name: Optional[str]
     _image_name: Optional[str]
     _snapshot_name: Optional[str]
 
@@ -67,6 +68,7 @@ class IO(IOBase):
                 raise ConfigurationError('{}: Unknown image feature {}.'.format(module_configuration.full_name, feature))
 
         self._pool_name = None
+        self._namespace_name = None
         self._image_name = None
         self._snapshot_name = None
 
@@ -78,15 +80,17 @@ class IO(IOBase):
     def open_r(self) -> None:
         self._read_executor = JobExecutor(name='IO-Read', workers=self._simultaneous_reads, blocking_submit=False)
 
-        re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]+)/)?([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
+            raise UsageError('URL {} is invalid . Need {}:<pool>/[<namespace>/]<imagename> or {}:<pool>/[<namespace>/]<imagename>@<snapshotname>.'.format(
                 self.url, self.name, self.name))
-        self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
+        self._pool_name, self._namespace_name, self._image_name, self._snapshot_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
@@ -98,14 +102,16 @@ class IO(IOBase):
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         self._write_executor = JobExecutor(name='IO-Write', workers=self._simultaneous_writes, blocking_submit=True)
 
-        re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]+)/)?([^@]+)$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename>.'.format(self.url, self.name))
-        self._pool_name, self._image_name = re_match.groups()
+            raise UsageError('URL {} is invalid . Need {}:<pool>/[<namespace>/]<imagename>.'.format(self.url, self.name))
+        self._pool_name, self._namespace_name, self._image_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
@@ -149,6 +155,8 @@ class IO(IOBase):
     def size(self) -> int:
         assert self._pool_name is not None and self._image_name is not None
         ioctx = self._cluster.open_ioctx(self._pool_name)
+        if self._namespace_name is not None and len(self._namespace_name) > 0:
+            ioctx.set_namespace(self._namespace_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
             size = image.size()
         return size
@@ -157,6 +165,8 @@ class IO(IOBase):
         offset = block.idx * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
+        if self._namespace_name is not None and len(self._namespace_name) > 0:
+            ioctx.set_namespace(self._namespace_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name, read_only=True) as image:
             # LIBRADOS_OP_FLAG_FADVISE_DONTNEED: Indicates read data will not be accessed in the near future (by anyone)
             # LIBRADOS_OP_FLAG_FADVISE_NOCACHE: Indicates read data will not be accessed again (by *this* client)
@@ -199,6 +209,8 @@ class IO(IOBase):
         offset = block.idx * self.block_size
         t1 = time.time()
         ioctx = self._cluster.open_ioctx(self._pool_name)
+        if self._namespace_name is not None and len(self._namespace_name) > 0:
+            ioctx.set_namespace(self._namespace_name)
         with rbd.Image(ioctx, self._image_name, self._snapshot_name) as image:
             written = image.write(data, offset, rados.LIBRADOS_OP_FLAG_FADVISE_DONTNEED)
         t2 = time.time()
