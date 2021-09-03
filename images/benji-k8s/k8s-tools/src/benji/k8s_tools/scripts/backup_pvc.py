@@ -21,7 +21,7 @@ FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
 FSFREEZE_ANNOTATION = 'benji-backup.me/fsfreeze'
 FSFREEZE_POD_LABEL_SELECTOR = 'benji-backup.me/component=fsfreeze'
 FSFREEZE_CONTAINER_NAME = 'fsfreeze'
-KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{}'
+KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/csi/pv/{}/globalmount/{}'
 
 utils.setup_logging()
 logger = logging.getLogger()
@@ -32,18 +32,16 @@ def _random_string(length: int, characters: str = string.ascii_lowercase + strin
 
 
 def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
-                             image: str) -> Tuple[bool, Optional[str], Optional[str], str]:
+                             image: str, volume_handle: str) -> Tuple[bool, Optional[str], Optional[str], str]:
     pv_fsfreeze = False
     pv_host_ip = None
     pv_fsfreeze_pod = None
-    pv_mount_point = KUBELET_MOUNT_PATH_FORMAT.format(image)
 
     core_v1_api = kubernetes.client.CoreV1Api()
     pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
-    service_account_namespace = benji.k8s_tools.kubernetes.service_account_namespace()
     if hasattr(pvc.metadata,
                'annotations') and FSFREEZE_ANNOTATION in pvc.metadata.annotations and pvc.metadata.annotations[FSFREEZE_ANNOTATION] == 'yes':
-        pods = core_v1_api.list_namespaced_pod(service_account_namespace, watch=False).items
+        pods = core_v1_api.list_namespaced_pod(pvc_namespace, watch=False).items
         for pod in pods:
             if pv_fsfreeze:
                 break
@@ -56,6 +54,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
                 if hasattr(pod.status, 'host_ip') and pod.status.host_ip != '':
                     pv_fsfreeze = True
                     pv_host_ip = pod.status.host_ip
+                    pv_mount_point = KUBELET_MOUNT_PATH_FORMAT.format(pvc.spec.volume_name, volume_handle)
                 break
 
         if pv_fsfreeze:
@@ -79,14 +78,14 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
 
 
 @ceph.signal_snapshot_create_pre.connect
-def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                              context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
     assert 'pvc' in context
     pvc_namespace = context['pvc'].metadata.namespace
     pvc_name = context['pvc'].metadata.name
 
-    pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point = _determine_fsfreeze_info(pvc_namespace, pvc_name, image)
+    pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point = _determine_fsfreeze_info(pvc_namespace, pvc_name, image, context['volume_handle'])
 
     # Record for use in post signals
     context['pv-fsfreeze'] = pv_fsfreeze
@@ -129,7 +128,7 @@ def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, sn
 
 
 @ceph.signal_snapshot_create_post_success.connect
-def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                                       context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
     pv_fsfreeze = context['pv-fsfreeze']
@@ -163,14 +162,14 @@ def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, image
 
 
 @ceph.signal_snapshot_create_post_error.connect
-def ceph_snapshot_create_post_error(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_post_error(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                                     context: Dict[str, Any], exception: Exception) -> None:
-    ceph_snapshot_create_post_success(sender, volume, pool, image, snapshot, context)
+    ceph_snapshot_create_post_success(sender, volume, pool, namespace, image, snapshot, context)
     raise exception
 
 
 @ceph.signal_backup_pre.connect
-def ceph_backup_pre(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def ceph_backup_pre(sender: str, volume: str, pool: str, namespace: str, image: str, version_labels: Dict[str, str],
                     context: Dict[str, Any]):
     assert isinstance(context, dict)
     context['backup-start-time'] = start_time = time.time()
@@ -197,7 +196,7 @@ def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[st
 
 
 @ceph.signal_backup_post_success.connect
-def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def ceph_backup_post_success(sender: str, volume: str, pool: str, namespace: str, image: str, version_labels: Dict[str, str],
                              context: Dict[str, Any], version: Optional[Dict]):
     assert isinstance(context, dict)
     assert version is not None
@@ -226,7 +225,7 @@ def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, ve
 
 
 @ceph.signal_backup_post_error.connect
-def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def ceph_backup_post_error(sender: str, volume: str, pool: str, namespace: str, image: str, version_labels: Dict[str, str],
                            context: Dict[str, Any], version: Optional[Dict], exception: Exception):
     assert isinstance(context, dict)
     pvc_namespace = context['pvc'].metadata.namespace
@@ -309,26 +308,28 @@ def main():
             continue
 
         pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-        pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
-        if pool is None or image is None:
+        pool, image, rados_namespace, volume_handle = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
+        if pool is None or image is None or rados_namespace is None or volume_handle is None:
             continue
 
         volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
         # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
-        version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
+        version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}/{pvc.metadata.name}'[:246], _random_string(6))
 
         version_labels = {
             'benji-backup.me/instance': settings.benji_instance,
             'benji-backup.me/ceph-pool': pool,
+            'benji-backup.me/ceph-namespace': rados_namespace,
             'benji-backup.me/ceph-rbd-image': image,
             'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
             'benji-backup.me/k8s-pvc': pvc.metadata.name,
             'benji-backup.me/k8s-pv': pv.metadata.name
         }
 
-        context = {'pvc': pvc}
+        context = {'pvc': pvc, 'volume_handle': volume_handle}
         ceph.backup(volume=volume,
                     pool=pool,
+                    namespace=rados_namespace,
                     image=image,
                     version_uid=version_uid,
                     version_labels=version_labels,

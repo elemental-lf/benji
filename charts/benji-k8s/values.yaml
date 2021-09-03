@@ -79,7 +79,7 @@ fsfreeze:
   image:
     registry: docker.io
     repository: centos
-    tag: 7
+    tag: 8
     pullPolicy: IfNotPresent
 
   resources: {}

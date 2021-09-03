@@ -29,11 +29,6 @@ def main():
                         dest='pvc_storage_class',
                         default='rbd',
                         help='PVC storage class (only takes effect if the PVC does not exist yet)')
-    parser.add_argument('--restore-url-template',
-                        metavar='restore_url_template',
-                        dest='restore_url_template',
-                        help='Template to use for constructing URL for benji restore call',
-                        default='rbd:{pool}/{image}')
     parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
     parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
     parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
@@ -89,10 +84,14 @@ def main():
         time.sleep(1)
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
-    if pool is None or image is None:
+    pool, image, rados_namespace, _ = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
+    if pool is None or image is None or rados_namespace is None:
         raise RuntimeError(f'Unable to determine PersistentVolume pool or image for {pv.metadata.name}')
 
+    if rados_namespace != '':
+        path_str = f'rbd:{pool}/{rados_namespace}/{image}'
+    else:
+        path_str = f'rbd:{pool}/{image}'
     utils.subprocess_run([
         'benji',
         '--log-level',
@@ -101,6 +100,6 @@ def main():
         '--sparse',
         '--force',
         args.version_uid,
-        args.restore_url_template.format(pool=pool, image=image),
+        path_str,
     ])
     sys.exit(0)

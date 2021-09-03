@@ -35,7 +35,7 @@ spec:
             privileged: true
           command:
             - sleep
-            - 365d
+            - 3650d
           env:
             - name: POD_NAME
               valueFrom:
@@ -47,7 +47,7 @@ spec:
                   fieldPath: metadata.namespace
           volumeMounts:
             - name: rbd-mounts
-              mountPath: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+              mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi/pv/
             - name: tz-config
               mountPath: /etc/localtime
           resources:
@@ -56,7 +56,7 @@ spec:
       volumes:
         - name: rbd-mounts
           hostPath:
-            path: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+            path: /var/lib/kubelet/plugins/kubernetes.io/csi/pv/
             type: DirectoryOrCreate
         - name: tz-config
           hostPath:
