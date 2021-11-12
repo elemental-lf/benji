@@ -229,6 +229,7 @@ def determine_rbd_image_from_pv(
         #      1111 Number of chars in the cluster id
         #           2222 cluster id
         #                3333333333333333 padded id of the pool
+        # imageSuffix must be chosen so the total length of the volume handle is 36 chars (wtf?)
         # The ceph-csi parser says nothing about the format for imageName or the imageSuffix, so it's more
         # correct to parse the volume handle from the start, rather than the end.
                                                                                                                                                           
