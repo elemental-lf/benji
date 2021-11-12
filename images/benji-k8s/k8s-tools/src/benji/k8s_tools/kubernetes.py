@@ -219,9 +219,22 @@ def determine_rbd_image_from_pv(
           hasattr(pv.spec.csi, 'volume_attributes') and pv.spec.csi.volume_attributes.get('pool')):
         attributes = pv.spec.csi.volume_attributes
         volume_handle_parts = pv.spec.csi.volume_handle.split('-')
+        # Why not use attributes['imageName'] which contains the full image name without any extra fuss?
+        # We are already using attributes['pool'] even though that information is also carried (in a silly format) in the handle
+        # so using the plain attribues should not be a huge deal.
+
+        # The format of the volume handle is parsed by the current ceph-csi code and it requires this format:
+        # 0001-0004-ceph-0000000000000009-imageSuffix
+        # 0000 handle format version
+        #      1111 Number of chars in the cluster id
+        #           2222 cluster id
+        #                3333333333333333 padded id of the pool
+        # The ceph-csi parser says nothing about the format for imageName or the imageSuffix, so it's more
+        # correct to parse the volume handle from the start, rather than the end.
+                                                                                                                                                          
         if len(volume_handle_parts) >= 9:
             image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
-            image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts) - 5:])
+            image_suffix = '-'.join(volume_handle_parts[4:])
             pool, image = attributes['pool'], image_prefix + image_suffix
 
     return pool, image
