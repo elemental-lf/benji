@@ -211,11 +211,7 @@ def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, ve
     prometheus.backup_completion_time.labels(volume=volume).set(completion_time)
     prometheus.backup_runtime_seconds.labels(volume=volume).set(completion_time - start_time)
     prometheus.backup_status_succeeded.labels(volume=volume).set(1)
-    prometheus.push(prometheus.backup_registry,
-                    grouping_key={
-                        'pvc_namespace': pvc_namespace,
-                        'pvc_name': pvc_name
-                    })
+    prometheus.push(prometheus.backup_registry, grouping_key={'pvc_namespace': pvc_namespace, 'pvc_name': pvc_name})
     try:
         benji.k8s_tools.kubernetes.create_pvc_event(
             type='Normal',
@@ -243,11 +239,7 @@ def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, vers
     prometheus.backup_completion_time.labels(volume=volume).set(completion_time)
     prometheus.backup_runtime_seconds.labels(volume=volume).set(completion_time - start_time)
     prometheus.backup_status_failed.labels(volume=volume).set(1)
-    prometheus.push(prometheus.backup_registry,
-                    grouping_key={
-                        'pvc_namespace': pvc_namespace,
-                        'pvc_name': pvc_name
-                    })
+    prometheus.push(prometheus.backup_registry, grouping_key={'pvc_namespace': pvc_namespace, 'pvc_name': pvc_name})
 
     benji.k8s_tools.kubernetes.create_pvc_event(type='Warning',
                                                 reason='FailedBackup',
