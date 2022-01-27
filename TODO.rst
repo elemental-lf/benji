@@ -18,3 +18,5 @@ Unsorted collection
 * Kubernetes operator
 * Improve sparse block handling by not representing them in the database
 * Improve NBD block cache (removal of cache entries, size limit)
+* Debian packaging as requested in #130
+* ARM64 support as requested in #131
