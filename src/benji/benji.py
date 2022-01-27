@@ -117,6 +117,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             new_version_block_size = block_size
 
         version = None
+        force_read: Set[int] = []
         try:
             if base_version_locking and base_version_uid:
                 Locking.lock_version(base_version_uid, reason='Base version cloning')
@@ -140,24 +141,19 @@ class Benji(ReprMixIn, AbstractContextManager):
             for idx in range(version.blocks_count):
                 if not old_version_exhausted:
                     assert old_blocks_iter is not None
-                    old_block = next(old_blocks_iter, None)
+                    old_version_block, old_block = next(old_blocks_iter, (None, None))
                     if old_block is not None:
                         assert old_block.idx == idx
-                        new_block_uid = old_block.uid
-                        new_block_checksum = old_block.checksum
-                        new_block_block_size = old_block.size
-                        new_block_valid = old_block.valid
+
+                        blocks.append({
+                            'idx': idx,
+                            'block_id': old_block.id,
+                        })
                     else:
+                        force_read.add(idx)
                         old_version_exhausted = True
-                        new_block_uid = None
-                        new_block_checksum = None
-                        new_block_block_size = version.block_size
-                        new_block_valid = True
                 else:
-                    new_block_uid = None
-                    new_block_checksum = None
-                    new_block_block_size = version.block_size
-                    new_block_valid = True
+                    force_read.add(idx)
 
                 # This catches blocks which changed their size between the base version and the new version.
                 # If the new version is bigger, this affects the last block of the old version and the last block of
@@ -166,20 +162,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 offset = idx * version.block_size
                 new_block_block_size_tmp = min(version.block_size, new_size - offset)
                 if new_block_block_size != new_block_block_size_tmp:
-                    new_block_block_size = new_block_block_size_tmp
-                    new_block_uid = None
-                    new_block_checksum = None
-                    # Forces reread.
-                    new_block_valid = False
-
-                blocks.append({
-                    'idx': idx,
-                    'uid_left': new_block_uid.left if new_block_uid is not None else None,
-                    'uid_right': new_block_uid.right if new_block_uid is not None else None,
-                    'checksum': new_block_checksum,
-                    'size': new_block_block_size,
-                    'valid': new_block_valid
-                })
+                    force_read.add(idx)
 
                 notify(self._process_name,
                        'Preparing version {} ({:.1f}%)'.format(version.uid, (idx + 1) / version.blocks_count * 100))
@@ -696,7 +679,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     raise PermissionError('Version {} cannot be removed without force, it has status {}.'.format(
                         version_uid, version.status.name))
 
-            num_blocks = version.remove()
+            version.remove()
 
             if not keep_metadata_backup:
                 try:
@@ -708,7 +691,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                         'Unable to remove version {} metadata backup from storage, the object was not found.'.format(version_uid))
                     pass
 
-            logger.info('Removed backup version {} with {} blocks.'.format(version_uid, num_blocks))
+            logger.info(f'Removed backup version {version_uid}.')
 
     @staticmethod
     def _blocks_from_hints(hints: Sequence[Tuple[int, int, bool]], block_size: int) -> Tuple[Set[int], Set[int]]:

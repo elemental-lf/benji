@@ -181,7 +181,7 @@ class VersionUidType(sqlalchemy.types.TypeDecorator):
             return None
 
 
-class ChecksumType(sqlalchemy.types.TypeDecorator):
+class Checksum(sqlalchemy.types.TypeDecorator):
 
     impl = sqlalchemy.LargeBinary
 
@@ -200,57 +200,38 @@ class ChecksumType(sqlalchemy.types.TypeDecorator):
             return None
 
 
-class BlockUidComparator(sqlalchemy.orm.CompositeProperty.Comparator):
-
-    def in_(self, other):
-        clauses = self.__clause_element__().clauses
-        other_tuples = [element.__composite_values__() for element in other]
-        return sqlalchemy.sql.or_(
-            *[sqlalchemy.sql.and_(*[clauses[0] == element[0], clauses[1] == element[1]]) for element in other_tuples])
-
-
 @total_ordering
-class BlockUid(sqlalchemy.ext.mutable.MutableComposite, StorageKeyMixIn['BlockUid']):
+class BlockUid(sqlalchemy.ext.mutable.Mutable, StorageKeyMixIn['BlockUid']):
 
-    left: Optional[int]
-    right: Optional[int]
+    uid: Optional[int]
 
-    def __init__(self, left: Optional[int], right: Optional[int]) -> None:
-        assert (left is None and right is None) or (left is not None and right is not None)
-        self.left = left
-        self.right = right
+    def __init__(self, uid: Optional[int]) -> None:
+        self.uid = uid
 
     def __setattr__(self, key, value):
         object.__setattr__(self, key, value)
         self.changed()
 
-    def __composite_values__(self) -> Tuple[Optional[int], Optional[int]]:
-        return self.left, self.right
-
     def __str__(self) -> str:
-        return "{:x}-{:x}".format(self.left if self.left is not None else 0, self.right if self.right is not None else 0)
+        return '{:020x}'.format(self.uid if self.uid is not None else 0)[::-1]
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, BlockUid):
-            return self.left == other.left and self.right == other.right
+            return self.uid == other.uid
         else:
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
         if isinstance(other, BlockUid):
-            self_left = self.left if self.left is not None else 0
-            self_right = self.right if self.right is not None else 0
-            other_left = other.left if other.left is not None else 0
-            other_right = other.right if other.right is not None else 0
-            return self_left < other_left or self_left == other_left and self_right < other_right
+            return self.uid < other.uid
         else:
             return NotImplemented
 
     def __bool__(self) -> bool:
-        return self.left is not None and self.right is not None
+        return self.uid is not None
 
     def __hash__(self) -> int:
-        return hash((self.left, self.right))
+        return hash(self.uid)
 
     @classmethod
     def coerce(cls, key, value):
@@ -267,15 +248,14 @@ class BlockUid(sqlalchemy.ext.mutable.MutableComposite, StorageKeyMixIn['BlockUi
         return cls._STORAGE_PREFIX
 
     def _storage_object_to_key(self) -> str:
-        assert self.left is not None and self.right is not None
-        return '{:016x}-{:016x}'.format(self.left, self.right)
+        assert self.uid is not None
+        return '{:020x}'.format(self.uid)[::-1]
 
     @classmethod
     def _storage_key_to_object(cls, key: str) -> 'BlockUid':
-        if len(key) != (16 + 1 + 16):
-            raise RuntimeError('Object key {} has an invalid length, expected exactly {} characters.'.format(
-                key, (16 + 1 + 16)))
-        return BlockUid(int(key[0:16], 16), int(key[17:17 + 16], 16))
+        if len(key) != (20):
+            raise RuntimeError('Object key {} has an invalid length, expecting exactly {} characters.'.format(key, 20))
+        return BlockUid(int(key[::-1], 16))
 
     # End: Implements StorageKeyMixIn
 
@@ -373,16 +353,6 @@ class Version(Base, ReprMixIn):
 
     def remove(self) -> int:
         try:
-            affected_blocks = Session.query(Block).filter(Block.version_id == self.id)
-            num_blocks = affected_blocks.count()
-            for affected_block in affected_blocks:
-                if affected_block.uid:
-                    deleted_block = DeletedBlock(
-                        storage_id=self.storage_id,
-                        uid=affected_block.uid,
-                        date=datetime.datetime.utcnow(),
-                    )
-                    Session.add(deleted_block)
             # The following delete statement will cascade this delete to the blocks table
             # and delete all blocks
             Session.delete(self)
@@ -390,8 +360,6 @@ class Version(Base, ReprMixIn):
         except:
             Session.rollback()
             raise
-
-        return num_blocks
 
     @classmethod
     def _timed_commit(cls) -> None:
@@ -408,17 +376,17 @@ class Version(Base, ReprMixIn):
     def commit() -> None:
         Session.commit()
 
-    def create_blocks(self, *, blocks: List[Dict[str, Any]]) -> None:
+    def create_blocks(self, *, blocks: List[Tuple[int, int]]) -> None:
+        version_blocks: List[Dict[str, Any]] = []
+        for idx, block_id in blocks:
+            version_blocks.append({
+                'version_id': self.id,
+                'idx': idx,
+                'block_id': block_id,
+            })
+
         try:
-            # Remove any fully sparse blocks
-            blocks = [
-                block for block in blocks if block['uid_left'] is not None or block['uid_right'] is not None or block['size'] != self.block_size
-            ]
-
-            for block in blocks:
-                block['version_id'] = self.id
-
-            Session.bulk_insert_mappings(Block, blocks)
+            Session.bulk_insert_mappings(VersionBlock, version_blocks)
             self._timed_commit()
         except:
             Session.rollback()
@@ -426,24 +394,21 @@ class Version(Base, ReprMixIn):
 
     def set_block(self, *, idx: int, block_uid: BlockUid, checksum: Optional[str], size: int, valid: bool) -> None:
         try:
-            block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
+            version_block = Session.query(VersionBlock).filter(VersionBlock.version_id == self.id,
+                                                               VersionBlock.idx == idx).one_or_none()
 
-            if not block and not block_uid and size == self.block_size:
-                # Block is not present and it should be fully sparse now -> Nothing to do.
+            if not version_block and not block_uid and size == self.block_size:
+                # Block is not present in this version and it should be fully sparse now -> Nothing to do.
                 return
-            elif block and not block_uid and size == self.block_size:
-                # Block is present but it should be fully sparse now -> Delete it.
-                Session.delete(block)
-            elif not block:
-                # Block is not present but should contain data now -> Create it.
-                block = Block(version_id=self.id, idx=idx, uid=block_uid, checksum=checksum, size=size, valid=valid)
+            elif version_block and not block_uid and size == self.block_size:
+                # Block is present in this version but it should be fully sparse now -> Delete it.
+                Session.delete(version_block)
+            elif not version_block:
+                # Block is not present in this version but should contain data now -> Create it.
+                block = Block(uid=block_uid, checksum=checksum, size=size, valid=valid)
                 Session.add(block)
-            else:
-                # Block is present and  should contains data -> Update it.
-                block.uid = block_uid
-                block.checksum = checksum
-                block.size = size
-                block.valid = valid
+                version_block = VersionBlock(version=self, idx=idx, block=block)
+                Session.add(version_block)
 
             self._timed_commit()
         except:
@@ -480,19 +445,21 @@ class Version(Base, ReprMixIn):
             raise
 
     @classmethod
-    def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> Set[VersionUid]:
+    def set_block_valid(cls, block_id: int, valid: bool) -> Set[VersionUid]:
         try:
             # Can't use DISTINCT here as PostgreSQL doesn't support DISTINCT together with FOR UPDATE.
             affected_version_uids_query = Session.query(
-                cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid).with_for_update()
+                cls.uid.label('uid')).join(VersionBlock).join(Block).filter(Block.id == block_id).with_for_update()
             # Use a set to replace the missing DISTINCT above.
             affected_version_uids = set([row.uid for row in affected_version_uids_query])
 
-            Session.query(Block).filter(Block.uid == block_uid).update({'valid': valid}, synchronize_session=False)
+            block = Block.get(block_id)
+            block.valid = valid
+            Session.add(block)
 
             if len(affected_version_uids) > 0:
                 logger.error('Marked block with UID {} as {} in all affected versions: {}.'.format(
-                    block_uid, 'valid' if valid else 'invalid', ', '.join(affected_version_uids)))
+                    block.uid, 'valid' if valid else 'invalid', ', '.join(affected_version_uids)))
 
                 # We won't mark any versions as valid because they might contain other invalid blocks.
                 if not valid:
@@ -501,7 +468,7 @@ class Version(Base, ReprMixIn):
             else:
                 # Version could have been deleted in the meantime
                 logger.warning('No version was affected by marking block with UID {} as {}.'.format(
-                    block_uid, 'valid' if valid else 'invalid'))
+                    block.uid, 'valid' if valid else 'invalid'))
 
             Session.commit()
         except:
@@ -510,37 +477,21 @@ class Version(Base, ReprMixIn):
 
         return affected_version_uids
 
-    def _create_sparse_block(self, idx: int) -> 'Block':
-        # This block isn't part if the database session and probably never will be.
-        return Block(version_id=self.id, idx=idx, uid=SparseBlockUid, checksum=None, size=self.block_size, valid=True)
-
     # Our own version of yield_per without using a cursor
     # See: https://github.com/sqlalchemy/sqlalchemy/wiki/WindowedRangeQuery
     @property
-    def blocks(self) -> Iterator['Block']:
+    def blocks(self) -> Iterator[Tuple[int, 'Block']]:
         next_start_idx = 0
         while True:
             start_idx = next_start_idx
             next_start_idx = min(start_idx + self.BLOCKS_PER_CALL, self.blocks_count)
 
-            blocks = object_session(self).query(Block).filter(Block.version_id == self.id, Block.idx >= start_idx,
-                                                              Block.idx < next_start_idx).order_by(Block.idx)
+            blocks = object_session(self).query(VersionBlock.idx, Block).join(Block).filter(
+                VersionBlock.version_id == self.id, VersionBlock.idx >= start_idx,
+                VersionBlock.idx < next_start_idx).order_by(VersionBlock.idx)
 
-            idx = start_idx
-            for block in blocks:
-                if idx < block.idx:
-                    logger.debug(f'Synthesizing sparse blocks {idx} to {block.idx - 1}.')
-                while idx < block.idx:
-                    yield self._create_sparse_block(idx)
-                    idx += 1
-                yield block
-                idx += 1
-
-            if idx < next_start_idx:
-                logger.debug(f'Synthesizing sparse blocks {idx} to {next_start_idx - 1} at end of slice.')
-            while idx < next_start_idx:
-                yield self._create_sparse_block(idx)
-                idx += 1
+            for (idx, block) in blocks:
+                yield idx, block
 
             if next_start_idx == self.blocks_count:
                 break
@@ -551,11 +502,9 @@ class Version(Base, ReprMixIn):
 
     @property
     def sparse_blocks_count(self) -> int:
-        # noinspection PyComparisonWithNone
-        non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
-            Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
-        non_sparse_blocks = {row.idx for row in non_sparse_blocks_query}
-
+        non_sparse_blocks = [
+            idx for idx, in object_session(self).query(VersionBlock.idx).filter(VersionBlock.version_id == self.id)
+        ]
         return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
 
     @classmethod
@@ -568,15 +517,12 @@ class Version(Base, ReprMixIn):
         return version
 
     def get_block_by_idx(self, idx: int) -> 'Block':
-        block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
-        if not block:
-            block = self._create_sparse_block(idx)
-
-        return block
+        return Session.query(Block).join(VersionBlock).filter(VersionBlock.version_id == self.id,
+                                                              VersionBlock.idx == idx).one_or_none()
 
     def get_block_by_checksum(self, checksum) -> 'Block':
-        return Session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
-                                                         Version.storage_id == self.storage_id).first()
+        return Session.query(Block).filter(Block.checksum == checksum, Block.valid == True,
+                                           Block.storage_id == self.storage_id).first()
 
     @classmethod
     def find(cls,
@@ -714,11 +660,8 @@ class Label(Base, ReprMixIn):
 
 class DereferencedBlock(ReprMixIn):
 
-    def __init__(self, uid: Optional[BlockUid], version_id: int, idx: int, checksum: Optional[str], size: int,
-                 valid: bool) -> None:
+    def __init__(self, uid: Optional[BlockUid], checksum: Optional[str], size: int, valid: bool) -> None:
         self.uid = uid if uid is not None else BlockUid(None, None)
-        self.version_id = version_id
-        self.idx = idx
         self.checksum = checksum
         self.size = size
         self.valid = valid
@@ -750,32 +693,47 @@ class DereferencedBlock(ReprMixIn):
         return self
 
 
+# Force type INTEGER on SQLite as it only supports
+#@sqlalchemy.ext.compiler.compiles(sqlalchemy.Integer, "sqlite")
+#def compile_binary_sqlite(type_, compiler, **kw):
+#    return "INTEGER"
+
+
 class Block(Base, ReprMixIn):
     __tablename__ = 'blocks'
 
     MAXIMUM_CHECKSUM_LENGTH = 64
-    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'idx', 'uid_left', 'uid_right']
+    REPR_SQL_ATTR_SORT_FIRST = ['id', 'uid_left', 'uid_right']
 
     # Sorted for best alignment to safe space (with PostgreSQL in mind)
-    # idx and uid_right are first because they are most likely to go to BigInteger in the future
-    idx = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)  # 4 bytes
-    uid_right = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
-    uid_left = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
+    # uid_right is first because it is most likely to go to BigInteger in the future
+    uid = sqlalchemy.Column(sqlalchemy.BigInteger, primary_key=True, autoincrement=True, nullable=False)  # 8 bytes
     size = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)  # 4 bytes
-    version_id = sqlalchemy.Column(sqlalchemy.Integer,
-                                   sqlalchemy.ForeignKey('versions.id', ondelete='CASCADE'),
-                                   nullable=False)  # 4 bytes
+    storage_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('storages.id'), nullable=False)  # 4 bytes
     valid = sqlalchemy.Column(sqlalchemy.Boolean(name='valid'), nullable=False)  # 1 byte
-    checksum = sqlalchemy.Column(ChecksumType(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
+    checksum = sqlalchemy.Column(Checksum(MAXIMUM_CHECKSUM_LENGTH), nullable=True)  # 2 to 33 bytes
 
-    uid = cast(BlockUid, sqlalchemy.orm.composite(BlockUid, uid_left, uid_right, comparator_factory=BlockUidComparator))
     __table_args__ = (
-        sqlalchemy.PrimaryKeyConstraint('version_id', 'idx'),
-        sqlalchemy.Index(None, 'uid_left', 'uid_right'),
+        sqlalchemy.UniqueConstraint('uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
         # Index(None, 'checksum', postgresql_using='hash'),
         sqlalchemy.Index(None, 'checksum'),
-    )
+        # This makes sure that SQLite won't reuse UIDs
+        {
+            'sqlite_autoincrement': True
+        })
+
+    @classmethod
+    def create(cls, *, uid: BlockUid, checksum: Optional[str], size: int, valid: bool, storage_id: int) -> 'Block':
+        block = cls(uid=uid, checksum=checksum, size=size, valid=valid, storage_id=storage_id)
+        try:
+            Session.add(block)
+            Session.commit()
+        except:
+            Session.rollback()
+            raise
+
+        return block
 
     def deref(self) -> DereferencedBlock:
         """ Dereference this to a namedtuple so that we can pass it around
@@ -783,12 +741,26 @@ class Block(Base, ReprMixIn):
         """
         return DereferencedBlock(
             uid=self.uid,
-            version_id=self.version_id,
-            idx=self.idx,
             checksum=self.checksum,
             size=self.size,
             valid=self.valid,
         )
+
+
+class VersionBlock(Base, ReprMixIn):
+    __tablename__ = 'versions_blocks'
+
+    REPR_SQL_ATTR_SORT_FIRST = ['version_id', 'idx', 'block_id']
+
+    block_id = sqlalchemy.Column(sqlalchemy.BigInteger, sqlalchemy.ForeignKey('blocks.id'), nullable=False)  # 8 bytes
+    block = sqlalchemy.orm.relationship('Block')
+    idx = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)  # 4 bytes
+    version_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                   sqlalchemy.ForeignKey('versions.id', ondelete='CASCADE'),
+                                   nullable=False)  # 4 bytes
+    version = sqlalchemy.orm.relationship('Version')
+
+    __table_args__ = (sqlalchemy.PrimaryKeyConstraint('version_id', 'idx'),)
 
 
 class DeletedBlock(Base, ReprMixIn):

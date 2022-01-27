@@ -3,12 +3,12 @@ import math
 import time
 import timeit
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from unittest import TestCase
 
 from dateutil import tz
 
-from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking
+from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking, Block
 from benji.exception import InternalError, UsageError, AlreadyLocked
 from benji.logging import logger
 from benji.tests.testcase import DatabaseBackendTestCaseBase
@@ -90,24 +90,16 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         checksums = []
         uids = []
         num_blocks = 256
-        blocks: List[Dict[str, Any]] = []
+        blocks: List[Tuple[int, Block]] = []
         for idx in range(num_blocks):
             checksums.append(self.random_hex(64))
             uids.append(BlockUid(1, idx))
-            blocks.append({
-                'idx': idx,
-                'uid_left': uids[idx].left,
-                'uid_right': uids[idx].right,
-                'checksum': checksums[idx],
-                'size': 1024 * 4096,
-                'valid': True
-            })
+            block = Block.create(uid=uids[idx], checksum=checksums[idx], size=1024 * 4096, valid=True, storage_id=1)
+            blocks.append((idx, block.id))
         version.create_blocks(blocks=blocks)
 
         for idx, checksum in enumerate(checksums):
             block = version.get_block_by_checksum(checksum)
-            self.assertEqual(idx, block.idx)
-            self.assertEqual(version.id, block.version_id)
             self.assertEqual(uids[idx], block.uid)
             self.assertEqual(checksum, block.checksum)
             self.assertEqual(1024 * 4096, block.size)
@@ -115,8 +107,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         for idx, uid in enumerate(uids):
             block = version.get_block_by_idx(idx)
-            self.assertEqual(idx, block.idx)
-            self.assertEqual(version.id, block.version_id)
             self.assertEqual(uid, block.uid)
             self.assertEqual(checksums[idx], block.checksum)
             self.assertEqual(1024 * 4096, block.size)
@@ -126,18 +116,14 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         self.assertEqual(num_blocks, version.blocks_count)
         self.assertEqual(0, version.sparse_blocks_count)
 
-        for idx, block in enumerate(version.blocks):
-            self.assertEqual(idx, block.idx)
-            self.assertEqual(version.id, block.version_id)
+        for idx, block in version.blocks:
             self.assertEqual(uids[idx], block.uid)
             self.assertEqual(checksums[idx], block.checksum)
             self.assertEqual(1024 * 4096, block.size)
             self.assertTrue(block.valid)
 
-        for idx, block in enumerate(version.blocks):
+        for idx, block in version.blocks:
             dereferenced_block = block.deref()
-            self.assertEqual(idx, dereferenced_block.idx)
-            self.assertEqual(version.id, dereferenced_block.version_id)
             self.assertEqual(uids[idx].left, dereferenced_block.uid.left)
             self.assertEqual(uids[idx].right, dereferenced_block.uid.right)
             self.assertEqual(checksums[idx], dereferenced_block.checksum)
@@ -145,13 +131,6 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
             self.assertTrue(dereferenced_block.valid)
 
         version.remove()
-        deleted_count = 0
-        for uids_deleted in DeletedBlock.get_unused_block_uids(-1):
-            for storage in uids_deleted.values():
-                for uid in storage:
-                    self.assertIn(uid, uids)
-                    deleted_count += 1
-        self.assertEqual(num_blocks, deleted_count)
 
     def test_lock_version(self):
         Locking.lock_version(VersionUid('v1'), reason='locking test')
@@ -384,6 +363,8 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
         versions = []
         good_uid = BlockUid(1, 2)
         bad_uid = BlockUid(3, 4)
+        good_block = Block.create(uid=good_uid, checksum='aabbcc', size=1024 * 4096, valid=True, storage_id=1)
+        bad_block = Block.create(uid=bad_uid, checksum='aabbcc', size=1024 * 4096, valid=True, storage_id=1)
         for i in range(6):
             version = Version.create(version_uid=VersionUid(f'v{i + 1}'),
                                      volume='backup-name',
@@ -391,14 +372,7 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
                                      size=16 * 1024 * 4096,
                                      storage_id=1,
                                      block_size=4 * 1024 * 4096)
-            blocks = [{
-                'idx': 0,
-                'uid_left': bad_uid.left if i < 3 else good_uid.left,
-                'uid_right': bad_uid.right if i < 3 else good_uid.right,
-                'checksum': 'aabbcc',
-                'size': 4 * 1024 * 4096,
-                'valid': True,
-            }]
+            blocks = [(0, bad_block.id if i < 3 else good_block.id)]
             version.create_blocks(blocks=blocks)
             version.set(status=VersionStatus.valid)
 
@@ -406,9 +380,9 @@ class DatabaseBackendTestCase(DatabaseBackendTestCaseBase):
 
         for i in range(6):
             self.assertEqual(VersionStatus.valid, versions[i].status)
-            self.assertTrue(list(versions[i].blocks)[0].valid)
+            self.assertTrue(list(versions[i].blocks)[0][1].valid)
 
-        affected_version_uids = Version.set_block_valid(bad_uid, False)
+        affected_version_uids = Version.set_block_valid(bad_uid.id, False)
         self.assertIsInstance(affected_version_uids, set)
         self.assertEqual(len(affected_version_uids), 3)
 
