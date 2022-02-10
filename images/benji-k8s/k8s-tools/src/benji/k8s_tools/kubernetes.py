@@ -15,6 +15,9 @@ from benji.helpers.settings import running_pod_name, benji_instance
 
 SERVICE_NAMESPACE_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
 
+NODE_RBD_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{image}'
+NODE_CSI_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/csi/pv/{pv}/globalmount/{volume_handle}'
+
 logger = logging.getLogger()
 
 
@@ -199,20 +202,23 @@ def create_pvc(pvc_name: str, pvc_namespace: int, pvc_size: str,
     return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
 
 
-def determine_rbd_image_from_pv(
-        pv: kubernetes.client.models.v1_persistent_volume.V1PersistentVolume) -> Tuple[Optional[str], Optional[str]]:
-    pool, image = None, None
+def determine_rbd_info_from_pv(
+    pv: kubernetes.client.models.v1_persistent_volume.V1PersistentVolume
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    pool, image, mount_point = None, None, None
 
     if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
         # Native Kubernetes RBD PV
-        pool, image = pv.spec.rbd.pool, pv.spec.rbd.image
+        pool, image, mount_point = pv.spec.rbd.pool, pv.spec.rbd.image, NODE_RBD_MOUNT_PATH_FORMAT.format(
+            image=pv.spec.rbd.image)
     elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
             pv.spec.flex_volume, 'driver'):
         # Rook Ceph PV
         options = pv.spec.flex_volume.options
         driver = pv.spec.flex_volume.driver
         if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
-            pool, image = options['pool'], options['image']
+            # Don't know how mount paths are structured for flex volumes, but as flex volumes are obsolete anyway we don't bother.
+            pool, image, mount_point = options['pool'], options['image'], None
     elif (hasattr(pv.spec, 'csi') and hasattr(pv.spec.csi, 'driver') and
           pv.spec.csi.driver in ('rook-ceph.rbd.csi.ceph.com', 'rbd.csi.ceph.com') and
           hasattr(pv.spec.csi, 'volume_handle') and pv.spec.csi.volume_handle and
@@ -222,9 +228,10 @@ def determine_rbd_image_from_pv(
         if len(volume_handle_parts) >= 9:
             image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
             image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts) - 5:])
-            pool, image = attributes['pool'], image_prefix + image_suffix
+            pool, image, mount_point = attributes['pool'], image_prefix + image_suffix, NODE_CSI_MOUNT_PATH_FORMAT.format(
+                pv=pv.metadata.name, volume_handle=pv.spec.csi.volume_handle)
 
-    return pool, image
+    return pool, image, mount_point
 
 
 # This is taken from https://github.com/kubernetes-client/python/pull/855 with minimal changes.

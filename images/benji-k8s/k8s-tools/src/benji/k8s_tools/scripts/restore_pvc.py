@@ -89,7 +89,7 @@ def main():
         time.sleep(1)
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
+    pool, image, _ = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
     if pool is None or image is None:
         raise RuntimeError(f'Unable to determine PersistentVolume pool or image for {pv.metadata.name}')
 

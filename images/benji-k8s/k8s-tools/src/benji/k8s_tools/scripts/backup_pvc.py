@@ -21,7 +21,6 @@ FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
 FSFREEZE_ANNOTATION = 'benji-backup.me/fsfreeze'
 FSFREEZE_POD_LABEL_SELECTOR = 'benji-backup.me/component=fsfreeze'
 FSFREEZE_CONTAINER_NAME = 'fsfreeze'
-KUBELET_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{}'
 
 utils.setup_logging()
 logger = logging.getLogger()
@@ -31,12 +30,10 @@ def _random_string(length: int, characters: str = string.ascii_lowercase + strin
     return ''.join(random.choice(characters) for _ in range(length))
 
 
-def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
-                             image: str) -> Tuple[bool, Optional[str], Optional[str], str]:
+def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str, image: str) -> Tuple[bool, Optional[str], Optional[str]]:
     pv_fsfreeze = False
     pv_host_ip = None
     pv_fsfreeze_pod = None
-    pv_mount_point = KUBELET_MOUNT_PATH_FORMAT.format(image)
 
     core_v1_api = kubernetes.client.CoreV1Api()
     pvc = core_v1_api.read_namespaced_persistent_volume_claim(pvc_name, pvc_namespace)
@@ -75,7 +72,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str,
             else:
                 pv_fsfreeze = False
 
-    return pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point
+    return pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod
 
 
 @ceph.signal_snapshot_create_pre.connect
@@ -85,14 +82,17 @@ def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, sn
     assert 'pvc' in context
     pvc_namespace = context['pvc'].metadata.namespace
     pvc_name = context['pvc'].metadata.name
+    pv_mount_point = context['pv-mount-point']
 
-    pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod, pv_mount_point = _determine_fsfreeze_info(pvc_namespace, pvc_name, image)
+    if pv_mount_point is None:
+        logger.warning(f'Mount path of PV is not known, skipping fsfreeze.')
+
+    pv_fsfreeze, pv_host_ip, pv_fsfreeze_pod = _determine_fsfreeze_info(pvc_namespace, pvc_name, image)
 
     # Record for use in post signals
     context['pv-fsfreeze'] = pv_fsfreeze
     context['pv-host-ip'] = pv_host_ip
     context['pv-fsfreeze-pod'] = pv_fsfreeze_pod
-    context['pv-mount-point'] = pv_mount_point
 
     if not pv_fsfreeze:
         return
@@ -100,7 +100,7 @@ def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, sn
         logger.info(f'PV is not mounted anywhere, skipping fsfreeze.')
         return
     if pv_fsfreeze_pod is None:
-        logger.info(f'No fsfreeze pod found for host {pv_host_ip}, skipping fsfreeze for this PV.')
+        logger.warning(f'No fsfreeze pod found for host {pv_host_ip}, skipping fsfreeze for this PV.')
         return
 
     logger.info(f'Freezing filesystem {pv_mount_point} on host {pv_host_ip} (pod {pv_fsfreeze_pod}).')
@@ -310,7 +310,7 @@ def main():
             continue
 
         pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-        pool, image = benji.k8s_tools.kubernetes.determine_rbd_image_from_pv(pv)
+        pool, image, pv_mount_point = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
         if pool is None or image is None:
             continue
 
@@ -327,7 +327,11 @@ def main():
             'benji-backup.me/k8s-pv': pv.metadata.name
         }
 
-        context = {'pvc': pvc}
+        context = {
+            'pvc': pvc,
+            'pv': pv,
+            'pv-mount-point': pv_mount_point,
+        }
         ceph.backup(volume=volume,
                     pool=pool,
                     image=image,

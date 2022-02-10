@@ -90,6 +90,24 @@ fsfreeze:
 
   affinity: {}
 
+  volumes:
+    - name: rbd-mounts-1
+      hostPath:
+        path: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+        type: DirectoryOrCreate
+    - name: rbd-mounts-2
+      hostPath:
+        path: /var/lib/kubelet/plugins/kubernetes.io/csi/pv/
+        type: DirectoryOrCreate
+
+
+  volumeMounts:
+    - name: rbd-mounts-1
+      mountPath: /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/
+    - name: rbd-mounts-2
+      mountPath: /var/lib/kubelet/plugins/kubernetes.io/csi/pv
+
+
 # Running the database backend on the same cluster could be dangerous!
 # Please consider the implications.
 postgresql:
