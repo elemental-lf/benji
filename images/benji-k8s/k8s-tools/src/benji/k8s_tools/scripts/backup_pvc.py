@@ -275,6 +275,11 @@ def main():
                         action='append',
                         default=[],
                         help='Filter PVCs on field selector')
+    parser.add_argument('--source-compare',
+                        dest='source_compare',
+                        action='store_true',
+                        default=False,
+                        help='Compare version to source after backup')
 
     args = parser.parse_args()
 
@@ -342,6 +347,7 @@ def main():
                     image=rbd_info.image,
                     version_uid=version_uid,
                     version_labels=version_labels,
+                    source_compare=args.source_compare,
                     context=context)
 
     sys.exit(0)

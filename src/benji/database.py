@@ -549,14 +549,22 @@ class Version(Base, ReprMixIn):
     def blocks_count(self) -> int:
         return math.ceil(self.size / self.block_size)
 
-    @property
-    def sparse_blocks_count(self) -> int:
+    def _sparse_blocks_by_idx(self) -> List[int]:
         # noinspection PyComparisonWithNone
         non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
             Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
         non_sparse_blocks = {row.idx for row in non_sparse_blocks_query}
 
-        return len([idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks])
+        return [idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks]
+
+    @property
+    def sparse_blocks(self) -> Iterator['Block']:
+        for idx in self._sparse_blocks_by_idx():
+            yield self._create_sparse_block(idx)
+
+    @property
+    def sparse_blocks_count(self) -> int:
+        return len(self._sparse_blocks_by_idx())
 
     @classmethod
     def get_by_uid(cls, version_uid: VersionUid) -> 'Version':
