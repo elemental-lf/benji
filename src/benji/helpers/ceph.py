@@ -74,6 +74,7 @@ def backup_initial(*,
                    image: str,
                    version_labels: Dict[str, str],
                    version_uid: Optional[str],
+                   source_compare: bool = False,
                    context: Any = None) -> Dict[str, str]:
 
     now = datetime.utcnow()
@@ -101,6 +102,10 @@ def backup_initial(*,
         result = subprocess_run(benji_args, decode_json=True)
         assert isinstance(result, dict)
 
+    if source_compare:
+        # We won't evaluate the returned result but any failure will raise an exception.
+        deep_scrub(pool=pool, snapshot=f'{image}@{snapshot}', version_uid=version_uid)
+
     return result
 
 
@@ -113,6 +118,7 @@ def backup_differential(*,
                         last_version_uid: str,
                         version_labels: Dict[str, str],
                         version_uid: Optional[str],
+                        source_compare: bool = False,
                         context: Any = None) -> Dict[str, str]:
 
     now = datetime.utcnow()
@@ -145,6 +151,24 @@ def backup_differential(*,
         result = subprocess_run(benji_args, decode_json=True)
         assert isinstance(result, dict)
 
+    if source_compare:
+        # We won't evaluate the returned result but any failure will raise an exception.
+        deep_scrub(pool=pool, snapshot=f'{image}@{snapshot}', version_uid=version_uid)
+
+    return result
+
+
+def deep_scrub(*, pool: str, snapshot: str, version_uid: Optional[str]) -> Dict[str, str]:
+    logger.info(f'Comparing source {pool}:{pool}/{snapshot} to {version_uid}.')
+
+    benji_args = [
+        'benji', '--machine-output', '--log-level', benji_log_level, 'deep-scrub', '--source',
+        f'{pool}:{pool}/{snapshot}', version_uid
+    ]
+
+    result = subprocess_run(benji_args, decode_json=True)
+    assert isinstance(result, dict)
+
     return result
 
 
@@ -155,6 +179,7 @@ def backup(*,
            image: str,
            version_labels: Dict[str, str] = {},
            version_uid: str = None,
+           source_compare: bool = False,
            context: Any = None):
     signal_backup_pre.send(SIGNAL_SENDER,
                            volume=volume,
@@ -180,6 +205,7 @@ def backup(*,
                                     image=image,
                                     version_uid=version_uid,
                                     version_labels=version_labels,
+                                    source_compare=source_compare,
                                     context=context)
         else:
             # Delete all snapshots except the newest
@@ -212,6 +238,7 @@ def backup(*,
                                              last_version_uid=last_version_uid,
                                              version_uid=version_uid,
                                              version_labels=version_labels,
+                                             source_compare=source_compare,
                                              context=context)
             else:
                 logger.info(f'Existing RBD snapshot {last_snapshot_path} not found in Benji, deleting it and reverting to initial backup.')
@@ -222,6 +249,7 @@ def backup(*,
                                         image=image,
                                         version_uid=version_uid,
                                         version_labels=version_labels,
+                                        source_compare=source_compare,
                                         context=context)
         assert 'versions' in result and isinstance(result['versions'], list)
         version = result['versions'][0]

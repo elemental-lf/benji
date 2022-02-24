@@ -237,17 +237,14 @@ class Benji(ReprMixIn, AbstractContextManager):
                 read_jobs += 1
         return read_jobs
 
-    def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, read_jobs: int,
-                               done_read_jobs: int, deep_scrub: bool) -> None:
-        logger.debug('{} of block {} (UID {}) ok.'.format('Deep-scrub' if deep_scrub else 'Scrub', block.idx, block.uid))
+    def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, jobs: int, done_jobs: int,
+                               action_notify: str, action: str) -> None:
+        logger.debug('{} of block {} (UID {}) ok.'.format(action_notify, block.idx, block.uid))
 
-        notify(
-            self._process_name, '{} version {} ({:.1f}%)'.format('Deep-scrubbing' if deep_scrub else 'Scrubbing',
-                                                                 version_uid, done_read_jobs / read_jobs * 100))
-        log_every_jobs = read_jobs // 200 + 1  # about every half percent
-        if done_read_jobs % log_every_jobs == 0 or done_read_jobs == read_jobs:
-            logger.info('{} {}/{} blocks ({:.1f}%)'.format('Deep-scrubbed' if deep_scrub else 'Scrubbed',
-                                                           done_read_jobs, read_jobs, done_read_jobs / read_jobs * 100))
+        notify(self._process_name, '{} version {} ({:.1f}%)'.format(action_notify, version_uid, done_jobs / jobs * 100))
+        log_every_jobs = jobs // 200 + 1  # about every half percent
+        if done_jobs % log_every_jobs == 0 or done_jobs == jobs:
+            logger.info('{} {}/{} blocks ({:.1f}%)'.format(action, done_jobs, jobs, done_jobs / jobs * 100))
 
     def scrub(self, version_uid: VersionUid, block_percentage: int = 100, history: BlockUidHistory = None) -> None:
         Locking.lock_version(version_uid, reason='Scrubbing version')
@@ -301,9 +298,10 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                 self._scrub_report_progress(version_uid=version_uid,
                                             block=block,
-                                            read_jobs=read_jobs,
-                                            done_read_jobs=done_read_jobs,
-                                            deep_scrub=False)
+                                            jobs=read_jobs,
+                                            done_jobs=done_read_jobs,
+                                            action_notify='Scrubbing',
+                                            action='Scrubbed')
         finally:
             Locking.unlock_version(version_uid)
             notify(self._process_name)
@@ -350,6 +348,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         valid = True
         source_mismatch = False
+        source_sparse_mismatch = False
         affected_version_uids = set()
         try:
             storage = StorageFactory.get_by_name(version.storage.name)
@@ -402,9 +401,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                                      'Will not mark this block as invalid, because the source looks wrong.'.format(
                                          block.idx, version_uid, block.uid,
                                          self._block_hash.data_hexdigest(source_data)[:16], data_checksum[:16]))
-                        valid = False
-                        # We are not setting the block invalid here because when the block exists and the checksum is
-                        # correct then the source is probably invalid.
+                        # We are not setting the block (and version) invalid here because when the block exists and the
+                        # checksum is correct then the source is probably invalid.
                         source_mismatch = True
 
                 if not block.valid:
@@ -412,16 +410,40 @@ class Benji(ReprMixIn, AbstractContextManager):
                         block.idx, version_uid, block.uid))
                     Version.set_block_valid(block.uid, True)
 
-                # Only add the block to the history if it is valid. This ensure that this block will also get flagged
+                # Only add the block to the history if it is valid. This ensures that this block will also get flagged
                 # again when deep-scrubbing other versions containing it.
                 if history:
                     history.add(version.storage_id, block.uid)
 
                 self._scrub_report_progress(version_uid=version_uid,
                                             block=block,
-                                            read_jobs=read_jobs,
-                                            done_read_jobs=done_read_jobs,
-                                            deep_scrub=True)
+                                            jobs=read_jobs,
+                                            done_jobs=done_read_jobs,
+                                            action_notify='Deep-scrubbing',
+                                            action='Deep-scrubbed')
+
+            if source:
+                # Precompute checksum of a sparse block.
+                sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * version.block_size)
+
+                sparse_compare_jobs = version.sparse_blocks_count
+                for done_sparse_compare_jobs, block in enumerate(version.sparse_blocks, start=1):
+                    logger.debug('Checking if block {} is sparse in source.'.format(block.idx, block.uid))
+                    source_data_checksum = self._block_hash.data_hexdigest(io.read_sync(block))
+                    if source_data_checksum != sparse_block_checksum:
+                        logger.error(
+                            'Source data has changed for block {} of version {}: It should be sparse but it is not.'.format(
+                                block.idx, version_uid))
+                        valid = False
+                        source_sparse_mismatch = True
+
+                    self._scrub_report_progress(version_uid=version_uid,
+                                                block=block,
+                                                jobs=sparse_compare_jobs,
+                                                done_jobs=done_sparse_compare_jobs,
+                                                action_notify='Checking sparse blocks of',
+                                                action='Checked sparse')
+
         except:
             Locking.unlock_version(version_uid)
             raise
@@ -437,6 +459,17 @@ class Benji(ReprMixIn, AbstractContextManager):
                 'Number of submitted and completed read jobs inconsistent (submitted: {}, completed {}).'.format(
                     read_jobs, done_read_jobs))
 
+        if source_mismatch:
+            logger.error('Version {} had source mismatches.'.format(version.uid))
+
+        if source_sparse_mismatch:
+            logger.error('Version {} had sparse blocks where the source does not.'.format(version.uid))
+            try:
+                version.set(status=VersionStatus.invalid)
+            except:
+                Locking.unlock_version(version_uid)
+                raise
+
         if valid:
             if block_percentage == 100:
                 try:
@@ -446,8 +479,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                     raise
             logger.info('Deep-scrub of version {} successful.'.format(version.uid))
         else:
-            if source_mismatch:
-                logger.error('Version {} had source mismatches.'.format(version.uid))
             logger.error('Marked version {} as invalid because it has errors.'.format(version.uid))
             if version.uid in affected_version_uids:
                 affected_version_uids.remove(version.uid)
