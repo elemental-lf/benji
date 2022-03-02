@@ -78,7 +78,10 @@ class IO(IOBase):
         self._write_queue: Deque[Tuple[DereferencedBlock, bytes]] = deque()
         self._outstanding_aio_reads = 0
         self._outstanding_aio_writes = 0
-        self._submitted_aio_writes = threading.BoundedSemaphore(self._simultaneous_writes)
+        self._aio_write_complete = threading.Event()
+        # Set the queue limit to two times the number of simultaneous writes plus one to ensure that there are always
+        # enough writes available even when all outstanding aio writes finish at the same time.
+        self._max_write_queue_len = 2 * self._simultaneous_writes + 1
         self._read_completion_queue: queue.Queue[Tuple[rbd.Completion, float, float, DereferencedBlock,
                                                        bytes]] = queue.Queue()
         self._write_completion_queue: queue.Queue[Tuple[rbd.Completion, float, float,
@@ -239,9 +242,10 @@ class IO(IOBase):
             def aio_callback(completion):
                 t2 = time.time()
                 self._write_completion_queue.put((completion, t1, t2, block))
-                self._submitted_aio_writes.release()
+                self._aio_write_complete.set()
 
-            self._submitted_aio_writes.acquire()
+            # Clear the condition before submitting the write to guarantee that it is set at least once again.
+            self._aio_write_complete.clear()
             offset = block.idx * self.block_size
             # LIBRADOS_OP_FLAG_FADVISE_DONTNEED: Indicates read data will not be accessed in the near future (by anyone)
             # LIBRADOS_OP_FLAG_FADVISE_NOCACHE: Indicates read data will not be accessed again (by *this* client)
@@ -250,6 +254,11 @@ class IO(IOBase):
 
     def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         assert self._rbd_image is not None
+
+        while len(self._write_queue) >= self._max_write_queue_len:
+            self._submit_aio_writes()
+            self._aio_write_complete.wait()
+
         self._write_queue.appendleft((block.deref(), data))
         self._submit_aio_writes()
 
