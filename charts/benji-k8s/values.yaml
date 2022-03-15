@@ -34,44 +34,44 @@ benji:
     startingDeadlineSeconds: null
 
   crontab: []
-    #- name: backup-all
-    #  schedule: "*/10 * * * *"
-    #  command:
-    #    - benji-backup-pvc
-    #- name: enforce
-    #  schedule: "00 04 * * *"
-    #  command:
-    #    - benji-command
-    #    - enforce
-    #    - latest3,hours24,days30,months3
-    #    - 'labels["benji-backup.me/instance"] == "benji-k8s"'
-    #- name: cleanup
-    #  schedule: "00 05 * * *"
-    #  command:
-    #    - benji-command
-    #    - cleanup
+    # - name: backup-all
+    #   schedule: "*/10 * * * *"
+    #   command:
+    #     - benji-backup-pvc
+    # - name: enforce
+    #   schedule: "00 04 * * *"
+    #   command:
+    #     - benji-command
+    #     - enforce
+    #     - latest3,hours24,days30,months3
+    #     - 'labels["benji-backup.me/instance"] == "benji-k8s"'
+    # - name: cleanup
+    #   schedule: "00 05 * * *"
+    #   command:
+    #     - benji-command
+    #     - cleanup
 
   # Volumes and volume mounts can be used to mount Ceph configuration and credentials, backup sources or storages into
   # the Benji container.
   volumes: []
-    #- name: ceph-etc
-    #  configMap:
-    #    name: ceph-etc
-    #    defaultMode: 0444
-    #- name: ceph-client-admin-keyring
-    #  secret:
-    #    secretName: ceph-client-admin-keyring
-    #    defaultMode: 0444
+    # - name: ceph-etc
+    #   configMap:
+    #     name: ceph-etc
+    #     defaultMode: 0444
+    # - name: ceph-client-admin-keyring
+    #   secret:
+    #     secretName: ceph-client-admin-keyring
+    #     defaultMode: 0444
 
   volumeMounts: []
-    #- name: ceph-etc
-    #  mountPath: /etc/ceph/ceph.conf
-    #  subPath: ceph.conf
-    #  readOnly: true
-    #- name: ceph-client-admin-keyring
-    #  mountPath: /etc/ceph/ceph.client.admin.keyring
-    #  subPath: keyring
-    #  readOnly: true
+    # - name: ceph-etc
+    #   mountPath: /etc/ceph/ceph.conf
+    #   subPath: ceph.conf
+    #   readOnly: true
+    # - name: ceph-client-admin-keyring
+    #   mountPath: /etc/ceph/ceph.client.admin.keyring
+    #   subPath: keyring
+    #   readOnly: true
 
 fsfreeze:
   enabled: true
