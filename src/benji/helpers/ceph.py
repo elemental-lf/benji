@@ -91,8 +91,8 @@ def backup_differential(*,
                         version_labels: Dict[str, str],
                         version_uid: Optional[str],
                         context: Any = None) -> Dict[str, str]:
-    logger.info(f'Performing differential backup of {volume}:{pool}/{image} from RBD snapshot" \
-        "{last_snapshot} and Benji version {last_version_uid}.')
+    logger.info(f'Performing differential backup of {volume}:{pool}/{image} from RBD snapshot {last_snapshot} '
+                f'and Benji version {last_version_uid}.')
 
     now = datetime.utcnow()
     snapshot = now.strftime(RBD_SNAP_NAME_PREFIX + '%Y-%m-%dT%H:%M:%SZ')
