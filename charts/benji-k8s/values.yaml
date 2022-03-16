@@ -78,8 +78,8 @@ fsfreeze:
 
   image:
     registry: docker.io
-    repository: centos
-    tag: 7
+    repository: almalinux
+    tag: 8.5
     pullPolicy: IfNotPresent
 
   resources: {}
