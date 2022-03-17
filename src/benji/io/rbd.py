@@ -21,6 +21,7 @@ from benji.logging import logger
 class IO(IOBase):
 
     _pool_name: Optional[str]
+    _namespace_name: Optional[str]
     _image_name: Optional[str]
     _snapshot_name: Optional[str]
 
@@ -78,15 +79,18 @@ class IO(IOBase):
     def open_r(self) -> None:
         self._read_executor = JobExecutor(name='IO-Read', workers=self._simultaneous_reads, blocking_submit=False)
 
-        re_match = re.match('^([^/]+)/([^@]+)(?:@(.+))?$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]*)/)?([^@]+)(?:@(.+))?$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename> or {}:<pool>/<imagename>@<snapshotname>.'.format(
-                self.url, self.name, self.name))
-        self._pool_name, self._image_name, self._snapshot_name = re_match.groups()
+            raise UsageError('URL {} is invalid . Need {}:<pool>[/<namespace>]/<imagename>[@<snapshotname>].'.format(
+                self.url, self.name))
+        self._pool_name, self._namespace_name, self._image_name, self._snapshot_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                logger.debug(f'Configuring io context to use namespace {self._namespace_name}.')
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 
@@ -98,14 +102,18 @@ class IO(IOBase):
     def open_w(self, size: int, force: bool = False, sparse: bool = False) -> None:
         self._write_executor = JobExecutor(name='IO-Write', workers=self._simultaneous_writes, blocking_submit=True)
 
-        re_match = re.match('^([^/]+)/([^@]+)$', self.parsed_url.path)
+        re_match = re.match('^([^/]+)/(?:([^/]*)/)?([^@]+)$', self.parsed_url.path)
         if not re_match:
-            raise UsageError('URL {} is invalid . Need {}:<pool>/<imagename>.'.format(self.url, self.name))
-        self._pool_name, self._image_name = re_match.groups()
+            raise UsageError('URL {} is invalid . Need {}:<pool>[/<namespace>]/<imagename>[@<snapshotname>].'.format(
+                self.url, self.name))
+        self._pool_name, self._namespace_name, self._image_name = re_match.groups()
 
         # try opening it and quit if that's not possible.
         try:
             ioctx = self._cluster.open_ioctx(self._pool_name)
+            if self._namespace_name is not None and len(self._namespace_name) > 0:
+                logger.debug(f'Configuring io context to use namespace {self._namespace_name}.')
+                ioctx.set_namespace(self._namespace_name)
         except rados.ObjectNotFound:
             raise FileNotFoundError('Ceph pool {} not found.'.format(self._pool_name)) from None
 

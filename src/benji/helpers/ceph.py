@@ -22,15 +22,31 @@ signal_backup_post_success = signal('on_backup_post_success')
 signal_backup_post_error = signal('on_backup_post_error')
 
 
-def snapshot_create(*, volume: str, pool: str, image: str, snapshot: str, context: Any = None):
+def _rbd_image_path(*, pool: str, namespace: str = '', image: str, snapshot: str = None) -> str:
+    # We could always include the namespace even when it is an empty string. But this might confuse some
+    # users that are not aware of RADOS namespaces.
+    if namespace != '':
+        image = f'{pool}/{namespace}/{image}'
+    else:
+        # '' (empty string) is the default namespace, no need to specify it.
+        image = f'{pool}/{image}'
+
+    if snapshot is not None:
+        image = f'{image}@{snapshot}'
+
+    return image
+
+
+def snapshot_create(*, volume: str, pool: str, namespace: str = '', image: str, snapshot: str, context: Any = None):
     signal_snapshot_create_pre.send(SIGNAL_SENDER,
                                     volume=volume,
                                     pool=pool,
                                     image=image,
                                     snapshot=snapshot,
                                     context=context)
+    snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
     try:
-        subprocess_run(['rbd', 'snap', 'create', f'{pool}/{image}@{snapshot}'], timeout=RBD_SNAP_CREATE_TIMEOUT)
+        subprocess_run(['rbd', 'snap', 'create', snapshot_path], timeout=RBD_SNAP_CREATE_TIMEOUT)
     except Exception as exception:
         signal_snapshot_create_post_error.send(SIGNAL_SENDER,
                                                volume=volume,
@@ -51,17 +67,20 @@ def snapshot_create(*, volume: str, pool: str, image: str, snapshot: str, contex
 def backup_initial(*,
                    volume: str,
                    pool: str,
+                   namespace: str = '',
                    image: str,
                    version_labels: Dict[str, str],
                    version_uid: Optional[str],
                    context: Any = None) -> Dict[str, str]:
-    logger.info(f'Performing initial backup of {volume}:{pool}/{image}')
 
     now = datetime.utcnow()
     snapshot = now.strftime(RBD_SNAP_NAME_PREFIX + '%Y-%m-%dT%H:%M:%SZ')
+    image_path = _rbd_image_path(pool=pool, namespace=namespace, image=image)
+    snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
+    logger.info(f'Performing initial backup of {volume}:{image_path}')
 
     snapshot_create(volume=volume, pool=pool, image=image, snapshot=snapshot, context=context)
-    stdout = subprocess_run(['rbd', 'diff', '--whole-object', '--format=json', f'{pool}/{image}@{snapshot}'])
+    stdout = subprocess_run(['rbd', 'diff', '--whole-object', '--format=json', snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
         assert isinstance(stdout, str)
@@ -75,7 +94,7 @@ def backup_initial(*,
             benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
-        benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
+        benji_args.extend([f'{pool}:{snapshot_path}', volume])
         result = subprocess_run(benji_args, decode_json=True)
         assert isinstance(result, dict)
 
@@ -85,22 +104,27 @@ def backup_initial(*,
 def backup_differential(*,
                         volume: str,
                         pool: str,
+                        namespace: str = '',
                         image: str,
                         last_snapshot: str,
                         last_version_uid: str,
                         version_labels: Dict[str, str],
                         version_uid: Optional[str],
                         context: Any = None) -> Dict[str, str]:
-    logger.info(f'Performing differential backup of {volume}:{pool}/{image} from RBD snapshot {last_snapshot} '
-                f'and Benji version {last_version_uid}.')
 
     now = datetime.utcnow()
     snapshot = now.strftime(RBD_SNAP_NAME_PREFIX + '%Y-%m-%dT%H:%M:%SZ')
+    image_path = _rbd_image_path(pool=pool, namespace=namespace, image=image)
+    snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
+    last_snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=last_snapshot)
+
+    logger.info(f'Performing differential backup of {volume}:{image_path} '
+                f'from RBD snapshot {last_snapshot} and Benji version {last_version_uid}.')
 
     snapshot_create(volume=volume, pool=pool, image=image, snapshot=snapshot, context=context)
     stdout = subprocess_run(
-        ['rbd', 'diff', '--whole-object', '--format=json', '--from-snap', last_snapshot, f'{pool}/{image}@{snapshot}'])
-    subprocess_run(['rbd', 'snap', 'rm', f'{pool}/{image}@{last_snapshot}'])
+        ['rbd', 'diff', '--whole-object', '--format=json', '--from-snap', last_snapshot, snapshot_path])
+    subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
         assert isinstance(stdout, str)
@@ -114,7 +138,7 @@ def backup_differential(*,
             benji_args.extend(['--uid', version_uid])
         for label_name, label_value in version_labels.items():
             benji_args.extend(['--label', f'{label_name}={label_value}'])
-        benji_args.extend([f'{pool}:{pool}/{image}@{snapshot}', volume])
+        benji_args.extend([f'{pool}:{snapshot_path}', volume])
         result = subprocess_run(benji_args, decode_json=True)
         assert isinstance(result, dict)
 
@@ -124,6 +148,7 @@ def backup_differential(*,
 def backup(*,
            volume: str,
            pool: str,
+           namespace: str = '',
            image: str,
            version_labels: Dict[str, str] = {},
            version_uid: str = None,
@@ -136,7 +161,8 @@ def backup(*,
                            context=context)
     version = None
     try:
-        rbd_snap_ls = subprocess_run(['rbd', 'snap', 'ls', '--format=json', f'{pool}/{image}'], decode_json=True)
+        image_path = _rbd_image_path(pool=pool, namespace=namespace, image=image)
+        rbd_snap_ls = subprocess_run(['rbd', 'snap', 'ls', '--format=json', image_path], decode_json=True)
         assert isinstance(rbd_snap_ls, list)
         # Snapshot are sorted by their ID, so newer snapshots come last
         benjis_snapshots = [
@@ -146,6 +172,7 @@ def backup(*,
             logger.info('No previous RBD snapshot found, performing initial backup.')
             result = backup_initial(volume=volume,
                                     pool=pool,
+                                    namespace=namespace,
                                     image=image,
                                     version_uid=version_uid,
                                     version_labels=version_labels,
@@ -153,11 +180,13 @@ def backup(*,
         else:
             # Delete all snapshots except the newest
             for snapshot in benjis_snapshots[:-1]:
-                logger.info(f'Deleting older RBD snapshot {pool}/{image}@{snapshot}.')
-                subprocess_run(['rbd', 'snap', 'rm', f'{pool}/{image}@{snapshot}'])
+                snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
+                logger.info(f'Deleting older RBD snapshot {snapshot_path}.')
+                subprocess_run(['rbd', 'snap', 'rm', snapshot_path])
 
             last_snapshot = benjis_snapshots[-1]
-            logger.info(f'Newest RBD snapshot is {pool}/{image}@{last_snapshot}.')
+            last_snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=last_snapshot)
+            logger.info(f'Newest RBD snapshot is {last_snapshot_path}.')
 
             benji_ls = subprocess_run([
                 'benji', '--machine-output', '--log-level', benji_log_level, 'ls',
@@ -173,6 +202,7 @@ def backup(*,
                 assert isinstance(last_version_uid, str)
                 result = backup_differential(volume=volume,
                                              pool=pool,
+                                             namespace=namespace,
                                              image=image,
                                              last_snapshot=last_snapshot,
                                              last_version_uid=last_version_uid,
@@ -180,10 +210,11 @@ def backup(*,
                                              version_labels=version_labels,
                                              context=context)
             else:
-                logger.info(f'Existing RBD snapshot {pool}/{image}@{last_snapshot} not found in Benji, deleting it and reverting to initial backup.')
-                subprocess_run(['rbd', 'snap', 'rm', f'{pool}/{image}@{last_snapshot}'])
+                logger.info(f'Existing RBD snapshot {last_snapshot_path} not found in Benji, deleting it and reverting to initial backup.')
+                subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
                 result = backup_initial(volume=volume,
                                         pool=pool,
+                                        namespace=namespace,
                                         image=image,
                                         version_uid=version_uid,
                                         version_labels=version_labels,
