@@ -3,7 +3,7 @@ import logging
 import re
 import subprocess
 from json import JSONDecodeError
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any, Sequence
 
 from benji.helpers.settings import benji_log_level
 
@@ -63,3 +63,57 @@ def subprocess_run(args: List[str],
             return result.stdout
     else:
         raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode} and output: {_one_line_stderr(result.stderr)}')
+
+
+# This is taken from benji.utils.
+# This works with dictionary keys and object attributes and a mixture of both.
+def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
+    split_keys = [key.split('.') for key in keys]
+
+    KeyDoesNotExist = object()
+    for split_key in split_keys:
+        position = obj
+        for component in split_key:
+            try:
+                position = position.get(component, KeyDoesNotExist)
+            except AttributeError:
+                # We get here if the get() method is not supported.
+                try:
+                    position = getattr(position, component, KeyDoesNotExist)
+                except AttributeError:
+                    # We get here if the getattr() method is not supported.
+                    return False
+            if position == KeyDoesNotExist:
+                return False
+
+    return True
+
+
+_KeyGetNoDefault = object()
+
+
+def key_get(obj: Dict[str, Any], key: str, default: Any = _KeyGetNoDefault) -> Any:
+    split_key = key.split('.')
+
+    KeyDoesNotExist = object()
+    position = obj
+    for component in split_key:
+        try:
+            position = position.get(component, KeyDoesNotExist)
+        except AttributeError:
+            # We get here if the get() method is not supported.
+            try:
+                position = getattr(position, component, KeyDoesNotExist)
+            except AttributeError:
+                # We get here if the getattr() method is not supported.
+                if default is not _KeyGetNoDefault:
+                    return default
+                else:
+                    raise AttributeError(f'{key} does not exist.')
+        if position == KeyDoesNotExist:
+            if default is not _KeyGetNoDefault:
+                return default
+            else:
+                raise AttributeError(f'{key} does not exist.')
+
+    return position

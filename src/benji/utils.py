@@ -17,10 +17,11 @@ from typing import List, Tuple, Union, Any, Optional, Dict, Iterator, Sequence
 import setproctitle
 from Crypto.Hash import SHA512
 from Crypto.Protocol.KDF import PBKDF2
-from benji.exception import ConfigurationError, UsageError
-from benji.logging import logger
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
+
+from benji.exception import ConfigurationError, UsageError
+from benji.logging import logger
 
 
 def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
@@ -72,6 +73,8 @@ def random_string(length: int, characters: str = string.ascii_lowercase + string
     return ''.join(random.choice(characters) for _ in range(length))
 
 
+# A copy of this function is in benji.helpers.utils.
+# This works with dictionary keys and object attributes and a mixture of both.
 def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
     split_keys = [key.split('.') for key in keys]
 
@@ -82,11 +85,46 @@ def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
             try:
                 position = position.get(component, KeyDoesNotExist)
             except AttributeError:
-                return False
-            if position is KeyDoesNotExist:
+                # We get here if the get() method is not supported.
+                try:
+                    position = getattr(position, component, KeyDoesNotExist)
+                except AttributeError:
+                    # We get here if the getattr() method is not supported.
+                    return False
+            if position == KeyDoesNotExist:
                 return False
 
     return True
+
+
+_KeyGetNoDefault = object()
+
+
+def key_get(obj: Dict[str, Any], key: str, default: Any = _KeyGetNoDefault) -> Any:
+    split_key = key.split('.')
+
+    KeyDoesNotExist = object()
+    position = obj
+    for component in split_key:
+        try:
+            position = position.get(component, KeyDoesNotExist)
+        except AttributeError:
+            # We get here if the get() method is not supported.
+            try:
+                position = getattr(position, component, KeyDoesNotExist)
+            except AttributeError:
+                # We get here if the getattr() method is not supported.
+                if default is not _KeyGetNoDefault:
+                    return default
+                else:
+                    raise AttributeError(f'{key} does not exist.')
+        if position == KeyDoesNotExist:
+            if default is not _KeyGetNoDefault:
+                return default
+            else:
+                raise AttributeError(f'{key} does not exist.')
+
+    return position
 
 
 class BlockHash:
