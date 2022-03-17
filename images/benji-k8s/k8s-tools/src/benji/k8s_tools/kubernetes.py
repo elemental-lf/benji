@@ -12,6 +12,7 @@ from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
 
 from benji.helpers.settings import running_pod_name, benji_instance
+from benji.helpers.utils import keys_exist, key_get
 
 SERVICE_NAMESPACE_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
 
@@ -207,29 +208,25 @@ def determine_rbd_info_from_pv(
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     pool, image, mount_point = None, None, None
 
-    if hasattr(pv.spec, 'rbd') and hasattr(pv.spec.rbd, 'pool') and hasattr(pv.spec.rbd, 'image'):
+    if keys_exist(pv.spec, ['rbd.pool', 'rbd.image']):
         # Native Kubernetes RBD PV
-        pool, image, mount_point = pv.spec.rbd.pool, pv.spec.rbd.image, NODE_RBD_MOUNT_PATH_FORMAT.format(
-            image=pv.spec.rbd.image)
-    elif hasattr(pv.spec, 'flex_volume') and hasattr(pv.spec.flex_volume, 'options') and hasattr(
-            pv.spec.flex_volume, 'driver'):
-        # Rook Ceph PV
-        options = pv.spec.flex_volume.options
-        driver = pv.spec.flex_volume.driver
-        if driver.startswith('ceph.rook.io/') and options.get('pool') and options.get('image'):
-            # Don't know how mount paths are structured for flex volumes, but as flex volumes are obsolete anyway we don't bother.
-            pool, image, mount_point = options['pool'], options['image'], None
-    elif (hasattr(pv.spec, 'csi') and hasattr(pv.spec.csi, 'driver') and
-          pv.spec.csi.driver in ('rook-ceph.rbd.csi.ceph.com', 'rbd.csi.ceph.com') and
-          hasattr(pv.spec.csi, 'volume_handle') and pv.spec.csi.volume_handle and
-          hasattr(pv.spec.csi, 'volume_attributes') and pv.spec.csi.volume_attributes.get('pool')):
-        attributes = pv.spec.csi.volume_attributes
-        volume_handle_parts = pv.spec.csi.volume_handle.split('-')
-        if len(volume_handle_parts) >= 9:
-            image_prefix = attributes.get('volumeNamePrefix', 'csi-vol-')
-            image_suffix = '-'.join(volume_handle_parts[len(volume_handle_parts) - 5:])
-            pool, image, mount_point = attributes['pool'], image_prefix + image_suffix, NODE_CSI_MOUNT_PATH_FORMAT.format(
-                pv=pv.metadata.name, volume_handle=pv.spec.csi.volume_handle)
+        pool = key_get(pv.spec, 'rbd.pool')
+        image = key_get(pv.spec, 'rbd.image')
+        mount_point = NODE_RBD_MOUNT_PATH_FORMAT.format(image=key_get(pv.spec, 'rbd.image'))
+    elif keys_exist(pv.spec, ['flex_volume.options.pool', 'flex_volume.options.image',  'flex_volume.driver']) \
+            and key_get(pv.spec, 'flex_volume.driver').startswith('ceph.rook.io/'):
+        pool = key_get(pv.spec, 'flex_volume.options.pool')
+        image = key_get(pv.spec, 'flex_volume.options.image')
+        # Don't know how mount paths are structured for flex volumes, but as flex volumes are obsolete anyway we don't bother.
+        mount_point = None
+    # rbd.csi.ceph.com is for the stock CSI driver, the second one is for Rook which adds the namespace to the driver
+    # name.
+    elif keys_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes.pool', 'csi.volume_attributes.imageName']) \
+        and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi_driver').endswith('.rbd.csi.ceph.com')):
+        pool = key_get(pv.spec, 'csi.volume_attributes.pool')
+        image = key_get(pv.spec, 'csi.volume_attributes.imageName')
+        mount_point = NODE_CSI_MOUNT_PATH_FORMAT.format(pv=pv.metadata.name,
+                                                        volume_handle=key_get(pv.spec, 'csi.volume_handle'))
 
     return pool, image, mount_point
 

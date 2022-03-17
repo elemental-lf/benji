@@ -65,7 +65,7 @@ def subprocess_run(args: List[str],
         raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode} and output: {_one_line_stderr(result.stderr)}')
 
 
-# This is taken from benji.utils.
+# A copy of this function is in benji.utils.
 # This works with dictionary keys and object attributes and a mixture of both.
 def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
     split_keys = [key.split('.') for key in keys]
@@ -92,6 +92,7 @@ def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
 _KeyGetNoDefault = object()
 
 
+# A copy of this function is in benji.utils.
 def key_get(obj: Dict[str, Any], key: str, default: Any = _KeyGetNoDefault) -> Any:
     split_key = key.split('.')
 

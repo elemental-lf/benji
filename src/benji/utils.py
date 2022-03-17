@@ -97,6 +97,7 @@ def keys_exist(obj: Dict[str, Any], keys: Sequence[str]) -> bool:
     return True
 
 
+# A copy of this function is in benji.helpers.util.
 _KeyGetNoDefault = object()
 
 
