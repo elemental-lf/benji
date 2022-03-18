@@ -323,6 +323,7 @@ def main():
         version_labels = {
             'benji-backup.me/instance': settings.benji_instance,
             'benji-backup.me/ceph-pool': rbd_info.pool,
+            'benji-backup.me/ceph-namespace': rbd_info.namespace,
             'benji-backup.me/ceph-rbd-image': rbd_info.image,
             'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
             'benji-backup.me/k8s-pvc': pvc.metadata.name,
@@ -336,6 +337,7 @@ def main():
         }
         ceph.backup(volume=volume,
                     pool=rbd_info.pool,
+                    namespace=rbd_info.namespace,
                     image=rbd_info.image,
                     version_uid=version_uid,
                     version_labels=version_labels,
