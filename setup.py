@@ -61,7 +61,7 @@ Topic :: System :: Archiving :: Backup
         'pycryptodome>=3.6.1,<4',
         'pyparsing>=2.3.0,<3',
         'semantic_version>=2.8.1,<3',
-        'dateparser>=0.7.0,<1',
+        'dateparser>=1.1.1,<2',
         'structlog>=19.1.0',
         'colorama>=0.4.1,<1',
         'diskcache>=3.0.6',
