@@ -7,6 +7,7 @@ import uuid
 from subprocess import TimeoutExpired, CalledProcessError
 from typing import List, Union, Tuple, Optional
 
+import attrs
 import kubernetes
 from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
@@ -203,32 +204,39 @@ def create_pvc(pvc_name: str, pvc_namespace: int, pvc_size: str,
     return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
 
 
+# Mark this as private because the class should only be instantiated by determine_rbd_info_from_pv.
+@attrs.define(kw_only=True)
+class _RBDInfo:
+    pool: str
+    image: str
+    mount_point: str = attrs.field(default=None)
+
+
 def determine_rbd_info_from_pv(
-    pv: kubernetes.client.models.v1_persistent_volume.V1PersistentVolume
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    pool, image, mount_point = None, None, None
+        pv: kubernetes.client.models.v1_persistent_volume.V1PersistentVolume) -> Optional[_RBDInfo]:
+    rbd_info = None
 
     if keys_exist(pv.spec, ['rbd.pool', 'rbd.image']):
         # Native Kubernetes RBD PV
-        pool = key_get(pv.spec, 'rbd.pool')
-        image = key_get(pv.spec, 'rbd.image')
-        mount_point = NODE_RBD_MOUNT_PATH_FORMAT.format(image=key_get(pv.spec, 'rbd.image'))
+        rbd_info = _RBDInfo(pool=key_get(pv.spec, 'rbd.pool'),
+                            image=key_get(pv.spec, 'rbd.image'),
+                            mount_point=NODE_RBD_MOUNT_PATH_FORMAT.format(image=key_get(pv.spec, 'rbd.image')))
     elif keys_exist(pv.spec, ['flex_volume.options.pool', 'flex_volume.options.image',  'flex_volume.driver']) \
             and key_get(pv.spec, 'flex_volume.driver').startswith('ceph.rook.io/'):
-        pool = key_get(pv.spec, 'flex_volume.options.pool')
-        image = key_get(pv.spec, 'flex_volume.options.image')
         # Don't know how mount paths are structured for flex volumes, but as flex volumes are obsolete anyway we don't bother.
-        mount_point = None
+        rbd_info = _RBDInfo(pool=key_get(pv.spec, 'flex_volume.options.pool'),
+                            image=key_get(pv.spec, 'flex_volume.options.image'))
     # rbd.csi.ceph.com is for the stock CSI driver, the second one is for Rook which adds the namespace to the driver
     # name.
     elif keys_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes.pool', 'csi.volume_attributes.imageName']) \
         and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi_driver').endswith('.rbd.csi.ceph.com')):
-        pool = key_get(pv.spec, 'csi.volume_attributes.pool')
-        image = key_get(pv.spec, 'csi.volume_attributes.imageName')
-        mount_point = NODE_CSI_MOUNT_PATH_FORMAT.format(pv=pv.metadata.name,
-                                                        volume_handle=key_get(pv.spec, 'csi.volume_handle'))
+        rbd_info = _RBDInfo(pool=key_get(pv.spec, 'csi.volume_attributes.pool'),
+                            image=key_get(pv.spec, 'csi.volume_attributes.imageName'),
+                            mount_point=NODE_CSI_MOUNT_PATH_FORMAT.format(pv=pv.metadata.name,
+                                                                          volume_handle=key_get(
+                                                                              pv.spec, 'csi.volume_handle')))
 
-    return pool, image, mount_point
+    return rbd_info
 
 
 # This is taken from https://github.com/kubernetes-client/python/pull/855 with minimal changes.

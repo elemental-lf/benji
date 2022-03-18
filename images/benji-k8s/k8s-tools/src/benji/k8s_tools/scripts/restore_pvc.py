@@ -89,9 +89,9 @@ def main():
         time.sleep(1)
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-    pool, image, _ = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
-    if pool is None or image is None:
-        raise RuntimeError(f'Unable to determine PersistentVolume pool or image for {pv.metadata.name}')
+    rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
+    if rbd_info is None:
+        raise RuntimeError(f'Unable to determine RBD information for {pv.metadata.name}')
 
     utils.subprocess_run([
         'benji',
@@ -101,6 +101,6 @@ def main():
         '--sparse',
         '--force',
         args.version_uid,
-        args.restore_url_template.format(pool=pool, image=image),
+        args.restore_url_template.format(pool=rbd_info.pool, image=rbd_info.image),
     ])
     sys.exit(0)
