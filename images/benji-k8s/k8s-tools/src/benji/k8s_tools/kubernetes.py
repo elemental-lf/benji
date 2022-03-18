@@ -208,6 +208,7 @@ def create_pvc(pvc_name: str, pvc_namespace: int, pvc_size: str,
 @attrs.define(kw_only=True)
 class _RBDInfo:
     pool: str
+    namespace: str = attrs.field(default='')
     image: str
     mount_point: str = attrs.field(default=None)
 
@@ -231,6 +232,7 @@ def determine_rbd_info_from_pv(
     elif keys_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes.pool', 'csi.volume_attributes.imageName']) \
         and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi_driver').endswith('.rbd.csi.ceph.com')):
         rbd_info = _RBDInfo(pool=key_get(pv.spec, 'csi.volume_attributes.pool'),
+                            namespace=key_get(pv.spec, 'csi.volume_attributes.radosNamespace', ''),
                             image=key_get(pv.spec, 'csi.volume_attributes.imageName'),
                             mount_point=NODE_CSI_MOUNT_PATH_FORMAT.format(pv=pv.metadata.name,
                                                                           volume_handle=key_get(

@@ -33,7 +33,7 @@ def main():
                         metavar='restore_url_template',
                         dest='restore_url_template',
                         help='Template to use for constructing URL for benji restore call',
-                        default='rbd:{pool}/{image}')
+                        default='rbd:{pool}/{namespace}/{image}')
     parser.add_argument(metavar='version_uid', dest='version_uid', help='Version uid')
     parser.add_argument(metavar='pvc_namespace', dest='pvc_namespace', help='PVC namespace')
     parser.add_argument(metavar='pvc_name', dest='pvc_name', help='PVC name')
@@ -101,6 +101,6 @@ def main():
         '--sparse',
         '--force',
         args.version_uid,
-        args.restore_url_template.format(pool=rbd_info.pool, image=rbd_info.image),
+        args.restore_url_template.format(pool=rbd_info.pool, namespace=rbd_info.namespace, image=rbd_info.image),
     ])
     sys.exit(0)
