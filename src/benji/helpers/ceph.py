@@ -41,6 +41,7 @@ def snapshot_create(*, volume: str, pool: str, namespace: str = '', image: str, 
     signal_snapshot_create_pre.send(SIGNAL_SENDER,
                                     volume=volume,
                                     pool=pool,
+                                    namespace=namespace,
                                     image=image,
                                     snapshot=snapshot,
                                     context=context)
@@ -51,6 +52,7 @@ def snapshot_create(*, volume: str, pool: str, namespace: str = '', image: str, 
         signal_snapshot_create_post_error.send(SIGNAL_SENDER,
                                                volume=volume,
                                                pool=pool,
+                                               namespace=namespace,
                                                image=image,
                                                snapshot=snapshot,
                                                context=context,
@@ -59,6 +61,7 @@ def snapshot_create(*, volume: str, pool: str, namespace: str = '', image: str, 
         signal_snapshot_create_post_success.send(SIGNAL_SENDER,
                                                  volume=volume,
                                                  pool=pool,
+                                                 namespace=namespace,
                                                  image=image,
                                                  snapshot=snapshot,
                                                  context=context)
@@ -79,7 +82,7 @@ def backup_initial(*,
     snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
     logger.info(f'Performing initial backup of {volume}:{image_path}')
 
-    snapshot_create(volume=volume, pool=pool, image=image, snapshot=snapshot, context=context)
+    snapshot_create(volume=volume, pool=pool, namespace=namespace, image=image, snapshot=snapshot, context=context)
     stdout = subprocess_run(['rbd', 'diff', '--whole-object', '--format=json', snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
@@ -121,7 +124,7 @@ def backup_differential(*,
     logger.info(f'Performing differential backup of {volume}:{image_path} '
                 f'from RBD snapshot {last_snapshot} and Benji version {last_version_uid}.')
 
-    snapshot_create(volume=volume, pool=pool, image=image, snapshot=snapshot, context=context)
+    snapshot_create(volume=volume, pool=pool, namespace=namespace, image=image, snapshot=snapshot, context=context)
     stdout = subprocess_run(
         ['rbd', 'diff', '--whole-object', '--format=json', '--from-snap', last_snapshot, snapshot_path])
     subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
@@ -156,6 +159,7 @@ def backup(*,
     signal_backup_pre.send(SIGNAL_SENDER,
                            volume=volume,
                            pool=pool,
+                           namespace=namespace,
                            image=image,
                            version_labels=version_labels,
                            context=context)
@@ -225,6 +229,7 @@ def backup(*,
         signal_backup_post_error.send(SIGNAL_SENDER,
                                       volume=volume,
                                       pool=pool,
+                                      namespace=namespace,
                                       image=image,
                                       version_labels=version_labels,
                                       context=context,
@@ -234,6 +239,7 @@ def backup(*,
         signal_backup_post_success.send(SIGNAL_SENDER,
                                         volume=volume,
                                         pool=pool,
+                                        namespace=namespace,
                                         image=image,
                                         version_labels=version_labels,
                                         context=context,
