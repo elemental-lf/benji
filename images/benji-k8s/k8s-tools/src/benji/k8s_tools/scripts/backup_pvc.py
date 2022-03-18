@@ -76,7 +76,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str, image: str) -> T
 
 
 @ceph.signal_snapshot_create_pre.connect
-def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                              context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
     assert 'pvc' in context
@@ -129,7 +129,7 @@ def ceph_snapshot_create_pre(sender: str, volume: str, pool: str, image: str, sn
 
 
 @ceph.signal_snapshot_create_post_success.connect
-def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                                       context: Dict[str, Any]) -> None:
     assert isinstance(context, dict)
     pv_fsfreeze = context['pv-fsfreeze']
@@ -163,14 +163,14 @@ def ceph_snapshot_create_post_success(sender: str, volume: str, pool: str, image
 
 
 @ceph.signal_snapshot_create_post_error.connect
-def ceph_snapshot_create_post_error(sender: str, volume: str, pool: str, image: str, snapshot: str,
+def ceph_snapshot_create_post_error(sender: str, volume: str, pool: str, namespace: str, image: str, snapshot: str,
                                     context: Dict[str, Any], exception: Exception) -> None:
     ceph_snapshot_create_post_success(sender, volume, pool, image, snapshot, context)
     raise exception
 
 
 @ceph.signal_backup_pre.connect
-def ceph_backup_pre(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def ceph_backup_pre(sender: str, volume: str, pool: str, namespace: str, image: str, version_labels: Dict[str, str],
                     context: Dict[str, Any]):
     assert isinstance(context, dict)
     context['backup-start-time'] = start_time = time.time()
@@ -197,8 +197,8 @@ def _k8s_create_pvc_event(type: str, reason: str, message: str, context: Dict[st
 
 
 @ceph.signal_backup_post_success.connect
-def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
-                             context: Dict[str, Any], version: Optional[Dict]):
+def ceph_backup_post_success(sender: str, volume: str, pool: str, namespace: str, image: str,
+                             version_labels: Dict[str, str], context: Dict[str, Any], version: Optional[Dict]):
     assert isinstance(context, dict)
     assert version is not None
 
@@ -226,7 +226,8 @@ def ceph_backup_post_success(sender: str, volume: str, pool: str, image: str, ve
 
 
 @ceph.signal_backup_post_error.connect
-def ceph_backup_post_error(sender: str, volume: str, pool: str, image: str, version_labels: Dict[str, str],
+def ceph_backup_post_error(sender: str, volume: str, pool: str, namespace: str, image: str, version_labels: Dict[str,
+                                                                                                                 str],
                            context: Dict[str, Any], version: Optional[Dict], exception: Exception):
     assert isinstance(context, dict)
     pvc_namespace = context['pvc'].metadata.namespace
