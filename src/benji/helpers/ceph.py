@@ -104,7 +104,7 @@ def backup_initial(*,
 
     if source_compare:
         # We won't evaluate the returned result but any failure will raise an exception.
-        deep_scrub(pool=pool, snapshot=f'{image}@{snapshot}', version_uid=version_uid)
+        deep_scrub(pool=pool, namespace=namespace, image=image, snapshot=snapshot, version_uid=version_uid)
 
     return result
 
@@ -153,17 +153,23 @@ def backup_differential(*,
 
     if source_compare:
         # We won't evaluate the returned result but any failure will raise an exception.
-        deep_scrub(pool=pool, snapshot=f'{image}@{snapshot}', version_uid=version_uid)
+        deep_scrub(pool=pool, namespace=namespace, image=image, snapshot=snapshot, version_uid=version_uid)
 
     return result
 
 
-def deep_scrub(*, pool: str, snapshot: str, version_uid: Optional[str]) -> Dict[str, str]:
-    logger.info(f'Comparing source {pool}:{pool}/{snapshot} to {version_uid}.')
+def deep_scrub(*,
+               pool: str,
+               namespace: str = '',
+               image: str,
+               snapshot: str,
+               version_uid: Optional[str]) -> Dict[str, str]:
+    snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
+    logger.info(f'Comparing source {pool}:{snapshot_path} to {version_uid}.')
 
     benji_args = [
         'benji', '--machine-output', '--log-level', benji_log_level, 'deep-scrub', '--source',
-        f'{pool}:{pool}/{snapshot}', version_uid
+        f'{pool}:{snapshot_path}', version_uid
     ]
 
     result = subprocess_run(benji_args, decode_json=True)
