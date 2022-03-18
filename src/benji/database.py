@@ -639,7 +639,7 @@ class Version(Base, ReprMixIn):
         sq_block, sq_storage, sq_version = aliased(Block), aliased(Storage), aliased(Version)
         share_count_overall_sq = Session.query(func.count('*')).select_from(sq_block).join(sq_version).join(
             sq_storage).filter((Storage.id == sq_storage.id) & (Block.uid_left == sq_block.uid_left) &
-                               (Block.uid_right == sq_block.uid_right)).as_scalar()
+                               (Block.uid_right == sq_block.uid_right)).scalar_subquery()
 
         # noinspection PyComparisonWithNone
         share_count_query = Session.query(
@@ -953,7 +953,7 @@ class _Database(ReprMixIn):
 
     def _database_tables(self) -> List[str]:
         # Need to ignore internal SQLite table here
-        return [table for table in self._engine.table_names() if table != 'sqlite_sequence']
+        return [table for table in sqlalchemy.inspect(self._engine).get_table_names() if table != 'sqlite_sequence']
 
     def _migration_needed(self, alembic_config: alembic_config_Config) -> Tuple[bool, str, str]:
         table_names = self._database_tables()
@@ -1004,7 +1004,7 @@ class _Database(ReprMixIn):
         if _destroy:
             Base.metadata.drop_all(self._engine)
             # Drop alembic_version table
-            if self._engine.has_table('alembic_version'):
+            if sqlalchemy.inspect(self._engine).has_table('alembic_version'):
                 with self._engine.begin() as connection:
                     connection.execute(
                         sqlalchemy.sql.ddl.DropTable(sqlalchemy.Table('alembic_version', sqlalchemy.MetaData())))
