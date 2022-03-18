@@ -65,6 +65,7 @@ Topic :: System :: Archiving :: Backup
         'structlog>=19.1.0',
         'colorama>=0.4.1,<1',
         'diskcache>=3.0.6',
+        'attrs >=21.4.0,<22',
     ],
     extras_require={
         's3': ['boto3>=1.15.0'],

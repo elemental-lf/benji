@@ -310,8 +310,10 @@ def main():
             continue
 
         pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-        pool, image, pv_mount_point = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
-        if pool is None or image is None:
+        rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
+        if rbd_info is None:
+            logger.debug(f'PersistentVolume {pv.metadata.name} is not an RBD backed volume '
+                         f'or the volume format is unknown to us.')
             continue
 
         volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
@@ -320,8 +322,8 @@ def main():
 
         version_labels = {
             'benji-backup.me/instance': settings.benji_instance,
-            'benji-backup.me/ceph-pool': pool,
-            'benji-backup.me/ceph-rbd-image': image,
+            'benji-backup.me/ceph-pool': rbd_info.pool,
+            'benji-backup.me/ceph-rbd-image': rbd_info.image,
             'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
             'benji-backup.me/k8s-pvc': pvc.metadata.name,
             'benji-backup.me/k8s-pv': pv.metadata.name
@@ -330,11 +332,11 @@ def main():
         context = {
             'pvc': pvc,
             'pv': pv,
-            'pv-mount-point': pv_mount_point,
+            'pv-mount-point': rbd_info.mount_point,
         }
         ceph.backup(volume=volume,
-                    pool=pool,
-                    image=image,
+                    pool=rbd_info.pool,
+                    image=rbd_info.image,
                     version_uid=version_uid,
                     version_labels=version_labels,
                     context=context)
