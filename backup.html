@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Backup &mdash; Benji Backup 0.14.1.dev3+gce9bfda documentation</title>
+  <title>Backup &mdash; Benji Backup 0.15.0.dev30+gdc2b991 documentation</title>
   
 
   
@@ -424,8 +424,22 @@ overwritten block while a snapshot exists. This may hurt your performance.</p>
 </div>
 <div class="section" id="ceph-rbd">
 <h4>Ceph RBD<a class="headerlink" href="#ceph-rbd" title="Permalink to this headline">¶</a></h4>
-<p>With Ceph RBD Ceph itself is able to calculate the changes between two snapshots. Since the <em>jewel</em> version of Ceph
-this is a very fast process if the <em>fast-diff</em> feature is enabled. In this case only metadata has to be compared.</p>
+<p>With Ceph RBD Ceph itself is able to calculate the changes between two snapshots. Since the <em>Jewel</em> version of Ceph
+this is a very fast process if the <em>fast-diff</em> feature is enabled on the RBD image and the <code class="docutils literal notranslate"><span class="pre">--whole-object</span></code> option
+of <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code> is used. In this case only metadata has to be compared.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Unfortunately there have been numerous bugs in the implementation of the <code class="docutils literal notranslate"><span class="pre">--whole-object</span></code> option and
+some will lead to invalid backups under some circumstances:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://tracker.ceph.com/issues/54970">https://tracker.ceph.com/issues/54970</a>: Unresolved as of 03/20/2021</p></li>
+<li><p><a class="reference external" href="https://tracker.ceph.com/issues/50787">https://tracker.ceph.com/issues/50787</a>: Fixed in the latest patch releases of Ceph 15.2 (<em>Octopus</em>) and later</p></li>
+<li><p><a class="reference external" href="https://tracker.ceph.com/issues/42248">https://tracker.ceph.com/issues/42248</a>: Fixed in the lastest patch releases of Ceph 12.2 (<em>Luminous</em>) and later but
+it introduced bug #50787.</p></li>
+</ul>
+<p>Benji does not require this option and if a Ceph installation is affected by one of these bugs it can be left off.
+But this will reduce the performance of the <code class="docutils literal notranslate"><span class="pre">rbd</span> <span class="pre">diff</span></code> command.</p>
+</div>
 <div class="section" id="manually">
 <h5>Manually<a class="headerlink" href="#manually" title="Permalink to this headline">¶</a></h5>
 <p>In this example, we will backup an RBD image called <code class="docutils literal notranslate"><span class="pre">vm1</span></code> which is in the pool <code class="docutils literal notranslate"><span class="pre">pool</span></code>.</p>

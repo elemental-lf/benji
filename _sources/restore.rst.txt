@@ -136,7 +136,7 @@ by using ``nbd-client`` und the in-kernel ``nbd`` driver::
     $ sudo modprobe nbd
 
     # Connect a Benji version to a free NBD block device
-    $ sudo nbd-client -p 10809 -b 512 -t 10 -N V0000000001 127.0.0.1  /dev/nbd0
+    $ sudo nbd-client -p -b 512 -t 10 -N V0000000001 127.0.0.1 10809 /dev/nbd0
     Negotiation: ..size = 10MB
     bs=512, sz=10485760 bytes
 

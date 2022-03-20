@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Restore &mdash; Benji Backup 0.14.1.dev3+gce9bfda documentation</title>
+  <title>Restore &mdash; Benji Backup 0.15.0.dev30+gdc2b991 documentation</title>
   
 
   
@@ -437,7 +437,7 @@ by using <code class="docutils literal notranslate"><span class="pre">nbd-client
 $ sudo modprobe nbd
 
 <span class="c1"># Connect a Benji version to a free NBD block device</span>
-$ sudo nbd-client -p <span class="m">10809</span> -b <span class="m">512</span> -t <span class="m">10</span> -N V0000000001 <span class="m">127</span>.0.0.1  /dev/nbd0
+$ sudo nbd-client -p -b <span class="m">512</span> -t <span class="m">10</span> -N V0000000001 <span class="m">127</span>.0.0.1 <span class="m">10809</span> /dev/nbd0
 Negotiation: ..size <span class="o">=</span> 10MB
 <span class="nv">bs</span><span class="o">=</span><span class="m">512</span>, <span class="nv">sz</span><span class="o">=</span><span class="m">10485760</span> bytes
 

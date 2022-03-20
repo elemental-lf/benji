@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Configuration &mdash; Benji Backup 0.14.1.dev3+gce9bfda documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.15.0.dev30+gdc2b991 documentation</title>
   
 
   
@@ -514,7 +514,9 @@ recommended to increase this number to get better concurrency and performance.</
 <p>The <code class="docutils literal notranslate"><span class="pre">rbd</span></code> I/O module requires that Ceph’s Python modules <code class="docutils literal notranslate"><span class="pre">rados</span></code> and <code class="docutils literal notranslate"><span class="pre">rbd</span></code> are installed. With it it is
 possible to backup RBD images of a Ceph cluster. The supported URL syntax is:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>&lt;module instance&gt;:&lt;pool&gt;/&lt;image&gt;
+&lt;module instance&gt;:&lt;pool&gt;/&lt;namespace&gt;/&lt;image&gt;
 &lt;module instance&gt;:&lt;pool&gt;/&lt;image&gt;@&lt;snapshot&gt;
+&lt;module instance&gt;:&lt;pool&gt;/&lt;namespace/image&gt;@&lt;snapshot&gt;
 </pre></div>
 </div>
 <p>Additional options can be passed as query parameters:</p>
