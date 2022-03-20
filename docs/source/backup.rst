@@ -115,9 +115,20 @@ Day 2..n (Differential Backups)::
 Ceph RBD
 ********
 
-With Ceph RBD Ceph itself is able to calculate the changes between two snapshots. Since the *jewel* version of Ceph
-this is a very fast process if the *fast-diff* feature is enabled. In this case only metadata has to be compared.
+With Ceph RBD Ceph itself is able to calculate the changes between two snapshots. Since the *Jewel* version of Ceph
+this is a very fast process if the *fast-diff* feature is enabled on the RBD image and the ``--whole-object`` option
+of ``rbd diff`` is used. In this case only metadata has to be compared.
 
+.. IMPORTANT:: Unfortunately there have been numerous bugs in the implementation of the ``--whole-object`` option and
+  some will lead to invalid backups under some circumstances:
+
+  * https://tracker.ceph.com/issues/54970: Unresolved as of 03/20/2021
+  * https://tracker.ceph.com/issues/50787: Fixed in the latest patch releases of Ceph 15.2 (*Octopus*) and later
+  * https://tracker.ceph.com/issues/42248: Fixed in the lastest patch releases of Ceph 12.2 (*Luminous*) and later but
+    it introduced bug #50787.
+
+  Benji does not require this option and if a Ceph installation is affected by one of these bugs it can be left off.
+  But this will reduce the performance of the ``rbd diff`` command.
 
 Manually
 ^^^^^^^^
