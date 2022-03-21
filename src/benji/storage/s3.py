@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import threading
+from typing import Iterable, Union, Tuple
 
 import boto3
 from botocore.client import Config as BotoCoreClientConfig
 from botocore.exceptions import ClientError
 from botocore.handlers import set_list_objects_encoding_type_url
-from typing import Iterable, Union, Tuple
 
 from benji.config import Config, ConfigDict
 from benji.logging import logger
@@ -67,7 +67,7 @@ class Storage(ReadCacheStorageBase):
         # See https://boto3.amazonaws.com/v1/documentation/api/latest/guide/retries.html
         resource_config['retries'] = {
             'mode': 'standard',
-            'max_attempts':  max_attempts,
+            'max_attempts': max_attempts,
         }
 
         self._resource_config['config'] = BotoCoreClientConfig(**resource_config)
@@ -121,17 +121,17 @@ class Storage(ReadCacheStorageBase):
 
     def _rm_object(self, key):
         self._init_connection()
-        # delete() always returns 204 even when key doesn't exist, so check for existence
         object = self._local.bucket.Object(key)
         try:
+            # In some S3 implementations delete() always returns 204 even when key doesn't exist, so check for
+            # existence.
             object.load()
+            object.delete()
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey' or e.response['Error']['Code'] == '404':
                 raise FileNotFoundError('Key {} not found.'.format(key)) from None
             else:
                 raise
-        else:
-            object.delete()
 
     # def _rm_many_objects(self, keys: Sequence[str]) -> List[str]:
     #     self._init_connection()
@@ -157,7 +157,8 @@ class Storage(ReadCacheStorageBase):
     #                 errors.append(key)
     #     return errors
 
-    def _list_objects(self, prefix: str = None,
+    def _list_objects(self,
+                      prefix: str = None,
                       include_size: bool = False) -> Union[Iterable[str], Iterable[Tuple[str, int]]]:
         self._init_connection()
 
