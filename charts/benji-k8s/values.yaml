@@ -1,3 +1,5 @@
+# Needs to point to an existing timezone file under /usr/share/zoneinfo. This file will be mounted as /etc/localtime
+# inside the container. The environment variable TZ is also set to this value.
 timeZone: Europe/Berlin
 
 benji:
