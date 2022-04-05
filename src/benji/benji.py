@@ -226,6 +226,9 @@ class Benji(ReprMixIn, AbstractContextManager):
                     self._process_name,
                     'Preparing {} of version {} ({:.1f}%)'.format('deep-scrub' if deep_scrub else 'scrub', version.uid,
                                                                   (idx + 1) / version.blocks_count * 100))
+                logger.info('Preparing {}/{} blocks ({:.1f}%)'.format(idx + 1, version.blocks_count,
+                                                                      (idx + 1) / version.blocks_count * 100))
+
             if not block.uid:
                 if log_debug:
                     logger.debug('{} of block {} of version {} (UID {}) skipped (sparse).'.format(
