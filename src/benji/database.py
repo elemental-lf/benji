@@ -341,6 +341,13 @@ class Version(Base, ReprMixIn):
                                          cascade='all, delete-orphan',
                                          collection_class=attribute_mapped_collection('name'))
 
+    @sqlalchemy.orm.reconstructor
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # This attribute is not mapped to a database column.
+        self.blocks_count = math.ceil(self.size / self.block_size)
+
     @classmethod
     def create(cls,
                version_uid: VersionUid,
@@ -544,10 +551,6 @@ class Version(Base, ReprMixIn):
 
             if next_start_idx == self.blocks_count:
                 break
-
-    @property
-    def blocks_count(self) -> int:
-        return math.ceil(self.size / self.block_size)
 
     def _sparse_blocks_by_idx(self) -> List[int]:
         # noinspection PyComparisonWithNone
