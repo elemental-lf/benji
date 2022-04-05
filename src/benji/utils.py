@@ -341,7 +341,7 @@ class ProgressReporting:
                          blocks_count: int,
                          per_thousand: int = 1000) -> None:
 
-        log_every_blocks = blocks_count // max(1, int(1000 / per_thousand))
+        log_every_blocks = max(1, blocks_count // max(1, int(1000 / per_thousand)))
         if per_thousand == 1000 or blocks_done % log_every_blocks == 0 or blocks_done == 1 or blocks_done == blocks_count:
             message = '{} {}/{} blocks ({:.1f}%)'.format(task, blocks_done, blocks_count,
                                                          blocks_done / blocks_count * 100)
