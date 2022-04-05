@@ -249,10 +249,8 @@ class Benji(ReprMixIn, AbstractContextManager):
                 read_jobs += 1
         return read_jobs
 
-    def _scrub_report_progress(self, *, version_uid: VersionUid, block: DereferencedBlock, jobs: int, done_jobs: int,
-                               action_notify: str, action: str) -> None:
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('{} of block {} (UID {}) ok.'.format(action_notify, block.idx, block.uid))
+    def _scrub_report_progress(self, *, version_uid: VersionUid, jobs: int, done_jobs: int, action_notify: str,
+                               action: str) -> None:
         log_every_jobs = jobs // 200 + 1  # about every half percent
         if done_jobs % log_every_jobs == 0 or jobs == 0 or jobs == done_jobs:
             notify(self._process_name, '{} version {} ({:.1f}%)'.format(action_notify, version_uid,
@@ -283,6 +281,12 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
+                self._scrub_report_progress(version_uid=version_uid,
+                                            jobs=read_jobs,
+                                            done_jobs=done_read_jobs,
+                                            action_notify='Scrubbing',
+                                            action='Scrubbed')
+
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
@@ -309,12 +313,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if history:
                     history.add(version.storage_id, block.uid)
 
-                self._scrub_report_progress(version_uid=version_uid,
-                                            block=block,
-                                            jobs=read_jobs,
-                                            done_jobs=done_read_jobs,
-                                            action_notify='Scrubbing',
-                                            action='Scrubbed')
         finally:
             Locking.unlock_version(version_uid)
             notify(self._process_name)
@@ -375,6 +373,12 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
+                self._scrub_report_progress(version_uid=version_uid,
+                                            jobs=read_jobs,
+                                            done_jobs=done_read_jobs,
+                                            action_notify='Deep-scrubbing',
+                                            action='Deep-scrubbed')
+
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
                     if isinstance(entry, InvalidBlockException):
@@ -429,19 +433,18 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if history:
                     history.add(version.storage_id, block.uid)
 
-                self._scrub_report_progress(version_uid=version_uid,
-                                            block=block,
-                                            jobs=read_jobs,
-                                            done_jobs=done_read_jobs,
-                                            action_notify='Deep-scrubbing',
-                                            action='Deep-scrubbed')
-
             if source:
                 # Precompute checksum of a sparse block.
                 sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * version.block_size)
 
                 sparse_compare_jobs = version.sparse_blocks_count
                 for done_sparse_compare_jobs, block in enumerate(version.sparse_blocks, start=1):
+                    self._scrub_report_progress(version_uid=version_uid,
+                                                jobs=sparse_compare_jobs,
+                                                done_jobs=done_sparse_compare_jobs,
+                                                action_notify='Checking sparse blocks of',
+                                                action='Checked sparse')
+
                     if log_debug:
                         logger.debug('Checking if block {} is sparse in source.'.format(block.idx, block.uid))
                     source_data_checksum = self._block_hash.data_hexdigest(io.read_sync(block))
@@ -451,13 +454,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                                 block.idx, version_uid))
                         valid = False
                         source_sparse_mismatch = True
-
-                    self._scrub_report_progress(version_uid=version_uid,
-                                                block=block,
-                                                jobs=sparse_compare_jobs,
-                                                done_jobs=done_sparse_compare_jobs,
-                                                action_notify='Checking sparse blocks of',
-                                                action='Checked sparse')
 
         except:
             Locking.unlock_version(version_uid)
