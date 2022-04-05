@@ -27,7 +27,7 @@ from benji.repr import ReprMixIn
 from benji.retentionfilter import RetentionFilter
 from benji.storage.base import InvalidBlockException, BlockNotFoundError
 from benji.storage.factory import StorageFactory
-from benji.utils import notify, BlockHash, PrettyPrint, random_string, InputValidation
+from benji.utils import BlockHash, PrettyPrint, random_string, InputValidation, ProgressReporting
 
 
 class Benji(ReprMixIn, AbstractContextManager):
@@ -46,7 +46,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         self._block_size = config.get('blockSize', types=int)
         self._block_hash = BlockHash(config.get('hashFunction', types=str))
-        self._process_name = config.get('processName', types=str)
+        self._progress = ProgressReporting(config.get('processName', types=str))
 
         Database.configure(config, in_memory=in_memory_database)
         if init_database or in_memory_database:
@@ -63,8 +63,6 @@ class Benji(ReprMixIn, AbstractContextManager):
         if default_storage_name not in storage_modules.keys():
             raise ConfigurationError('Default storage {} is undefined.'.format(default_storage_name))
         self._default_storage_name = default_storage_name
-
-        notify(self._process_name)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
@@ -132,7 +130,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                                      status=VersionStatus.incomplete)
             Locking.lock_version(version.uid, reason='Preparing version')
 
-            log_every_blocks = version.blocks_count // 200 + 1  # about every half percent
             new_block_uid: Optional[BlockUid]
             new_block_checksum: Optional[str]
             new_block_block_size: int
@@ -183,9 +180,11 @@ class Benji(ReprMixIn, AbstractContextManager):
                     'valid': new_block_valid
                 })
 
-                if idx % log_every_blocks == 0 or (idx + 1) == version.blocks_count:
-                    notify(self._process_name,
-                           'Preparing version {} ({:.1f}%)'.format(version.uid, (idx + 1) / version.blocks_count * 100))
+                self._progress.task_with_blocks('Creating from base version' if base_version_uid else 'Creating version',
+                                                version_uid=version.uid,
+                                                blocks_done=idx + 1,
+                                                blocks_count=version.blocks_count,
+                                                per_thousand=5)
 
                 if len(blocks) == self._BLOCKS_CREATE_WORK_PACKAGE:
                     version.create_blocks(blocks=blocks)
@@ -198,7 +197,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         finally:
             if base_version_locking and base_version_uid and Locking.is_version_locked(base_version_uid):
                 Locking.unlock_version(base_version_uid)
-            notify(self._process_name)
+            self._progress.reset()
 
         return version
 
@@ -216,46 +215,36 @@ class Benji(ReprMixIn, AbstractContextManager):
                        history: BlockUidHistory = None,
                        block_percentage: int,
                        deep_scrub: bool) -> int:
-        log_every_blocks = version.blocks_count // 200 + 1  # about every half percent
         log_debug = logger.isEnabledFor(logging.DEBUG)
+        action = 'deep-scrub' if deep_scrub else 'scrub'
         storage = StorageFactory.get_by_name(version.storage.name)
         read_jobs = 0
         for idx, block in enumerate(version.blocks):
-            if idx % log_every_blocks == 0 or (idx + 1) == version.blocks_count:
-                notify(
-                    self._process_name,
-                    'Preparing {} of version {} ({:.1f}%)'.format('deep-scrub' if deep_scrub else 'scrub', version.uid,
-                                                                  (idx + 1) / version.blocks_count * 100))
-                logger.info('Preparing {}/{} blocks ({:.1f}%)'.format(idx + 1, version.blocks_count,
-                                                                      (idx + 1) / version.blocks_count * 100))
+            self._progress.task_with_blocks(f'Preparing {action}',
+                                            version_uid=version.uid,
+                                            blocks_done=idx + 1,
+                                            blocks_count=version.blocks_count,
+                                            per_thousand=5)
 
             if not block.uid:
                 if log_debug:
                     logger.debug('{} of block {} of version {} (UID {}) skipped (sparse).'.format(
-                        'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid))
+                        action.capitalize(), block.idx, version.uid, block.uid))
                 continue
             if history and history.seen(version.storage_id, block.uid):
                 if log_debug:
                     logger.debug('{} of block {} of version {} (UID {}) skipped (already seen).'.format(
-                        'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid))
+                        action.capitalize(), block.idx, version.uid, block.uid))
                 continue
             # i != 0 ensures that we always scrub at least one block (the first in this case)
             if idx != 0 and block_percentage < 100 and random.randint(1, 100) > block_percentage:
                 if log_debug:
                     logger.debug('{} of block {} of version {} (UID {}) skipped (percentile is {}).'.format(
-                        'Deep-scrub' if deep_scrub else 'Scrub', block.idx, version.uid, block.uid, block_percentage))
+                        action.capitalize(), block.idx, version.uid, block.uid, block_percentage))
             else:
                 storage.read_block_async(block, metadata_only=(not deep_scrub))
                 read_jobs += 1
         return read_jobs
-
-    def _scrub_report_progress(self, *, version_uid: VersionUid, jobs: int, done_jobs: int, action_notify: str,
-                               action: str) -> None:
-        log_every_jobs = jobs // 200 + 1  # about every half percent
-        if done_jobs % log_every_jobs == 0 or jobs == 0 or jobs == done_jobs:
-            notify(self._process_name, '{} version {} ({:.1f}%)'.format(action_notify, version_uid,
-                                                                        done_jobs / jobs * 100))
-            logger.info('{} {}/{} blocks ({:.1f}%)'.format(action, done_jobs, jobs, done_jobs / jobs * 100))
 
     def scrub(self, version_uid: VersionUid, block_percentage: int = 100, history: BlockUidHistory = None) -> None:
         Locking.lock_version(version_uid, reason='Scrubbing version')
@@ -281,11 +270,11 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
-                self._scrub_report_progress(version_uid=version_uid,
-                                            jobs=read_jobs,
-                                            done_jobs=done_read_jobs,
-                                            action_notify='Scrubbing',
-                                            action='Scrubbed')
+                self._progress.task_with_blocks('Scrubbing',
+                                                version_uid=version_uid,
+                                                blocks_done=done_read_jobs,
+                                                blocks_count=read_jobs,
+                                                per_thousand=5)
 
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
@@ -315,7 +304,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         finally:
             Locking.unlock_version(version_uid)
-            notify(self._process_name)
+            self._progress.reset()
 
         if read_jobs != done_read_jobs:
             raise InternalError(
@@ -373,11 +362,11 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             for entry in storage.read_get_completed():
                 done_read_jobs += 1
-                self._scrub_report_progress(version_uid=version_uid,
-                                            jobs=read_jobs,
-                                            done_jobs=done_read_jobs,
-                                            action_notify='Deep-scrubbing',
-                                            action='Deep-scrubbed')
+                self._progress.task_with_blocks('Deep-scrubbing',
+                                                version_uid=version_uid,
+                                                blocks_done=done_read_jobs,
+                                                blocks_count=read_jobs,
+                                                per_thousand=5)
 
                 if isinstance(entry, Exception):
                     # If it really is a data inconsistency mark blocks invalid
@@ -439,11 +428,11 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                 sparse_compare_jobs = version.sparse_blocks_count
                 for done_sparse_compare_jobs, block in enumerate(version.sparse_blocks, start=1):
-                    self._scrub_report_progress(version_uid=version_uid,
-                                                jobs=sparse_compare_jobs,
-                                                done_jobs=done_sparse_compare_jobs,
-                                                action_notify='Checking sparse blocks of',
-                                                action='Checked sparse')
+                    self._progress.task_with_blocks('Checking sparse blocks',
+                                                    version_uid=version_uid,
+                                                    blocks_done=done_sparse_compare_jobs,
+                                                    blocks_count=sparse_compare_jobs,
+                                                    per_thousand=5)
 
                     if log_debug:
                         logger.debug('Checking if block {} is sparse in source.'.format(block.idx, block.uid))
@@ -463,7 +452,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 io.close()
             # Restore old read cache setting
             storage.use_read_cache(old_use_read_cache)
-            notify(self._process_name)
+            self._progress.reset()
 
         if read_jobs != done_read_jobs:
             raise InternalError(
@@ -558,8 +547,8 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         Locking.lock_version(version_uid, reason='Restoring version')
         try:
-            version = Version.get_by_uid(version_uid)  # raise if version not exists
-            notify(self._process_name, 'Restoring version {} to {}: Getting blocks'.format(version_uid, target))
+            version = Version.get_by_uid(version_uid)  # raises if version not exists
+            self._progress.task_with_version('Opening target for write', version_uid=version_uid)
 
             self._storage = version.storage_id
 
@@ -581,11 +570,10 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_write_jobs = 0
             written = 0
             log_debug = logger.isEnabledFor(logging.DEBUG)
-            log_every_jobs = (sparse_blocks_count if not sparse else read_blocks_count) // 200 + 1  # about every half percent
             sparse_data_block = b'\0' * version.block_size
 
             def handle_sparse_write_completed(timeout: int = None):
-                nonlocal done_write_jobs, written, sparse_blocks_count, log_every_jobs, version_uid, target
+                nonlocal done_write_jobs, written, sparse_blocks_count, version_uid, target
                 try:
                     for written_block in io.write_get_completed(timeout=timeout):
                         if isinstance(written_block, Exception):
@@ -594,12 +582,12 @@ class Benji(ReprMixIn, AbstractContextManager):
                         done_write_jobs += 1
                         written += written_block.size
 
-                        if done_write_jobs % log_every_jobs == 0 or done_write_jobs == 0 or done_write_jobs == sparse_blocks_count:
-                            notify(
-                                self._process_name, 'Restoring version {} to {}: Sparse writing ({:.1f}%)'.format(
-                                    version_uid, target, done_write_jobs / sparse_blocks_count * 100))
-                            logger.info('Wrote sparse {}/{} blocks ({:.1f}%)'.format(
-                                done_write_jobs, sparse_blocks_count, done_write_jobs / sparse_blocks_count * 100))
+                        self._progress.task_with_blocks('Writing sparse blocks',
+                                                        version_uid=version_uid,
+                                                        blocks_done=done_write_jobs,
+                                                        blocks_count=sparse_blocks_count,
+                                                        per_thousand=5)
+
                 except (TimeoutError, CancelledError):
                     pass
 
@@ -620,11 +608,12 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                 if sparse:
                     # Version might be completely sparse (i.e. read_blocks_count == 0)
-                    if read_blocks_count > 0 and read_jobs % log_every_jobs == 0 or read_jobs == 0 \
-                            or read_jobs == read_blocks_count:
-                        notify(
-                            self._process_name, 'Restoring version {} to {}: Queueing blocks to read ({:.1f}%)'.format(
-                                version_uid, target, read_jobs / read_blocks_count * 100))
+                    if read_blocks_count > 0:
+                        self._progress.task_with_blocks('Queueing blocks for read',
+                                                        version_uid=version_uid,
+                                                        blocks_done=read_jobs,
+                                                        blocks_count=read_blocks_count,
+                                                        per_thousand=5)
                 else:
                     handle_sparse_write_completed(timeout=0)
 
@@ -638,10 +627,9 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
-            log_every_jobs = read_jobs // 200 + 1  # about every half percent
 
             def handle_write_completed(timeout: int = None):
-                nonlocal done_write_jobs, written, read_jobs, log_every_jobs, version_uid, target
+                nonlocal done_write_jobs, written, read_jobs, version_uid, target
                 try:
                     for written_block in io.write_get_completed(timeout=timeout):
                         if isinstance(written_block, Exception):
@@ -650,13 +638,11 @@ class Benji(ReprMixIn, AbstractContextManager):
                         done_write_jobs += 1
                         written += written_block.size
 
-                        if done_write_jobs % log_every_jobs == 0 or done_write_jobs == 0 or done_write_jobs == read_jobs:
-                            notify(
-                                self._process_name,
-                                'Restoring version {} to {} ({:.1f}%)'.format(version_uid, target,
-                                                                              done_write_jobs / read_jobs * 100))
-                            logger.info('Restored {}/{} blocks ({:.1f}%)'.format(done_write_jobs, read_jobs,
-                                                                                 done_write_jobs / read_jobs * 100))
+                        self._progress.task_with_blocks('Restoring',
+                                                        version_uid=version_uid,
+                                                        blocks_done=done_write_jobs,
+                                                        blocks_count=read_jobs,
+                                                        per_thousand=5)
                 except (TimeoutError, CancelledError):
                     pass
 
@@ -701,7 +687,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             io.close()
             t2 = time.time()
             Locking.unlock_version(version_uid)
-            notify(self._process_name)
+            self._progress.reset()
 
         if read_jobs != done_read_jobs:
             raise InternalError(
@@ -852,8 +838,7 @@ class Benji(ReprMixIn, AbstractContextManager):
             # aren't, either hints are wrong (e.g. from a wrong snapshot diff)
             # or source doesn't match. In any case, the resulting backup won't
             # be good.
-            logger.info('Starting sanity check with 0.1% of the ignored blocks.')
-            notify(self._process_name, 'Sanity checking hints of version {}'.format(version.uid))
+            self._progress.task_with_version('Sanity checking hints', version_uid=version.uid)
 
             ignored_blocks = sorted(set(range(version.blocks_count)) - read_blocks - sparse_blocks)
             # 0.1% but at least ten. If there are less than ten blocks check them all.
@@ -889,7 +874,6 @@ class Benji(ReprMixIn, AbstractContextManager):
 
         logger.info(f'Starting backup of {io.sanitized_url} to storage {version.storage.name}, the newly created version is {version.uid}.')
         try:
-            log_every_blocks = version.blocks_count // 200 + 1  # about every half percent
             storage = StorageFactory.get_by_name(version.storage.name)
             read_jobs = 0
             for block in version.blocks:
@@ -919,10 +903,11 @@ class Benji(ReprMixIn, AbstractContextManager):
                     # Block is already in database, no need to update it
                     logger.debug('Keeping block {}'.format(block.idx))
 
-                if block.idx % log_every_blocks == 0 or (block.idx + 1) == version.blocks_count:
-                    notify(
-                        self._process_name, 'Backing up version {} from {}: Queueing blocks to read ({:.1f}%)'.format(
-                            version.uid, source, (block.idx + 1) / version.blocks_count * 100))
+                self._progress.task_with_blocks('Queueing blocks for read',
+                                                version_uid=version.uid,
+                                                blocks_done=block.idx + 1,
+                                                blocks_count=version.blocks_count,
+                                                per_thousand=5)
 
             # Precompute checksum of a sparse block.
             sparse_block_checksum = self._block_hash.data_hexdigest(b'\0' * version.block_size)
@@ -930,7 +915,6 @@ class Benji(ReprMixIn, AbstractContextManager):
             done_read_jobs = 0
             write_jobs = 0
             done_write_jobs = 0
-            log_every_jobs = read_jobs // 200 + 1  # about every half percent
 
             def handle_write_completed(timeout: int = None):
                 nonlocal done_write_jobs, stats, version
@@ -999,13 +983,11 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                 handle_write_completed(timeout=0)
 
-                if done_read_jobs % log_every_jobs == 0 or done_read_jobs == 0 or done_read_jobs == read_jobs:
-                    notify(
-                        self._process_name,
-                        'Backing up version {} from {} ({:.1f}%)'.format(version.uid, source,
-                                                                         done_read_jobs / read_jobs * 100))
-                    logger.info('Backed up {}/{} blocks ({:.1f}%)'.format(done_read_jobs, read_jobs,
-                                                                          done_read_jobs / read_jobs * 100))
+                self._progress.task_with_blocks('Backing up',
+                                                version_uid=version.uid,
+                                                blocks_done=done_read_jobs,
+                                                blocks_count=read_jobs,
+                                                per_thousand=5)
 
             handle_write_completed()
         except:
@@ -1026,10 +1008,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 'Number of submitted and completed write jobs inconsistent (submitted: {}, completed {}).'.format(
                     write_jobs, done_write_jobs))
 
-        notify(self._process_name, 'Marking version {} as valid'.format(version.uid))
         version.set(status=VersionStatus.valid)
-
-        notify(self._process_name, 'Backing up metadata of version {}'.format(version.uid))
         self.metadata_backup([version.uid], overwrite=True, locking=False)
 
         logger.debug('Stats: {}'.format(stats))
@@ -1042,7 +1021,7 @@ class Benji(ReprMixIn, AbstractContextManager):
         )
 
         Locking.unlock_version(version.uid)
-        notify(self._process_name)
+        self._progress.reset()
         logger.info('Backup successful.'.format(version.uid))
         return version
 
@@ -1051,7 +1030,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                                reason='Cleanup',
                                locked_msg='Another cleanup is already running.',
                                override_lock=override_lock):
-            notify(self._process_name, 'Cleanup')
+            self._progress.task('Cleanup')
             for hit_list in DeletedBlock.get_unused_block_uids(dt):
                 for storage_name, uids in hit_list.items():
                     storage = StorageFactory.get_by_name(storage_name)
@@ -1071,7 +1050,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     if no_del_uids:
                         logger.info('Unable to delete these UIDs from storage {}: {}'.format(
                             storage_name, ', '.join(str(uid) for uid in no_del_uids)))
-            notify(self._process_name)
+            self._progress.reset()
 
     @staticmethod
     def add_label(version_uid: VersionUid, key: str, value: str) -> None:

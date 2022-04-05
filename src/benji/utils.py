@@ -31,21 +31,6 @@ def hints_from_rbd_diff(rbd_diff: str) -> List[Tuple[int, int, bool]]:
     return [(l['offset'], l['length'], not (l['exists'] == 'false' or not l['exists'])) for l in data]
 
 
-# old_msg is used as a stateful storage between calls
-def notify(process_name: str, msg: str = '', old_msg: str = '') -> None:
-    """ This method can receive notifications and append them in '[]' to the
-    process name seen in ps, top, ...
-    """
-    if msg:
-        new_msg = '{} [{}]'.format(process_name, msg.replace('\n', ' '))
-    else:
-        new_msg = process_name
-
-    if old_msg != new_msg:
-        old_msg = new_msg
-        setproctitle.setproctitle(new_msg)
-
-
 # This is tricky to implement as we need to make sure that we don't hold a reference to the completed Future anymore.
 # Indeed it's so tricky that older Python versions had the same problem. See https://bugs.python.org/issue27144.
 def future_results_as_completed(futures: List[Future], semaphore=None, timeout: int = None) -> Iterator[Any]:
@@ -318,3 +303,48 @@ class InputValidation:
                 add_list.append((name, ''))
 
         return add_list, remove_list
+
+
+class ProgressReporting:
+
+    def __init__(self, process_name: str) -> None:
+        self._process_name = process_name
+        self._old_proctitle = ''
+        self.reset()
+
+    def _setproctitle(self, proctitle: str = '') -> None:
+        if proctitle:
+            new_proctitle = '{} [{}]'.format(self._process_name, proctitle)
+        else:
+            new_proctitle = self._process_name
+
+        if self._old_proctitle != new_proctitle:
+            self._old_proctitle = new_proctitle
+            setproctitle.setproctitle(new_proctitle)
+
+    def reset(self):
+        self._setproctitle()
+
+    def task(self, task: str):
+        logger.info(task)
+        self._setproctitle(task)
+
+    def task_with_version(self, task: str, *, version_uid: str) -> None:
+        logger.info(task)
+        self._setproctitle('{} - {}'.format(version_uid, task))
+
+    def task_with_blocks(self,
+                         task: str,
+                         *,
+                         version_uid: str,
+                         blocks_done: int,
+                         blocks_count: int,
+                         per_thousand: int = 1000) -> None:
+
+        log_every_blocks = blocks_count // max(1, int(1000 / per_thousand))
+        if per_thousand == 1000 or blocks_done % log_every_blocks == 0 or blocks_done == 1 or blocks_done == blocks_count:
+            message = '{} {}/{} blocks ({:.1f}%)'.format(task, blocks_done, blocks_count,
+                                                         blocks_done / blocks_count * 100)
+
+            logger.info(message)
+            self._setproctitle('{} - {}'.format(version_uid, message))
