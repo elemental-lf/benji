@@ -14,7 +14,7 @@ import rados
 import rbd
 from benji.config import ConfigDict, Config
 from benji.database import DereferencedBlock, Block
-from benji.exception import UsageError, ConfigurationError
+from benji.exception import UsageError, ConfigurationError, InternalError
 from benji.io.base import IOBase
 from benji.logging import logger
 
@@ -263,9 +263,8 @@ class IO(IOBase):
     def write(self, block: Union[DereferencedBlock, Block], data: bytes) -> None:
         assert self._rbd_image is not None
 
-        while len(self._write_queue) >= self._max_write_queue_len:
-            self._submit_aio_writes()
-            self._aio_write_complete.wait()
+        if len(self._write_queue) > self._max_write_queue_len:
+            raise InternalError('The write queue is full, write_get_completed not called often enough.')
 
         self._write_queue.appendleft((block.deref(), data))
         self._submit_aio_writes()
@@ -287,9 +286,13 @@ class IO(IOBase):
     def write_get_completed(self, timeout: Optional[int] = None) -> Iterator[Union[DereferencedBlock, BaseException]]:
         try:
             while not self._writes_finished():
-                logger.debug('Write queue length, outstanding writes, completion queue length: {}, {}, {}.'.format(
-                    len(self._write_queue), self._outstanding_aio_writes, self._write_completion_queue.qsize()))
-                self._submit_aio_writes()
+                while len(self._write_queue) >= self._max_write_queue_len and self._write_completion_queue.qsize() == 0:
+                    self._submit_aio_writes()
+                    self._aio_write_complete.wait()
+                    logger.debug('Write queue length, outstanding writes, completion queue length: {}, {}, {}.'.format(
+                        len(self._write_queue), self._outstanding_aio_writes, self._write_completion_queue.qsize()))
+                else:
+                    self._submit_aio_writes()
 
                 completion, t1, t2, block = self._write_completion_queue.get(block=(timeout is None or timeout != 0),
                                                                              timeout=timeout)
