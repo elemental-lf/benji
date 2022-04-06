@@ -135,13 +135,19 @@ fsfreeze:
 # Please consider the implications.
 postgresql:
   enabled: false
-  postgresqlUsername: benji
-  postgresqlDatabase: benji
-  postgresqlPassword: secret
-  # persistence:
-  #   enabled: false
-  #   size: 100Gi
+  # For other possible configuration values see
+  # https://github.com/bitnami/charts/blob/ad6e9ffbaac5df362861566e6e97f92624b64474/bitnami/postgresql/README.md.
+  auth:
+    enablePostgresUser: false
+    username: benji
+    database: benji
+    password: secret
+  # global:
   #   storageClass: rbd
+  # primary:
+  #   persistence:
+  #     enabled: false
+  #     size: 100Gi
 
 pushgateway:
   nameOverride: pushgateway
