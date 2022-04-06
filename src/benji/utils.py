@@ -331,7 +331,7 @@ class ProgressReporting:
 
     def task_with_version(self, task: str, *, version_uid: str) -> None:
         logger.info(task)
-        self._setproctitle('{} - {}'.format(version_uid, task))
+        self._setproctitle('{} - {}'.format(task, version_uid))
 
     def task_with_blocks(self,
                          task: str,
@@ -347,4 +347,4 @@ class ProgressReporting:
                                                          blocks_done / blocks_count * 100)
 
             logger.info(message)
-            self._setproctitle('{} - {}'.format(version_uid, message))
+            self._setproctitle('{} - {}'.format(message, version_uid))
