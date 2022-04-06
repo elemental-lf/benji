@@ -609,7 +609,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 if sparse:
                     # Version might be completely sparse (i.e. read_blocks_count == 0)
                     if read_blocks_count > 0:
-                        self._progress.task_with_blocks('Queueing blocks for read',
+                        self._progress.task_with_blocks('Queueing blocks for read from storage',
                                                         version_uid=version_uid,
                                                         blocks_done=read_jobs,
                                                         blocks_count=read_blocks_count,
@@ -903,7 +903,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     # Block is already in database, no need to update it
                     logger.debug('Keeping block {}'.format(block.idx))
 
-                self._progress.task_with_blocks('Queueing blocks for read',
+                self._progress.task_with_blocks('Queueing blocks for read from source',
                                                 version_uid=version.uid,
                                                 blocks_done=block.idx + 1,
                                                 blocks_count=version.blocks_count,
