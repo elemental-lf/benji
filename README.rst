@@ -31,10 +31,10 @@ The documentation is available `here <https://benji-backup.me/>`_.
 Status
 ------
 
-Benji is slowly nearing beta quality. It passes all included tests. The
-documentation isn't completely up-to-date. Please open an issue on GitHub if you have
-a usage question that is not or incorrectly covered by the documentation. And have a
-look at the CHANGES file for any upgrade notes.
+Benji is beta quality and will probably stay that way due to time constraints. Please
+open an issue on GitHub if you have any usage question that is not or incorrectly
+covered by the documentation. And have a look at the CHANGES file for any upgrade
+notes.
 
 Benji requires **Python 3.6.5 or newer** because older Python versions
 have some shortcomings in the ``concurrent.futures`` implementation which lead to an
@@ -44,11 +44,9 @@ The ``master`` branch contains the development version of Benji and may be broke
 times and may even destroy your backups.  Please use the latest pre-releases to get
 some resemblance of stability and a migration path from one pre-release to the next.
 
-The Kubernetes integration is currently in the process of being completely rewritten
-to use an operator based approach. In the meantime the ``benji-k8s`` container
-image together with the Helm chart already provides a solid way of backing up
-persistent volumes provided by Ceph RBD. Benji will detect both normal RBD
-volumes and volumes provisioned by Rook's FlexVolume provisioner.
+The ``benji-k8s`` container image together with the Helm chart provides a solid way
+for backing up persistent volumes provided by Ceph RBD. This includes volumes
+provisioned by Rook, Ceph CSI or the older volume plugin integrated into ``kubelet``.
 
 Main Features
 -------------
