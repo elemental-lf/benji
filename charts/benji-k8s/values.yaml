@@ -20,16 +20,37 @@ benji:
   configuration:
     configurationVersion: '1'
     databaseEngine: sqlite:////tmp/benji.sqlite
+    # databaseEngine: postgresql://benji:secret@benji-postgresql:5432/benji
     defaultStorage: storage-1
     storages:
+      # Configure your external storage location here... this is just an example!
       - name: storage-1
-        storageId: 1
         module: file
         configuration:
           path: /tmp/benji-data
+          activeTransforms:
+            - zstd
+    transforms:
+      - name: zstd
+        module: zstd
+        configuration:
+          level: 3
     ios:
       - name: file
         module: file
+      # The io module name must match the pool name where the persistent volumes reside.
+      - name: rbd
+        module: rbdaio
+        configuration:
+          simultaneousReads: 7
+          simultaneousWrites: 7
+          # Features listed here are normally not relevant as the RBD image is created by the volume provisioner
+          # beforehand.
+          newImageFeatures:
+            - RBD_FEATURE_LAYERING
+            - RBD_FEATURE_EXCLUSIVE_LOCK
+            - RBD_FEATURE_OBJECT_MAP
+            - RBD_FEATURE_FAST_DIFF
 
   cronJob:
     activeDeadlineSeconds: null
@@ -117,6 +138,10 @@ postgresql:
   postgresqlUsername: benji
   postgresqlDatabase: benji
   postgresqlPassword: secret
+  # persistence:
+  #   enabled: false
+  #   size: 100Gi
+  #   storageClass: rbd
 
 pushgateway:
   nameOverride: pushgateway
