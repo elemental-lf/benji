@@ -28,6 +28,7 @@ import sqlalchemy
 import sqlalchemy.ext.declarative
 import sqlalchemy.ext.mutable
 import sqlalchemy.orm
+import sqlalchemy.sql.operators
 from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
@@ -1601,6 +1602,9 @@ class _QueryBuilder:
             def __ge__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 return self.op(operator.ge, other)
 
+            def like(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
+                return self.op(sqlalchemy.sql.operators.like_op, other)
+
             # This is called when the token is not part of a comparison and tests for a non-empty identifier
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
                 return getattr(Version, self.name) != ''
@@ -1674,6 +1678,15 @@ class _QueryBuilder:
         class GtOp(BinaryOp):
             op = operator.gt
 
+        class LikeOp(Buildable):
+
+            def __init__(self, t) -> None:
+                assert len(t[0]) == 3
+                self.args = t[0][0::2]
+
+            def build(self) -> sqlalchemy.sql.elements.BooleanClauseList:
+                return self.args[0].like(self.args[1])
+
         class MultiaryOp(Buildable):
 
             # Need to use Any here as mypy doesn't understand that Python thinks that op is a method and
@@ -1713,6 +1726,7 @@ class _QueryBuilder:
             (">=", 2, pyparsing.opAssoc.LEFT, GeOp),
             ("<", 2, pyparsing.opAssoc.LEFT, LtOp),
             (">", 2, pyparsing.opAssoc.LEFT, GtOp),
+            ("like", 2, pyparsing.opAssoc.LEFT, LikeOp),
             ("not", 1, pyparsing.opAssoc.RIGHT, NotOp),
             ("and", 2, pyparsing.opAssoc.LEFT, AndOp),
             ("or", 2, pyparsing.opAssoc.LEFT, OrOp),
