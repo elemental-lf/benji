@@ -597,6 +597,12 @@ class Benji(ReprMixIn, AbstractContextManager):
                     read_jobs += 1
                     if log_debug:
                         logger.debug('Queued read for block {} successfully ({} bytes).'.format(block.idx, block.size))
+
+                    self._progress.task_with_blocks('Queueing blocks for read from storage',
+                                                    version_uid=version_uid,
+                                                    blocks_done=read_jobs,
+                                                    blocks_count=read_blocks_count,
+                                                    per_thousand=5)
                 elif not sparse:
                     io.write(block, sparse_data_block)
                     write_jobs += 1
@@ -606,15 +612,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                 elif log_debug:
                     logger.debug('Ignored sparse block {}.'.format(block.idx))
 
-                if sparse:
-                    # Version might be completely sparse (i.e. read_blocks_count == 0)
-                    if read_blocks_count > 0:
-                        self._progress.task_with_blocks('Queueing blocks for read from storage',
-                                                        version_uid=version_uid,
-                                                        blocks_done=read_jobs,
-                                                        blocks_count=read_blocks_count,
-                                                        per_thousand=5)
-                else:
+                if not sparse:
                     handle_sparse_write_completed(timeout=0)
 
             handle_sparse_write_completed()
@@ -823,7 +821,7 @@ class Benji(ReprMixIn, AbstractContextManager):
 
                 sparse_blocks, read_blocks = self._blocks_from_hints(hints, version.block_size)
             else:
-                # Two snapshots can be completely identical between one backup and next
+                # Two snapshots can be completely identical between one backup and the next.
                 logger.warning('Hints are empty, assuming nothing has changed.')
                 sparse_blocks = set()
                 read_blocks = set()
@@ -903,7 +901,7 @@ class Benji(ReprMixIn, AbstractContextManager):
                     # Block is already in database, no need to update it
                     logger.debug('Keeping block {}'.format(block.idx))
 
-                self._progress.task_with_blocks('Queueing blocks for read from source',
+                self._progress.task_with_blocks('Considering blocks for read from source',
                                                 version_uid=version.uid,
                                                 blocks_done=block.idx + 1,
                                                 blocks_count=version.blocks_count,
