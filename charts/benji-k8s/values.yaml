@@ -119,9 +119,4 @@ postgresql:
   postgresqlPassword: secret
 
 pushgateway:
-  image:
-    registry: docker.io
-    repository: prom/pushgateway
-    tag: v0.8.0
-    pullPolicy: IfNotPresent
   nameOverride: pushgateway

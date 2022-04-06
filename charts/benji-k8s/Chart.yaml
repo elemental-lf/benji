@@ -7,10 +7,10 @@ maintainers:
     email: lf@elemental.net
 dependencies:
   - name: postgresql
-    version: 10.1.1
+    version: ~11.1.17
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: prometheus-pushgateway
     alias: pushgateway
-    version: 1.5.0
+    version: ~1.16.1
     repository: https://prometheus-community.github.io/helm-charts
