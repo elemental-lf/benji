@@ -18,12 +18,9 @@ A number of CLI command accept a filter expression to select the *versions* to d
 
 The filter expression syntax is a subset of Python's expression syntax. The following tokens are recognized:
 
-* Identifiers: These reference version metadata columns and are named ``date``, ``uid``, ``name``, ``snapshot``,
+* Identifiers: These reference version metadata columns and are named ``date``, ``uid``, ``volume``, ``snapshot``,
   ``size``, ``block_size``, ``status``, ``protected`` and ``storage``, ``read``, ``written``, ``dedup``, ``sparse``, and
   ``duration``.
-
-* The ``uid`` identifier can either be compared to a string like ``uid == "V1"`` (leading zeros after the ``V`` are
-  not necessary) or directly to an integer like ``uid == 1``.
 
 * The ``status`` identifier should be compared to a string representing the status like ``status == "valid"``.
 
@@ -40,8 +37,9 @@ The filter expression syntax is a subset of Python's expression syntax. The foll
 
 * Integers
 
-* Comparison operators: The normal set of operators is supported: ``==``, ``!=``, ``<``, ``>``, ``<=`` and ``>=``.
-  Benji (actually Python and SQLAlchemy) will try to adapt types when possible.
+* Comparison operators: The normal set of operators is supported: ``==``, ``!=``, ``<``, ``>``, ``<=`` and ``>=``. In
+  addition a ``like`` operator is implemented and behaves like its SQL counterpart. If an operator is applied to a
+  string the comparison is case sensitive. Benji (actually Python and SQLAlchemy) will try to adapt types when possible.
 
 * Logical operators: ``not``, ``and``, and ``or`` (in order of precendence). ``not`` can be applied to other expressions
   and directly to identifiers (``not protected`` for example, but also ``not labels["label-name"]`` to test for label
@@ -53,12 +51,13 @@ The filter expression syntax is a subset of Python's expression syntax. The foll
 
 Examples:
 
-* Version named ``V0000000001``: ``uid == "V0000000001"`` or ``uid == "V1"`` or ``uid == 1``
+* *Version* with the uid ``test-7o4lpp``: ``uid == "test-7o4lpp"``
 * All ``invalid`` *versions*: ``status == "invalid"``
 * All *versions* older than one week: ``date < "1 week ago"``
 * All *versions* which have a label named ``label-1`` and are ``valid``: ``labels["label-1"] and status == "valid"``
-* All *versions* with a name of ``database-1`` or a name of ``redis-1``: ``name == "database-1" or name == "redis-1"``
-* All *versions* with a name of ``database-1`` or a name of ``redis-1`` that are older than one month:
+* All *versions* with a volume name of ``database-1`` or a volume name of ``redis-1`` that are older than one month:
   ``(name == "database-1" or name == "redis-1") and date < "1 month ago"``
-* All *versions* that have a label of ``label-1`` with value ``example-1``: ``labels["label-1"] == "example-1"``
+* All *versions* that have a label named ``label-1`` with value ``example-1``: ``labels["label-1"] == "example-1"``
 * All protected *versions*: ``protected == True``
+* All *versions* which have a volume name starting with ``alice``: ``volume like "alice%"``
+* All *versions* which have a volume name containing ``bob``: ``volume like "%bob%"``
