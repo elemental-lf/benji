@@ -1,3 +1,33 @@
+## 0.16.0, 07.04.2021
+
+* ACTION REQUIRED: The Helm chart has seen some changes to default values 
+  which might break some setups. Especially the default Ceph credential
+  volume mounts are no longer there. In addition, the dependant charts 
+  have been updated and the PostgreSQL chart has changed significantly 
+  and some keys and values will need adjustment if PostgreSQL is 
+  deployed via Benji Helm chart.
+
+* Support for RADOS/RBD namespaces has been added to both the rbd and the
+  rbdaio io modules and the Kubernetes integration. The changes are based on
+  code contributed by @jpsn123.
+
+* The fsfreeze feature works with Ceph CSI provisioned RBD volumes (includes
+  volumes provisioned by Rook).
+
+* There is a new filtering operator `like` which mimics its SQL counterpart.
+
+* Pushgateway grouping keys based on the Kubernetes namespace and PVC name 
+  are used to separate the backup status of different PVCs. Code contributed
+  by @allenporter.
+
+* Deep-scrubbing with source comparison also checks sparse blocks. This
+  will detect blocks that are sparse in the backup and not in the source.
+
+* A bug preventing restores of large images to succeed due using excessive 
+  amounts of RAM when using the `rbdaio` io module has been fixed.
+
+* Container images are based on AlmaLinux 8 and Ceph Pacific.
+
 ## 0.15.0, 01.06.2021
 
 * Helm chart: Migrate Helm chart to version 2 of the chart format (only compatible with Helm 3)
