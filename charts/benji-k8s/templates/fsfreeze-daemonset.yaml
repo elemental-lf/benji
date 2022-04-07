@@ -27,6 +27,9 @@ spec:
     spec:
       serviceAccountName: {{ tuple . "" | include "benji.fullname" }}
       dnsPolicy: ClusterFirstWithHostNet
+{{- if .Values.fsfreeze.priorityClassName }}
+      priorityClassName: {{ .Values.fsfreeze.priorityClassName }}
+{{- end }}
       containers:
         - name: fsfreeze
           image: "{{ .Values.fsfreeze.image.registry }}/{{ .Values.fsfreeze.image.repository }}:{{ .Values.fsfreeze.image.tag }}"

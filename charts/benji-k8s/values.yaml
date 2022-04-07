@@ -105,6 +105,8 @@ fsfreeze:
     tag: 8.5
     pullPolicy: IfNotPresent
 
+  priorityClassName: null
+
   resources: {}
 
   nodeSelector: {}
