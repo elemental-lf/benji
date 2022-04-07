@@ -1,7 +1,7 @@
 apiVersion: v2
 description: Benji Backup for Kubernetes
 name: benji-k8s
-version: 0.2.0
+version: 1.0.0
 maintainers:
   - name: Elemental
     email: lf@elemental.net
