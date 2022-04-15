@@ -47,7 +47,7 @@ def snapshot_create(*, volume: str, pool: str, namespace: str = '', image: str, 
                                     context=context)
     snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
     try:
-        subprocess_run(['rbd', 'snap', 'create', snapshot_path], timeout=RBD_SNAP_CREATE_TIMEOUT)
+        subprocess_run(['rbd', 'snap', 'create', '--no-progress', snapshot_path], timeout=RBD_SNAP_CREATE_TIMEOUT)
     except Exception as exception:
         signal_snapshot_create_post_error.send(SIGNAL_SENDER,
                                                volume=volume,
@@ -133,7 +133,7 @@ def backup_differential(*,
     snapshot_create(volume=volume, pool=pool, namespace=namespace, image=image, snapshot=snapshot, context=context)
     stdout = subprocess_run(
         ['rbd', 'diff', '--whole-object', '--format=json', '--from-snap', last_snapshot, snapshot_path])
-    subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
+    subprocess_run(['rbd', 'snap', 'rm', '--no-progress', last_snapshot_path])
 
     with NamedTemporaryFile(mode='w+', encoding='utf-8') as rbd_hints:
         assert isinstance(stdout, str)
@@ -218,7 +218,7 @@ def backup(*,
             for snapshot in benjis_snapshots[:-1]:
                 snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=snapshot)
                 logger.info(f'Deleting older RBD snapshot {snapshot_path}.')
-                subprocess_run(['rbd', 'snap', 'rm', snapshot_path])
+                subprocess_run(['rbd', 'snap', 'rm', '--no-progress', snapshot_path])
 
             last_snapshot = benjis_snapshots[-1]
             last_snapshot_path = _rbd_image_path(pool=pool, namespace=namespace, image=image, snapshot=last_snapshot)
@@ -248,7 +248,7 @@ def backup(*,
                                              context=context)
             else:
                 logger.info(f'Existing RBD snapshot {last_snapshot_path} not found in Benji, deleting it and reverting to initial backup.')
-                subprocess_run(['rbd', 'snap', 'rm', last_snapshot_path])
+                subprocess_run(['rbd', 'snap', 'rm', '--no-progress', last_snapshot_path])
                 result = backup_initial(volume=volume,
                                         pool=pool,
                                         namespace=namespace,
