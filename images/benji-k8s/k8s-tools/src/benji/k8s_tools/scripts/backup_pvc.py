@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import logging
 import random
 import string
 import sys
@@ -13,8 +12,8 @@ import kubernetes.stream
 import benji.helpers.ceph as ceph
 import benji.helpers.prometheus as prometheus
 import benji.helpers.settings as settings
-import benji.helpers.utils as utils
 import benji.k8s_tools.kubernetes
+from benji.helpers.utils import setup_logging, logger
 
 FSFREEZE_TIMEOUT = 15
 FSFREEZE_UNFREEZE_TRIES = (0, 1, 1, 1, 15, 30)
@@ -22,8 +21,7 @@ FSFREEZE_ANNOTATION = 'benji-backup.me/fsfreeze'
 FSFREEZE_POD_LABEL_SELECTOR = 'benji-backup.me/component=fsfreeze'
 FSFREEZE_CONTAINER_NAME = 'fsfreeze'
 
-utils.setup_logging()
-logger = logging.getLogger()
+setup_logging()
 
 
 def _random_string(length: int, characters: str = string.ascii_lowercase + string.digits) -> str:

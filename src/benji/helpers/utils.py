@@ -1,20 +1,85 @@
 import json
 import logging
+import os
 import re
 import subprocess
+import sys
+import threading
 from json import JSONDecodeError
 from typing import Dict, List, Union, Any, Sequence
 
+import structlog
+from structlog._frames import _find_first_app_frame_and_name
+
 from benji.helpers.settings import benji_log_level
 
-logger = logging.getLogger()
+logger = structlog.get_logger()
 
 
 def setup_logging() -> None:
-    # Don't raise exceptions occurring during logging
-    logging.raiseExceptions = False
-    logger.addHandler(logging.StreamHandler())
-    logger.setLevel(benji_log_level)
+
+    def sl_processor_add_source_context(_, __, event_dict: Dict) -> Dict:
+        frame, name = _find_first_app_frame_and_name([__name__, 'logging'])
+        event_dict['file'] = frame.f_code.co_filename
+        event_dict['line'] = frame.f_lineno
+        event_dict['function'] = frame.f_code.co_name
+        return event_dict
+
+    def sl_processor_add_process_context(_, __, event_dict: Dict) -> Dict:
+        event_dict['process'] = os.getpid()
+        event_dict['thread_name'] = threading.current_thread().name
+        event_dict['thread_id'] = threading.get_ident()
+        return event_dict
+
+    sl_processor_timestamper = structlog.processors.TimeStamper(utc=True)
+
+    sl_foreign_pre_chain = [
+        structlog.stdlib.add_log_level,
+        sl_processor_timestamper,
+        sl_processor_add_source_context,
+        sl_processor_add_process_context,
+    ]
+
+    sl_processors = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        sl_processor_timestamper,
+        sl_processor_add_source_context,
+        sl_processor_add_process_context,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ]
+
+    structlog.configure(
+        processors=sl_processors,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+    formatter = structlog.stdlib.ProcessorFormatter(foreign_pre_chain=sl_foreign_pre_chain,
+                                                    processors=[
+                                                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                                                        structlog.processors.JSONRenderer(),
+                                                    ])
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.getLevelName(benji_log_level))
+
+    # Source: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python/16993115#16993115
+    def _handle_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+    sys.excepthook = _handle_exception
 
 
 def _one_line_stderr(stderr: str):

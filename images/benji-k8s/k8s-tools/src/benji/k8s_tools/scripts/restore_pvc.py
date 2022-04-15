@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import logging
 import os
 import sys
 import time
@@ -11,12 +10,13 @@ from kubernetes.client.rest import ApiException
 import benji.helpers.settings as settings
 import benji.helpers.utils as utils
 import benji.k8s_tools.kubernetes
+from benji.helpers.utils import setup_logging, logger
+
 
 PVC_CREATION_MAX_POLLS = 15
 PVC_CREATION_POLL_INTERVAL = 2  # seconds
 
-utils.setup_logging()
-logger = logging.getLogger()
+setup_logging()
 
 
 def main():

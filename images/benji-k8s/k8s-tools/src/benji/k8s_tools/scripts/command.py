@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import time
-from typing import Optional
 
 import benji.helpers.prometheus as prometheus
 import benji.helpers.settings as settings
-import benji.helpers.utils as utils
+from benji.helpers.utils import setup_logging, subprocess_run
 
-utils.setup_logging()
+setup_logging()
 
 
 def main():
@@ -16,7 +15,7 @@ def main():
 
     prometheus.command_start_time.labels(command=command).set(start_time)
     try:
-        utils.subprocess_run(['benji', '--log-level', settings.benji_log_level] + sys.argv[1:])
+        subprocess_run(['benji', '--log-level', settings.benji_log_level] + sys.argv[1:])
     except Exception as exception:
         prometheus.command_status_failed.labels(command=command).set(1)
         completion_time = time.time()
