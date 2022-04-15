@@ -230,7 +230,7 @@ def determine_rbd_info_from_pv(
     # rbd.csi.ceph.com is for the stock CSI driver, the second one is for Rook which adds the namespace to the driver
     # name.
     elif keys_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes.pool', 'csi.volume_attributes.imageName']) \
-        and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi_driver').endswith('.rbd.csi.ceph.com')):
+        and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi.driver').endswith('.rbd.csi.ceph.com')):
         rbd_info = _RBDInfo(pool=key_get(pv.spec, 'csi.volume_attributes.pool'),
                             namespace=key_get(pv.spec, 'csi.volume_attributes.radosNamespace', ''),
                             image=key_get(pv.spec, 'csi.volume_attributes.imageName'),
