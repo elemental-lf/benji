@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 import threading
@@ -65,6 +64,7 @@ def setup_logging() -> None:
                                                         structlog.processors.JSONRenderer(),
                                                     ])
 
+    # StreamHandler() will log to sys.stderr by default.
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     root_logger = logging.getLogger()
@@ -82,16 +82,26 @@ def setup_logging() -> None:
     sys.excepthook = _handle_exception
 
 
-def _one_line_stderr(stderr: str):
-    stderr = re.sub(r'\n(?!$)', ' | ', stderr)
-    stderr = re.sub(r'\s+', ' ', stderr)
-    return stderr
+def log_jsonl(line_json: Any, default_level: int = logging.INFO) -> None:
+    try:
+        level = line_json['level'].upper()
+    except (NameError, TypeError):
+        level = default_level
+    else:
+        try:
+            level = int(logging.getLevelName(level))
+        except ValueError:
+            level = default_level
+
+    if logger.isEnabledFor(level):
+        print(json.dumps(line_json, sort_keys=True), file=sys.stderr)
 
 
 def subprocess_run(args: List[str],
                    input: str = None,
                    timeout: int = None,
-                   decode_json: bool = False) -> Union[Dict, List, str]:
+                   decode_json: bool = False,
+                   jsonl_passthru: bool = True) -> Union[Dict, List, str]:
     logger.debug('Running process: {}'.format(' '.join(args)))
     try:
 
@@ -103,14 +113,21 @@ def subprocess_run(args: List[str],
                                 errors='ignore',
                                 timeout=timeout)
     except subprocess.TimeoutExpired as exception:
-        stderr = _one_line_stderr(exception.stderr)
-        raise RuntimeError(f'{args[0]} invocation failed due to timeout with output: ' + stderr) from None
+        raise RuntimeError(f'{args[0]} invocation failed due to timeout with output.') from None
     except Exception as exception:
         raise RuntimeError(f'{args[0]} invocation failed with a {type(exception).__name__} exception: {str(exception)}') from None
 
     if result.stderr != '':
-        for line in result.stderr.splitlines():
-            logger.info(line)
+        for line in result.stderr.splitlines(keepends=False):
+            if jsonl_passthru:
+                try:
+                    line_json = json.loads(line)
+                except JSONDecodeError:
+                    logger.info(line)
+                else:
+                    log_jsonl(line_json)
+            else:
+                logger.info(line)
 
     if result.returncode == 0:
         logger.debug('Process finished successfully.')
@@ -118,16 +135,17 @@ def subprocess_run(args: List[str],
             try:
                 stdout_json = json.loads(result.stdout)
             except JSONDecodeError:
-                raise RuntimeError(f'{args[0]} invocation was successful but did not return valid JSON. Output on stderr was: {_one_line_stderr(result.stderr)}.')
+                raise RuntimeError(f'{args[0]} invocation was successful but did not return valid JSON.')
 
             if stdout_json is None or not isinstance(stdout_json, (dict, list)):
-                raise RuntimeError(f'{args[0]} invocation was successful but did return null or empty JSON dictonary. Output on stderr was: {_one_line_stderr(result.stderr)}.')
+                raise RuntimeError(f'{args[0]} invocation was successful but did return null or neither a JSON list nor'
+                                   'a dictionary.')
 
             return stdout_json
         else:
             return result.stdout
     else:
-        raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode} and output: {_one_line_stderr(result.stderr)}')
+        raise RuntimeError(f'{args[0]} invocation failed with return code {result.returncode}.')
 
 
 # A copy of this function is in benji.utils.
