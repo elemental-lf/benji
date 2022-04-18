@@ -8,9 +8,8 @@ import kubernetes
 from kubernetes.client.rest import ApiException
 
 import benji.helpers.settings as settings
-import benji.helpers.utils as utils
 import benji.k8s_tools.kubernetes
-from benji.helpers.utils import setup_logging, logger
+from benji.helpers.utils import setup_logging, logger, subprocess_run
 
 
 PVC_CREATION_MAX_POLLS = 15
@@ -48,7 +47,7 @@ def main():
 
     logger.info(f'Restoring version {args.version_uid} to PVC {args.pvc_namespace}/{args.pvc_name}.')
 
-    benji_ls = utils.subprocess_run(
+    benji_ls = subprocess_run(
         ['benji', '--machine-output', '--log-level', settings.benji_log_level, 'ls', f'uid == "{args.version_uid}"'],
         decode_json=True)
     assert isinstance(benji_ls, dict)
@@ -107,15 +106,16 @@ def main():
     if rbd_info is None:
         raise RuntimeError(f'Unable to determine RBD information for {pv.metadata.name}')
 
-    utils.subprocess_run([
-        'benji',
-        '--machine-output',
-        '--log-level',
-        settings.benji_log_level,
-        'restore',
-        '--sparse',
-        '--force',
-        args.version_uid,
-        args.restore_url_template.format(pool=rbd_info.pool, namespace=rbd_info.namespace, image=rbd_info.image),
-    ])
+    print(
+        subprocess_run([
+            'benji',
+            '--machine-output',
+            '--log-level',
+            settings.benji_log_level,
+            'restore',
+            '--sparse',
+            '--force',
+            args.version_uid,
+            args.restore_url_template.format(pool=rbd_info.pool, namespace=rbd_info.namespace, image=rbd_info.image),
+        ]))
     sys.exit(0)
