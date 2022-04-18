@@ -334,13 +334,16 @@ class Version(Base, ReprMixIn):
     bytes_sparse = sqlalchemy.Column(sqlalchemy.BigInteger)
     duration = sqlalchemy.Column(sqlalchemy.BigInteger)
 
-    # See https://docs.sqlalchemy.org/en/13/orm/collections.html#passive-deletes
+    # Eagerly load labels so that the attribute can be accessed even when there is no associated session anymore.
+    # See https://docs.sqlalchemy.org/en/14/orm/loading_relationships.html#what-kind-of-loading.
+    # See https://docs.sqlalchemy.org/en/13/orm/collections.html#passive-deletes for the cascade delete behaviour.
     labels = sqlalchemy.orm.relationship('Label',
                                          backref='version',
                                          order_by='asc(Label.name)',
                                          passive_deletes=True,
                                          cascade='all, delete-orphan',
-                                         collection_class=attribute_mapped_collection('name'))
+                                         collection_class=attribute_mapped_collection('name'),
+                                         lazy='selectin')
 
     @sqlalchemy.orm.reconstructor
     def __init__(self, *args, **kwargs):
