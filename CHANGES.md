@@ -1,3 +1,7 @@
+## 0.16.1, 18.04.2021
+
+* Fix typo in PersistentVolume key name (#140)
+
 ## 0.16.0, 07.04.2021
 
 * ACTION REQUIRED: The Helm chart has seen some changes to default values 
