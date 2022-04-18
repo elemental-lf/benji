@@ -180,28 +180,34 @@ def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str
     return core_v1_api.create_namespaced_event(namespace=pvc_namespace, body=event)
 
 
-def create_pvc(pvc_name: str, pvc_namespace: int, pvc_size: str,
-               pvc_storage_class: str) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
+def create_pvc(
+        *,
+        name: str,
+        namespace: int,
+        size: str,
+        storage_class: str = None) -> kubernetes.client.models.v1_persistent_volume_claim.V1PersistentVolumeClaim:
     pvc = {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {
-            'namespace': pvc_namespace,
-            'name': pvc_name,
+            'namespace': namespace,
+            'name': name,
         },
         'spec': {
-            'storageClassName': pvc_storage_class,
             'accessModes': ['ReadWriteOnce'],
             'resources': {
                 'requests': {
-                    'storage': pvc_size
+                    'storage': size
                 }
             }
         }
     }
 
+    if storage_class is not None:
+        pvc['spec']['storageClassName'] = storage_class
+
     core_v1_api = kubernetes.client.CoreV1Api()
-    return core_v1_api.create_namespaced_persistent_volume_claim(namespace=pvc_namespace, body=pvc)
+    return core_v1_api.create_namespaced_persistent_volume_claim(namespace=namespace, body=pvc)
 
 
 # Mark this as private because the class should only be instantiated by determine_rbd_info_from_pv.

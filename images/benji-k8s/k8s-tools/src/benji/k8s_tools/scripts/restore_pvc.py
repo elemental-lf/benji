@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--pvc-storage-class',
                         metavar='pvc_storage_class',
                         dest='pvc_storage_class',
-                        default='rbd',
+                        default=None,
                         help='PVC storage class (only takes effect if the PVC does not exist yet)')
     parser.add_argument('--restore-url-template',
                         metavar='restore_url_template',
@@ -72,8 +72,10 @@ def main():
             raise RuntimeError(f'Unexpected Kubernetes API exception: {str(exception)}')
 
     if pvc is None:
-        pvc = benji.k8s_tools.kubernetes.create_pvc(args.pvc_name, args.pvc_namespace, version_size,
-                                                    args.pvc_storage_class)
+        pvc = benji.k8s_tools.kubernetes.create_pvc(name=args.pvc_name,
+                                                    namespace=args.pvc_namespace,
+                                                    size=version_size,
+                                                    storage_class=args.pvc_storage_class)
     else:
         if not args.force:
             raise RuntimeError('PVC already exists. Will not overwrite it unless forced.')
@@ -86,7 +88,6 @@ def main():
             logger.warning(f'Existing PVC is {pvc_size - version_size} bytes bigger than version {args.version_uid}.')
 
     polls = 0
-    pvc = None
     while polls < PVC_CREATION_MAX_POLLS:
         pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
         if pvc.status.phase == 'Bound':
@@ -94,7 +95,7 @@ def main():
         time.sleep(PVC_CREATION_POLL_INTERVAL)
         polls += 1
         logger.info('Waiting for persistent volume creation... %d/%d', polls, PVC_CREATION_MAX_POLLS)
-    if pvc and pvc.status.phase == 'Bound':
+    if pvc.status.phase == 'Bound':
         logger.info('Persistent volume creation completed.')
     else:
         logger.error('Persistent volume creation did not complete after %d seconds.',
