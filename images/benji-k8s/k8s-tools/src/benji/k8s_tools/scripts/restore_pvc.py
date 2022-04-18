@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import os
 import sys
 import time
 
@@ -10,6 +11,9 @@ from kubernetes.client.rest import ApiException
 import benji.helpers.settings as settings
 import benji.helpers.utils as utils
 import benji.k8s_tools.kubernetes
+
+PVC_CREATION_MAX_POLLS = 15
+PVC_CREATION_POLL_INTERVAL = 2  # seconds
 
 utils.setup_logging()
 logger = logging.getLogger()
@@ -81,12 +85,21 @@ def main():
         elif pvc_size > version_size:
             logger.warning(f'Existing PVC is {pvc_size - version_size} bytes bigger than version {args.version_uid}.')
 
-    while True:
+    polls = 0
+    pvc = None
+    while polls < PVC_CREATION_MAX_POLLS:
         pvc = core_v1_api.read_namespaced_persistent_volume_claim(args.pvc_name, args.pvc_namespace)
         if pvc.status.phase == 'Bound':
             break
-        logger.info('Waiting for persistent volume creation.')
-        time.sleep(1)
+        time.sleep(PVC_CREATION_POLL_INTERVAL)
+        polls += 1
+        logger.info('Waiting for persistent volume creation... %d/%d', polls, PVC_CREATION_MAX_POLLS)
+    if pvc and pvc.status.phase == 'Bound':
+        logger.info('Persistent volume creation completed.')
+    else:
+        logger.error('Persistent volume creation did not complete after %d seconds.',
+                     PVC_CREATION_MAX_POLLS * PVC_CREATION_POLL_INTERVAL)
+        sys.exit(os.EX_CANTCREAT)
 
     pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
     rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
