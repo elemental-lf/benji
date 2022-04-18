@@ -109,6 +109,7 @@ def main():
 
     utils.subprocess_run([
         'benji',
+        '--machine-output',
         '--log-level',
         settings.benji_log_level,
         'restore',

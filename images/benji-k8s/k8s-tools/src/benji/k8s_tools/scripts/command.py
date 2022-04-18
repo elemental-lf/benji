@@ -15,7 +15,7 @@ def main():
 
     prometheus.command_start_time.labels(command=command).set(start_time)
     try:
-        subprocess_run(['benji', '--log-level', settings.benji_log_level] + sys.argv[1:])
+        subprocess_run(['benji', '--machine-output', '--log-level', settings.benji_log_level] + sys.argv[1:])
     except Exception as exception:
         prometheus.command_status_failed.labels(command=command).set(1)
         completion_time = time.time()
