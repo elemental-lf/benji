@@ -11,7 +11,6 @@ import benji.helpers.settings as settings
 import benji.k8s_tools.kubernetes
 from benji.helpers.utils import setup_logging, logger, subprocess_run
 
-
 PVC_CREATION_MAX_POLLS = 15
 PVC_CREATION_POLL_INTERVAL = 2  # seconds
 
