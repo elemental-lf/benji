@@ -128,11 +128,11 @@ _sl_processors = [
 ]
 
 
-def init_logging(*,
-                 logfile: str = None,
-                 console_level: str = 'INFO',
-                 console_formatter: str = 'json',
-                 logfile_formatter: str = 'legacy') -> None:
+def setup_logging(*,
+                  logfile: str = None,
+                  console_level: str = 'INFO',
+                  console_formatter: str = 'json',
+                  logfile_formatter: str = 'legacy') -> None:
 
     logging_config: Dict = {
         "version": 1,
@@ -227,7 +227,7 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-init_logging()
+setup_logging()
 
 # silence alembic
 logging.getLogger('alembic').setLevel(logging.WARN)

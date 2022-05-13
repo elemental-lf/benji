@@ -9,7 +9,7 @@ from benji.benji import Benji
 from benji.config import Config
 from benji.database import Database
 from benji.io.factory import IOFactory
-from benji.logging import init_logging
+from benji.logging import setup_logging
 from benji.storage.factory import StorageFactory
 
 
@@ -45,8 +45,8 @@ class TestCaseBase:
 
     def setUp(self):
         self.testpath = _TestPath()
-        init_logging(console_level=logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
-                     console_formatter='console-plain')
+        setup_logging(console_level=logging.WARN if os.environ.get('UNITTEST_QUIET', False) else logging.DEBUG,
+                      console_formatter='console-plain')
         self.config = Config(ad_hoc_config=self.CONFIG.format(testpath=self.testpath.path))
 
     def tearDown(self):

@@ -294,7 +294,7 @@ def main():
         sys.exit(os.EX_OK)
 
     from benji.config import Config
-    from benji.logging import logger, init_logging
+    from benji.logging import logger, setup_logging
     if args.config_file is not None and args.config_file != '':
         try:
             cfg = open(args.config_file, 'r', encoding='utf-8').read()
@@ -311,9 +311,9 @@ def main():
     elif args.no_color:
         console_formatter = 'console-plain'
 
-    init_logging(logfile=config.get('logFile', types=(str, type(None))),
-                 console_level=args.log_level,
-                 console_formatter=console_formatter)
+    setup_logging(logfile=config.get('logFile', types=(str, type(None))),
+                  console_level=args.log_level,
+                  console_formatter=console_formatter)
 
     IOFactory.initialize(config)
     StorageFactory.initialize(config)
