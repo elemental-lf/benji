@@ -9,7 +9,7 @@ import threading
 import warnings
 from datetime import datetime
 from io import StringIO
-from typing import Dict
+from typing import Dict, Union
 
 import colorama
 import structlog
@@ -130,9 +130,17 @@ _sl_processors = [
 
 def setup_logging(*,
                   logfile: str = None,
-                  console_level: str = 'INFO',
+                  console_level: Union[str, int] = 'INFO',
                   console_formatter: str = 'json',
                   logfile_formatter: str = 'legacy') -> None:
+    try:
+        console_level_int = int(console_level)
+    except ValueError:
+        try:
+            console_level_int = int(logging.getLevelName(console_level.upper()))
+        except ValueError:
+            logger.warning('Unknown logging level %s, falling back to INFO.', console_level)
+            console_level_int = logging.INFO
 
     logging_config: Dict = {
         "version": 1,
@@ -194,11 +202,11 @@ def setup_logging(*,
         raise UsageError('Event formatter {} is unknown.'.format(logfile_formatter))
 
     logging_config['handlers']['console']['formatter'] = console_formatter
-    logging_config['handlers']['console']['level'] = console_level
+    logging_config['handlers']['console']['level'] = console_level_int
 
     if logfile is not None:
         logging_config['handlers']['file']['filename'] = logfile
-        logging_config['handlers']['file']['level'] = min(logging.getLevelName(console_level), logging.INFO)
+        logging_config['handlers']['file']['level'] = min(console_level_int, logging.INFO)
         logging_config['handlers']['file']['formatter'] = logfile_formatter
     else:
         del (logging_config['handlers']['file'])

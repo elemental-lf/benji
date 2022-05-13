@@ -69,7 +69,16 @@ def setup_logging() -> None:
     handler.setFormatter(formatter)
     root_logger = logging.getLogger()
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.getLevelName(benji_log_level))
+
+    try:
+        benji_log_level_int = int(benji_log_level)
+    except ValueError:
+        try:
+            benji_log_level_int = int(logging.getLevelName(benji_log_level.upper()))
+        except ValueError:
+            logger.warning('Unknown logging level %s, falling back to INFO.', benji_log_level)
+            benji_log_level_int = logging.INFO
+    root_logger.setLevel(logging.getLevelName(benji_log_level_int))
 
     # Source: https://stackoverflow.com/questions/6234405/logging-uncaught-exceptions-in-python/16993115#16993115
     def _handle_exception(exc_type, exc_value, exc_traceback):
