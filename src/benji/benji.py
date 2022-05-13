@@ -1095,7 +1095,6 @@ class Benji(ReprMixIn, AbstractContextManager):
                 with StringIO() as metadata_export:
                     Database.export([version.uid], metadata_export)
                     storage = StorageFactory.get_by_name(version.storage.name)
-                    logger.debug(metadata_export.getvalue())
                     storage.write_version(version.uid, metadata_export.getvalue(), overwrite=overwrite)
                 logger.info('Backed up metadata of version {}.'.format(version.uid))
         finally:
