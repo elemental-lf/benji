@@ -47,6 +47,10 @@ configuration:
       type: string
       empty: False
       required: True
+    storageClass:
+      type: string
+      empty: False
+      default: STANDARD
     disableEncodingType:
       type: boolean
       empty: False
