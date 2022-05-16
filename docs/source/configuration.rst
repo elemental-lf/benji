@@ -686,6 +686,12 @@ Sets the bucket name.
 
 Sets the region of the bucket.
 
+* name: **storageClass**
+* type: string
+* default: STANDARD
+
+Sets the Storage Class.
+
 * name: **useSsl**
 * type: bool
 * default: from ``boto3`` library, ignored if **endpointUrl** is specified
