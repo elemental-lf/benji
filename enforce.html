@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Retention Policy Enforcement &mdash; Benji Backup 0.15.0.dev43+g7f69b2e documentation</title>
+  <title>Retention Policy Enforcement &mdash; Benji Backup 0.16.1.dev16+g05e02c7 documentation</title>
   
 
   
@@ -289,22 +289,9 @@
             
   <div class="section" id="retention-policy-enforcement">
 <h1>Retention Policy Enforcement<a class="headerlink" href="#retention-policy-enforcement" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji enforce --help
-usage: benji enforce [-h] [--dry-run] [-k] [-g GROUP_LABEL]
-                     rules_spec [filter_expression]
-
-positional arguments:
-  rules_spec            Retention rules specification
-  filter_expression     Version filter expression
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --dry-run             Only show which versions would be removed
-  -k, --keep-metadata-backup
-                        Keep version metadata backup
-  -g GROUP_LABEL, --group_label GROUP_LABEL
-                        Label to find related versions to remove
-</pre></div>
+<div class="system-message">
+<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/enforce.rst</span>, line 10)</p>
+<p>Command 'benji enforce --help' failed: [Errno 2] No such file or directory: 'benji'</p>
 </div>
 <p>Benji supports a simple but flexible mechanism for retention policy enforcement. Enforcement is done per <em>version</em> name,
 i.e. a specific policy is applied to all <em>versions</em> with the same name. Enforcement is not automatic and has to be

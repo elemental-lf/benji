@@ -9,7 +9,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Benji, backup me! &mdash; Benji Backup 0.15.0.dev43+g7f69b2e documentation</title>
+  <title>Benji, backup me! &mdash; Benji Backup 0.16.1.dev16+g05e02c7 documentation</title>
   
 
   
@@ -319,21 +319,19 @@ volumes.</p>
 <p>The documentation is available <a class="reference external" href="https://benji-backup.me/">here</a>.</p>
 <div class="section" id="status">
 <h2>Status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
-<p>Benji is slowly nearing beta quality. It passes all included tests. The
-documentation isn’t completely up-to-date. Please open an issue on GitHub if you have
-a usage question that is not or incorrectly covered by the documentation. And have a
-look at the CHANGES file for any upgrade notes.</p>
+<p>Benji is beta quality and will probably stay that way due to time constraints. Please
+open an issue on GitHub if you have any usage question that is not or incorrectly
+covered by the documentation. And have a look at the CHANGES file for any upgrade
+notes.</p>
 <p>Benji requires <strong>Python 3.6.5 or newer</strong> because older Python versions
 have some shortcomings in the <code class="docutils literal notranslate"><span class="pre">concurrent.futures</span></code> implementation which lead to an
 excessive memory usage.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">master</span></code> branch contains the development version of Benji and may be broken at
 times and may even destroy your backups.  Please use the latest pre-releases to get
 some resemblance of stability and a migration path from one pre-release to the next.</p>
-<p>The Kubernetes integration is currently in the process of being completely rewritten
-to use an operator based approach. In the meantime the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> container
-image together with the Helm chart already provides a solid way of backing up
-persistent volumes provided by Ceph RBD. Benji will detect both normal RBD
-volumes and volumes provisioned by Rook’s FlexVolume provisioner.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> container image together with the Helm chart provides a solid way
+for backing up persistent volumes provided by Ceph RBD. This includes volumes
+provisioned by Rook, Ceph CSI or the older volume plugin integrated into <code class="docutils literal notranslate"><span class="pre">kubelet</span></code>.</p>
 </div>
 <div class="section" id="main-features">
 <h2>Main Features<a class="headerlink" href="#main-features" title="Permalink to this headline">¶</a></h2>

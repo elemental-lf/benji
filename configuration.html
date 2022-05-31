@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Configuration &mdash; Benji Backup 0.15.0.dev43+g7f69b2e documentation</title>
+  <title>Configuration &mdash; Benji Backup 0.16.1.dev16+g05e02c7 documentation</title>
   
 
   
@@ -937,6 +937,24 @@ option are mutually exclusive.</p>
 <li><p>default: from <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library, ignored if <strong>endpointUrl</strong> is specified</p></li>
 </ul>
 <p>Sets the region of the bucket.</p>
+<ul class="simple">
+<li><p>name: <strong>storageClass</strong></p></li>
+<li><p>type: string</p></li>
+</ul>
+<p>Sets the storage class.  Certain storage classes like <code class="docutils literal notranslate"><span class="pre">GLACIER</span></code> or
+<code class="docutils literal notranslate"><span class="pre">DEEP_ARCHIVE</span></code> and certain configurations of <code class="docutils literal notranslate"><span class="pre">INTELLIGENT_TIERING</span></code> are
+not suitable for Benji as they require an explicit restore operation and do
+not support immediate retrieval.  Third party implementations of S3 might
+only support a subset of the storage classes supported by AWS, they might
+define their own storage classes or they might ignore any configured storage
+class altogether.</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>Benji uses the <code class="docutils literal notranslate"><span class="pre">boto3</span></code> library which (according to the
+Ceph documentation) only supports storage class names supported by
+AWS S3, even tough other storage class names could be defined and
+supported by a third party implementation.</p>
+</div>
 <ul class="simple">
 <li><p>name: <strong>useSsl</strong></p></li>
 <li><p>type: bool</p></li>

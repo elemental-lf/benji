@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Cleanup &mdash; Benji Backup 0.15.0.dev43+g7f69b2e documentation</title>
+  <title>Cleanup &mdash; Benji Backup 0.16.1.dev16+g05e02c7 documentation</title>
   
 
   
@@ -293,20 +293,9 @@
 <div class="section" id="removing-old-versions">
 <h2>Removing old versions<a class="headerlink" href="#removing-old-versions" title="Permalink to this headline">¶</a></h2>
 <p>In order to remove an old version, use <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">rm</span></code>:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji rm --help
-usage: benji rm [-h] [-f] [-k] [--override-lock] version_uid [version_uid ...]
-
-positional arguments:
-  version_uid           Version UID
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -f, --force           Force removal (overrides protection of recent
-                        versions)
-  -k, --keep-metadata-backup
-                        Keep version metadata backup
-  --override-lock       Override and release any held locks (dangerous)
-</pre></div>
+<div class="system-message">
+<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/cleanup.rst</span>, line 17)</p>
+<p>Command 'benji rm --help' failed: [Errno 2] No such file or directory: 'benji'</p>
 </div>
 <p>Example:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ benji rm -f V1
@@ -334,13 +323,9 @@ required.</p>
 <p>To free up space on the storage, you need to cleanup.
 There are two different cleanup methods, but you’ll usually only need the
 so-called <em>fast-cleanup</em>.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji cleanup --help
-usage: benji cleanup [-h] [--override-lock]
-
-optional arguments:
-  -h, --help       show this help message and exit
-  --override-lock  Override and release any held lock (dangerous)
-</pre></div>
+<div class="system-message">
+<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/cleanup.rst</span>, line 49)</p>
+<p>Command 'benji cleanup --help' failed: [Errno 2] No such file or directory: 'benji'</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">cleanup</span></code> will go through the list of deletion candidates and check if
 there are blocks which aren’t referenced from any other version anymore.</p>
