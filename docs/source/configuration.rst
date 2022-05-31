@@ -690,7 +690,18 @@ Sets the region of the bucket.
 * type: string
 * default: STANDARD
 
-Sets the Storage Class.
+Sets the storage class.  Certain storage classes like ``GLACIER`` or
+``DEEP_ARCHIVE`` and certain configurations of ``INTELLIGENT_TIERING`` are
+not suitable for Benji as they require an explicit restore operation and do
+not support immediate retrieval.  Third party implementations of S3 might
+only support a subset of the storage classes supported by AWS, they might
+define their own storage classes or they might ignore any configured storage
+class altogether.
+
+.. ATTENTION:: Benji uses the ``boto3`` library which (according to the
+    Ceph documentation) only supports storage class names supported by
+    AWS S3, even tough other storage class names could be defined and
+    supported by a third party implementation.
 
 * name: **useSsl**
 * type: bool
