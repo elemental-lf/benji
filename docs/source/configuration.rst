@@ -688,7 +688,6 @@ Sets the region of the bucket.
 
 * name: **storageClass**
 * type: string
-* default: STANDARD
 
 Sets the storage class.  Certain storage classes like ``GLACIER`` or
 ``DEEP_ARCHIVE`` and certain configurations of ``INTELLIGENT_TIERING`` are

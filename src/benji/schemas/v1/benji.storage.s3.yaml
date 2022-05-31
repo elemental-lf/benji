@@ -50,7 +50,6 @@ configuration:
     storageClass:
       type: string
       empty: False
-      default: STANDARD
     disableEncodingType:
       type: boolean
       empty: False

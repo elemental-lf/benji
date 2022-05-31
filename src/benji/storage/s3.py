@@ -39,7 +39,7 @@ class Storage(ReadCacheStorageBase):
         max_attempts = Config.get_from_dict(module_configuration, 'maxAttempts', types=int)
 
         self._bucket_name = Config.get_from_dict(module_configuration, 'bucketName', types=str)
-        self._storage_class = Config.get_from_dict(module_configuration, 'storageClass', types=str)
+        self._storage_class = Config.get_from_dict(module_configuration, 'storageClass', None, types=str)
         self._disable_encoding_type = Config.get_from_dict(module_configuration, 'disableEncodingType', types=bool)
 
         self._resource_config = {
@@ -91,7 +91,10 @@ class Storage(ReadCacheStorageBase):
     def _write_object(self, key: str, data: bytes) -> None:
         self._init_connection()
         object = self._local.bucket.Object(key)
-        object.put(Body=data, StorageClass=self._storage_class)
+        if self._storage_class is not None:
+            object.put(Body=data, StorageClass=self._storage_class)
+        else:
+            object.put(Body=data)
 
     def _read_object(self, key: str) -> bytes:
         self._init_connection()
