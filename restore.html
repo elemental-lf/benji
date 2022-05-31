@@ -289,9 +289,21 @@
             
   <div class="section" id="restore">
 <span id="id1"></span><h1>Restore<a class="headerlink" href="#restore" title="Permalink to this headline">¶</a></h1>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/restore.rst</span>, line 12)</p>
-<p>Command 'benji restore --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji restore --help
+usage: benji restore [-h] [-s] [-f] [-d] [-S STORAGE] version_uid destination
+
+positional arguments:
+  version_uid           Version UID to restore
+  destination           Destination URL
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s, --sparse          Restore only existing blocks
+  -f, --force           Overwrite an existing file, device or image
+  -d, --database-less   Restore without requiring the database
+  -S STORAGE, --storage STORAGE
+                        Source storage (if unspecified the default is used)
+</pre></div>
 </div>
 <p>There are two possible restore options with Benji.</p>
 <div class="admonition note">
@@ -367,9 +379,17 @@ way.</p>
 </div>
 <div class="section" id="nbd-server">
 <h2>NBD Server<a class="headerlink" href="#nbd-server" title="Permalink to this headline">¶</a></h2>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/restore.rst</span>, line 91)</p>
-<p>Command 'benji nbd --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji nbd --help
+usage: benji nbd [-h] [-a BIND_ADDRESS] [-p BIND_PORT] [-r]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a BIND_ADDRESS, --bind-address BIND_ADDRESS
+                        Bind to the specified IP address (default: 127.0.0.1)
+  -p BIND_PORT, --bind-port BIND_PORT
+                        Bind to the specified port (default: 10809)
+  -r, --read-only       NBD device is read-only (default: False)
+</pre></div>
 </div>
 <p>Benji comes with its own NBD server which when started exports all known <em>versions</em>. The <em>versions</em> can then be
 mounted on any Linux host. The requirements on the Linux host are:</p>

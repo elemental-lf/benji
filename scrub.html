@@ -320,9 +320,21 @@ invalid in the past. Only a full successful deep-scrub will do that.</p>
 </div>
 <div class="section" id="consistency-and-checksum">
 <h3>Consistency and Checksum<a class="headerlink" href="#consistency-and-checksum" title="Permalink to this headline">¶</a></h3>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/scrub.rst</span>, line 46)</p>
-<p>Command 'benji deep-scrub --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji deep-scrub --help
+usage: benji deep-scrub [-h] [-s SOURCE] [-p BLOCK_PERCENTAGE] version_uid
+
+positional arguments:
+  version_uid           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SOURCE, --source SOURCE
+                        Additionally compare version against source URL
+                        (default: None)
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Check only a certain percentage of blocks (default:
+                        100)
+</pre></div>
 </div>
 <p>For each block in a version Benji reads the block’s metadata (UID and
 checksum) from the database backend, reads the actual block by its UID
@@ -345,9 +357,18 @@ present and it produces additional load on the backup source.</p>
 </div>
 <div class="section" id="consistency-only">
 <h3>Consistency Only<a class="headerlink" href="#consistency-only" title="Permalink to this headline">¶</a></h3>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/scrub.rst</span>, line 73)</p>
-<p>Command 'benji scrub --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji scrub --help
+usage: benji scrub [-h] [-p BLOCK_PERCENTAGE] version_uid
+
+positional arguments:
+  version_uid           Version UID
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Check only a certain percentage of blocks (default:
+                        100)
+</pre></div>
 </div>
 <p>With this command Benji only checks the metadata consistency between the
 metadata saved in the database and the metadata accompanying each block
@@ -364,13 +385,45 @@ their frequency.</p>
 <h2>Batch scrubbing<a class="headerlink" href="#batch-scrubbing" title="Permalink to this headline">¶</a></h2>
 <p>Benji also supports two commands to facilitate batch scrubbing of versions:
 <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-scrub</span></code> and <code class="docutils literal notranslate"><span class="pre">benji</span> <span class="pre">batch-deep-scrub</span></code>:</p>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/scrub.rst</span>, line 92)</p>
-<p>Command 'benji batch-scrub --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji batch-scrub --help
+usage: benji batch-scrub [-h] [-p BLOCK_PERCENTAGE] [-P VERSION_PERCENTAGE]
+                         [-g GROUP_LABEL]
+                         [filter_expression]
+
+positional arguments:
+  filter_expression     Version filter expression (default: None)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Check only a certain percentage of blocks (default:
+                        100)
+  -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
+                        Check only a certain percentage of versions (default:
+                        100)
+  -g GROUP_LABEL, --group_label GROUP_LABEL
+                        Label to find related versions (default: None)
+</pre></div>
 </div>
-<div class="system-message">
-<p class="system-message-title">System Message: ERROR/6 (<span class="docutils literal">/home/lf/src/backy2/benji/docs/source/scrub.rst</span>, line 93)</p>
-<p>Command 'benji batch-deep-scrub --help' failed: [Errno 2] No such file or directory: 'benji'</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ benji batch-deep-scrub --help
+usage: benji batch-deep-scrub [-h] [-p BLOCK_PERCENTAGE]
+                              [-P VERSION_PERCENTAGE] [-g GROUP_LABEL]
+                              [filter_expression]
+
+positional arguments:
+  filter_expression     Version filter expression (default: None)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -p BLOCK_PERCENTAGE, --block-percentage BLOCK_PERCENTAGE
+                        Check only a certain percentage of blocks (default:
+                        100)
+  -P VERSION_PERCENTAGE, --version-percentage VERSION_PERCENTAGE
+                        Check only a certain percentage of versions (default:
+                        100)
+  -g GROUP_LABEL, --group_label GROUP_LABEL
+                        Label to find related versions (default: None)
+</pre></div>
 </div>
 <p>Both can take a list of <em>version</em> names. All <em>versions</em> matching these
 names will be scrubbed. If you don’t specify any names all <em>versions</em>
