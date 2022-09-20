@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 import logging
 import re
@@ -18,7 +19,10 @@ from benji.helpers.utils import keys_exist, key_get
 SERVICE_NAMESPACE_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
 
 NODE_RBD_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/rbd-image-{image}'
-NODE_CSI_MOUNT_PATH_FORMAT = '/var/lib/kubelet/plugins/kubernetes.io/csi/pv/{pv}/globalmount/{volume_handle}'
+# For Kubernetes < 1.24
+NODE_CSI_MOUNT_PATH_FORMAT_LT_1_24 = '/var/lib/kubelet/plugins/kubernetes.io/csi/pv/{pv}/globalmount/{volume_handle}'
+# For Kubernetes >= 1.24
+NODE_CSI_MOUNT_PATH_FORMAT_GE_1_24 = '/var/lib/kubelet/plugins/kubernetes.io/csi/pv/{csi_driver}/{volume_handle_hash}/globalmount/{volume_handle}'
 
 logger = logging.getLogger()
 
@@ -33,6 +37,12 @@ def load_config() -> None:
             logger.debug('Configured via kubeconfig file.')
         except Exception:
             raise RuntimeError('No Kubernetes configuration found.')
+
+
+# Returns the Kubernetes server version as an integer (major * 1000 + minor) for easy comparison
+def server_version() -> int:
+    version_info = kubernetes.client.VersionApi().get_code()
+    return int(version_info.major) * 1000 + int(version_info.minor)
 
 
 def service_account_namespace() -> str:
@@ -237,12 +247,23 @@ def determine_rbd_info_from_pv(
     # name.
     elif keys_exist(pv.spec, ['csi.driver', 'csi.volume_handle', 'csi.volume_attributes.pool', 'csi.volume_attributes.imageName']) \
         and (key_get(pv.spec, 'csi.driver') == 'rbd.csi.ceph.com' or key_get(pv.spec, 'csi.driver').endswith('.rbd.csi.ceph.com')):
+
+        kubernetes_1_24 = 1 * 1000 + 24
+        if server_version() < kubernetes_1_24:
+            mount_point = NODE_CSI_MOUNT_PATH_FORMAT_LT_1_24.format(pv=pv.metadata.name,
+                                                                    volume_handle=key_get(pv.spec, 'csi.volume_handle'))
+        else:
+            volume_handle = key_get(pv.spec, 'csi.volume_handle')
+            volume_handle_hash = hashlib.sha256(volume_handle.encode()).hexdigest()
+            mount_point = NODE_CSI_MOUNT_PATH_FORMAT_GE_1_24.format(pv=pv.metadata.name,
+                                                                    csi_driver=key_get(pv.spec, 'csi.driver'),
+                                                                    volume_handle_hash=volume_handle_hash,
+                                                                    volume_handle=volume_handle)
+
         rbd_info = _RBDInfo(pool=key_get(pv.spec, 'csi.volume_attributes.pool'),
                             namespace=key_get(pv.spec, 'csi.volume_attributes.radosNamespace', ''),
                             image=key_get(pv.spec, 'csi.volume_attributes.imageName'),
-                            mount_point=NODE_CSI_MOUNT_PATH_FORMAT.format(pv=pv.metadata.name,
-                                                                          volume_handle=key_get(
-                                                                              pv.spec, 'csi.volume_handle')))
+                            mount_point=mount_point)
 
     return rbd_info
 

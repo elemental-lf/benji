@@ -122,7 +122,7 @@ fsfreeze:
         type: DirectoryOrCreate
     - name: rbd-mounts-2
       hostPath:
-        path: /var/lib/kubelet/plugins/kubernetes.io/csi/pv/
+        path: /var/lib/kubelet/plugins/kubernetes.io/csi/
         type: DirectoryOrCreate
 
 
