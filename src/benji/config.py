@@ -40,7 +40,7 @@ class Config:
     _PARENTS_KEY = 'parents'
     _YAML_SUFFIX = '.yaml'
 
-    _SCHEMA_VERSIONS = [semantic_version.Version('1', partial=True)]
+    _SCHEMA_VERSIONS = [semantic_version.Version(major=1, minor=0, patch=0)]
 
     _schema_registry: Dict[str, Dict] = {}
 
