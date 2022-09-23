@@ -789,7 +789,7 @@ class Block(Base, ReprMixIn):
         sqlalchemy.Index(None, 'uid_left', 'uid_right'),
         # Maybe using an hash index on PostgeSQL might be beneficial in the future
         # Index(None, 'checksum', postgresql_using='hash'),
-        sqlalchemy.Index(None, 'checksum'),
+        sqlalchemy.Index(None, 'checksum', mysql_length=MAXIMUM_CHECKSUM_LENGTH),
     )
 
     def deref(self) -> DereferencedBlock:
