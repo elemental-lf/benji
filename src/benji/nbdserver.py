@@ -93,6 +93,18 @@ class NbdServer(ReprMixIn):
     NBD_CMD_BLOCK_STATUS = 7  # Not implemented
     NBD_CMD_RESIZE = 8  # Not implemented (experimental resize extension)
 
+    NBD_CMD_MAP = {
+        NBD_CMD_READ: "read",
+        NBD_CMD_WRITE: "write",
+        NBD_CMD_DISC: "disconnect",
+        NBD_CMD_FLUSH: "flush",
+        NBD_CMD_TRIM: "trim",
+        NBD_CMD_CACHE: "cache",
+        NBD_CMD_WRITE_ZEROES: "write-zeroes",
+        NBD_CMD_BLOCK_STATUS: "block-status",
+        NBD_CMD_RESIZE: "resize",
+    }
+
     NBD_CMD_FLAG_FUA = (1 << 0) << NBD_CMD_FLAGS_SHIFT  # Not implemented
     NBD_CMD_FLAG_NO_HOLE = (1 << 1) << NBD_CMD_FLAGS_SHIFT  # Not implemented (only relevant to NBD_CMD_WRITE_ZEROES)
     NBD_CMD_FLAG_DF = (1 << 2) << NBD_CMD_FLAGS_SHIFT  # Not implemented
@@ -297,8 +309,7 @@ class NbdServer(ReprMixIn):
                 cmd_flags = cmd & self.NBD_CMD_MASK_FLAGS
                 cmd = cmd & self.NBD_CMD_MASK_COMMAND
 
-                self.log.debug("[%s:%s]: cmd=%s, cmd_flags=%s, handle=%s, offset=%s, len=%s" %
-                               (host, port, cmd, cmd_flags, handle, offset, length))
+                self.log.debug(f"[{host}:{port}]: cmd={self.NBD_CMD_MAP.get(cmd + 10, 'unknown')}({cmd}), cmd_flags={cmd_flags}, handle={handle}, offset={offset}, length={length}")
 
                 # We don't support any command flags
                 if cmd_flags != 0:
