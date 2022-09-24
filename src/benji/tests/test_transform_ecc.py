@@ -2,11 +2,10 @@ import base64
 
 import pytest
 from Crypto.PublicKey import ECC
-
 from benji.config import ConfigDict
 from benji.transform.aes_256_gcm_ecc import Transform
 
-CURVE = 'p384'
+CURVE = 'NIST P-384'
 
 
 def _get_transform(key):
