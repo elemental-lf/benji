@@ -151,16 +151,17 @@ class NbdServer(ReprMixIn):
             asyncio.set_event_loop(asyncio.new_event_loop())
         self.loop = asyncio.get_event_loop()
 
-    @asyncio.coroutine
-    def nbd_response(self, writer: StreamWriter, handle: int, error: int = 0,
-                     data: bytes = None) -> Generator[Any, None, None]:
+    async def nbd_response(self,
+                           writer: StreamWriter,
+                           handle: int,
+                           error: int = 0,
+                           data: bytes = None) -> Generator[Any, None, None]:
         writer.write(struct.pack('>LLQ', self.NBD_REPLY_MAGIC, error, handle))
         if data:
             writer.write(data)
-        yield from writer.drain()
+        await writer.drain()
 
-    @asyncio.coroutine
-    def handler(self, reader: StreamReader, writer: StreamWriter) -> Generator[Any, None, None]:
+    async def handler(self, reader: StreamReader, writer: StreamWriter) -> Generator[Any, None, None]:
         data: Optional[bytes]
         try:
             host, port = writer.get_extra_info("peername")
@@ -170,9 +171,9 @@ class NbdServer(ReprMixIn):
 
             # Initial handshake
             writer.write(struct.pack(">QQH", self.INIT_PASSWD, self.CLISERV_MAGIC, self.NBD_HANDSHAKE_FLAGS))
-            yield from writer.drain()
+            await writer.drain()
 
-            data = yield from reader.readexactly(4)
+            data = await reader.readexactly(4)
             try:
                 client_flags = struct.unpack(">L", data)[0]
             except struct.error:
@@ -194,7 +195,7 @@ class NbdServer(ReprMixIn):
 
             # Negotiation phase
             while True:
-                header = yield from reader.readexactly(16)
+                header = await reader.readexactly(16)
                 try:
                     (magic, opt, length) = struct.unpack(">QLL", header)
                 except struct.error:
@@ -204,7 +205,7 @@ class NbdServer(ReprMixIn):
                     raise IOError("Negotiation failed: Bad magic number: %s." % magic)
 
                 if length:
-                    data = yield from reader.readexactly(length)
+                    data = await reader.readexactly(length)
                     if len(data) != length:
                         raise IOError("Negotiation failed: %s bytes expected." % length)
                 else:
@@ -222,7 +223,7 @@ class NbdServer(ReprMixIn):
                             raise IOError("Negotiation failed: Unknown export name.")
 
                         writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ERR_UNSUP, 0))
-                        yield from writer.drain()
+                        await writer.drain()
                         continue
 
                     self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid))
@@ -246,7 +247,7 @@ class NbdServer(ReprMixIn):
                     writer.write(struct.pack('>QH', size, export_flags))
                     if not no_zeros:
                         writer.write(b"\x00" * 124)
-                    yield from writer.drain()
+                    await writer.drain()
 
                     # Transition to transmission phase
                     break
@@ -260,14 +261,14 @@ class NbdServer(ReprMixIn):
                                         len(list_version_encoded) + 4))
                         writer.write(struct.pack(">L", len(list_version_encoded)))
                         writer.write(list_version_encoded)
-                        yield from writer.drain()
+                        await writer.drain()
 
                     writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ACK, 0))
-                    yield from writer.drain()
+                    await writer.drain()
 
                 elif opt == self.NBD_OPT_ABORT:
                     writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ACK, 0))
-                    yield from writer.drain()
+                    await writer.drain()
 
                     raise _NbdServerAbortedNegotiationError()
                 else:
@@ -280,11 +281,11 @@ class NbdServer(ReprMixIn):
                         raise IOError("Unsupported option: %s." % (opt))
 
                     writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ERR_UNSUP, 0))
-                    yield from writer.drain()
+                    await writer.drain()
 
             # Transmission phase
             while True:
-                header = yield from reader.readexactly(28)
+                header = await reader.readexactly(28)
                 try:
                     (magic, cmd, handle, offset, length) = struct.unpack(">LLQQL", header)
                 except struct.error:
@@ -301,7 +302,7 @@ class NbdServer(ReprMixIn):
 
                 # We don't support any command flags
                 if cmd_flags != 0:
-                    yield from self.nbd_response(writer, handle, error=self.EINVAL)
+                    await self.nbd_response(writer, handle, error=self.EINVAL)
                     continue
 
                 if cmd == self.NBD_CMD_DISC:
@@ -309,12 +310,12 @@ class NbdServer(ReprMixIn):
                     break
 
                 elif cmd == self.NBD_CMD_WRITE:
-                    data = yield from reader.readexactly(length)
+                    data = await reader.readexactly(length)
                     if len(data) != length:
                         raise IOError("%s bytes expected, disconnecting." % length)
 
                     if self.read_only:
-                        yield from self.nbd_response(writer, handle, error=self.EPERM)
+                        await self.nbd_response(writer, handle, error=self.EPERM)
                         continue
 
                     if not cow_version:
@@ -324,25 +325,25 @@ class NbdServer(ReprMixIn):
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_WRITE: %s\n%s." %
                                        (host, port, exception, traceback.format_exc()))
-                        yield from self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, handle, error=self.EIO)
                         continue
 
-                    yield from self.nbd_response(writer, handle)
+                    await self.nbd_response(writer, handle)
 
                 elif cmd == self.NBD_CMD_READ:
                     try:
                         data = self.store.read(version, cow_version, offset, length)
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_READ: %s\n%s." % (host, port, exception, traceback.format_exc()))
-                        yield from self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, handle, error=self.EIO)
                         continue
 
-                    yield from self.nbd_response(writer, handle, data=data)
+                    await self.nbd_response(writer, handle, data=data)
 
                 elif cmd == self.NBD_CMD_FLUSH:
                     # Return success right away when we're read only or when we haven't written anything yet.
                     if self.read_only or not cow_version:
-                        yield from self.nbd_response(writer, handle)
+                        await self.nbd_response(writer, handle)
                         continue
 
                     try:
@@ -350,14 +351,14 @@ class NbdServer(ReprMixIn):
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_FLUSH: %s\n%s." %
                                        (host, port, exception, traceback.format_exc()))
-                        yield from self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, handle, error=self.EIO)
                         continue
 
-                    yield from self.nbd_response(writer, handle)
+                    await self.nbd_response(writer, handle)
 
                 else:
                     self.log.warning("[%s:%s] Unknown cmd %s, ignoring." % (host, port, cmd))
-                    yield from self.nbd_response(writer, handle, error=self.EINVAL)
+                    await self.nbd_response(writer, handle, error=self.EINVAL)
                     continue
 
         except _NbdServerAbortedNegotiationError:
