@@ -8,7 +8,6 @@ import uuid
 from unittest import TestCase
 
 from benji.benji import BenjiStore
-from benji.database import VersionUid
 from benji.logging import logger
 from benji.nbdserver import NbdServer
 from benji.tests.testcase import BenjiTestCaseBase
@@ -79,8 +78,7 @@ class NbdTestCase:
         self.nbd_server.serve_forever()
         self.nbd_client_thread.join()
 
-        self.assertEqual({self.version_uid[0], VersionUid(2)},
-                         {version.uid for version in benji_obj.find_versions_with_filter()})
+        self.assertEqual({self.version_uid[0]}, {version.uid for version in benji_obj.find_versions_with_filter()})
 
         benji_obj.close()
 
@@ -102,13 +100,13 @@ class NbdTestCase:
     def nbd_client(self, version_uid):
         self.subprocess_run(args=['sudo', 'nbd-client', '127.0.0.1', '-p',
                                   str(self.SERVER_PORT), '-l'],
-                            success_regexp='^Negotiation: ..\n{}\n$'.format(version_uid[0]))
+                            success_regexp=r'^Negotiation: ..\n{}\n$'.format(version_uid[0]))
 
         version_uid, size = version_uid
         self.subprocess_run(
             args=['sudo', 'nbd-client', '-N', version_uid, '127.0.0.1', '-p',
                   str(self.SERVER_PORT), self.NBD_DEVICE],
-            success_regexp='^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$|^Negotiation: ..size = \d+MB|Connected /dev/nbd\d+$')
+            success_regexp=r'^Negotiation: ..size = \d+MB\nbs=1024, sz=\d+ bytes\n$|^Negotiation: ..size = \d+MB|Connected /dev/nbd\d+$')
 
         count = 0
         nbd_data = bytearray()
@@ -141,7 +139,7 @@ class NbdTestCase:
         os.close(f)
 
         self.subprocess_run(args=['sudo', 'nbd-client', '-d', self.NBD_DEVICE],
-                            success_regexp='^disconnect, sock, done\n$')
+                            success_regexp=r'^disconnect, sock, done\n$')
 
         # Signal NBD server to stop
         self.nbd_server.stop()
