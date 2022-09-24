@@ -17,9 +17,6 @@ class Transform(TransformAES):
 
         ecc_key = self._unpack_envelope_key(base64.b64decode(ecc_key_der))
 
-        if ecc_key.curve != ecc_curve:
-            raise ValueError(f'Key eccKey does not match the eccCurve setting (found: {ecc_key.curve}, expected: {ecc_curve}).')
-
         self._ecc_key = ecc_key
         self._ecc_curve = ecc_key.curve
 
