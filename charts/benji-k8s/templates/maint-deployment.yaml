@@ -59,8 +59,8 @@ spec:
       hostNetwork: false
       volumes:
         - name: benji-config
-          configMap:
-            name: {{ tuple . "" | include "benji.fullname" }}
+          secret:
+            secretName: {{ tuple . "" | include "benji.fullname" }}
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
