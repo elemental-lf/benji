@@ -42,6 +42,10 @@ spec:
           serviceAccountName: {{ tuple $ "" | include "benji.fullname" }}
           dnsPolicy: ClusterFirstWithHostNet
           restartPolicy: Never
+{{- if $.Values.benji.initContainers }}
+          initContainers:
+{{ toYaml $.Values.benji.initContainers | indent 12 }}
+{{- end }}
           containers:
             - name: benji
               image: "{{ $.Values.benji.image.registry }}/{{ $.Values.benji.image.repository }}:{{ $.Values.benji.image.tag }}"
@@ -79,9 +83,15 @@ spec:
 {{- end }}
           hostNetwork: false
           volumes:
+    {{- if $.Values.benji.externalSecretConfig }}
+            - name: benji-config
+              secret:
+                secretName: {{ $.Values.benji.externalSecretConfig }}
+    {{- else }}
             - name: benji-config
               secret:
                 secretName: {{ tuple $ "" | include "benji.fullname" }}
+    {{- end }}
             - name: tz-config
               hostPath:
                 path: /usr/share/zoneinfo/{{ $.Values.timeZone }}
