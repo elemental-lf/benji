@@ -17,6 +17,10 @@ benji:
 
   affinity: {}
 
+  initContainers: []
+## insert a secret name here that contains your configuration, otherwise the below configuration is used
+  externalSecretConfig: false
+
   configuration:
     configurationVersion: '1'
     databaseEngine: sqlite:////tmp/benji.sqlite
@@ -177,3 +181,5 @@ pushgateway:
   nameOverride: pushgateway
   service:
     port: 9091
+        
+ceph: {}
