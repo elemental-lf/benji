@@ -1,3 +1,24 @@
 apiVersion: v1
-entries: {}
-generated: "2022-10-09T16:04:01.055569442+02:00"
+entries:
+  benji:
+  - apiVersion: v2
+    created: "2022-10-09T14:06:54.433495754Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: ^11.9.8
+    - alias: pushgateway
+      name: prometheus-pushgateway
+      repository: https://prometheus-community.github.io/helm-charts
+      version: ^1.20.0
+    description: Benji Backup for Kubernetes
+    digest: e5c0a166348be11ef2115050acbd3b9363da23b3871283c9bb371f71672e24b7
+    maintainers:
+    - email: lf@elemental.net
+      name: Elemental
+    name: benji
+    urls:
+    - https://github.com/elemental-lf/benji/releases/download/benji-chart-1.0.0/benji-1.0.0.tgz
+    version: 1.0.0
+generated: "2022-10-09T14:06:54.433503654Z"
