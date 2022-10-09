@@ -76,7 +76,12 @@ backup. RBD snapshots names are generated with a prefix of ``b-``.
 Helm Chart
 ----------
 
-The Helm chart is the preferred way to deploy the ``benji-k8s`` image.
+The Helm chart is the preferred way to deploy Benji inside a Kubernetes cluster. There is a chart repository available
+at `<https://benji-backup.me/helm-charts/>`_::
+
+    helm repo add benji https://benji-backup.me/helm-charts/
+
+The chart is named ``benji`` and with the repository definition above the chart would be referenced as ``benji/benji``.
 
 .. NOTE:: The deployed resources create a service account which has the right to *get*,
     *list* and *watch* all PersistentVolume, PersistentVolumeClaim, Storageclasses and Pod resources in all

@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Containerized Benji &mdash; Benji Backup 0.16.1.dev16+g05e02c7 documentation</title>
+  <title>Containerized Benji &mdash; Benji Backup 0.17.0.dev7+g59b914e documentation</title>
   
 
   
@@ -354,7 +354,12 @@ backup. RBD snapshots names are generated with a prefix of <code class="docutils
 </div>
 <div class="section" id="helm-chart">
 <h2>Helm Chart<a class="headerlink" href="#helm-chart" title="Permalink to this headline">¶</a></h2>
-<p>The Helm chart is the preferred way to deploy the <code class="docutils literal notranslate"><span class="pre">benji-k8s</span></code> image.</p>
+<p>The Helm chart is the preferred way to deploy Benji inside a Kubernetes cluster. There is a chart repository available
+at <a class="reference external" href="https://benji-backup.me/helm-charts/">https://benji-backup.me/helm-charts/</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>helm repo add benji https://benji-backup.me/helm-charts/
+</pre></div>
+</div>
+<p>The chart is named <code class="docutils literal notranslate"><span class="pre">benji</span></code> and with the repository definition above the chart would be referenced as <code class="docutils literal notranslate"><span class="pre">benji/benji</span></code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The deployed resources create a service account which has the right to <em>get</em>,
