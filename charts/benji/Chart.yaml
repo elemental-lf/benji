@@ -1,6 +1,6 @@
 apiVersion: v2
 description: Benji Backup for Kubernetes
-name: benji-k8s
+name: benji
 version: 1.0.0
 maintainers:
   - name: Elemental
