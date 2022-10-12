@@ -77,7 +77,7 @@ Topic :: System :: Archiving :: Backup
         'dev': ['parameterized', 'wheel', 'yapf', 'mypy', 'pytest', 'build'],
         'doc': ['sphinx', 'sphinx_rtd_theme', 'sphinxcontrib-programoutput'],
         'helpers': ['blinker>=1.4,<2', 'prometheus_client>=0.7.0,<1'],
-        'rest-api': ['bottle>=0.12.16,<0.13.0', 'gunicorn>=19.9.0,<20', 'webargs>=5.3.1,<6', 'requests>=2.22.0,<3'],
+        'rest-api': ['bottle>=0.12.16,<0.13.0', 'gunicorn>=20.1.0,<21', 'webargs>=8.0.1,<8.1.0', 'requests>=2.27.1,<3'],
     },
     python_requires='~=3.6',
     entry_points="""
