@@ -96,6 +96,21 @@ benji:
     #   subPath: keyring
     #   readOnly: true
 
+  api:
+    enabled: false
+
+    networkPolicy:
+      enabled: false
+
+      allowFrom: {}
+      #  - podSelector:
+      #      matchLabels:
+      #        mylabel: myvalue
+
+    port: 7746
+    replicas: 1
+    threadsPerReplica: 10
+
 fsfreeze:
   enabled: true
 
