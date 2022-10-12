@@ -58,7 +58,7 @@ def route(path: str, **decorator_kwargs):
                 return body.getvalue()
             else:
                 response.content_type = 'application/json; charset=utf-8'
-                return json.dumps(body) if body is not None else ''
+                return json.dumps(body, check_circular=True, separators=(',', ': '), indent=2) if body is not None else ''
 
         return wrapped_func
 
