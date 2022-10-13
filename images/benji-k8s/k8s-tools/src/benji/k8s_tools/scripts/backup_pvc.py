@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import os
 import random
 import string
 import sys
@@ -278,33 +279,60 @@ def main():
                         action='store_true',
                         default=False,
                         help='Compare version to source after backup')
+    parser.add_argument('pvcs',
+                        metavar='pvcs',
+                        default=[],
+                        nargs='*',
+                        help='PVCs to backup (use <namespace>/<pvc> to specify a namespace)')
 
     args = parser.parse_args()
 
     benji.k8s_tools.kubernetes.load_config()
     core_v1_api = kubernetes.client.CoreV1Api()
 
-    labels = ','.join(args.labels)
-    fields = ','.join(args.fields)
+    if not args.pvcs:
+        labels = ','.join(args.labels)
+        fields = ','.join(args.fields)
 
-    if args.namespace is not None:
-        logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
-    else:
-        logger.info(f'Backing up all PVCs in all namespaces.')
-    if labels != '':
-        logger.info(f'Matching label(s) {labels}.')
-    if fields != '':
-        logger.info(f'Matching field(s) {fields}.')
+        if args.namespace is not None:
+            logger.info(f'Backing up all PVCs in namespace {args.namespace}.')
+        else:
+            logger.info(f'Backing up all PVCs in all namespaces.')
+        if labels != '':
+            logger.info(f'Matching label(s) {labels}.')
+        if fields != '':
+            logger.info(f'Matching field(s) {fields}.')
 
-    if args.namespace is not None:
-        pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
-                                                                   watch=False,
-                                                                   label_selector=labels,
-                                                                   field_selector=fields).items
+        if args.namespace is not None:
+            pvcs = core_v1_api.list_namespaced_persistent_volume_claim(args.namespace,
+                                                                       watch=False,
+                                                                       label_selector=labels,
+                                                                       field_selector=fields).items
+        else:
+            pvcs = core_v1_api.list_persistent_volume_claim_for_all_namespaces(watch=False,
+                                                                               label_selector=labels,
+                                                                               field_selector=fields).items
     else:
-        pvcs = core_v1_api.list_persistent_volume_claim_for_all_namespaces(watch=False,
-                                                                           label_selector=labels,
-                                                                           field_selector=fields).items
+        if args.labels or args.fields:
+            logger.error('Specifying PVCs together with --selector or --field-selector is not supported.')
+            sys.exit(os.EX_USAGE)
+
+        pvcs = []
+        for pvc in args.pvcs:
+            pvc_parts = pvc.split('/', 1)
+            if len(pvc_parts) == 1:
+                if args.namespace is None:
+                    logger.error(f'PVC {pvc} has no namespace and no default namespace is specified.')
+                    sys.exit(os.EX_USAGE)
+
+                pvc_namespace = args.namespace
+                pvc_name = pvc_parts[0]
+            else:
+                pvc_namespace = pvc_parts[0]
+                pvc_name = pvc_parts[1]
+
+            pvcs.append(core_v1_api.read_namespaced_persistent_volume_claim(name=pvc_name, namespace=pvc_namespace))
+
     if len(pvcs) == 0:
         logger.info('Not matching PVCs found.')
         sys.exit(0)
