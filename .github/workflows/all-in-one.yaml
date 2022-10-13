@@ -230,7 +230,7 @@ jobs:
           password: ${{ secrets.CONTAINER_REGISTRY_PAT }}
 
       - name: Build and push benji container image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: ./images/benji/Dockerfile
@@ -247,7 +247,7 @@ jobs:
             VERSION=${{ needs.gather_info.outputs.version }}
 
       - name: Build and push benji-k8s container image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: ./images/benji-k8s/Dockerfile
@@ -286,7 +286,7 @@ jobs:
           password: ${{ secrets.CONTAINER_REGISTRY_PAT }}
 
       - name: Build and push benji container image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: ./images/benji/Dockerfile
@@ -303,7 +303,7 @@ jobs:
             VERSION=${{ needs.gather_info.outputs.version }}
 
       - name: Build and push benji-k8s container image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: ./images/benji-k8s/Dockerfile
