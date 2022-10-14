@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import random
 import string
@@ -279,6 +280,11 @@ def main():
                         action='store_true',
                         default=False,
                         help='Compare version to source after backup')
+    parser.add_argument('--select-only',
+                        dest='select_only',
+                        action='store_true',
+                        default=False,
+                        help='Output list of selected and eligible PVCs in JSON format')
     parser.add_argument('pvcs',
                         metavar='pvcs',
                         default=[],
@@ -333,47 +339,65 @@ def main():
 
             pvcs.append(core_v1_api.read_namespaced_persistent_volume_claim(name=pvc_name, namespace=pvc_namespace))
 
-    if len(pvcs) == 0:
-        logger.info('Not matching PVCs found.')
-        sys.exit(0)
+    if not args.select_only:
+        if len(pvcs) == 0:
+            logger.info('Not matching PVCs found.')
+            sys.exit(0)
 
-    for pvc in pvcs:
-        if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
-            continue
+        for pvc in pvcs:
+            if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+                continue
 
-        pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
-        rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
-        if rbd_info is None:
-            logger.debug(f'PersistentVolume {pv.metadata.name} is not an RBD backed volume '
-                         f'or the volume format is unknown to us.')
-            continue
+            pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+            rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
+            if rbd_info is None:
+                logger.debug(f'PersistentVolume {pv.metadata.name} is not an RBD backed volume '
+                             f'or the volume format is unknown to us.')
+                continue
 
-        volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
-        # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
-        version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
+            volume = f'{pvc.metadata.namespace}/{pvc.metadata.name}'
+            # Limit the version_uid to 253 characters so that it is a compatible Kubernetes resource name.
+            version_uid = '{}-{}'.format(f'{pvc.metadata.namespace}-{pvc.metadata.name}'[:246], _random_string(6))
 
-        version_labels = {
-            'benji-backup.me/instance': settings.benji_instance,
-            'benji-backup.me/ceph-pool': rbd_info.pool,
-            'benji-backup.me/ceph-namespace': rbd_info.namespace,
-            'benji-backup.me/ceph-rbd-image': rbd_info.image,
-            'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
-            'benji-backup.me/k8s-pvc': pvc.metadata.name,
-            'benji-backup.me/k8s-pv': pv.metadata.name
-        }
+            version_labels = {
+                'benji-backup.me/instance': settings.benji_instance,
+                'benji-backup.me/ceph-pool': rbd_info.pool,
+                'benji-backup.me/ceph-namespace': rbd_info.namespace,
+                'benji-backup.me/ceph-rbd-image': rbd_info.image,
+                'benji-backup.me/k8s-pvc-namespace': pvc.metadata.namespace,
+                'benji-backup.me/k8s-pvc': pvc.metadata.name,
+                'benji-backup.me/k8s-pv': pv.metadata.name
+            }
 
-        context = {
-            'pvc': pvc,
-            'pv': pv,
-            'pv-mount-point': rbd_info.mount_point,
-        }
-        ceph.backup(volume=volume,
-                    pool=rbd_info.pool,
-                    namespace=rbd_info.namespace,
-                    image=rbd_info.image,
-                    version_uid=version_uid,
-                    version_labels=version_labels,
-                    source_compare=args.source_compare,
-                    context=context)
+            context = {
+                'pvc': pvc,
+                'pv': pv,
+                'pv-mount-point': rbd_info.mount_point,
+            }
+            ceph.backup(volume=volume,
+                        pool=rbd_info.pool,
+                        namespace=rbd_info.namespace,
+                        image=rbd_info.image,
+                        version_uid=version_uid,
+                        version_labels=version_labels,
+                        source_compare=args.source_compare,
+                        context=context)
+    else:
+        pvcs_json = []
+        for pvc in pvcs:
+            pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+            rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
+            if rbd_info is None:
+                logger.debug(f'PersistentVolume {pv.metadata.name} is not an RBD backed volume '
+                             f'or the volume format is unknown to us.')
+                continue
+
+            pvcs_json.append({
+                'pvc_name': pvc.metadata.name,
+                'pvc_namespace': pvc.metadata.namespace,
+                'pv_name': pv.metadata.name
+            })
+
+        print(json.dumps(pvcs_json, separators=(',', ': '), indent=2))
 
     sys.exit(0)
