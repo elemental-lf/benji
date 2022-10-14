@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import kubernetes
 import kubernetes.stream
+from kubernetes.client.rest import ApiException
 
 import benji.helpers.ceph as ceph
 import benji.helpers.prometheus as prometheus
@@ -337,7 +338,13 @@ def main():
                 pvc_namespace = pvc_parts[0]
                 pvc_name = pvc_parts[1]
 
-            pvcs.append(core_v1_api.read_namespaced_persistent_volume_claim(name=pvc_name, namespace=pvc_namespace))
+            try:
+                pvcs.append(core_v1_api.read_namespaced_persistent_volume_claim(name=pvc_name, namespace=pvc_namespace))
+            except ApiException as exception:
+                if exception.status == 404:
+                    logger.warning(f'PVC {pvc_namespace}/{pvc_name} not found, skipping it.')
+                else:
+                    raise
 
     if not args.select_only:
         if len(pvcs) == 0:
@@ -346,12 +353,23 @@ def main():
 
         for pvc in pvcs:
             if not hasattr(pvc.spec, 'volume_name') or pvc.spec.volume_name in (None, ''):
+                logger.warning(f'PVC {pvc.metadata.namespace}/{pvc.metadata.name} has no associated persistent volume, '
+                               f'skipping.')
                 continue
 
-            pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+            try:
+                pv = core_v1_api.read_persistent_volume(pvc.spec.volume_name)
+            except ApiException as exception:
+                if exception.status == 404:
+                    logger.warning(f'PV {pvc.spec.volume_name} not found, '
+                                   f'skipping PVC {pvc.metadata.namespace}/{pvc.metadata.name}.')
+                    continue
+                else:
+                    raise
+
             rbd_info = benji.k8s_tools.kubernetes.determine_rbd_info_from_pv(pv)
             if rbd_info is None:
-                logger.debug(f'PersistentVolume {pv.metadata.name} is not an RBD backed volume '
+                logger.debug(f'PV {pv.metadata.name} is not an RBD backed volume '
                              f'or the volume format is unknown to us.')
                 continue
 
