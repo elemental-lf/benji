@@ -1,0 +1,163 @@
+{{- if .Values.benji.argoWorkflows.enabled -}}
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  namespace: ceph
+  name: {{ tuple . "" | include "benji.fullname" }}
+spec:
+  # See https://argoproj.github.io/argo-workflows/tolerating-pod-deletion/
+  retryStrategy:
+    # OnError: Retry steps that encounter Argo controller errors, or whose init or wait containers fail
+    retryPolicy: OnError
+    limit: 1
+  templates:
+    - name: call
+      metadata:
+        labels:
+          app.kubernetes.io/name: {{ include "benji.name" . }}
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: benji-backup-pvc
+      inputs:
+        parameters:
+          - name: command
+            default: "[]"
+          - name: args
+            default: "[]"
+      serviceAccountName: {{ tuple . "" | include "benji.fullname" }}
+      # See https://github.com/argoproj/argo-workflows/issues/3191 and
+      #     https://github.com/argoproj/argo-workflows/issues/5570
+      podSpecPatch: {{`'{"containers":[{"name":"main", "command":{{inputs.parameters.command}}, "args": {{inputs.parameters.args}}}]}'`}}
+      container:
+        # These are just placeholders, see podSpecPatch above.
+        command: []
+        args: []
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: PROM_PUSH_GATEWAY
+            value: "{{- printf "%s-%s" .Release.Name $.Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
+          - name: TZ
+            value: "{{ .Values.timeZone }}"
+        image: ghcr.io/elemental-lf/benji-k8s:argo-workflows
+        imagePullPolicy: Always
+        name: benji
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /benji/etc
+            name: benji-config
+          - mountPath: /etc/localtime
+            name: tz-config
+        {{- with .Values.benji.volumeMounts }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- with .Values.benji.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+      volumes:
+        - name: benji-config
+          secret:
+            secretName: {{ tuple . "" | include "benji.fullname" }}
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/{{ .Values.timeZone }}
+      {{- with .Values.benji.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.benji.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.benji.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.benji.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    - name: select
+      inputs:
+        parameters:
+          - name: args
+            default: '[]'
+      steps:
+        - - name: select
+            template: call
+            arguments:
+              parameters:
+                - name: command
+                  value: '["benji-backup-pvc", "--select-only"]'
+                - name: args
+                  value: {{`'{{inputs.parameters.args}}'`}}
+      outputs:
+        parameters:
+          - name: pvcs
+            valueFrom:
+              expression: "steps.select.outputs.result"
+    - name: backup-one-pvc
+      inputs:
+        parameters:
+          - name: pvc_namespace
+          - name: pvc_name
+      steps:
+        - - name: backup
+            template: call
+            arguments:
+              parameters:
+                - name: command
+                  value: '["benji-backup-pvc"]'
+                - name: args
+                  value: {{`'["{{inputs.parameters.pvc_namespace}}/{{inputs.parameters.pvc_name}}"]'`}}
+    - name: benji-backup-pvc
+      inputs:
+        parameters:
+          - name: args
+            default: '[]'
+      steps:
+        - - name: select
+            template: select
+            arguments:
+              parameters:
+                - name: args
+                  value:  {{`"{{inputs.parameters.args}}"`}}
+        - - name: backup-one-pvc
+            template: backup-one-pvc
+            arguments:
+              parameters:
+                - name: pvc_namespace
+                  value: {{`"{{item.pvc_namespace}}"`}}
+                - name: pvc_name
+                  value: {{`"{{item.pvc_name}}"`}}
+            withParam: {{`"{{steps.select.outputs.parameters.pvcs}}"`}}
+    - name: benji-command
+      inputs:
+        parameters:
+          - name: args
+      steps:
+        - - name: command
+            template: call
+            arguments:
+              parameters:
+                - name: command
+                  value: '["benji-command"]'
+                - name: args
+                  value:  {{`"{{inputs.parameters.args}}"`}}
+    - name: benji-versions-status
+      steps:
+        - - name: versions-status
+            template: call
+            arguments:
+              parameters:
+                - name: command
+                  value: '["benji-versions-status"]'
+{{- end }}

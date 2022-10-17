@@ -52,7 +52,13 @@ benji:
             - RBD_FEATURE_OBJECT_MAP
             - RBD_FEATURE_FAST_DIFF
 
+  argoWorkflows:
+    enabled: false
+    # Role used by the client service account used to access the Argo Workflows server or API
+    clientRole: benji-argo-workflows-server
+
   cronJob:
+    # activeDeadlineSeconds is not supported by Argo Workflows.
     activeDeadlineSeconds: null
     startingDeadlineSeconds: null
 
@@ -168,57 +174,3 @@ postgresql:
 
 pushgateway:
   nameOverride: pushgateway
-
-argo-workflows:
-  crds:
-    keep: false
-  singleNamespace: true
-  workflow:
-    serviceAccount:
-      create: true
-    rbac:
-      create: true
-  controller:
-    workflowDefaults:
-      spec:
-        serviceAccountName: argo-workflow
-        artifactGC:
-          strategy: OnWorkflowCompletion
-  server:
-    enabled: false
-  useDefaultArtifactRepo: true
-  artifactRepository:
-    s3:
-      accessKeySecret:
-        name: argo-artifacts
-        key: rootUser
-      secretKeySecret:
-        name: argo-artifacts
-        key: rootPassword
-      insecure: true
-      bucket: argo-artifacts
-      endpoint: argo-artifacts:9000
-
-minio:
-  fullnameOverride: argo-artifacts
-  mode: standalone
-  persistence:
-    size: 1Gi
-  resources:
-    requests:
-      memory: 256Mi
-  policies:
-    - name: argo-artifacts
-      statements:
-        - resources:
-            - arn:aws:s3:::argo-artifacts
-          actions:
-            - "s3:*"
-  users:
-    - accessKey: oodoo3Nohgu4Ovaizohx2shaej8iugia
-      secretKey: phu1ith9Quoop1eth0pohwietei1oa5e
-      policy: argo-artifacts
-  buckets:
-    - name: argo-artifacts
-      policy: none
-      purge: false

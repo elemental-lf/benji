@@ -1,0 +1,26 @@
+{{ if .Values.benji.argoWorkflows.enabled -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ tuple . "awf-client" | include "benji.fullname" }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: {{ tuple . "awf-client" | include "benji.fullname" }}
+  name: {{ tuple . "awf-client.service-account-token" | include "benji.fullname" }}
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ tuple . "awf-client" | include "benji.fullname" }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.benji.argoWorkflows.clientRole }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ tuple . "awf-client" | include "benji.fullname" }}
+{{- end }}

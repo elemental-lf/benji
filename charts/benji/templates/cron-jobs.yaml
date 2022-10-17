@@ -1,5 +1,5 @@
-{{- range .Values.benji.crontab }}
-
+{{- if not .Values.benji.argoWorkflows.enabled -}}
+{{- range .Values.benji.crontab -}}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -88,5 +88,6 @@ spec:
     {{- end -}}
     {{- with $.Values.benji.tolerations }}
           tolerations: {{ toYaml . | nindent 12 }}
-    {{- end -}}
-{{- end -}}
+    {{- end }}
+{{ end -}}
+{{ end -}}

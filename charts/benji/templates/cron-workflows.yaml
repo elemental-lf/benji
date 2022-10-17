@@ -1,0 +1,34 @@
+{{- if .Values.benji.argoWorkflows.enabled -}}
+{{- range .Values.benji.crontab -}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: {{ tuple $ .name | include "benji.fullname" }}
+  labels:
+    app.kubernetes.io/name: {{ include "benji.name" $ }}
+    helm.sh/chart: {{ include "benji.chart" $ }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: cronjob-{{ .name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+spec:
+  schedule: {{ .schedule | quote }}
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  {{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ $.Values.benji.cronJob.startingDeadlineSeconds }}
+  {{- end }}
+  workflowSpec:
+    parallelism: {{ .parallelism | default 1 }}
+    entrypoint: {{ required "command list must not be empty." .command | first | quote }}
+  {{- with rest .command }}
+    arguments:
+      parameters:
+        - name: args
+          value: {{ . | toJson | quote }}
+  {{- end }}
+    workflowTemplateRef:
+      name: "{{ tuple $ "" | include "benji.fullname" }}"
+{{ end -}}
+{{ end -}}
