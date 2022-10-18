@@ -40,3 +40,4 @@ dist
 .b2-account-info*
 tests-scratch
 .mypy_cache
+charts/benji/charts/
