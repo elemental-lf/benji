@@ -53,8 +53,8 @@ spec:
               mountPath: /benji/etc
             - name: tz-config
               mountPath: /etc/localtime
-{{- if .Values.benji.volumeMounts }}
-            {{ toYaml .Values.benji.volumeMounts | nindent 12 }}
+{{- with .Values.benji.volumeMounts }}
+            {{ toYaml . | nindent 12 }}
 {{- end }}
 {{- with .Values.benji.resources }}
           resources:
@@ -68,8 +68,8 @@ spec:
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
-{{- if .Values.benji.volumes }}            
-        {{ toYaml .Values.benji.volumes | nindent 8 }}
+{{- with .Values.benji.volumes }}
+        {{ toYaml . | nindent 8 }}
 {{- end }}
 {{- with .Values.benji.nodeSelector }}
       nodeSelector:
