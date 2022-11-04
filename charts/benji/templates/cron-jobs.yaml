@@ -59,7 +59,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-{{- if .Values.pushgateway.enabled }}
+{{- if $.Values.pushgateway.enabled }}
                 - name: PROM_PUSH_GATEWAY
                   value: "{{ include "benji.pushgateway" $ }}"
 {{- end }}
