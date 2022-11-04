@@ -56,8 +56,10 @@ spec:
 {{- if .Values.benji.volumeMounts }}
             {{ toYaml .Values.benji.volumeMounts | nindent 12 }}
 {{- end }}
+{{- with .Values.benji.resources }}
           resources:
-            {{ toYaml .Values.benji.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
       hostNetwork: false
       volumes:
         - name: benji-config

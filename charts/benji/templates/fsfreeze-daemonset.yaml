@@ -54,8 +54,10 @@ spec:
 {{- if .Values.benji.volumeMounts }}
             {{ toYaml .Values.fsfreeze.volumeMounts | nindent 12 }}
 {{- end }}
+{{- with .Values.benji.resources }}
           resources:
-            {{ toYaml .Values.fsfreeze.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+{{- end }}
       hostNetwork: false
       volumes:
         - name: tz-config

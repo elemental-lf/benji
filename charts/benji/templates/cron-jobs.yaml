@@ -71,8 +71,10 @@ spec:
                 - name: tz-config
                   mountPath: /etc/localtime
                 {{ toYaml $.Values.benji.volumeMounts | nindent 16 }}
+            {{- with $.Values.benji.resources }}
               resources:
-                {{ toYaml $.Values.benji.resources | nindent 16 }}
+                {{- toYaml . | nindent 16 }}
+            {{- end }}
           hostNetwork: false
           volumes:
             - name: benji-config
