@@ -16,18 +16,18 @@ spec:
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
-  {{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
+{{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
   startingDeadlineSeconds: {{ $.Values.benji.cronJob.startingDeadlineSeconds }}
-  {{- end }}
+{{- end }}
   workflowSpec:
     parallelism: {{ .parallelism | default 1 }}
     entrypoint: {{ required "command list must not be empty." .command | first | quote }}
-  {{- with rest .command }}
+{{- with rest .command }}
     arguments:
       parameters:
         - name: args
           value: {{ . | toJson | quote }}
-  {{- end }}
+{{- end }}
     workflowTemplateRef:
       name: "{{ tuple $ "" | include "benji.fullname" }}"
 {{ end -}}

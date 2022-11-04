@@ -42,10 +42,10 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.namespace
-        {{- if .Values.pushgateway.enabled }}
+{{- if .Values.pushgateway.enabled }}
           - name: PROM_PUSH_GATEWAY
             value: "{{ include "benji.pushgateway" $ }}"
-        {{- end }}
+{{- end }}
           - name: TZ
             value: "{{ .Values.timeZone }}"
         image: ghcr.io/elemental-lf/benji-k8s:argo-workflows
@@ -58,13 +58,13 @@ spec:
             name: benji-config
           - mountPath: /etc/localtime
             name: tz-config
-        {{- with .Values.benji.volumeMounts }}
+{{- with .Values.benji.volumeMounts }}
           {{- toYaml . | nindent 10 }}
-        {{- end }}
-      {{- with .Values.benji.resources }}
+{{- end }}
+{{- with .Values.benji.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
-      {{- end }}
+{{- end }}
       volumes:
         - name: benji-config
           secret:
@@ -72,21 +72,21 @@ spec:
         - name: tz-config
           hostPath:
             path: /usr/share/zoneinfo/{{ .Values.timeZone }}
-      {{- with .Values.benji.volumes }}
+{{- with .Values.benji.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-    {{- with .Values.benji.nodeSelector }}
+{{- end }}
+{{- with .Values.benji.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.benji.affinity }}
+{{- end }}
+{{- with .Values.benji.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.benji.tolerations }}
+{{- end }}
+{{- with .Values.benji.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+{{- end }}
     - name: select
       inputs:
         parameters:

@@ -18,9 +18,9 @@ spec:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
-  {{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
+{{- if $.Values.benji.cronJob.startingDeadlineSeconds }}
   startingDeadlineSeconds: {{ $.Values.benji.cronJob.startingDeadlineSeconds }}
-  {{- end }}
+{{- end }}
   jobTemplate:
     metadata:
       labels:
@@ -29,9 +29,9 @@ spec:
         app.kubernetes.io/component: cronjob-{{ .name }}
     spec:
       backoffLimit: 0
-      {{- if $.Values.benji.cronJob.activeDeadlineSeconds }}
+{{- if $.Values.benji.cronJob.activeDeadlineSeconds }}
       activeDeadlineSeconds: {{ $.Values.benji.cronJob.activeDeadlineSeconds }}
-      {{- end }}
+{{- end }}
       template:
         metadata:
           labels:
@@ -59,10 +59,10 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-              {{- if .Values.pushgateway.enabled }}
+{{- if .Values.pushgateway.enabled }}
                 - name: PROM_PUSH_GATEWAY
                   value: "{{ include "benji.pushgateway" $ }}"
-              {{- end }}
+{{- end }}
                 - name: TZ
                   value: "{{ $.Values.timeZone }}"
               volumeMounts:
@@ -71,10 +71,10 @@ spec:
                 - name: tz-config
                   mountPath: /etc/localtime
                 {{ toYaml $.Values.benji.volumeMounts | nindent 16 }}
-            {{- with $.Values.benji.resources }}
+{{- with $.Values.benji.resources }}
               resources:
                 {{- toYaml . | nindent 16 }}
-            {{- end }}
+{{- end }}
           hostNetwork: false
           volumes:
             - name: benji-config
@@ -84,14 +84,14 @@ spec:
               hostPath:
                 path: /usr/share/zoneinfo/{{ $.Values.timeZone }}
             {{ toYaml $.Values.benji.volumes | nindent 12 }}
-    {{- with $.Values.benji.nodeSelector }}
+{{- with $.Values.benji.nodeSelector }}
           nodeSelector: {{ toYaml . | nindent 12 }}
-    {{- end -}}
-    {{- with $.Values.benji.affinity }}
+{{- end -}}
+{{- with $.Values.benji.affinity }}
           affinity: {{ toYaml . | nindent 12 }}
-    {{- end -}}
-    {{- with $.Values.benji.tolerations }}
+{{- end -}}
+{{- with $.Values.benji.tolerations }}
           tolerations: {{ toYaml . | nindent 12 }}
-    {{- end }}
+{{- end }}
 {{ end -}}
 {{ end -}}
