@@ -42,8 +42,10 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.namespace
+        {{- if .Values.pushgateway.enabled }}
           - name: PROM_PUSH_GATEWAY
-            value: "{{- printf "%s-%s" .Release.Name $.Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:9091"
+            value: "{{ include "benji.pushgateway" $ }}"
+        {{- end }}
           - name: TZ
             value: "{{ .Values.timeZone }}"
         image: ghcr.io/elemental-lf/benji-k8s:argo-workflows

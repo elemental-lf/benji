@@ -36,3 +36,10 @@ Create chart name and version as used by the chart label.
 {{- define "benji.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/*
+Create hostname:port pair pointing to the Prometheus pushgateway
+*/}}
+{{- define "benji.pushgateway" -}}
+{{- printf "%s-%s" .Release.Name .Values.pushgateway.nameOverride | trunc 63 | trimSuffix "-" -}}:{{ .Values.pushgateway.service.port }}
+{{- end -}}

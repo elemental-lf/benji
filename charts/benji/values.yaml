@@ -173,4 +173,7 @@ postgresql:
   #     size: 100Gi
 
 pushgateway:
+  enabled: true
   nameOverride: pushgateway
+  service:
+    port: 9091
