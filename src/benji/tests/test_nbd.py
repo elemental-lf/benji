@@ -68,7 +68,8 @@ class NbdTestCase:
         store = BenjiStore(benji_obj)
         addr = ('127.0.0.1', self.SERVER_PORT)
         read_only = False
-        self.nbd_server = NbdServer(addr, store, read_only)
+        discard_changes = False
+        self.nbd_server = NbdServer(addr, store, read_only, discard_changes)
         logger.info("Starting to serve NBD on %s:%s" % (addr[0], addr[1]))
 
         self.subprocess_run(args=['sudo', 'modprobe', 'nbd'])

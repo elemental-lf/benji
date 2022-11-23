@@ -218,6 +218,7 @@ def main():
     p.add_argument('-a', '--bind-address', default='127.0.0.1', help='Bind to the specified IP address')
     p.add_argument('-p', '--bind-port', default=10809, help='Bind to the specified port')
     p.add_argument('-r', '--read-only', action='store_true', default=False, help='NBD device is read-only')
+    p.add_argument('-d', '--discard-changes', action='store_true', default=False, help='Discard changes to NDBD device after disconnecting. Don\'t create new version.')
     p.set_defaults(func='nbd')
 
     # PROTECT

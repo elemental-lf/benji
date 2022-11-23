@@ -1479,3 +1479,9 @@ class BenjiStore(ReprMixIn):
         Locking.unlock_version(cow_version.uid)
         del self._cow[cow_version.uid]
         logger.info('Finished.')
+
+    def cow_discard_changes(self, cow_version: Version) -> None:
+        Locking.unlock_version(cow_version.uid)
+        cow_version.remove()
+        del self._cow[cow_version.uid]
+        logger.info('Finished.')

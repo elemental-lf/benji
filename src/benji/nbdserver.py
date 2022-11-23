@@ -152,12 +152,13 @@ class NbdServer(ReprMixIn):
     EOVERFLOW = 75  # Value too large.
     ESHUTDOWN = 108  # Server is in the process of being shut down.
 
-    def __init__(self, address: Tuple[str, str], store: BenjiStore, read_only: bool = True) -> None:
+    def __init__(self, address: Tuple[str, str], store: BenjiStore, read_only: bool = True, discard_changes: bool = False) -> None:
         self.log = logging.getLogger(__package__)
 
         self.address = address
         self.store = store
         self.read_only = read_only
+        self.discard_changes = discard_changes
 
         if asyncio.get_event_loop().is_closed():
             asyncio.set_event_loop(asyncio.new_event_loop())
@@ -380,6 +381,9 @@ class NbdServer(ReprMixIn):
 
         finally:
             if cow_version:
+              if self.discard_changes:
+                self.store.cow_discard_changes(cow_version)
+              else:
                 self.store.fixate(cow_version)
             if version:
                 self.store.close(version)
