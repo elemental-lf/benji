@@ -344,11 +344,11 @@ class Commands:
                                      sys.stdout,
                                      ignore_relationships=(((Version,), ('blocks',)),))
 
-    def nbd(self, bind_address: str, bind_port: str, read_only: bool) -> None:
+    def nbd(self, bind_address: str, bind_port: str, read_only: bool, discard_changes: bool) -> None:
         with Benji(self.config) as benji_obj:
             store = BenjiStore(benji_obj)
             addr = (bind_address, bind_port)
-            server = NbdServer(addr, store, read_only)
+            server = NbdServer(addr, store, read_only, discard_changes)
             logger.info("Starting to serve NBD on %s:%s" % (addr[0], addr[1]))
             server.serve_forever()
 

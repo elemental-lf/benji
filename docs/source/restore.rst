@@ -184,7 +184,7 @@ After connecting the NBD device you can initiate any repair procedures required 
 device will initiate a copy-on-write (COW) of the original blocks to a new *version* which is dynamically created
 by Benji.
 
-After disconnecting the NBD device Benji will start to fixate the COW *version*. Depending on how many changes
+Without the ``-d`` option, after disconnecting the NBD device Benji will start to fixate the COW *version*. Depending on how many changes
 have been done to the original *version* this will take some time!::
 
     INFO: [127.0.0.1:46526] disconnecting
@@ -216,6 +216,9 @@ the *version* the protection needs to be lifted with ``benji unprotect``.
 
 .. NOTE:: The new created COW *version* can be restored just like any other *version*. Both the original and the
     COW *version* are independent from each other and each can be removed without affecting the other.
+
+When the ``-d`` option is specified, the changes will not be fixated and will be discarded. No new version will be created.
+This is useful for booting from a nbd disk without creating a new Version from the changes, like in backup restore tests.
 
 Restoring Invalid *Versions*
 ----------------------------
