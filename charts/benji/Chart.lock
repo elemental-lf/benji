@@ -1,9 +1,0 @@
-dependencies:
-- name: postgresql
-  repository: https://charts.bitnami.com/bitnami
-  version: 11.9.10
-- name: prometheus-pushgateway
-  repository: https://prometheus-community.github.io/helm-charts
-  version: 1.20.0
-digest: sha256:172adbeff0fa5c2bf605278fa79da003fc406fe84bdcd6b22311a5faea48c448
-generated: "2022-10-18T12:46:21.995138612+03:00"
