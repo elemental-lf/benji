@@ -19,7 +19,7 @@ benji:
 
   initContainers: []
 ## insert a secret name here that contains your configuration, otherwise the below configuration is used
-  externalSecretConfig: false
+  externalSecretConfig: ""
 
   configuration:
     configurationVersion: '1'
