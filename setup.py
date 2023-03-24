@@ -56,7 +56,7 @@ Topic :: System :: Archiving :: Backup
         'ruamel.yaml>0.16,<0.17',
         'psycopg2-binary>=2.7.4,<3',
         'argcomplete>=1.9.4,<2',
-        'sparsebitfield>=0.2.3,<1',
+        'sparsebitfield>=0.2.5,<1',
         'cerberus>=1.2,<2',
         'pycryptodome>=3.6.1,<4',
         'pyparsing>=2.3.0,<3',
