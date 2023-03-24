@@ -21,7 +21,7 @@ jobs:
   #
   cancel:
     name: "Cancel previous workflow runs"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     timeout-minutes: 3
     steps:
       - uses: styfle/cancel-workflow-action@0.11.0
@@ -36,7 +36,7 @@ jobs:
     name: "Gather information about the build"
     needs:
       - cancel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       branch: ${{ steps.gather_info.outputs.branch }}
       version: ${{ steps.gather_info.outputs.version }}
@@ -91,7 +91,7 @@ jobs:
     name: "Run tests"
     needs:
       - gather_info
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         python-version:
@@ -152,7 +152,7 @@ jobs:
     needs:
       - gather_info
     name: "Lint the Helm chart"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository files
         uses: actions/checkout@v3
@@ -174,7 +174,7 @@ jobs:
         run: ct lint --all
 
 #  install-chart:
-#    runs-on: ubuntu-latest
+#    runs-on: ubuntu-20.04
 #    needs: lint-chart
 #    strategy:
 #      matrix:
@@ -219,7 +219,7 @@ jobs:
       - lint_chart
     if: "needs.gather_info.outputs.release == 'true'"
     name: "Build and publish container images for release"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository files
         uses: actions/checkout@v3
@@ -275,7 +275,7 @@ jobs:
     needs:
       - gather_info
     if: "needs.gather_info.outputs.release == 'false'"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository files
         uses: actions/checkout@v3
@@ -333,7 +333,7 @@ jobs:
       - tests
       - lint_chart
     if: "needs.gather_info.outputs.release == 'true'"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository files
         uses: actions/checkout@v3
@@ -374,7 +374,7 @@ jobs:
     needs:
       - gather_info
     if: "needs.gather_info.outputs.release == 'false'"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository files
         uses: actions/checkout@v3
