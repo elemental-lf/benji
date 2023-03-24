@@ -123,7 +123,7 @@ fsfreeze:
   image:
     registry: docker.io
     repository: almalinux
-    tag: 8.5
+    tag: 8.7
     pullPolicy: IfNotPresent
 
   priorityClassName: null
