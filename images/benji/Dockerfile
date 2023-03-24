@@ -1,4 +1,4 @@
-FROM almalinux:8.5 AS build
+FROM almalinux:8.7 AS build
 
 ARG CEPH_CODENAME="pacific"
 ARG CEPH_DISTRO="el8"
@@ -24,7 +24,7 @@ RUN python3 -m venv --system-site-packages $VENV_DIR && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
 	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
 
-FROM almalinux:8.5 AS runtime
+FROM almalinux:8.7 AS runtime
 
 ARG VCS_REF
 ARG VCS_URL
