@@ -45,9 +45,20 @@ Create hostname:port pair pointing to the Prometheus pushgateway
 {{- end -}}
 
 {{/*
-ceph client admin keyring
+ceph conf
+*/}}
+{{- define "benji.ceph-conf" -}}
+[global]
+mon_host = {{ .Values.ceph.mon_hosts }}
+
+[client.{{ .Values.ceph.user | default "admin" }}]
+keyring = /etc/ceph/keyring
+{{ end -}}
+
+{{/*
+ceph client keyring
 */}}
 {{- define "benji.ceph-keyring" -}}
-[client.admin]
+[client.{{ .Values.ceph.user | default "admin" }}]
 key = {{ .Values.ceph.key }}
 {{ end -}}

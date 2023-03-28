@@ -50,6 +50,10 @@ spec:
             - name: PROM_PUSH_GATEWAY
               value: "{{ include "benji.pushgateway" $ }}"
 {{- end }}
+{{- with .Values.ceph.user }}
+            - name: CEPH_ARGS
+              value: "--name client.{{ . }}"
+{{- end }}
             - name: TZ
               value: "{{ .Values.timeZone }}"
           volumeMounts:
