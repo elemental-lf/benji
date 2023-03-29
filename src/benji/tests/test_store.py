@@ -76,7 +76,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
         self.assertEqual(version.block_size, cow_version.block_size)
         self.assertEqual(version.storage_id, cow_version.storage_id)
         self.assertNotEqual(version.snapshot, cow_version.snapshot)
-        store.fixate(cow_version)
+        store.fixate_cow_version(cow_version)
         store.close(version)
         benji_obj.close()
 
@@ -122,7 +122,7 @@ class BenjiStoreTestCase(BenjiTestCaseBase):
                     self.fail('Written image different at offset {} (block size {}).'.format(pos, block_size))
                     break
 
-        store.fixate(cow_version)
+        store.fixate_cow_version(cow_version)
 
         benji_obj.deep_scrub(cow_version.uid, 'file:{}'.format(image_2_filename))
 

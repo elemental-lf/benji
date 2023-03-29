@@ -31,12 +31,13 @@ THE SOFTWARE.
 
 import asyncio
 import logging
-import math
 import signal
 import struct
 import traceback
 from asyncio import StreamReader, StreamWriter
 from typing import Generator, Optional, Any, Tuple
+
+import math
 
 from benji.benji import BenjiStore
 from benji.database import VersionUid, Version
@@ -382,9 +383,9 @@ class NbdServer(ReprMixIn):
         finally:
             if cow_version:
               if self.discard_changes:
-                self.store.cow_discard_changes(cow_version)
+                self.store.discard_cow_version(cow_version)
               else:
-                self.store.fixate(cow_version)
+                self.store.fixate_cow_version(cow_version)
             if version:
                 self.store.close(version)
             writer.close()

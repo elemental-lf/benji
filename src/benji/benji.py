@@ -1439,7 +1439,7 @@ class BenjiStore(ReprMixIn):
     def flush(self, cow_version: Version) -> None:
         pass
 
-    def fixate(self, cow_version: Version) -> None:
+    def fixate_cow_version(self, cow_version: Version) -> None:
         # save blocks into version
         logger.info('Fixating version {} with {} blocks, please wait.'.format(cow_version.uid,
                                                                               len(self._cow[cow_version.uid])))
@@ -1480,7 +1480,7 @@ class BenjiStore(ReprMixIn):
         del self._cow[cow_version.uid]
         logger.info('Finished.')
 
-    def cow_discard_changes(self, cow_version: Version) -> None:
+    def discard_cow_version(self, cow_version: Version) -> None:
         Locking.unlock_version(cow_version.uid)
         cow_version.remove()
         del self._cow[cow_version.uid]
