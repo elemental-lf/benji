@@ -126,7 +126,7 @@ Read-Only Mount
 
 This command will run the NBD server in read-only mode and wait for incoming connections::
 
-    $ benji nbd -r
+    $ benji nbd --read-only
         INFO: Starting to serve nbd on 127.0.0.1:10809
 
 Benji's NBD server will serve all available *versions* and it is possible to access each one of them as a block device
@@ -168,7 +168,7 @@ serve multiple *versions* at once.
 Benji's NBD server by default listens on 127.0.0.1 (i.e. localhost) for incoming connections. For the server to be
 reachable from the outside bind it to 0.0.0.0 or the specific address of another interface::
 
-    benji nbd -a 0.0.0.0 -r
+    benji nbd --bind-address 0.0.0.0 --read-only
 
 
 .. CAUTION:: Exposing the NBD server on an external interface has security implications.
@@ -177,26 +177,25 @@ Read-Write Mount
 ~~~~~~~~~~~~~~~~
 
 In addition to providing read-only access, Benji also allows read-write access in a safe way. This means, the original
-*version* **will not be modified**. To access the available *versions* in read-write mode start the NBD server
-without the ``-r`` option.
+*version* **will not be modified**. To access any of the available *versions* in read-write mode start the NBD server
+without the ``--read-only`` option.
 
 After connecting the NBD device you can initiate any repair procedures required like ``fsck``.  Any writes to the
 device will initiate a copy-on-write (COW) of the original blocks to a new *version* which is dynamically created
 by Benji.
 
-Without the ``-d`` option, after disconnecting the NBD device Benji will start to fixate the COW *version*. Depending on how many changes
-have been done to the original *version* this will take some time!::
+After disconnecting the NBD device Benji will start to fixate the COW *version*. Depending on how many changes have
+been done to the original *version* this will take some time!::
 
     INFO: [127.0.0.1:46526] disconnecting
     INFO: Fixating version V0000000002 with 1024 blocks, please wait!
     INFO: Fixation done. Deleting temporary data, please wait!
     INFO: Finished.
 
-.. CAUTION:: If you end the NBD server before the last "INFO: Finished." is reported, your copy-on-write clone will not
-    be written completely and thus be incomplete. However, the original backup *version*
-    **will be untouched in any case**.
+.. CAUTION:: If you terminate the NBD server before the last "INFO: Finished." is reported, the COW *version*
+    will be incomplete. However, the original backup *version* **will be untouched in any case**.
 
-The newly created *version* can be seen in the output of ``benji ls``::
+The newly created COW *version* can be seen in the output of ``benji ls``::
 
     $ benji ls
         INFO: $ benji ls
@@ -208,17 +207,17 @@ The newly created *version* can be seen in the output of ``benji ls``::
     +---------------------+-------------+------+-----------------------------------------+----------+------------+-------+-----------+------+
 
 The name will be the same as the original *version*. The snapshot will start with the prefix *nbd-cow-* followed by the 
-*version* UID followed by a timestamp.
+*version* UID followed by a timestamp to uniquely identify this COW *version*.
 
 The COW *version* will automatically be marked as protected by Benji to prevent removal by any automatic retention
-policy enforcement configured. This ensures the new *version* won't be destroyed accidentally. To be able to remove
+policy enforcement configured. This ensures the new *version* will not be destroyed accidentally. To be able to remove
 the *version* the protection needs to be lifted with ``benji unprotect``.
 
-.. NOTE:: The new created COW *version* can be restored just like any other *version*. Both the original and the
-    COW *version* are independent from each other and each can be removed without affecting the other.
+If ``benji nbd`` is called with the ``--discard-changes`` option any changes will not be fixated and will be discarded.
+The newly created COW *version* will be removed in this case.
 
-When the ``-d`` option is specified, the changes will not be fixated and will be discarded. No new version will be created.
-This is useful for booting from a nbd disk without creating a new Version from the changes, like in backup restore tests.
+.. NOTE:: A newly created COW *version* can be restored just like any other *version*. Both the original and the
+    COW *version* are independent from each other and each can be removed without affecting the other.
 
 Restoring Invalid *Versions*
 ----------------------------
