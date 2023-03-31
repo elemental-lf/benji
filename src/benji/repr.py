@@ -17,7 +17,7 @@ class Repr(_Repr):
     def repr1(self, obj, level: int) -> str:
         if level <= 0:
             return '<...>'
-        elif isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
+        elif isinstance(obj.__class__, sqlalchemy.orm.DeclarativeMeta):
             return self.repr_Base(obj, level)
         # Test if this is an object from one of our own modules
         elif hasattr(obj, '__module__') and obj.__module__.startswith(self.__module__.split('.')[0] + '.'):

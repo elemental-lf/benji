@@ -25,7 +25,6 @@ from typing import Union, List, Tuple, TextIO, Dict, cast, Iterator, Set, Any, O
 import pyparsing
 import semantic_version
 import sqlalchemy
-import sqlalchemy.ext.declarative
 import sqlalchemy.ext.mutable
 import sqlalchemy.orm
 import sqlalchemy.sql.operators
@@ -33,7 +32,7 @@ from alembic import command as alembic_command
 from alembic.config import Config as alembic_config_Config
 from alembic.runtime.environment import EnvironmentContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import func
+from sqlalchemy import func, select, delete, update
 from sqlalchemy.orm import object_session, sessionmaker, scoped_session, aliased
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -292,7 +291,7 @@ metadata = sqlalchemy.MetaData(
         "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
         "pk": "pk_%(table_name)s"
     })
-Base: Any = sqlalchemy.ext.declarative.declarative_base(metadata=metadata)
+Base: Any = sqlalchemy.orm.declarative_base(metadata=metadata)
 
 Session = scoped_session(sessionmaker())
 
@@ -384,8 +383,8 @@ class Version(Base, ReprMixIn):
 
     def remove(self) -> int:
         try:
-            affected_blocks = Session.query(Block).filter(Block.version_id == self.id)
-            num_blocks = affected_blocks.count()
+            affected_blocks = Session.scalars(select(Block).filter(Block.version_id == self.id)).all()
+            num_blocks = len(affected_blocks)
             for affected_block in affected_blocks:
                 if affected_block.uid:
                     deleted_block = DeletedBlock(
@@ -437,7 +436,7 @@ class Version(Base, ReprMixIn):
 
     def set_block(self, *, idx: int, block_uid: BlockUid, checksum: Optional[str], size: int, valid: bool) -> None:
         try:
-            block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
+            block = Session.scalars(select(Block).filter(Block.version_id == self.id, Block.idx == idx)).one_or_none()
 
             if not block and not block_uid and size == self.block_size:
                 # Block is not present and it should be fully sparse now -> Nothing to do.
@@ -494,12 +493,13 @@ class Version(Base, ReprMixIn):
     def set_block_valid(cls, block_uid: BlockUid, valid: bool) -> Set[VersionUid]:
         try:
             # Can't use DISTINCT here as PostgreSQL doesn't support DISTINCT together with FOR UPDATE.
-            affected_version_uids_query = Session.query(
-                cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid).with_for_update()
+            affected_version_uids_query = Session.execute(
+                select(cls.uid.label('uid')).join(Block).filter(Block.uid == block_uid).with_for_update()).all()
             # Use a set to replace the missing DISTINCT above.
             affected_version_uids = set([row.uid for row in affected_version_uids_query])
 
-            Session.query(Block).filter(Block.uid == block_uid).update({'valid': valid}, synchronize_session=False)
+            Session.execute(
+                update(Block).filter(Block.uid == block_uid).values(valid=valid).execution_options(synchronize_session=False))
 
             if len(affected_version_uids) > 0:
                 logger.error('Marked block with UID {} as {} in all affected versions: {}.'.format(
@@ -507,8 +507,9 @@ class Version(Base, ReprMixIn):
 
                 # We won't mark any versions as valid because they might contain other invalid blocks.
                 if not valid:
-                    Session.query(cls).filter(cls.uid.in_(affected_version_uids)).update(
-                        {'status': VersionStatus.invalid}, synchronize_session=False)
+                    Session.execute(
+                        update(cls).filter(cls.uid.in_(affected_version_uids)).values(
+                            status=VersionStatus.invalid).execution_options(synchronize_session=False))
             else:
                 # Version could have been deleted in the meantime
                 logger.warning('No version was affected by marking block with UID {} as {}.'.format(
@@ -534,8 +535,9 @@ class Version(Base, ReprMixIn):
             start_idx = next_start_idx
             next_start_idx = min(start_idx + self.BLOCKS_PER_CALL, self.blocks_count)
 
-            blocks = object_session(self).query(Block).filter(Block.version_id == self.id, Block.idx >= start_idx,
-                                                              Block.idx < next_start_idx).order_by(Block.idx)
+            blocks = object_session(self).scalars(
+                select(Block).filter(Block.version_id == self.id, Block.idx >= start_idx,
+                                     Block.idx < next_start_idx).order_by(Block.idx)).all()
 
             idx = start_idx
             for block in blocks:
@@ -558,8 +560,10 @@ class Version(Base, ReprMixIn):
 
     def _sparse_blocks_by_idx(self) -> List[int]:
         # noinspection PyComparisonWithNone
-        non_sparse_blocks_query = object_session(self).query(Block.idx, Block.uid_left, Block.uid_right).filter(
-            Block.version_id == self.id, Block.uid_left != None, Block.uid_right != None)
+        non_sparse_blocks_query = object_session(self).execute(
+            select(Block.idx, Block.uid_left,
+                   Block.uid_right).filter(Block.version_id == self.id, Block.uid_left != None,
+                                           Block.uid_right != None)).all()
         non_sparse_blocks = {row.idx for row in non_sparse_blocks_query}
 
         return [idx for idx in range(self.blocks_count) if idx not in non_sparse_blocks]
@@ -575,7 +579,7 @@ class Version(Base, ReprMixIn):
 
     @classmethod
     def get_by_uid(cls, version_uid: VersionUid) -> 'Version':
-        version = Session.query(cls).filter(cls.uid == version_uid).one_or_none()
+        version = Session.scalars(select(cls).filter(cls.uid == version_uid)).one_or_none()
 
         if version is None:
             raise KeyError('Version {} not found.'.format(version_uid))
@@ -583,15 +587,16 @@ class Version(Base, ReprMixIn):
         return version
 
     def get_block_by_idx(self, idx: int) -> 'Block':
-        block = Session.query(Block).filter(Block.version_id == self.id, Block.idx == idx).one_or_none()
+        block = Session.scalars(select(Block).filter(Block.version_id == self.id, Block.idx == idx)).one_or_none()
         if not block:
             block = self._create_sparse_block(idx)
 
         return block
 
     def get_block_by_checksum(self, checksum) -> 'Block':
-        return Session.query(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
-                                                         Version.storage_id == self.storage_id).first()
+        return Session.scalars(
+            select(Block).join(Version).filter(Block.checksum == checksum, Block.valid == True,
+                                               Version.storage_id == self.storage_id).limit(1)).first()
 
     @classmethod
     def find(cls,
@@ -599,7 +604,7 @@ class Version(Base, ReprMixIn):
              volume: str = None,
              snapshot: str = None,
              labels: List[Tuple[str, str]] = None) -> List['Version']:
-        query = Session.query(Version)
+        query = select(Version)
         if version_uid:
             query = query.filter(Version.uid == version_uid)
         if volume:
@@ -608,21 +613,21 @@ class Version(Base, ReprMixIn):
             query = query.filterby(Version.snapshot == snapshot)
         if labels:
             for label in labels:
-                label_query = Session.query(Label.version_uid).filter((Label.name == label[0]) & (Label.value == label[1]))
+                label_query = select(Label.version_uid).filter((Label.name == label[0]) & (Label.value == label[1]))
                 query = query.filter(Version.uid.in_(label_query))
 
-        return query.order_by(Version.volume, Version.date).all()
+        return Session.scalars(query.order_by(Version.volume, Version.date)).all()
 
     @classmethod
     def find_with_filter(cls, filter_expression: str = None) -> List['Version']:
         builder = _QueryBuilder()
-        return builder.build(filter_expression).order_by(Version.volume, Version.date).all()
+        return Session.scalars(builder.build(filter_expression).order_by(Version.volume, Version.date)).all()
 
     @classmethod
     def storage_usage(cls, filter_expression: str = None) -> Dict[str, Dict[str, int]]:
         if filter_expression is not None:
             builder = _QueryBuilder()
-            version_ids = [id for id, in builder.build(filter_expression, columns=(Version.id,)).all()]
+            version_ids = [id for id, in Session.execute(builder.build(filter_expression, columns=(Version.id,))).all()]
         else:
             version_ids = None
 
@@ -634,22 +639,21 @@ class Version(Base, ReprMixIn):
             'deduplicated_exclusive': 0,
         })
 
-        virtual = Session.query(Storage.id, Storage.name,
-                                func.sum(Version.size)).select_from(Version).join(Storage).group_by(
-                                    Storage.id, Storage.name)
+        virtual = select(Storage.id, Storage.name,
+                         func.sum(Version.size)).select_from(Version).join(Storage).group_by(Storage.id, Storage.name)
         if version_ids is not None:
             virtual = virtual.filter(Version.id.in_(version_ids))
 
-        for _, storage_name, size in virtual.all():
+        for _, storage_name, size in Session.execute(virtual).all():
             usage[storage_name]['virtual'] = int(size)  # func.sum()/SUM() returns type Decimal
 
         sq_block, sq_storage, sq_version = aliased(Block), aliased(Storage), aliased(Version)
-        share_count_overall_sq = Session.query(func.count('*')).select_from(sq_block).join(sq_version).join(
+        share_count_overall_sq = select(func.count('*')).select_from(sq_block).join(sq_version).join(
             sq_storage).filter((Storage.id == sq_storage.id) & (Block.uid_left == sq_block.uid_left) &
                                (Block.uid_right == sq_block.uid_right)).scalar_subquery()
 
         # noinspection PyComparisonWithNone
-        share_count_query = Session.query(
+        share_count_query = select(
             Storage.id.label('storage_id'), Storage.name.label('storage_name'), Block.uid, Block.size.label('size'),
             func.count('*').label('share_count_subset'),
             share_count_overall_sq.label('share_count_overall')).select_from(Block).join(Version).join(Storage).filter(
@@ -659,7 +663,7 @@ class Version(Base, ReprMixIn):
         if version_ids is not None:
             share_count_query = share_count_query.filter(Block.version_id.in_(version_ids))
 
-        for row in share_count_query.all():
+        for row in Session.execute(share_count_query).all():
             if row.share_count_overall == row.share_count_subset:
                 usage[row.storage_name]['exclusive'] += row.size * row.share_count_subset
                 usage[row.storage_name]['deduplicated_exclusive'] += row.size
@@ -673,14 +677,11 @@ class Version(Base, ReprMixIn):
 
     def add_label(self, name: str, value: str) -> None:
         try:
-            label = Session.query(Label).join(Version).filter(Version.uid == self.uid, Label.name == name).one_or_none()
+            label = Session.scalars(select(Label).filter(Label.version_id == self.id, Label.name == name)).one_or_none()
             if label:
                 label.value = value
             else:
-                version = Session.query(Version).filter(Version.uid == self.uid).one_or_none()
-                if version is None:
-                    raise KeyError('Version {} not found.'.format(self.uid))
-                label = Label(version_id=version.id, name=name, value=value)
+                label = Label(version_id=self.id, name=name, value=value)
                 Session.add(label)
 
             Session.commit()
@@ -690,9 +691,9 @@ class Version(Base, ReprMixIn):
 
     def rm_label(self, name: str) -> None:
         try:
-            version = Session.query(Version).filter(Version.uid == self.uid).one_or_none()
-            Session.query(Label).filter(Label.version_id == version.id,
-                                        Label.name == name).delete(synchronize_session=False)
+            Session.execute(
+                delete(Label).filter(Label.version_id == self.id,
+                                     Label.name == name).execution_options(synchronize_session=False))
             Session.commit()
         except:
             Session.rollback()
@@ -831,9 +832,9 @@ class DeletedBlock(Base, ReprMixIn):
         cut_off_date = datetime.datetime.utcnow() - datetime.timedelta(seconds=dt)
         while True:
             # http://stackoverflow.com/questions/7389759/memory-efficient-built-in-sqlalchemy-iterator-generator
-            delete_candidates = Session.query(DeletedBlock) \
+            delete_candidates = Session.scalars(select(DeletedBlock) \
                 .filter(DeletedBlock.date < cut_off_date) \
-                .limit(250) \
+                .limit(250)) \
                 .all()
             if not delete_candidates:
                 break
@@ -848,10 +849,9 @@ class DeletedBlock(Base, ReprMixIn):
                         hit_list_count,
                     ))
 
-                block = Session.query(Block) \
+                block = Session.scalar(select(Block) \
                     .filter(Block.uid == candidate.uid) \
-                    .limit(1) \
-                    .scalar()
+                    .limit(1))
                 if block:
                     false_positives.add(candidate.uid)
                     false_positives_count += 1
@@ -861,13 +861,14 @@ class DeletedBlock(Base, ReprMixIn):
 
             if false_positives:
                 logger.debug("Cleanup: Removing {} false positive from delete candidates.".format(len(false_positives)))
-                Session.query(DeletedBlock) \
-                    .filter(DeletedBlock.uid.in_(false_positives)) \
-                    .delete(synchronize_session=False)
+                Session.execute(
+                    delete(DeletedBlock).filter(
+                        DeletedBlock.uid.in_(false_positives)).execution_options(synchronize_session=False))
 
             if hit_list:
                 for uids in hit_list.values():
-                    Session.query(DeletedBlock).filter(DeletedBlock.uid.in_(uids)).delete(synchronize_session=False)
+                    Session.execute(delete(DeletedBlock).filter(DeletedBlock.uid.in_(uids)),
+                                    execution_options={"synchronize_session": False})
                 yield hit_list
                 # We expect that the caller has handled all the blocks returned so far, so we can call commit after
                 # the yield to keep the transaction small.
@@ -903,12 +904,12 @@ class Storage(Base, ReprMixIn):
 
     @classmethod
     def get_by_name(cls, storage_name: str) -> 'Storage':
-        return Session.query(cls).filter(cls.name == storage_name).one_or_none()
+        return Session.scalars(select(cls).filter(cls.name == storage_name)).one_or_none()
 
     @classmethod
     def sync(cls, storage_name: str, storage_id: int = None) -> 'Storage':
         try:
-            storage = Session.query(cls).filter(cls.name == storage_name).one_or_none()
+            storage = Session.scalars(select(cls).filter(cls.name == storage_name)).one_or_none()
             if storage:
                 if storage_id is not None and storage.id != storage_id:
                     raise ConfigurationError(
@@ -1097,7 +1098,7 @@ class _Database(ReprMixIn):
                 if isinstance(obj, Storage):
                     return obj.name
 
-                if isinstance(obj.__class__, sqlalchemy.ext.declarative.DeclarativeMeta):
+                if isinstance(obj.__class__, sqlalchemy.orm.DeclarativeMeta):
                     # Use ordered dictionary to make iterative JSON parsing possible. See below.
                     fields: OrderedDict[str, Any] = OrderedDict()
 
@@ -1273,7 +1274,7 @@ class _Database(ReprMixIn):
 
             version_dict['date'] = version_dict['date'] + 'Z'
 
-            version_dict['storage'] = Session.query(Storage).get(version_dict['storage_id']).name
+            version_dict['storage'] = Session.get(Storage, version_dict['storage_id']).name
             del version_dict['storage_id']
 
             version_dict['snapshot'] = version_dict['snapshot_name']
@@ -1348,7 +1349,7 @@ class _Database(ReprMixIn):
                         raise InputDataError('Missing attribute {} in block list in version {}.'.format(
                             attribute, version_uid))
 
-            storage = Session.query(Storage).filter(Storage.name == version_dict['storage']).one_or_none()
+            storage = Session.scalars(select(Storage).filter(Storage.name == version_dict['storage'])).one_or_none()
             if not storage:
                 raise InputDataError('Storage {} is not defined in the configuration.'.format(version_dict['storage']))
 
@@ -1430,8 +1431,9 @@ class _Locking:
 
     def lock(self, *, lock_name: str, reason: str = None, locked_msg: str = None, override_lock: bool = False) -> None:
         try:
-            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._process_id()).one_or_none()
+            lock = Session.scalars(
+                select(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                    Lock.process_id == self._process_id())).one_or_none()
             if lock is not None:
                 raise InternalError('Attempt to acquire lock {} twice.'.format(lock_name))
             lock = Lock(
@@ -1460,7 +1462,7 @@ class _Locking:
     @staticmethod
     def is_locked(*, lock_name: str) -> bool:
         try:
-            lock = Session.query(Lock).filter(Lock.lock_name == lock_name).one_or_none()
+            lock = Session.scalars(select(Lock).filter(Lock.lock_name == lock_name)).one_or_none()
         except:
             Session.rollback()
             raise
@@ -1469,8 +1471,9 @@ class _Locking:
 
     def update_lock(self, *, lock_name: str, reason: str = None) -> None:
         try:
-            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._process_id()).with_for_update().one_or_none()
+            lock = Session.scalars(
+                select(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                    Lock.process_id == self._process_id()).with_for_update()).one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             lock.reason = reason
@@ -1481,8 +1484,9 @@ class _Locking:
 
     def unlock(self, *, lock_name: str) -> None:
         try:
-            lock = Session.query(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
-                                              Lock.process_id == self._process_id()).one_or_none()
+            lock = Session.scalars(
+                select(Lock).filter(Lock.host == self._host, Lock.lock_name == lock_name,
+                                    Lock.process_id == self._process_id())).one_or_none()
             if not lock:
                 raise InternalError('Lock {} isn\'t held by this instance or doesn\'t exist.'.format(lock_name))
             Session.delete(lock)
@@ -1493,7 +1497,8 @@ class _Locking:
 
     def unlock_all(self) -> None:
         try:
-            locks = Session.query(Lock).filter(Lock.host == self._host, Lock.process_id == self._process_id())
+            locks = Session.scalars(
+                select(Lock).filter(Lock.host == self._host, Lock.process_id == self._process_id())).all()
             for lock in locks:
                 logger.error('Lock {} not released correctly, releasing it now.'.format(lock.lock_name))
                 Session.delete(lock)
@@ -1620,8 +1625,7 @@ class _QueryBuilder:
             def op(self, op, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
                 if isinstance(other, Token):
                     raise TypeError('Comparing labels to labels or labels to identifiers is not supported.')
-                label_query = Session.query(Label.version_id).filter((Label.name == self.name) &
-                                                                     op(Label.value, str(other)))
+                label_query = select(Label.version_id).filter((Label.name == self.name) & op(Label.value, str(other)))
                 return Version.id.in_(label_query)
 
             def __eq__(self, other: Any) -> sqlalchemy.sql.elements.BinaryExpression:
@@ -1632,7 +1636,7 @@ class _QueryBuilder:
 
             # This is called when the token is not part of a comparison and test for label existence
             def build(self) -> sqlalchemy.sql.elements.BinaryExpression:
-                label_query = Session.query(Label.version_id).filter(Label.name == self.name)
+                label_query = select(Label.version_id).filter(Label.name == self.name)
                 return Version.id.in_(label_query)
 
         attributes = []
@@ -1737,9 +1741,9 @@ class _QueryBuilder:
 
     def build(self, filter_expression: Optional[str], columns: Sequence[Any] = None) -> Any:
         if columns is not None:
-            query = Session.query(*columns)
+            query = select(*columns)
         else:
-            query = Session.query(Version)
+            query = select(Version)
         if filter_expression:
             try:
                 parsed_filter_expression = self._parser.parseString(filter_expression, parseAll=True)[0]

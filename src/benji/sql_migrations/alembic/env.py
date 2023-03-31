@@ -2,20 +2,11 @@ import sqlite3
 
 from alembic import context
 from alembic.operations import ops
-from sqlalchemy import create_engine
 
-from benji.config import Config as BenjiConfig
 from benji.database import Base
 
-# Only load configuration when we're running standalone
 config = context.config
-if config.attributes.get('connection', None) is None:
-    benji_config = BenjiConfig()
-    config.attributes['benji_config'] = benji_config
-    database_engine = benji_config.get('databaseEngine', types=str)
-    connectable = create_engine(database_engine)
-else:
-    connectable = config.attributes['connection']
+connection = config.attributes['connection']
 
 target_metadata = Base.metadata
 
@@ -66,22 +57,21 @@ def run_migrations_online():
             # otherwise if not filtered, yield out the directive
             yield directive
 
-    with connectable.connect() as connection:
-        if isinstance(connection.connection, sqlite3.Connection):
-            connection.execute('PRAGMA foreign_keys=OFF')
+    if isinstance(connection.connection, sqlite3.Connection):
+        connection.execute('PRAGMA foreign_keys=OFF')
 
-        context.configure(connection=connection,
-                          target_metadata=target_metadata,
-                          compare_type=True,
-                          compare_server_default=True,
-                          process_revision_directives=process_revision_directives,
-                          render_as_batch=True)
+    context.configure(connection=connection,
+                      target_metadata=target_metadata,
+                      compare_type=True,
+                      compare_server_default=True,
+                      process_revision_directives=process_revision_directives,
+                      render_as_batch=True)
 
-        with context.begin_transaction():
-            context.run_migrations()
+    with context.begin_transaction():
+        context.run_migrations()
 
-        if isinstance(connection.connection, sqlite3.Connection):
-            connection.execute('PRAGMA foreign_keys=ON')
+    if isinstance(connection.connection, sqlite3.Connection):
+        connection.execute('PRAGMA foreign_keys=ON')
 
 
 if not context.is_offline_mode():

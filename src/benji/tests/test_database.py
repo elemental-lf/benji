@@ -1,11 +1,11 @@
 import datetime
-import math
 import time
 import timeit
 import uuid
 from typing import List, Dict, Any
 from unittest import TestCase
 
+import math
 from dateutil import tz
 
 from benji.database import BlockUid, VersionUid, VersionStatus, Version, Storage, DeletedBlock, Locking

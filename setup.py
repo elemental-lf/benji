@@ -51,10 +51,10 @@ Topic :: System :: Archiving :: Backup
     zip_safe=False,  # ONLY because of alembic.ini. The rest is zip-safe.
     install_requires=[
         'PrettyTable>=0.7.2,<1',
-        'sqlalchemy>=1.4.14,<2',
+        'sqlalchemy>=2.0.7,<3',
         'setproctitle>=1.1.8,<2',
         'python-dateutil>=2.6.0,<3',
-        'alembic>=1.0.5,<2',
+        'alembic>=1.10.2,<2',
         'ruamel.yaml>0.16,<0.17',
         'psycopg2-binary>=2.7.4,<3',
         'argcomplete>=1.9.4,<2',
