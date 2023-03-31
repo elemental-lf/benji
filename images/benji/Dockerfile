@@ -21,7 +21,6 @@ COPY . /benji-source/
 RUN python3 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
 	pip install --upgrade pip setuptools wheel && \
-	pip install git+https://github.com/elemental-lf/libiscsi-python && \
 	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
 
 FROM almalinux:9.1 AS runtime
