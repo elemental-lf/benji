@@ -35,6 +35,10 @@ spec:
         - name: benji
           image: "{{ .Values.benji.image.registry }}/{{ .Values.benji.image.repository }}:{{ .Values.benji.image.tag }}"
           imagePullPolicy: {{ .Values.benji.image.pullPolicy }}
+{{- with .Values.benji.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+{{- end }}
           securityContext:
             privileged: true
           env:

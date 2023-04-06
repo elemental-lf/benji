@@ -18,6 +18,9 @@ benji:
   affinity: {}
 
   initContainers: []
+
+  command: []
+
 ## insert a secret name here that contains your configuration, otherwise the below configuration is used
   externalSecretConfig: ""
 
