@@ -1,7 +1,7 @@
-FROM almalinux:8.7 AS build
+FROM almalinux:9.1 AS build
 
-ARG CEPH_CODENAME="pacific"
-ARG CEPH_DISTRO="el8"
+ARG CEPH_CODENAME="quincy"
+ARG CEPH_DISTRO="el9"
 
 ENV VENV_DIR /benji
 
@@ -20,11 +20,11 @@ COPY . /benji-source/
 
 RUN python3 -m venv --system-site-packages $VENV_DIR && \
 	. $VENV_DIR/bin/activate && \
-	pip install --upgrade pip setuptools && \
+	pip install --upgrade pip setuptools wheel && \
 	pip install git+https://github.com/elemental-lf/libiscsi-python && \
 	pip install '/benji-source/[compression,s3,b2,helpers,rest-api]'
 
-FROM almalinux:8.7 AS runtime
+FROM almalinux:9.1 AS runtime
 
 ARG VCS_REF
 ARG VCS_URL
