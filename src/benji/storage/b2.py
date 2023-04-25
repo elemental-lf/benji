@@ -3,16 +3,14 @@
 import logging
 import random
 import time
+from io import BytesIO
 from typing import Union, Iterable, Tuple
 
-import b2sdk
-import b2sdk.api
-import b2sdk.file_version
-from b2sdk.account_info.exception import MissingAccountData
-from b2sdk.account_info.in_memory import InMemoryAccountInfo
-from b2sdk.account_info.sqlite_account_info import SqliteAccountInfo
-from b2sdk.download_dest import DownloadDestBytes
-from b2sdk.exception import B2Error, FileNotPresent
+from b2sdk.v2 import B2Api, UploadManager
+from b2sdk.v2 import InMemoryAccountInfo
+from b2sdk.v2 import SqliteAccountInfo
+from b2sdk.v2.exception import MissingAccountData, B2Error, FileNotPresent
+
 from benji.config import Config, ConfigDict
 from benji.logging import logger
 from benji.storage.base import ReadCacheStorageBase
@@ -45,15 +43,13 @@ class Storage(ReadCacheStorageBase):
         else:
             account_info = InMemoryAccountInfo()
 
-        b2sdk.bucket.Bucket.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(module_configuration,
-                                                                       'uploadAttempts',
-                                                                       types=int)
+        UploadManager.MAX_UPLOAD_ATTEMPTS = Config.get_from_dict(module_configuration, 'uploadAttempts', types=int)
 
         self._write_object_attempts = Config.get_from_dict(module_configuration, 'writeObjectAttempts', types=int)
 
         self._read_object_attempts = Config.get_from_dict(module_configuration, 'readObjectAttempts', types=int)
 
-        self.service = b2sdk.api.B2Api(account_info)
+        self.service = B2Api(account_info)
         if account_info_file is not None:
             try:
                 # This temporarily disables all logging as the b2 library does some very verbose logging
@@ -93,9 +89,9 @@ class Storage(ReadCacheStorageBase):
 
     def _read_object(self, key: str) -> bytes:
         for i in range(self._read_object_attempts):
-            data_io = DownloadDestBytes()
+            data_io = BytesIO()
             try:
-                self.bucket.download_file_by_name(key, data_io)
+                self.bucket.download_file_by_name(key).save(data_io)
             # This is overly broad!
             except B2Error as exception:
                 if isinstance(exception, FileNotPresent):
@@ -112,7 +108,7 @@ class Storage(ReadCacheStorageBase):
             else:
                 break
 
-        return data_io.get_bytes_written()
+        return data_io.getvalue()
 
     def _read_object_length(self, key: str) -> int:
         for i in range(self._read_object_attempts):

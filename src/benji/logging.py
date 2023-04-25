@@ -248,7 +248,7 @@ logging.getLogger('nose').setLevel(logging.WARN)
 # See: https://github.com/boto/boto3/issues/454
 warnings.filterwarnings("ignore", category=ResourceWarning, message=r'unclosed.*<(?:ssl.SSLSocket|socket\.socket).*>')
 # silence b2
-logging.getLogger('b2').setLevel(logging.WARN)
+logging.getLogger('b2sdk').setLevel(logging.WARN)
 
 if os.getenv('BENJI_DEBUG_SQL') == '1':
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
