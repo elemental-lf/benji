@@ -947,7 +947,7 @@ class _Database(ReprMixIn):
                 # Increase the timeout (5 seconds is the default). This will make "database is locked" errors
                 # due to concurrent database access less likely.
                 connect_args['timeout'] = 3 * Version.TIMED_COMMIT_INTERVAL
-            self._engine = sqlalchemy.create_engine(url, connect_args=connect_args)
+            self._engine = sqlalchemy.create_engine(url, connect_args=connect_args, pool_pre_ping=True)
         else:
             logger.info('Running with ephemeral in-memory database.')
             self._engine = sqlalchemy.create_engine('sqlite://')
