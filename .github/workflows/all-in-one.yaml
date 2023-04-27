@@ -64,25 +64,25 @@ jobs:
 
           branch="${GITHUB_REF#refs/heads/}"
           echo "::debug::Setting branch to ${branch}"
-          echo "::set-output name=branch::${branch}"
+          echo "branch=${branch}" >>${GITHUB_OUTPUT}
 
           version="$(./maint-scripts/get-version-miniver)"
           echo "::debug::Setting version to $version"
-          echo "::set-output name=version::${version}"
+          echo "version=${version}" >>${GITHUB_OUTPUT}
 
           # Remove labels for public version
           public_version=${version%+*}
           echo "::debug::Setting public_version to $public_version"
-          echo "::set-output name=public_version::${public_version}"
+          echo "public_version=${public_version}" >>${GITHUB_OUTPUT}
 
           if [[ $version =~ ^[0-9]+\.[0-9]+.[0-9]+$ ]]; then
-            echo '::set-output name=release::true'
+            echo 'release=true' >>${GITHUB_OUTPUT}
           else
-            echo '::set-output name=release::false'
+            echo 'release=false' >>${GITHUB_OUTPUT}
           fi
 
-          echo "::set-output name=vcs_ref::$(git rev-parse --short HEAD)"
-          echo "::set-output name=build_date::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "vcs_ref=$(git rev-parse --short HEAD)" >>${GITHUB_OUTPUT}
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >>${GITHUB_OUTPUT}
 
   #
   # Job: tests
