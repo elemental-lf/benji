@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
 setup(name='benji-k8s-tools',
       version='0.1',
@@ -8,7 +8,7 @@ setup(name='benji-k8s-tools',
       author_email='lf@elemental.net',
       license='LGPG-3',
       python_requires='~=3.6',
-      packages=find_packages('src'),
+      packages=find_namespace_packages('src'),
       package_dir={
           '': 'src',
       },
