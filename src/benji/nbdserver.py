@@ -346,7 +346,7 @@ class NbdServer(ReprMixIn):
             while True:
                 header = await reader.readexactly(28)
                 try:
-                    (magic, cmd, handle, offset, length) = struct.unpack(">LLQQL", header)
+                    (magic, cmd, cookie, offset, length) = struct.unpack(">LLQQL", header)
                 except struct.error:
                     raise IOError("Invalid request, disconnecting.")
 
@@ -356,11 +356,11 @@ class NbdServer(ReprMixIn):
                 cmd_flags = cmd & self.NBD_CMD_MASK_FLAGS
                 cmd = cmd & self.NBD_CMD_MASK_COMMAND
 
-                self.log.debug(f"[{host}:{port}]: cmd={self.NBD_CMD_MAP.get(cmd, 'unknown')}({cmd}), cmd_flags={cmd_flags}, handle={handle}, offset={offset}, length={length}")
+                self.log.debug(f"[{host}:{port}]: cmd={self.NBD_CMD_MAP.get(cmd, 'unknown')}({cmd}), cmd_flags={cmd_flags}, cookie={cookie}, offset={offset}, length={length}")
 
                 # We don't support any command flags
                 if cmd_flags != 0:
-                    await self.nbd_response(writer, handle, error=self.EINVAL)
+                    await self.nbd_response(writer, cookie, error=self.EINVAL)
                     continue
 
                 if cmd == self.NBD_CMD_DISC:
@@ -373,7 +373,7 @@ class NbdServer(ReprMixIn):
                         raise IOError("%s bytes expected, disconnecting." % length)
 
                     if self.read_only:
-                        await self.nbd_response(writer, handle, error=self.EPERM)
+                        await self.nbd_response(writer, cookie, error=self.EPERM)
                         continue
 
                     if not cow_version:
@@ -383,25 +383,25 @@ class NbdServer(ReprMixIn):
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_WRITE: %s\n%s." %
                                        (host, port, exception, traceback.format_exc()))
-                        await self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, cookie, error=self.EIO)
                         continue
 
-                    await self.nbd_response(writer, handle)
+                    await self.nbd_response(writer, cookie)
 
                 elif cmd == self.NBD_CMD_READ:
                     try:
                         data = self.store.read(version, cow_version, offset, length)
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_READ: %s\n%s." % (host, port, exception, traceback.format_exc()))
-                        await self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, cookie, error=self.EIO)
                         continue
 
-                    await self.nbd_response(writer, handle, data=data)
+                    await self.nbd_response(writer, cookie, data=data)
 
                 elif cmd == self.NBD_CMD_FLUSH:
                     # Return success right away when we're read only or when we haven't written anything yet.
                     if self.read_only or not cow_version:
-                        await self.nbd_response(writer, handle)
+                        await self.nbd_response(writer, cookie)
                         continue
 
                     try:
@@ -409,14 +409,14 @@ class NbdServer(ReprMixIn):
                     except Exception as exception:
                         self.log.error("[%s:%s] NBD_CMD_FLUSH: %s\n%s." %
                                        (host, port, exception, traceback.format_exc()))
-                        await self.nbd_response(writer, handle, error=self.EIO)
+                        await self.nbd_response(writer, cookie, error=self.EIO)
                         continue
 
-                    await self.nbd_response(writer, handle)
+                    await self.nbd_response(writer, cookie)
 
                 else:
                     self.log.warning("[%s:%s] Unknown cmd %s, ignoring." % (host, port, cmd))
-                    await self.nbd_response(writer, handle, error=self.EINVAL)
+                    await self.nbd_response(writer, cookie, error=self.EINVAL)
                     continue
 
         except _NbdServerAbortedNegotiationError:
