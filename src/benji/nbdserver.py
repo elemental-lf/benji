@@ -31,13 +31,12 @@ THE SOFTWARE.
 
 import asyncio
 import logging
+import math
 import signal
 import struct
 import traceback
 from asyncio import StreamReader, StreamWriter
 from typing import Generator, Optional, Any, Tuple
-
-import math
 
 from benji.benji import BenjiStore
 from benji.database import VersionUid, Version
@@ -56,24 +55,43 @@ class NbdServer(ReprMixIn):
     NBD_OPT_REPLY_MAGIC = 0x3e889045565a9
 
     NBD_REQUEST_MAGIC = 0x25609513
-    NBD_REPLY_MAGIC = 0x67446698
+    NBD_SIMPLE_REPLY_MAGIC = 0x67446698
 
     # Options (sent by the client)
-    NBD_OPT_EXPORTNAME = 1
+    NBD_OPT_EXPORT_NAME = 1
     NBD_OPT_ABORT = 2
     NBD_OPT_LIST = 3
     NBD_OPT_PEEK_EXPORT = 4  # Not in use anymore
     NBD_OPT_STARTTLS = 5  # Not implemented
-    NBD_OPT_INFO = 6  # Not implemented
-    NBD_OPT_GO = 7  # Not implemented
+    NBD_OPT_INFO = 6
+    NBD_OPT_GO = 7
+    NBD_OPT_STRUCTURED_REPLY = 8  # Not implemented
+    NBD_OPT_LIST_META_CONTEXT = 9  # Not implemented
+    NBD_OPT_SET_META_CONTEXT = 10  # Not implemented
+    NBD_OPT_EXTENDED_HEADERS = 11  # Not implemented
+
+    NBD_OPT_MAP = {
+        NBD_OPT_EXPORT_NAME: "export-name",
+        NBD_OPT_ABORT: "abort",
+        NBD_OPT_LIST: "list",
+        NBD_OPT_PEEK_EXPORT: "peek-flush",
+        NBD_OPT_STARTTLS: "starttls",
+        NBD_OPT_INFO: "info",
+        NBD_OPT_GO: "go",
+        NBD_OPT_STRUCTURED_REPLY: "structured-reply",
+        NBD_OPT_LIST_META_CONTEXT: "list-meta-context",
+        NBD_OPT_SET_META_CONTEXT: "set-meta-context",
+        NBD_OPT_EXTENDED_HEADERS: "extended-headers",
+    }
 
     # Replies (sent by the server)
     NBD_REP_ACK = 1
     NBD_REP_SERVER = 2
+    NBD_REP_INFO = 3
     NBD_REP_FLAG_ERROR = 1 << 31
     NBD_REP_ERR_UNSUP = NBD_REP_FLAG_ERROR | 1
     NBD_REP_ERR_POLICY = NBD_REP_FLAG_ERROR | 2  # Not used
-    NBD_REP_ERR_INVALID = NBD_REP_FLAG_ERROR | 3  # Not used
+    NBD_REP_ERR_INVALID = NBD_REP_FLAG_ERROR | 3
     NBD_REP_ERR_PLATFORM = NBD_REP_FLAG_ERROR | 4  # Not used
     NBD_REP_ERR_TLS_REQD = NBD_REP_FLAG_ERROR | 5  # Not used
     NBD_REP_ERR_UNKNOWN = NBD_REP_FLAG_ERROR | 6  # Not used
@@ -153,7 +171,11 @@ class NbdServer(ReprMixIn):
     EOVERFLOW = 75  # Value too large.
     ESHUTDOWN = 108  # Server is in the process of being shut down.
 
-    def __init__(self, address: Tuple[str, str], store: BenjiStore, read_only: bool = True, discard_changes: bool = False) -> None:
+    def __init__(self,
+                 address: Tuple[str, str],
+                 store: BenjiStore,
+                 read_only: bool = True,
+                 discard_changes: bool = False) -> None:
         self.log = logging.getLogger(__package__)
 
         self.address = address
@@ -170,7 +192,17 @@ class NbdServer(ReprMixIn):
                            handle: int,
                            error: int = 0,
                            data: bytes = None) -> Generator[Any, None, None]:
-        writer.write(struct.pack('>LLQ', self.NBD_REPLY_MAGIC, error, handle))
+        writer.write(struct.pack('>LLQ', self.NBD_SIMPLE_REPLY_MAGIC, error, handle))
+        if data:
+            writer.write(data)
+        await writer.drain()
+
+    async def nbd_opt_response(self,
+                               writer: StreamWriter,
+                               opt: int,
+                               type: int,
+                               data: bytes = None) -> Generator[Any, None, None]:
+        writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, type, len(data) if data else 0))
         if data:
             writer.write(data)
         await writer.drain()
@@ -193,7 +225,6 @@ class NbdServer(ReprMixIn):
             except struct.error:
                 raise IOError("Handshake failed, disconnecting.")
 
-            # We support both fixed and unfixed new-style negotiation.
             # The specification actually allows a client supporting "fixed" to not set this bit in its reply ("SHOULD").
             fixed = (client_flags & self.NBD_FLAG_FIXED_NEWSTYLE) != 0
             if not fixed:
@@ -208,6 +239,7 @@ class NbdServer(ReprMixIn):
                 raise IOError("Handshake failed, unknown client flags %s, disconnecting." % (client_flags))
 
             # Negotiation phase
+            version: VersionUid = None
             while True:
                 header = await reader.readexactly(16)
                 try:
@@ -225,37 +257,24 @@ class NbdServer(ReprMixIn):
                 else:
                     data = None
 
-                self.log.debug("[%s:%s]: opt=%s, length=%s, data=%r" % (host, port, opt, length, data))
+                self.log.debug(f"[{host}:{port}]: opt={self.NBD_OPT_MAP.get(opt, 'unknown')}({opt}), length={length}, data={data!r}")
 
-                if opt == self.NBD_OPT_EXPORTNAME:
+                if opt == self.NBD_OPT_EXPORT_NAME:
                     if not data:
                         raise IOError("Negotiation failed: No export name was provided.")
 
                     version_uid = VersionUid(data.decode("ascii"))
-                    if version_uid not in [v.uid for v in self.store.find_versions()]:
-                        if not fixed:
-                            raise IOError("Negotiation failed: Unknown export name.")
-
-                        writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ERR_UNSUP, 0))
-                        await writer.drain()
+                    if not self.store.find_versions(version_uid=version_uid):
+                        await self.nbd_opt_response(writer, opt, self.NBD_REP_ERR_INVALID)
                         continue
 
-                    self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid))
-
-                    # We have negotiated a version and it will be used until the client disconnects
                     version = self.store.find_versions(version_uid=version_uid)[0]
-                    self.store.open(version)
-
-                    self.log.info("[%s:%s] Version %s has been opened." % (host, port, version.uid))
 
                     export_flags = self.NBD_EXPORT_FLAGS
                     if self.read_only:
                         export_flags |= self.NBD_FLAG_READ_ONLY
-                        self.log.info("[%s:%s] Export is read only." % (host, port))
-                    else:
-                        self.log.info("[%s:%s] Export is read/write." % (host, port))
 
-                    # In case size is not a multiple of 4096 we extend it to the the maximum support block
+                    # In case size is not a multiple of 4096 we extend it to the maximum support block
                     # size of 4096
                     size = math.ceil(version.size / 4096) * 4096
                     writer.write(struct.pack('>QH', size, export_flags))
@@ -266,36 +285,62 @@ class NbdServer(ReprMixIn):
                     # Transition to transmission phase
                     break
 
+                if opt == self.NBD_OPT_INFO or opt == self.NBD_OPT_GO:
+                    if not data:
+                        raise IOError("Negotiation failed: No data was provided.")
+
+                    version_uid_len = struct.unpack('>L', data[:4])[0]
+                    version_uid = VersionUid(data[4:4 + version_uid_len].decode('ascii'))
+                    if not self.store.find_versions(version_uid=version_uid):
+                        await self.nbd_opt_response(writer, opt, self.NBD_REP_ERR_INVALID)
+                        continue
+
+                    version = self.store.find_versions(version_uid=version_uid)[0]
+
+                    # We ignore the rest of the data which may contain information requests and always answer with
+                    # NBD_INFO_EXPORT.
+
+                    export_flags = self.NBD_EXPORT_FLAGS
+                    if self.read_only:
+                        export_flags |= self.NBD_FLAG_READ_ONLY
+
+                    # In case size is not a multiple of 4096 we extend it to the maximum support block
+                    # size of 4096
+                    size = math.ceil(version.size / 4096) * 4096
+                    await self.nbd_opt_response(writer, opt, self.NBD_REP_INFO,
+                                                struct.pack('>HQH', self.NBD_INFO_EXPORT, size, export_flags))
+
+                    await self.nbd_opt_response(writer, opt, self.NBD_REP_ACK)
+
+                    if opt == self.NBD_OPT_GO:
+                        # Transition to transmission phase
+                        break
+
                 elif opt == self.NBD_OPT_LIST:
-                    # Don't use version as a loop variable so we don't conflict with the outer scope usage
+                    # Don't use version as a loop variable, so we don't conflict with the outer scope usage
                     for list_version in self.store.find_versions():
                         list_version_encoded = list_version.uid.encode("ascii")
-                        writer.write(
-                            struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_SERVER,
-                                        len(list_version_encoded) + 4))
-                        writer.write(struct.pack(">L", len(list_version_encoded)))
-                        writer.write(list_version_encoded)
-                        await writer.drain()
+                        await self.nbd_opt_response(writer, opt, self.NBD_REP_SERVER,
+                                                    struct.pack(">L", len(list_version_encoded)) + list_version_encoded)
 
-                    writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ACK, 0))
-                    await writer.drain()
+                    await self.nbd_opt_response(writer, opt, self.NBD_REP_ACK)
 
                 elif opt == self.NBD_OPT_ABORT:
-                    writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ACK, 0))
-                    await writer.drain()
+                    await self.nbd_opt_response(writer, opt, self.NBD_REP_ACK)
 
                     raise _NbdServerAbortedNegotiationError()
                 else:
                     # We don't support any other option.
-                    # nbd-client will always try NBD_OPT_GO before NBD_OPT_EXPORTNAME so we don't log it.
-                    if opt != self.NBD_OPT_GO:
-                        self.log.warning("[%s:%s] Received unsupported option: %s." % (host, port, opt))
+                    await self.nbd_opt_response(writer, opt, self.NBD_REP_ERR_UNSUP)
 
-                    if not fixed:
-                        raise IOError("Unsupported option: %s." % (opt))
+            self.log.info("[%s:%s] Negotiated export: %s." % (host, port, version_uid))
+            if self.read_only:
+                self.log.info("[%s:%s] Export is read only." % (host, port))
+            else:
+                self.log.info("[%s:%s] Export is read/write." % (host, port))
+            self.store.open(version)
 
-                    writer.write(struct.pack(">QLLL", self.NBD_OPT_REPLY_MAGIC, opt, self.NBD_REP_ERR_UNSUP, 0))
-                    await writer.drain()
+            self.log.info("[%s:%s] Version %s has been opened." % (host, port, version.uid))
 
             # Transmission phase
             while True:
@@ -311,7 +356,7 @@ class NbdServer(ReprMixIn):
                 cmd_flags = cmd & self.NBD_CMD_MASK_FLAGS
                 cmd = cmd & self.NBD_CMD_MASK_COMMAND
 
-                self.log.debug(f"[{host}:{port}]: cmd={self.NBD_CMD_MAP.get(cmd + 10, 'unknown')}({cmd}), cmd_flags={cmd_flags}, handle={handle}, offset={offset}, length={length}")
+                self.log.debug(f"[{host}:{port}]: cmd={self.NBD_CMD_MAP.get(cmd, 'unknown')}({cmd}), cmd_flags={cmd_flags}, handle={handle}, offset={offset}, length={length}")
 
                 # We don't support any command flags
                 if cmd_flags != 0:
@@ -382,10 +427,10 @@ class NbdServer(ReprMixIn):
 
         finally:
             if cow_version:
-              if self.discard_changes:
-                self.store.discard_cow_version(cow_version)
-              else:
-                self.store.fixate_cow_version(cow_version)
+                if self.discard_changes:
+                    self.store.discard_cow_version(cow_version)
+                else:
+                    self.store.fixate_cow_version(cow_version)
             if version:
                 self.store.close(version)
             writer.close()
@@ -394,7 +439,7 @@ class NbdServer(ReprMixIn):
         addr, port = self.address
 
         loop = self.loop
-        coro = asyncio.start_server(self.handler, addr, port, loop=loop)
+        coro = asyncio.start_server(self.handler, addr, port)
         server = loop.run_until_complete(coro)
 
         loop.add_signal_handler(signal.SIGTERM, loop.stop)
