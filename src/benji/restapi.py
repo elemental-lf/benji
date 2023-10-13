@@ -43,7 +43,9 @@ def route(path: str, **decorator_kwargs):
         request_args = {
             name: value for name, value in annotations.items() if isinstance(value, fields.Field) and name != "return"
         }
-        func.bottle_route['apply'] = use_kwargs(request_args)
+
+        location = 'query' if decorator_kwargs['method'] == 'GET' else 'json'
+        func.bottle_route['apply'] = use_kwargs(request_args, location=location)
 
         @functools.wraps(func)
         def wrapped_func(*args, **kwargs):
