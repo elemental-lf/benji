@@ -41,7 +41,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str, image: str) -> T
     service_account_namespace = benji.k8s_tools.kubernetes.service_account_namespace()
     if hasattr(pvc.metadata,
                'annotations') and FSFREEZE_ANNOTATION in pvc.metadata.annotations and pvc.metadata.annotations[FSFREEZE_ANNOTATION] == 'yes':
-        pods = core_v1_api.list_namespaced_pod(service_account_namespace, watch=False).items
+        pods = core_v1_api.list_namespaced_pod(pvc_namespace, watch=False).items
         for pod in pods:
             if pv_fsfreeze:
                 break
@@ -57,8 +57,7 @@ def _determine_fsfreeze_info(pvc_namespace: str, pvc_name: str, image: str) -> T
                 break
 
         if pv_fsfreeze:
-            pods = core_v1_api.list_namespaced_pod(benji.k8s_tools.kubernetes.service_account_namespace(),
-                                                   label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
+            pods = core_v1_api.list_namespaced_pod(service_account_namespace, label_selector=FSFREEZE_POD_LABEL_SELECTOR).items
 
             if not pods:
                 logger.error('No fsfreeze pods found (label selector {FSFREEZE_POD_LABEL_SELECTOR}).')
