@@ -383,9 +383,12 @@ class Version(Base, ReprMixIn):
 
     def remove(self) -> int:
         try:
-            affected_blocks = Session.scalars(select(Block).filter(Block.version_id == self.id)).all()
-            num_blocks = len(affected_blocks)
+            # Reduce buffer size to limit the number of rows and/or ORM objects at a time
+            # https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#fetching-large-result-sets-with-yield-per
+            affected_blocks = Session.scalars(select(Block).filter(Block.version_id == self.id).execution_options(yield_per=1000))
+            num_blocks = 0
             for affected_block in affected_blocks:
+                num_blocks += 1
                 if affected_block.uid:
                     deleted_block = DeletedBlock(
                         storage_id=self.storage_id,
@@ -393,6 +396,10 @@ class Version(Base, ReprMixIn):
                         date=datetime.datetime.utcnow(),
                     )
                     Session.add(deleted_block)
+                    if num_blocks % 1000 == 0:
+                        # Flush to the database after N session's adds to avoid high memory usage
+                        # https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.flush
+                        Session.flush()
             # The following delete statement will cascade this delete to the blocks table
             # and delete all blocks
             Session.delete(self)
