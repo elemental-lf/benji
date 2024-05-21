@@ -144,7 +144,7 @@ def pod_exec(args: List[str],
 
 
 def create_pvc_event(*, type: str, reason: str, message: str, pvc_namespace: str, pvc_name: str,
-                     pvc_uid: str) -> kubernetes.client.models.v1_event.V1Event:
+                     pvc_uid: str) -> kubernetes.client.models.core_v1_event.CoreV1Event:
     event_name = '{}-{}'.format(benji_instance, str(uuid.uuid4()))
     # Kubernetes requires a time including microseconds
     event_time = datetime.datetime.utcnow().isoformat(timespec='microseconds') + 'Z'

@@ -12,7 +12,7 @@ setup(name='benji-k8s-tools',
       package_dir={
           '': 'src',
       },
-      install_requires=['benji', 'kubernetes>=10.0.0,<11'],
+      install_requires=['benji', 'kubernetes>=19.15.0'],
       entry_points="""
         [console_scripts]
             benji-backup-pvc = benji.k8s_tools.scripts.backup_pvc:main
