@@ -367,7 +367,7 @@ jobs:
           BENJI_VERSION_OVERRIDE: "${{ needs.gather_info.outputs.public_version }}"
 
       - name: Publish artifacts to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.4.2
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
@@ -408,7 +408,7 @@ jobs:
           BENJI_VERSION_OVERRIDE: "${{ needs.gather_info.outputs.public_version }}"
 
       - name: Publish artifacts to PyPI test
-        uses: pypa/gh-action-pypi-publish@v1.4.2
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.PYPI_TEST_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
