@@ -1,6 +1,6 @@
 FROM almalinux:9.1 AS build
 
-ARG CEPH_CODENAME="quincy"
+ARG CEPH_CODENAME="20.2.4"
 ARG CEPH_DISTRO="el9"
 
 ENV VENV_DIR /benji
